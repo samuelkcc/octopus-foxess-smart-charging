@@ -1,0 +1,1660 @@
+<!--
+    Octopus Intelligent Go & FoxESS Smart Charging Detector
+    Copyright (C) 2026 Samuel Chen (samuelchen.hk)
+
+    This program is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program. If not, see <https://www.gnu.org/licenses/>.
+-->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart Charging Detector</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
+    <style>
+        :root {
+            --bg: #f8fafc; --card-bg: #ffffff; --text-main: #0f172a; --text-muted: #64748b;
+            --accent: #e11d48; --accent-hover: #be123c; --border: #e2e8f0;
+            --off-peak: #10b981; --off-peak-bg: #d1fae5; --peak: #ef4444; --peak-bg: #fee2e2;
+            --fox-orange: #f97316; --fox-orange-hover: #ea580c; --fox-green: #22c55e;
+            --card-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+    }
+
+    [data-theme="dark"] {
+        --bg: #10002b; --card-bg: #1a0b3c; --text-main: #f8fafc; --text-muted: #94a3b8;
+        --accent: #f300c5; --accent-hover: #d100aa; --border: #3b2268;
+        --off-peak: #34d399; --off-peak-bg: rgba(16, 185, 129, 0.15); 
+        --peak: #f87171; --peak-bg: rgba(239, 68, 68, 0.15);
+    }
+    [data-theme="dark"] body { background: #080016; }
+    [data-theme="dark"] input, [data-theme="dark"] details { background: rgba(255,255,255,0.05) !important; color: var(--text-main) !important; border-color: var(--border) !important; color-scheme: dark; }
+    [data-theme="dark"] div[style*="background: #f8fafc"], [data-theme="dark"] div[style*="background: #fff"], [data-theme="dark"] .automation-block { background: var(--card-bg) !important; color: var(--text-main) !important; border-color: var(--border) !important; }
+    [data-theme="dark"] div[style*="background: #eff6ff"] { background: rgba(59, 130, 246, 0.15) !important; border-color: rgba(59, 130, 246, 0.3) !important; }
+    [data-theme="dark"] div[style*="background: #f0fdf4"] { background: rgba(34, 197, 94, 0.15) !important; border-color: rgba(34, 197, 94, 0.3) !important; }
+    [data-theme="dark"] div[style*="background: #fffbeb"] { background: rgba(245, 158, 11, 0.15) !important; border-color: rgba(245, 158, 11, 0.3) !important; }
+    [data-theme="dark"] .badge.neutral { background: rgba(255,255,255,0.1); color: var(--text-main); border-color: var(--border); }
+    [data-theme="dark"] .rule-title { color: var(--text-main) !important; }
+    
+    /* Global Dark Mode Force Overrides */
+    [data-theme="dark"] .price-display { background: rgba(0,0,0,0.2) !important; border-color: var(--border) !important; }
+    [data-theme="dark"] summary { color: var(--text-main) !important; }
+    [data-theme="dark"] details div { color: var(--text-muted) !important; }
+    [data-theme="dark"] div[style*="background: white"] { background: var(--card-bg) !important; border: 1px solid var(--border); box-shadow: 0 10px 25px rgba(0,0,0,0.5) !important; }
+    [data-theme="dark"] h3, [data-theme="dark"] h4, [data-theme="dark"] strong { color: var(--text-main) !important; }
+    [data-theme="dark"] p, [data-theme="dark"] li, [data-theme="dark"] label, [data-theme="dark"] .auth-subtitle { color: var(--text-muted) !important; }
+    [data-theme="dark"] span[style*="color: #64748b"], [data-theme="dark"] span[style*="color: #3b82f6"] { color: var(--text-muted) !important; }
+    [data-theme="dark"] a { color: var(--accent) !important; }
+    [data-theme="dark"] .auth-divider { color: var(--text-muted); }
+    [data-theme="dark"] .auth-divider::before, [data-theme="dark"] .auth-divider::after { border-bottom-color: var(--border); }
+    [data-theme="dark"] button[style*="background: #ffffff"] { background: rgba(255,255,255,0.05) !important; color: var(--text-main) !important; border-color: var(--border) !important; }
+    [data-theme="dark"] div[style*="background: #f8fafc"] { background: rgba(255,255,255,0.02) !important; border-color: var(--border) !important; color: var(--text-muted) !important; }
+    [data-theme="dark"] ul[style*="background: #f8fafc"] { background: rgba(255,255,255,0.02) !important; border-color: var(--border) !important; color: var(--text-muted) !important; }
+    [data-theme="dark"] div[style*="background: #1e293b"] { background: #000 !important; }
+    [data-theme="dark"] .current-price { color: var(--text-main) !important; }
+    [data-theme="dark"] #price-target-times, [data-theme="dark"] div[style*="color: #166534"] { color: var(--off-peak) !important; }
+
+        body { font-family: system-ui, -apple-system, sans-serif; margin: 0; padding: 1.5rem; color: var(--text-main); background: #e2e8f0; line-height: 1.5; min-height: 100vh; display: grid; place-items: center; box-sizing: border-box; }
+        
+        .app-wrapper { background: var(--bg); border: 2px solid #cbd5e1; border-radius: 16px; box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05); width: 100%; max-width: 1600px; min-height: calc(100vh - 3rem); padding: 2rem 2.5rem; display: flex; flex-direction: column; box-sizing: border-box; }
+        .app-content { flex-grow: 1; display: flex; flex-direction: column; }
+        .app-footer { margin-top: auto; border-top: 1px solid var(--border); padding-top: 1rem; display: flex; justify-content: space-between; font-size: 0.8rem; color: var(--text-muted); font-weight: 500; }
+
+        .auth-layout { display: flex; position: relative; width: 100%; max-width: 450px; margin: auto; align-items: stretch; justify-content: center; }
+        .auth-card { background: var(--card-bg); padding: 2.5rem; border-radius: 16px; box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.05); width: 100%; border: 1px solid var(--border); z-index: 10; position: relative; }
+        .auth-card h2 { margin-top: 0; text-align: center; margin-bottom: 0.25rem; color: var(--text-main); font-size: 1.5rem; }
+        .auth-subtitle { text-align: center; color: var(--text-muted); font-size: 0.9rem; margin-bottom: 2rem; line-height: 1.5; }
+        .slide-panel { position: absolute; top: 50%; height: fit-content; max-height: 90%; width: 380px; background: var(--card-bg); padding: 2.25rem 2rem; border-radius: 16px; box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05); border: 1px solid var(--border); display: flex; flex-direction: column; box-sizing: border-box; transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.3s ease, z-index 0s linear; opacity: 0; z-index: 5; pointer-events: none; overflow-y: auto; }
+        .slide-panel.left-drawer { right: calc(100% + 1.5rem); transform: translate(30px, -50%); }
+        .slide-panel.right-drawer { left: calc(100% + 1.5rem); transform: translate(-30px, -50%); }
+        .slide-panel.left-drawer.open { transform: translate(0, -50%); opacity: 1; pointer-events: auto; z-index: 1005; }
+        .slide-panel.right-drawer.open { transform: translate(0, -50%); opacity: 1; pointer-events: auto; z-index: 1005; }
+        .slide-backdrop { display: none; position: fixed; inset: 0; background: rgba(15, 23, 42, 0.5); backdrop-filter: blur(4px); z-index: 9990; opacity: 0; transition: opacity 0.3s ease; pointer-events: none; }
+        .slide-backdrop.visible { display: block !important; opacity: 1; pointer-events: auto; }
+        .slide-backdrop.visible { opacity: 1; pointer-events: auto; }
+        @media (max-width: 1650px) {
+            .slide-panel { position: fixed; top: 50%; bottom: auto; left: 50%; right: auto; width: calc(100% - 2rem); max-width: 440px; max-height: 80vh; z-index: 9995; }
+            .slide-panel.left-drawer { right: auto !important; transform: translate(-50%, -30%); }
+            .slide-panel.right-drawer { left: 50% !important; right: auto !important; transform: translate(-50%, -30%); }
+            .slide-panel.left-drawer.open, .slide-panel.right-drawer.open { transform: translate(-50%, -50%); opacity: 1; pointer-events: auto; z-index: 9995; }
+        }
+        .input-group { margin-bottom: 1.25rem; }
+        .input-group label { margin-bottom: 0.35rem; color: #475569; font-size: 0.85rem; display: flex; align-items: center; justify-content: space-between; font-weight: 600; }
+        .auth-divider { display: flex; align-items: center; text-align: center; margin: 1.5rem 0; color: #94a3b8; font-size: 0.85rem; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; }
+        .auth-divider::before, .auth-divider::after { content: ''; flex: 1; border-bottom: 1px solid #e2e8f0; }
+        .auth-divider:not(:empty)::before { margin-right: .5em; }
+        .auth-divider:not(:empty)::after { margin-left: .5em; }
+        @media (max-width: 900px) { .auth-layout { flex-direction: column; align-items: center; margin: 2rem auto; } .guide-panel { width: 100%; max-width: 450px; } }
+        
+        label { display: block; font-weight: 600; margin-bottom: 0.5rem; font-size: 0.9rem; color: #334155; }
+        input[type="text"], input[type="password"], input[type="number"], input[type="time"] { 
+            width: 100%; padding: 0.85rem; margin-bottom: 0; border: 1px solid #cbd5e1; border-radius: 10px; box-sizing: border-box; background: #fff; box-shadow: inset 0 2px 4px rgba(0,0,0,0.02); transition: all 0.2s; font-family: inherit;
+        }
+        input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px rgba(225, 29, 72, 0.1); }
+        
+        button { background-color: var(--accent); color: white; border: none; padding: 0.75rem 1.5rem; border-radius: 8px; cursor: pointer; font-weight: 600; width: 100%; font-size: 1rem; transition: background 0.2s; }
+        button:hover { background-color: var(--accent-hover); }
+        button:disabled { opacity: 0.5; cursor: not-allowed; }
+        .button-group { display: flex; gap: 1rem; }
+        .btn-clear { background-color: #94a3b8; }
+        .btn-clear:hover { background-color: #64748b; }
+
+        .dashboard { display: grid; grid-template-columns: repeat(auto-fit, minmax(420px, 1fr)); gap: 1.5rem; display: none; align-items: start; }
+        .dashboard.visible { display: grid; }
+        
+        .card { background: var(--card-bg); padding: 1.5rem; border-radius: 16px; box-shadow: var(--card-shadow); border: 1px solid var(--border); display: flex; flex-direction: column; }
+        .card-header { font-size: 1.1rem; font-weight: 700; margin-bottom: 1.5rem; border-bottom: 1px solid var(--border); padding-bottom: 1rem; display: flex; justify-content: space-between; align-items: center; color: var(--text-main); }
+        
+        .summary-grid { display: flex; flex-direction: column; gap: 1.5rem; align-items: stretch; }
+        .price-display { text-align: center; padding: 2rem 1rem; background: #f8fafc; border-radius: 12px; border: 1px solid var(--border); }
+        .current-price { font-size: 4rem; font-weight: 900; line-height: 1; margin: 1rem 0; color: var(--text-main); letter-spacing: -1px; }
+        
+        .badge { display: inline-flex; align-items: center; padding: 0.35rem 0.8rem; border-radius: 999px; font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; white-space: nowrap; }
+        .badge.peak { background: var(--peak-bg); color: var(--peak); border: 1px solid #fca5a5; }
+        .badge.off-peak { background: var(--off-peak-bg); color: #059669; border: 1px solid #6ee7b7; }
+        .badge.live { background: #e0f2fe; color: #0284c7; border: 1px solid #7dd3fc; }
+        .badge.neutral { background: #f1f5f9; color: #475569; border: 1px solid #cbd5e1; }
+
+        .data-list { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 0.75rem; }
+        .data-list li { display: flex; justify-content: space-between; align-items: center; padding: 0.5rem 0; border-bottom: 1px solid var(--border); font-size: 0.9rem; gap: 1rem; }
+        .data-list li:last-child { border-bottom: none; }
+        .data-list .label { color: var(--text-muted); flex-shrink: 0; }
+        .data-list .val { font-weight: 600; text-align: right; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--text-main); }
+        
+        .error { color: #b91c1c; background: #fef2f2; padding: 1rem; border-radius: 8px; margin-bottom: 1.5rem; display: none; border: 1px solid #fecaca; font-size: 0.9rem; }
+        .success { color: #047857; background: #ecfdf5; padding: 1rem; border-radius: 8px; margin-bottom: 1.5rem; display: none; border: 1px solid #a7f3d0; font-size: 0.9rem; }
+
+        .switch { position: relative; display: inline-block; width: 44px; height: 24px; flex-shrink: 0; }
+        .switch input { opacity: 0; width: 0; height: 0; }
+        .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #cbd5e1; transition: .3s; border-radius: 24px; }
+        .slider:before { position: absolute; content: ""; height: 18px; width: 18px; left: 3px; bottom: 3px; background-color: white; transition: .3s; border-radius: 50%; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        input:checked + .slider { background-color: var(--fox-green); }
+        input:checked + .slider:before { transform: translateX(20px); }
+        
+        .chart-container { position: relative; height: 260px; width: 100%; margin-top: 1.5rem; border-top: 1px dashed var(--border); padding-top: 1.5rem; padding-bottom: 1.5rem; box-sizing: border-box; }
+        
+        .automation-block { background: #f8fafc; border: 1px solid var(--border); padding: 1.25rem; border-radius: 12px; margin-bottom: 1.5rem; }
+        .rule-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem; }
+        .rule-title { font-weight: 600; color: #1e293b; display: flex; align-items: center; gap: 8px; font-size: 0.95rem; }
+        .indicator-dot { display: none; color: var(--fox-green); font-size: 1.2rem; line-height: 0; }
+
+        @media (max-width: 768px) {
+            .dashboard { grid-template-columns: 1fr; }
+            .button-group { flex-direction: column; }
+        }
+
+        /* Smooth Progress Properties */
+        @property --progress { syntax: '<percentage>'; inherits: true; initial-value: 100%; }
+        @property --octo-progress { syntax: '<percentage>'; inherits: true; initial-value: 100%; }
+        @property --fox-progress { syntax: '<percentage>'; inherits: true; initial-value: 100%; }
+
+        /* Dynamic Countdown Borders */
+        .countdown-border, .block-countdown-octo, .block-countdown-fox {
+            position: relative;
+            border: 2px solid transparent !important;
+            background-clip: padding-box !important;
+            z-index: 1;
+        }
+        .countdown-border::before, .block-countdown-octo::before, .block-countdown-fox::before {
+            content: ""; position: absolute; inset: -3px; z-index: -1; border-radius: inherit;
+            padding: 3px; /* Thicker border for better visibility */
+            opacity: 0.95; /* Brighter opacity to make the leading dot pop */
+            -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+            -webkit-mask-composite: xor;
+            mask-composite: exclude;
+            transition: --progress 1s linear, --octo-progress 1s linear, --fox-progress 1s linear;
+        }
+
+        /* Force instant snap to prevent clockwise winding */
+        body.no-timer-transition .countdown-border::before, 
+        body.no-timer-transition .block-countdown-octo::before, 
+        body.no-timer-transition .block-countdown-fox::before {
+            transition: none !important;
+        }
+        
+        .countdown-border::before {
+            background: conic-gradient(var(--fox-green) calc(var(--progress, 100%) - 4%), #ffffff calc(var(--progress, 100%) - 0.8%), #ffffff var(--progress, 100%), #cbd5e1 0deg);
+        }
+        .block-countdown-octo::before {
+            background: conic-gradient(#10b981 calc(var(--octo-progress, 100%) - 4%), #ffffff calc(var(--octo-progress, 100%) - 0.8%), #ffffff var(--octo-progress, 100%), #e2e8f0 0deg);
+        }
+        .block-countdown-fox::before {
+            background: conic-gradient(var(--fox-orange) calc(var(--fox-progress, 100%) - 4%), #ffffff calc(var(--fox-progress, 100%) - 0.8%), #ffffff var(--fox-progress, 100%), #e2e8f0 0deg);
+        }
+    </style>
+</head>
+<body>
+
+<div class="app-wrapper">
+    <div class="app-content">
+
+<div class="slide-backdrop" id="drawer-backdrop" onclick="closeAllDrawers()"></div>
+
+<div class="auth-layout" id="login-layout">
+    <div class="slide-panel left-drawer" id="why-use-panel">
+        <h3 style="margin-top: 0; color: var(--text-main); display: flex; align-items: center; justify-content: space-between;">
+            ℹ️ App Overview & Purpose
+            <span style="cursor: pointer; font-size: 1.5rem; color: #94a3b8; line-height: 1;" onclick="closeAllDrawers()">&times;</span>
+        </h3>
+        <div style="font-size: 0.88rem; color: var(--text-muted); line-height: 1.6; margin-top: 1rem;">
+            When <em>Intelligent Octopus Go</em> smartly charges your EV, your FoxESS solar battery thinks your house is using massive amounts of power. If left in "Self-Use" mode, it will completely drain your home battery trying to cover the EV load—destroying its lifespan!
+            <br><br>
+            This app acts as a smart bridge. It detects your upcoming cheap EV charging slots and automatically switches your FoxESS inverter to <strong>Force Charge</strong>. This stops your home battery from draining into your car, protects its lifespan, and lets your home battery soak up the cheap off-peak rates too.
+        </div>
+    </div>
+
+    <div class="auth-card" id="login-card">
+        <h2>⚡ Smart Charging Detector</h2>
+        <div class="auth-subtitle">Intelligent Octopus Go & FoxESS</div>
+        
+        <button type="button" onclick="toggleDrawer('why-use-panel')" style="background: transparent; border: 1px solid var(--border); color: var(--text-muted); font-size: 0.85rem; padding: 0.65rem; border-radius: 10px; cursor: pointer; width: 100%; font-weight: 600; margin-bottom: 1.5rem; transition: all 0.2s;" onmouseover="this.style.color='var(--text-main)'; this.style.borderColor='var(--text-muted)';" onmouseout="this.style.color='var(--text-muted)'; this.style.borderColor='var(--border)';">
+            ℹ️ App Overview & Purpose
+        </button>
+
+        <div id="error" class="error"></div>
+        
+        <div class="input-group">
+            <label>🐙 Octopus Account Number</label>
+            <input type="text" id="acc" placeholder="e.g., A-12345678">
+        </div>
+        
+        <div class="input-group">
+            <label>🐙 Octopus API Key</label>
+            <input type="password" id="api" placeholder="sk_live_...">
+        </div>
+
+        <div class="auth-divider">FoxESS Integration</div>
+
+        <div class="input-group">
+            <label>🦊 FoxESS Inverter Serial Number</label>
+            <input type="text" id="fox-sn" placeholder="e.g., 60B21000000000">
+        </div>
+        
+        <div class="input-group">
+            <label>🦊 FoxESS API Token</label>
+            <input type="password" id="fox-token" placeholder="Generated from FoxCloud">
+        </div>
+
+        <div class="input-group" style="margin-bottom: 1.5rem;">
+            <label>📜 Google Apps Script Relay URL</label>
+            <input type="text" id="gas-url" placeholder="https://script.google.com/macros/s/.../exec">
+        </div>
+        
+        <button onclick="initDashboard()" id="btn" style="padding: 1rem; font-size: 1.05rem; border-radius: 10px; box-shadow: 0 4px 10px -2px rgba(225, 29, 72, 0.3); margin-top: 0.5rem;">Load Dashboard</button>
+        
+        <div style="display: flex; gap: 0.75rem; margin-top: 1rem;">
+            <button onclick="document.getElementById('import-file').click()" class="btn-clear" style="background-color: #3b82f6; font-size: 0.85rem; padding: 0.6rem; border-radius: 8px;">Load Config</button>
+            <button onclick="document.getElementById('wipe-modal').style.display='flex'" id="btn-clear" style="background-color: #ffffff; color: #3b82f6; border: 2px dotted #3b82f6; font-size: 0.85rem; padding: 0.6rem; border-radius: 8px; font-weight: 600; cursor: pointer; transition: all 0.2s;" onmouseover="this.style.backgroundColor='#f8fafc'" onmouseout="this.style.backgroundColor='#ffffff'">Wipe Data</button>
+        </div>
+        <input type="file" id="import-file" style="display: none;" accept=".enc,.txt" onchange="handleImportFile(event)">
+
+        <div style="text-align: center; margin-top: 1.5rem; display: flex; gap: 0.75rem; flex-direction: column; align-items: center;">
+            <button type="button" onclick="toggleDrawer('setup-guide-panel')" style="background: #f1f5f9; border: 1px solid #cbd5e1; color: #475569; font-size: 0.85rem; padding: 0.6rem 1.2rem; border-radius: 8px; cursor: pointer; width: 100%; font-weight: 600; transition: background 0.2s;">
+                Toggle Setup Guide
+            </button>
+            <span onclick="openLicenseModal(false)" style="color: #64748b; font-size: 0.8rem; text-decoration: underline; cursor: pointer; transition: color 0.2s;" onmouseover="this.style.color='var(--text-main)'" onmouseout="this.style.color='#64748b'">⚖️ View Legal & Disclaimer</span>
+            <button type="button" class="theme-toggle-btn" onclick="toggleDarkMode()" style="background: transparent; border: 1px solid var(--border); color: var(--text-main); font-size: 0.85rem; padding: 0.6rem 1.2rem; border-radius: 8px; cursor: pointer; width: 100%; transition: background 0.2s; margin-top: 0.5rem;">🌗 Dark Mode</button>
+        </div>
+
+        </div>
+
+    <div class="slide-panel right-drawer" id="setup-guide-panel">
+        <h3 style="margin-top: 0; color: var(--text-main); display: flex; align-items: center; justify-content: space-between;">
+            Setup & Credentials
+            <span style="cursor: pointer; font-size: 1.5rem; color: #94a3b8; line-height: 1;" onclick="closeAllDrawers()">&times;</span>
+        </h3>
+        
+        <p style="font-size: 0.8rem; color: #64748b; margin-bottom: 1.5rem;">
+            <strong style="color: #ef4444;">Disclaimer:</strong> This application is strictly for personal home use and is not intended for commercial purposes. It is an independent tool.
+        </p>
+
+        <div style="display: flex; flex-direction: column; gap: 1rem; font-size: 0.85rem;">
+            <div style="background: #f8fafc; padding: 1rem; border-radius: 10px; border: 1px solid #e2e8f0;">
+                <strong style="color: #0f172a;">🐙 Octopus Energy</strong>
+                <ul style="margin: 0.5rem 0 0; padding-left: 1.25rem; color: #475569;">
+                    <li style="margin-bottom: 0.25rem;"><strong>Account:</strong> Usually starts with <code>A-XXXXXXXX</code>.</li>
+                    <li><strong>API Key:</strong> Generate it on your <a href="https://octopus.energy/dashboard/new/accounts/personal-details/api-access" target="_blank" style="color: #e11d48; text-decoration: none; font-weight: 600;">API Access Dashboard</a>.</li>
+                </ul>
+            </div>
+            
+            <div style="background: #f8fafc; padding: 1rem; border-radius: 10px; border: 1px solid #e2e8f0;">
+                <strong style="color: #f97316;">🦊 FoxESS Cloud</strong>
+                <ul style="margin: 0.5rem 0 0; padding-left: 1.25rem; color: #475569;">
+                    <li style="margin-bottom: 0.25rem;"><strong>API Token:</strong> Login to the <a href="https://www.foxesscloud.com/login" target="_blank" style="color: #f97316; text-decoration: none; font-weight: 600;">FoxCloud V1 website</a>. Go to <strong>User Profile</strong> ➔ <strong>API Management</strong>.</li>
+                    <li><strong>Inverter Serial:</strong> Open the <strong>FoxCloud App</strong> ➔ <strong>Device</strong>. The serial is below the image.</li>
+                </ul>
+            </div>
+            
+            <div style="background: #f8fafc; padding: 1rem; border-radius: 10px; border: 1px solid #e2e8f0;">
+                <strong style="color: #10b981;">📜 Google Apps Script Relay</strong>
+                <p style="margin: 0.5rem 0; color: #475569; line-height: 1.4;">
+                    Your browser explicitly blocks direct background connections to FoxESS for security (CORS restriction). A free Google Script acts as a safe, private server relay to bypass this.
+                </p>
+                <button type="button" onclick="closeAllDrawers(); document.getElementById('proxy-modal').style.display='flex'" style="background: #f43f5e; color: white; border: none; padding: 0.5rem 0.8rem; border-radius: 6px; cursor: pointer; font-size: 0.8rem; width: 100%; font-weight: 600;">View Setup Instructions</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="dashboard" id="dashboard">
+    <div style="display: flex; flex-direction: column; gap: 1.5rem;">
+        
+        <div class="card">
+            <div class="card-header" style="align-items: flex-start;">
+                <div style="display: flex; flex-direction: column; gap: 6px;">
+                    <span>🐙 Intelligent Octopus Go</span>
+                    <div style="display: flex; gap: 8px;">
+                        <button onclick="document.getElementById('disclaimer-modal').style.display='flex'" style="width: fit-content; padding: 0.25rem 0.6rem; font-size: 0.75rem; background: #3b82f6; border-radius: 6px; border: none; color: white; cursor: pointer;">Save Config</button>
+                        <button onclick="toggleDarkMode()" class="theme-toggle-btn" style="width: fit-content; padding: 0.25rem 0.6rem; font-size: 0.75rem; background: transparent; border-radius: 6px; border: 1px solid var(--border); color: var(--text-main); cursor: pointer;">🌗 Dark Mode</button>
+                    </div>
+                </div>
+                <div style="display: flex; flex-direction: column; align-items: flex-end; gap: 8px;">
+                    <div id="octo-api-badge" class="badge neutral countdown-border" style="cursor: pointer; transition: opacity 0.2s; display: flex; align-items: center; --progress: 100%;" onclick="forceOctoRefresh()" onmouseover="this.style.opacity=0.7" onmouseout="this.style.opacity=1" title="Click to force refresh">
+                        <span id="octo-api-text">CONNECTING...</span>
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <label style="font-size: 0.75rem; color: var(--text-muted); margin: 0; line-height: 1;">Interval:</label>
+                        <input type="number" id="octo-interval-input" value="60" style="width: 50px; padding: 0.2rem; margin: 0; font-size: 0.75rem; border: 1px solid var(--border); border-radius: 4px; background: #fff;">
+                        <button id="btn-apply-octo" onclick="applyOctoInterval()" style="width: auto; padding: 0.2rem 0.6rem; margin: 0; font-size: 0.75rem; border-radius: 4px; transition: all 0.3s;">Apply</button>
+                    </div>
+                </div>
+            </div>
+            <div style="font-size: 2.5rem; font-weight: 900; text-align: center; margin-bottom: 1.5rem; font-family: monospace; color: var(--accent); letter-spacing: 2px;" id="real-time-clock">--:--:--</div>
+            <div class="summary-grid">
+                <div class="price-display" style="padding-bottom: 1rem;">
+                    <div id="ui-pricing"></div>
+                    
+                    <div style="height: 160px; margin-top: 1.5rem; position: relative; width: 100%;">
+                        <canvas id="priceChart"></canvas>
+                    </div>
+                </div>
+
+                <div style="background: #f8fafc; padding: 1rem; border-radius: 12px; border: 1px solid var(--border);">
+                    <ul class="data-list" id="ui-account-details"></ul>
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header" style="align-items: center;">
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <span>🔌 Device & Settings</span>
+                </div>
+                <span id="ui-device-status" class="badge neutral">UNKNOWN</span>
+            </div>
+            <div style="background: #f8fafc; padding: 1rem; border-radius: 12px; border: 1px solid var(--border);">
+                <ul class="data-list" id="ui-device-prefs"></ul>
+            </div>
+        </div>
+
+    </div>
+
+    <div style="display: flex; flex-direction: column; gap: 1.5rem;">
+        
+        <div class="card">
+            <div class="card-header" style="align-items: flex-start;">
+                <div style="display: flex; flex-direction: column; gap: 4px;">
+                    <span>☀️ FoxESS Mode Selector</span>
+                    <span style="font-size: 0.8rem; font-weight: normal; color: var(--text-muted);">API Calls Today: <span id="fox-api-counter" style="font-weight:bold; color: var(--text-main);">0</span>/1440</span>
+                </div>
+                <div style="display: flex; flex-direction: column; align-items: flex-end; gap: 8px;">
+                    <div id="fox-api-badge" class="badge neutral countdown-border" style="cursor: pointer; transition: opacity 0.2s; display: flex; align-items: center; --progress: 100%;" onclick="forceFoxRefresh()" onmouseover="this.style.opacity=0.7" onmouseout="this.style.opacity=1" title="Click to force refresh">
+                        <span id="fox-api-text">CONNECTING...</span>
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <label style="font-size: 0.75rem; color: var(--text-muted); margin: 0; line-height: 1;">Interval:</label>
+                        <input type="number" id="fox-interval-input" value="600" style="width: 50px; padding: 0.2rem; margin: 0; font-size: 0.75rem; border: 1px solid var(--border); border-radius: 4px; background: #fff;">
+                        <button id="btn-apply-fox" onclick="applyFoxInterval()" style="width: auto; padding: 0.2rem 0.6rem; margin: 0; font-size: 0.75rem; border-radius: 4px; transition: all 0.3s;">Apply</button>
+                    </div>
+                </div>
+            </div>
+            <div id="fox-error" class="error"></div>
+            <div id="fox-success" class="success"></div>
+            <div style="background: #fffbeb; border: 1px solid #fde68a; padding: 1rem; border-radius: 8px; margin-bottom: 1.5rem;">
+                <p style="font-size: 0.85rem; color: #92400e; margin: 0; line-height: 1.4;">
+                    <strong>Important Note:</strong><br>
+                    In your official FoxESS app, set the "Remaining Time" mode in the Mode Scheduler to <strong>"Self-use"</strong>.
+                </p>
+            </div>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; padding: 0 0.5rem;">
+                <h4 style="margin: 0; font-size: 1rem; color: var(--text-main); display: flex; align-items: center; gap: 8px;">
+                    🤖 Current Device Mode
+                </h4>
+                <span id="current-work-mode" class="badge neutral">LOADING...</span>
+            </div>
+            <div class="automation-block" style="margin-bottom: 0; flex-grow: 1;">
+                <h4 style="margin-top: 0; margin-bottom: 1rem; font-size: 0.95rem; color: var(--text-main);">⏱️ Test mode</h4>
+                <div style="display: flex; gap: 1rem; margin-bottom: 1rem;">
+                    <div style="flex: 1;">
+                        <label style="font-size: 0.8rem;">Start Time</label>
+                        <input type="time" id="v3-start" style="margin: 0; padding: 0.5rem;" onchange="
+                            if(this.value) {
+                                let [h, m] = this.value.split(':').map(Number);
+                                m += 5; if(m >= 60) { m -= 60; h = (h + 1) % 24; }
+                                document.getElementById('v3-end').value = `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}`;
+                            }
+                        ">
+                    </div>
+                    <div style="flex: 1;">
+                        <label style="font-size: 0.8rem;">End Time</label>
+                        <input type="time" id="v3-end" style="margin: 0; padding: 0.5rem;">
+                    </div>
+                </div>
+                <div style="display: flex; gap: 10px;">
+                    <button onclick="setV3Schedule('SelfUse')" style="background: #10b981; font-size: 0.9rem;">Set Self-Use</button>
+                    <button onclick="setV3Schedule('ForceCharge')" style="background: #f97316; font-size: 0.9rem;">Set Forced Charge</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <span>⚡ Smart Charging Automations</span>
+            </div>
+
+            <div id="block-price-auto" class="automation-block" style="background: #f0fdf4; margin-bottom: 1.5rem;">
+                <div class="rule-row">
+                    <span class="rule-title">Forced charge on target price</span>
+                    <label class="switch">
+                        <input type="checkbox" id="toggle-auto-price" onchange="if(this.checked) { let d = document.getElementById('toggle-auto-dispatch'); if(d.checked) d.click(); } previewScheduleTimes(); let b = document.getElementById('btn-save-price'); b.disabled = !this.checked; b.style.background = this.checked ? '#16a34a' : '#94a3b8'; b.style.cursor = this.checked ? 'pointer' : 'not-allowed';">
+                        <span class="slider"></span>
+                    </label>
+                </div>
+                <div style="margin-bottom: 1rem; display: flex; align-items: center; gap: 8px; font-size: 0.9rem; color: #166534;">
+                    Trigger when price is &le; 
+                    <input type="number" step="0.1" id="price-threshold" style="width: 80px; padding: 0.4rem; margin: 0; border: 1px solid #bbf7d0; background: #fff;" oninput="previewScheduleTimes()"> p/kWh
+                </div>
+                <div id="price-target-times" style="width: 100%; margin-bottom: 1rem; font-size: 0.8rem; font-style: italic; color: #166534;"></div>
+                <div style="text-align: right;">
+                    <button id="btn-save-price" onclick="evaluateLocalAutomations(this)" style="width: auto; padding: 0.4rem 1rem; background: #94a3b8; font-size: 0.85rem; cursor: not-allowed;" disabled>Apply</button>
+                </div>
+            </div>
+
+            <div id="block-dispatch-auto" class="automation-block" style="background: #eff6ff; margin-bottom: 1.5rem;">
+                <div class="rule-row">
+                    <span class="rule-title">Smarting charging schedule</span>
+                    <label class="switch">
+                        <input type="checkbox" id="toggle-auto-dispatch" onchange="if(this.checked) { let p = document.getElementById('toggle-auto-price'); if(p.checked) p.click(); } let b = document.getElementById('btn-save-dispatch'); b.disabled = !this.checked; b.style.background = this.checked ? '#16a34a' : '#94a3b8'; b.style.cursor = this.checked ? 'pointer' : 'not-allowed';">
+                        <span class="slider"></span>
+                    </label>
+                </div>
+                <div id="ui-dispatches-list" style="margin-bottom: 1rem;"></div>
+                <div style="text-align: right;">
+                    <button id="btn-save-dispatch" onclick="evaluateLocalAutomations(this)" style="width: auto; padding: 0.4rem 1rem; background: #94a3b8; font-size: 0.85rem; cursor: not-allowed;" disabled>Apply</button>
+                </div>
+            </div>
+
+            <hr style="border: 0; border-top: 1px dashed var(--border); margin: 1.5rem 0;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                <h4 style="margin: 0; font-size: 0.95rem; color: var(--text-main);">📋 Created mode scheduler</h4>
+                <div style="display: flex; align-items: center; gap: 12px;">
+                    <button onclick="fetchFoxSchedules()" style="width: auto; padding: 0.3rem 0.8rem; background: #3b82f6; border-radius: 6px; font-size: 0.8rem; color: white; border: none; cursor: pointer;">Load Schedules</button>
+                </div>
+            </div>
+            <div id="fox-active-schedules" class="block-countdown-fox" style="background: #f8fafc; padding: 1rem; border-radius: 12px; font-size: 0.85rem; color: var(--text-muted);">Click "Load Schedules" to fetch data.</div>
+        </div>
+    </div>
+</div>
+
+    </div> <div class="app-footer">
+        <div style="text-align: left;">Developer Samuel Chen</div>
+        <div style="text-align: right;">&copy; Copyright 2026 samuelchen.hk Build 20260603</div>
+    </div>
+</div> 
+
+<!-- Beautiful Loading Overlay -->
+<div id="loading-overlay" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(15, 23, 42, 0.85); backdrop-filter: blur(4px); z-index: 9999; align-items: center; justify-content: center; flex-direction: column; color: white;">
+    <div style="width: 60px; height: 60px; border: 5px solid rgba(255,255,255,0.2); border-top-color: #10b981; border-radius: 50%; animation: spin 1s linear infinite; margin-bottom: 1.5rem;"></div>
+    <h3 style="margin: 0; font-family: monospace; letter-spacing: 2px; font-size: 1.2rem;">AUTHENTICATING</h3>
+    <p style="margin: 0.5rem 0 0 0; font-size: 0.85rem; color: #94a3b8;">Connecting to Octopus & FoxESS...</p>
+    <style>@keyframes spin { to { transform: rotate(360deg); } }</style>
+</div>
+
+<div id="license-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; align-items: center; justify-content: center;">
+    <div style="background: white; padding: 2rem; border-radius: 12px; max-width: 500px; width: 90%; max-height: 80vh; overflow-y: auto; box-shadow: 0 4px 20px rgba(0,0,0,0.15); text-align: left;">
+        <h3 style="margin-top: 0; color: #0f172a; text-align: center;">⚖️ License & Disclaimer</h3>
+        
+        <p style="color: #475569; font-size: 0.85rem; margin-bottom: 1rem; font-weight: 600;">Disclaimer of Affiliation:</p>
+        <p style="color: #64748b; font-size: 0.8rem; margin-bottom: 1rem;">This is an unofficial, independent tool. It is not affiliated with, endorsed by, or supported by Octopus Energy Ltd or FoxESS Co., Ltd. All product and company names are trademarks™ or registered® trademarks of their respective holders.</p>
+
+        <p style="color: #475569; font-size: 0.85rem; margin-bottom: 1rem; font-weight: 600;">Use at Your Own Risk:</p>
+        <p style="color: #64748b; font-size: 0.8rem; margin-bottom: 1rem;">This software controls physical hardware and relies on third-party APIs. By using this tool, you accept full responsibility for any financial loss, hardware degradation, or unexpected behavior. Always monitor your inverter's behavior after applying new schedules.</p>
+
+        <p style="color: #475569; font-size: 0.85rem; margin-bottom: 0.5rem; font-weight: 600;">GNU General Public License v3.0:</p>
+        <div style="background: #f8fafc; padding: 1rem; border-radius: 8px; border: 1px solid #cbd5e1; font-size: 0.75rem; color: #475569; max-height: 150px; overflow-y: auto; margin-bottom: 1.5rem; font-family: monospace;">
+            This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.<br><br>
+            This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.<br><br>
+            You should have received a copy of the GNU General Public License along with this program. If not, see https://www.gnu.org/licenses/.
+        </div>
+
+        <div id="license-modal-buttons" style="text-align: center; display: flex; gap: 1rem; justify-content: center;">
+            <!-- Buttons dynamically injected via JS -->
+        </div>
+    </div>
+</div>
+
+<div id="octo-warning-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(15, 23, 42, 0.7); backdrop-filter: blur(4px); z-index: 2000; align-items: center; justify-content: center;">
+    <div style="background: var(--card-bg); padding: 2.25rem; border-radius: 16px; max-width: 460px; width: 90%; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.15); border: 1px solid var(--border); text-align: left;">
+        <h3 style="margin-top: 0; color: #ef4444; display: flex; align-items: center; gap: 8px; font-size: 1.2rem;">
+            ⚠️ Octopus API Rate Limit Warning
+        </h3>
+        <p style="color: var(--text-main); font-size: 0.9rem; margin-bottom: 1.25rem; line-height: 1.5;">
+            You are setting an Octopus frequency under 60 seconds. Running at this rate introduces immediate operational risks:
+        </p>
+        <div style="background: rgba(239, 68, 68, 0.06); border-left: 4px solid #ef4444; padding: 0.85rem 1rem; border-radius: 0 8px 8px 0; font-size: 0.85rem; margin-bottom: 1.25rem;">
+            <strong style="color: var(--text-main);">🐙 Dynamic Rate-Limiting Risk:</strong>
+            <div style="color: var(--text-muted); margin-top: 0.2rem;">Refreshing calculations too quickly can trigger an automated safety block from Kraken servers, resulting in a temporary block/suspension of your API token connectivity.</div>
+        </div>
+        <p style="color: #ef4444; font-size: 0.82rem; font-weight: 600; margin-bottom: 1.5rem; line-height: 1.4;">
+            ❗ Impact: Automation sync loop cycles will fail to sync target energy price drop states if the connection drops.
+        </p>
+        <div style="display: flex; gap: 1rem; justify-content: flex-end;">
+            <button id="cancel-octo-btn" style="background: #94a3b8; width: auto; padding: 0.6rem 1.2rem; font-size: 0.88rem;">Cancel</button>
+            <button id="confirm-octo-btn" style="background: #ef4444; width: auto; padding: 0.6rem 1.2rem; font-size: 0.88rem;">I Accept the Risk</button>
+        </div>
+    </div>
+</div>
+
+<div id="fox-warning-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(15, 23, 42, 0.7); backdrop-filter: blur(4px); z-index: 2000; align-items: center; justify-content: center;">
+    <div style="background: var(--card-bg); padding: 2.25rem; border-radius: 16px; max-width: 460px; width: 90%; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.15); border: 1px solid var(--border); text-align: left;">
+        <h3 style="margin-top: 0; color: #f97316; display: flex; align-items: center; gap: 8px; font-size: 1.2rem;">
+            ⚠️ FoxESS Daily Quota Warning
+        </h3>
+        <p style="color: var(--text-main); font-size: 0.9rem; margin-bottom: 1.25rem; line-height: 1.5;">
+            You are setting a FoxESS frequency under 600 seconds. Running at this rate introduces immediate operational risks:
+        </p>
+        <div style="background: rgba(249, 115, 22, 0.06); border-left: 4px solid #f97316; padding: 0.85rem 1rem; border-radius: 0 8px 8px 0; font-size: 0.85rem; margin-bottom: 1.25rem;">
+            <strong style="color: var(--text-main);">🦊 Quota Exhaustion Risk (1,440/day):</strong>
+            <div style="color: var(--text-muted); margin-top: 0.2rem;">Refreshing faster than every 10 minutes makes it highly probable that you exhaust your limited allowance prematurely. The inverter account will become blocked until the counter resets at midnight.</div>
+        </div>
+        <p style="color: #f97316; font-size: 0.82rem; font-weight: 600; margin-bottom: 1.5rem; line-height: 1.4;">
+            ❗ Impact: The application becomes blind and cannot change inverter scheduling parameters for the remaining part of the day.
+        </p>
+        <div style="display: flex; gap: 1rem; justify-content: flex-end;">
+            <button id="cancel-fox-btn" style="background: #94a3b8; width: auto; padding: 0.6rem 1.2rem; font-size: 0.88rem;">Cancel</button>
+            <button id="confirm-fox-btn" style="background: #f97316; width: auto; padding: 0.6rem 1.2rem; font-size: 0.88rem;">I Accept the Risk</button>
+        </div>
+    </div>
+</div>
+
+<div id="wipe-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; align-items: center; justify-content: center;">
+    <div style="background: var(--card-bg); border: 1px solid var(--border); padding: 2rem; border-radius: 12px; max-width: 400px; width: 90%; text-align: center; box-shadow: 0 4px 20px rgba(0,0,0,0.15);">
+        <h3 style="margin-top: 0; color: #ef4444;">⚠️ Wipe Local Data?</h3>
+        <p style="color: #64748b; margin-bottom: 1.5rem; font-size: 0.9rem;">Are you absolutely sure? This will permanently delete your stored API keys, account numbers, and preferences from this browser. This action cannot be undone.</p>
+        <div style="display: flex; gap: 1rem; justify-content: center;">
+            <button onclick="document.getElementById('wipe-modal').style.display='none'" class="btn-clear" style="width: auto;">Cancel</button>
+            <button onclick="clearCredentials()" style="background: #ef4444; width: auto;">Yes, Wipe Data</button>
+        </div>
+    </div>
+</div>
+
+<div id="disclaimer-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; align-items: center; justify-content: center;">
+    <div style="background: white; padding: 2rem; border-radius: 12px; max-width: 450px; width: 90%; box-shadow: 0 4px 20px rgba(0,0,0,0.15);">
+        <h3 style="margin-top: 0; color: #0f172a; text-align: center;">🛡️ Privacy Disclaimer</h3>
+        <p style="color: #475569; font-size: 0.9rem; margin-bottom: 1rem; line-height: 1.5;">
+            By saving this configuration, an encrypted file will be downloaded containing your highly sensitive credentials:
+        </p>
+        <ul style="color: #334155; font-size: 0.85rem; background: #f8fafc; padding: 1rem 1rem 1rem 2rem; border-radius: 8px; border: 1px solid #cbd5e1; margin-bottom: 1.5rem;">
+            <li><strong>Octopus Energy:</strong> Account Number & API Key</li>
+            <li><strong>FoxESS:</strong> Inverter Serial Number & Cloud API Token</li>
+            <li><strong>Google App Script:</strong> Web URL</li>
+        </ul>
+        <p style="color: #ef4444; font-size: 0.85rem; font-weight: 600; text-align: center; margin-bottom: 1.5rem;">
+            Keep this file secure and never share it publicly!
+        </p>
+        <div style="display: flex; gap: 1rem; justify-content: center;">
+            <button onclick="document.getElementById('disclaimer-modal').style.display='none'" class="btn-clear" style="width: auto;">Cancel</button>
+            <button onclick="document.getElementById('disclaimer-modal').style.display='none'; showExportModal();" style="background: #3b82f6; width: auto;">I Understand, Proceed</button>
+        </div>
+    </div>
+</div>
+
+<div id="export-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; align-items: center; justify-content: center;">
+    <div style="background: white; padding: 2rem; border-radius: 12px; max-width: 400px; width: 90%; box-shadow: 0 4px 20px rgba(0,0,0,0.15);">
+        <h3 style="margin-top: 0; color: #0f172a; text-align: center;">Save Encrypted Config</h3>
+        <label>Encryption Password</label>
+        <input type="password" id="export-pass-1" placeholder="Enter password">
+        <label>Confirm Password</label>
+        <input type="password" id="export-pass-2" placeholder="Re-enter password">
+        <div id="export-error" style="color: #ef4444; font-size: 0.85rem; margin-bottom: 1rem; display: none;">Passwords do not match!</div>
+        <div style="display: flex; gap: 1rem; justify-content: center;">
+            <button onclick="document.getElementById('export-modal').style.display='none'" class="btn-clear" style="width: auto;">Cancel</button>
+            <button onclick="executeExport()" style="background: #10b981; width: auto;">Save & Download</button>
+        </div>
+    </div>
+</div>
+
+<div id="import-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; align-items: center; justify-content: center;">
+    <div style="background: white; padding: 2rem; border-radius: 12px; max-width: 400px; width: 90%; box-shadow: 0 4px 20px rgba(0,0,0,0.15);">
+        <h3 style="margin-top: 0; color: #0f172a; text-align: center;">Load Encrypted Config</h3>
+        <label>Decryption Password</label>
+        <input type="password" id="import-pass" placeholder="Enter password">
+        <div id="import-error" style="color: #ef4444; font-size: 0.85rem; margin-bottom: 1rem; display: none;">⚠️ Decryption failed: Incorrect password or corrupted file. Please try again.</div>
+        <div style="display: flex; gap: 1rem; justify-content: center; margin-top: 1rem;">
+            <button onclick="document.getElementById('import-modal').style.display='none'; document.getElementById('import-file').value='';" class="btn-clear" style="flex: 1; width: auto; white-space: nowrap;">Cancel</button>
+            <button onclick="executeImport()" style="background: #3b82f6; flex: 1; width: auto; white-space: nowrap;">Decrypt & Load</button>
+        </div>
+    </div>
+</div>
+
+<div id="custom-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; align-items: center; justify-content: center;">
+    <div style="background: white; padding: 2rem; border-radius: 12px; max-width: 400px; width: 90%; text-align: center; box-shadow: 0 4px 20px rgba(0,0,0,0.15);">
+        <h3 style="margin-top: 0; color: #0f172a;">Delete Schedule?</h3>
+        <p style="color: #64748b; margin-bottom: 1.5rem;">Are you sure you want to delete this schedule from your inverter?</p>
+        <div style="display: flex; gap: 1rem; justify-content: center;">
+            <button onclick="closeModal()" style="background: #94a3b8; width: auto;">Cancel</button>
+            <button id="confirm-delete-btn" style="background: #ef4444; width: auto;">Delete</button>
+        </div>
+    </div>
+</div>
+
+<div id="proxy-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; align-items: center; justify-content: center;">
+    <div style="background: white; padding: 2rem; border-radius: 12px; max-width: 550px; width: 90%; max-height: 90vh; overflow-y: auto; box-shadow: 0 4px 20px rgba(0,0,0,0.15); position: relative;">
+        <button onclick="document.getElementById('proxy-modal').style.display='none'" style="position: absolute; top: 1rem; right: 1rem; background: transparent; border: none; font-size: 1.5rem; color: #64748b; cursor: pointer; width: auto; padding: 0;">&times;</button>
+        <h3 style="margin-top: 0; color: #0f172a;">How to Create Your Google Proxy</h3>
+        <p style="color: #475569; font-size: 0.9rem; margin-bottom: 1rem;">Because FoxESS blocks direct browser connections, we use a free Google Apps Script to securely route your requests.</p>
+        <ol style="color: #334155; font-size: 0.85rem; padding-left: 1.2rem; line-height: 1.6; margin-bottom: 1rem;">
+            <li>Go to <a href="https://script.google.com" target="_blank" style="color: #3b82f6; text-decoration: none;">script.google.com</a> and sign in.</li>
+            <li>Click <strong>New Project</strong>.</li>
+            <li>Delete any existing code and paste the exact code below:</li>
+        </ol>
+        <pre style="background: #1e293b; color: #e2e8f0; padding: 1rem; border-radius: 8px; font-size: 0.8rem; overflow-x: auto; margin-bottom: 1rem; text-align: left;"><code style="font-family: monospace;">function doPost(e) {
+  try {
+    var requestData = JSON.parse(e.postData.contents);
+    var options = {
+      'method': 'post',
+      'contentType': 'application/json',
+      'headers': requestData.headers,
+      'payload': JSON.stringify(requestData.body),
+      'muteHttpExceptions': true
+    };
+    var response = UrlFetchApp.fetch(requestData.url, options);
+    return ContentService.createTextOutput(response.getContentText())
+                                 .setMimeType(ContentService.MimeType.JSON);
+  } catch (err) {
+    return ContentService.createTextOutput(JSON.stringify({ errno: 999, msg: err.toString() }))
+                                 .setMimeType(ContentService.MimeType.JSON);
+  }
+}</code></pre>
+        <ol start="4" style="color: #334155; font-size: 0.85rem; padding-left: 1.2rem; line-height: 1.6; margin-bottom: 1.5rem;">
+            <li>Click <strong>Deploy</strong> (top right) > <strong>New deployment</strong>.</li>
+            <li>Click the gear icon next to "Select type" and choose <strong>Web app</strong>.</li>
+            <li>Set <em>Execute as</em> to <strong>Me</strong>.</li>
+            <li>Set <em>Who has access</em> to <strong>Anyone</strong> (Crucial!).</li>
+            <li>Click <strong>Deploy</strong> and copy the generated "Web app URL".</li>
+            <li>Paste that URL into the login screen!</li>
+        </ol>
+        <button onclick="document.getElementById('proxy-modal').style.display='none'" style="background: #f43f5e; color: white; border: none; padding: 0.75rem; border-radius: 8px; font-weight: 600; width: 100%; cursor: pointer;">Got it!</button>
+    </div>
+</div>
+
+<script>
+let priceChartInst = null;
+let globalFoxSN = "";
+let lastDispatchesStr = "[]";
+let scheduleToDelete = -1;
+let globalFoxToken = "";
+let globalGasUrl = "";
+let octoRefreshInterval = 60;
+let octoCountdown = 60;
+let foxRefreshInterval = 600;
+let foxCountdown = 600;
+
+function toggleDrawer(idToOpen) {
+    const target = document.getElementById(idToOpen);
+    const backdrop = document.getElementById('drawer-backdrop');
+    const alternativeId = idToOpen === 'why-use-panel' ? 'setup-guide-panel' : 'why-use-panel';
+    const alternative = document.getElementById(alternativeId);
+
+    alternative.classList.remove('open');
+    
+    if (target.classList.contains('open')) {
+        target.classList.remove('open');
+        backdrop.classList.remove('visible');
+    } else {
+        target.classList.add('open');
+        // Only trigger the backdrop filter if the screen width is narrow
+        if (window.innerWidth <= 1650) {
+            backdrop.classList.add('visible');
+        } else {
+            backdrop.classList.remove('visible');
+        }
+    }
+}
+
+function closeAllDrawers() {
+    document.getElementById('why-use-panel').classList.remove('open');
+    document.getElementById('setup-guide-panel').classList.remove('open');
+    document.getElementById('drawer-backdrop').classList.remove('visible');
+}
+
+function forceOctoRefresh() { if (octoCountdown > 2) octoCountdown = 1; }
+function forceFoxRefresh() { if (foxCountdown > 2) foxCountdown = 1; }
+let localWorkModeState = "Unknown";
+
+function applyOctoInterval() {
+    const val = parseInt(document.getElementById('octo-interval-input').value);
+    if (isNaN(val) || val < 10) return;
+    
+    const commitOctoValue = () => {
+        octoRefreshInterval = val; octoCountdown = val;
+        const btn = document.getElementById('btn-apply-octo');
+        if (btn) {
+            btn.textContent = "✅"; btn.style.background = "#10b981";
+            setTimeout(() => { btn.textContent = "Apply"; btn.style.background = "var(--accent)"; }, 2000);
+        }
+        updateCircleTimer('octo-timer', octoCountdown, octoRefreshInterval);
+    };
+
+    if (val < 60) {
+        const modal = document.getElementById('octo-warning-modal');
+        modal.style.display = 'flex';
+        document.getElementById('cancel-octo-btn').onclick = () => { modal.style.display = 'none'; };
+        document.getElementById('confirm-octo-btn').onclick = () => { modal.style.display = 'none'; commitOctoValue(); };
+    } else {
+        commitOctoValue();
+    }
+}
+
+function applyFoxInterval() {
+    const val = parseInt(document.getElementById('fox-interval-input').value);
+    if (isNaN(val) || val < 10) return;
+    
+    const commitFoxValue = () => {
+        foxRefreshInterval = val; foxCountdown = val;
+        const btn = document.getElementById('btn-apply-fox');
+        if (btn) {
+            btn.textContent = "✅"; btn.style.background = "#10b981";
+            setTimeout(() => { btn.textContent = "Apply"; btn.style.background = "var(--accent)"; }, 2000);
+        }
+        updateCircleTimer('fox-timer', foxCountdown, foxRefreshInterval);
+    };
+
+    if (val < 600) {
+        const modal = document.getElementById('fox-warning-modal');
+        modal.style.display = 'flex';
+        document.getElementById('cancel-fox-btn').onclick = () => { modal.style.display = 'none'; };
+        document.getElementById('confirm-fox-btn').onclick = () => { modal.style.display = 'none'; commitFoxValue(); };
+    } else {
+        commitFoxValue();
+    }
+}
+
+function updateCircleTimer(id, current, max) {
+    const percentage = Math.max(0, (current / max) * 100);
+    
+    // Aggressively disable the transition on reset to prevent backward animation
+        if (percentage >= 100) {
+            document.body.classList.add('no-timer-transition');
+            void document.body.offsetHeight; // Force browser reflow to apply instant snap instantly
+        } else {
+            document.body.classList.remove('no-timer-transition');
+        }
+    
+    // Update API badges
+    const badgeId = id.replace('-timer', '-api-badge');
+    const badgeEl = document.getElementById(badgeId);
+    if (badgeEl) badgeEl.style.setProperty('--progress', `${percentage}%`);
+    
+    // Sync global CSS variables for the automation block borders
+    if (id === 'octo-timer') {
+        document.documentElement.style.setProperty('--octo-progress', `${percentage}%`);
+    } else if (id === 'fox-timer') {
+        document.documentElement.style.setProperty('--fox-progress', `${percentage}%`);
+    }
+}
+let isCurrentlyUpdatingMode = false;
+
+// API limit tracker
+function incrementFoxApi() {
+    const today = new Date().toISOString().split('T')[0];
+    let apiData = JSON.parse(localStorage.getItem('foxApiTracker') || '{"date": "", "count": 0}');
+    if (apiData.date !== today) { apiData = { date: today, count: 1 }; } 
+    else { apiData.count += 1; }
+    localStorage.setItem('foxApiTracker', JSON.stringify(apiData));
+    const counterSpan = document.getElementById('fox-api-counter');
+    if(counterSpan) counterSpan.textContent = apiData.count;
+}
+
+function openLicenseModal(isFirstLoad) {
+    const btnContainer = document.getElementById('license-modal-buttons');
+    if (isFirstLoad) {
+        btnContainer.innerHTML = `<button onclick="acceptLicense()" style="background: #10b981; width: auto; padding: 0.75rem 2rem; font-size: 1rem;">I Accept & Continue</button>`;
+    } else {
+        btnContainer.innerHTML = `<button onclick="document.getElementById('license-modal').style.display='none'" class="btn-clear" style="width: auto; padding: 0.6rem 2rem;">Close Window</button>`;
+    }
+    document.getElementById('license-modal').style.display = 'flex';
+}
+
+function acceptLicense() {
+    localStorage.setItem('licenseAccepted', 'true');
+    document.getElementById('license-modal').style.display = 'none';
+}
+
+function updateThemeButtons(theme) {
+    document.querySelectorAll('.theme-toggle-btn').forEach(btn => {
+        btn.innerHTML = theme === 'dark' ? '☀️ Light Mode' : '🌗 Dark Mode';
+    });
+}
+
+function toggleDarkMode() {
+    const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+    const newTheme = isDark ? 'light' : 'dark';
+    document.documentElement.setAttribute('data-theme', newTheme);
+    localStorage.setItem('theme', newTheme);
+    updateThemeButtons(newTheme);
+    
+    // Force Chart to immediately redraw to reflect new theme colors
+    window.lastChartState = null;
+    if (window.dailyMaxPrice !== undefined && window.dailyMinPrice !== undefined) {
+        drawPriceChart(window.dailyMaxPrice, window.dailyMinPrice, window.currentDispatches || []);
+    }
+}
+
+// On Load init
+document.addEventListener("DOMContentLoaded", () => {
+    const savedTheme = localStorage.getItem('theme') || 'light';
+    document.documentElement.setAttribute('data-theme', savedTheme);
+    updateThemeButtons(savedTheme);
+    if (!localStorage.getItem('licenseAccepted')) {
+        openLicenseModal(true);
+    }
+    const today = new Date().toISOString().split('T')[0];
+    let apiData = JSON.parse(localStorage.getItem('foxApiTracker') || '{"date": "", "count": 0}');
+    if (apiData.date !== today) apiData.count = 0;
+    const counterSpan = document.getElementById('fox-api-counter');
+    if(counterSpan) counterSpan.textContent = apiData.count;
+
+    if(localStorage.getItem('octoAcc')) document.getElementById('acc').value = localStorage.getItem('octoAcc');
+    if(localStorage.getItem('octoApi')) document.getElementById('api').value = localStorage.getItem('octoApi');
+    if(localStorage.getItem('foxSn')) document.getElementById('fox-sn').value = localStorage.getItem('foxSn');
+    if(localStorage.getItem('foxToken')) document.getElementById('fox-token').value = localStorage.getItem('foxToken');
+    if(localStorage.getItem('gasUrl')) document.getElementById('gas-url').value = localStorage.getItem('gasUrl');
+
+    // Master Clock Ticker - Drives real-time evaluation
+    setInterval(() => {
+        const now = new Date();
+        const clockEl = document.getElementById('real-time-clock');
+        if (clockEl) {
+            clockEl.textContent = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+        }
+        
+        // If we are exactly 30 seconds past a scheduled boundary, force refresh device status
+        if (window.activeFoxGroups && window.activeFoxGroups.length > 0 && now.getSeconds() === 30) {
+            const h = now.getHours(), m = now.getMinutes();
+            const isBoundary = window.activeFoxGroups.some(g => 
+                (g.startHour === h && g.startMinute === m) || (g.endHour === h && g.endMinute === m)
+            );
+            if (isBoundary && typeof fetchCurrentWorkMode === 'function') {
+                fetchCurrentWorkMode();
+            }
+        }
+    }, 1000);
+});
+
+function clearCredentials() {
+    localStorage.clear();
+    document.querySelectorAll('input').forEach(input => input.value = '');
+    document.getElementById('wipe-modal').style.display = 'none';
+    location.reload(); 
+}
+
+let pendingImportContent = "";
+
+function showExportModal() {
+    document.getElementById('export-pass-1').value = '';
+    document.getElementById('export-pass-2').value = '';
+    document.getElementById('export-error').style.display = 'none';
+    document.getElementById('export-modal').style.display = 'flex';
+}
+
+function executeExport() {
+    const pass1 = document.getElementById('export-pass-1').value;
+    const pass2 = document.getElementById('export-pass-2').value;
+    const errDiv = document.getElementById('export-error');
+    
+    if (!pass1) { errDiv.textContent = 'Password cannot be empty!'; errDiv.style.display = 'block'; return; }
+    if (pass1 !== pass2) { errDiv.textContent = 'Passwords do not match!'; errDiv.style.display = 'block'; return; }
+
+    const config = {
+        acc: document.getElementById('acc').value,
+        api: document.getElementById('api').value,
+        foxSN: document.getElementById('fox-sn').value,
+        foxToken: document.getElementById('fox-token').value,
+        gasUrl: document.getElementById('gas-url').value
+    };
+
+    // Encrypt object
+    const encrypted = CryptoJS.AES.encrypt(JSON.stringify(config), pass1).toString();
+    
+    // Generate filename
+    const now = new Date();
+    const pad = (n) => String(n).padStart(2, '0');
+    const filename = `App_Config_${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())}-${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}.enc`;
+
+    // Trigger download
+    const blob = new Blob([encrypted], { type: 'text/plain' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+
+    document.getElementById('export-modal').style.display = 'none';
+}
+
+function handleImportFile(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        pendingImportContent = e.target.result;
+        document.getElementById('import-pass').value = '';
+        document.getElementById('import-error').style.display = 'none';
+        document.getElementById('import-modal').style.display = 'flex';
+    };
+    reader.readAsText(file);
+}
+
+function executeImport() {
+    const pass = document.getElementById('import-pass').value;
+    const errDiv = document.getElementById('import-error');
+    
+    try {
+        const decrypted = CryptoJS.AES.decrypt(pendingImportContent, pass).toString(CryptoJS.enc.Utf8);
+        if (!decrypted) throw new Error("Wrong password");
+        
+        const config = JSON.parse(decrypted);
+        
+        // Populate Inputs
+        document.getElementById('acc').value = config.acc || '';
+        document.getElementById('api').value = config.api || '';
+        document.getElementById('fox-sn').value = config.foxSN || '';
+        document.getElementById('fox-token').value = config.foxToken || '';
+        document.getElementById('gas-url').value = config.gasUrl || '';
+        
+        // Save to browser storage
+        if (config.acc) localStorage.setItem('octoAcc', config.acc);
+        if (config.api) localStorage.setItem('octoApi', config.api);
+        if (config.foxSN) localStorage.setItem('foxSn', config.foxSN);
+        if (config.foxToken) localStorage.setItem('foxToken', config.foxToken);
+        if (config.gasUrl) localStorage.setItem('gasUrl', config.gasUrl);
+
+        document.getElementById('import-modal').style.display = 'none';
+        document.getElementById('import-file').value = ''; // reset file input
+        initDashboard();
+    } catch (e) {
+        errDiv.style.display = 'block';
+    }
+}
+
+async function initDashboard(isAutoRefresh = false, retryCount = 1) {
+    const acc = document.getElementById('acc').value.trim();
+    const api = document.getElementById('api').value.trim();
+    globalFoxSN = document.getElementById('fox-sn').value.trim();
+    globalFoxToken = document.getElementById('fox-token').value.trim();
+    globalGasUrl = document.getElementById('gas-url').value.trim();
+    
+    const btn = document.getElementById('btn');
+    const errorDiv = document.getElementById('error');
+
+    if (!isAutoRefresh) {
+        errorDiv.style.display = 'none';
+        if (!acc || !api) { showError('Please provide Octopus API credentials.'); return; }
+        btn.textContent = 'Fetching Data...';
+        btn.disabled = true;
+        
+        // Show Dimmed Loading Overlay
+        const loader = document.getElementById('loading-overlay');
+        loader.style.display = 'flex';
+        
+        // Fallback: auto-close loading overlay after 5 seconds
+        setTimeout(() => { 
+            if (loader.style.display === 'flex') {
+                loader.style.display = 'none';
+                btn.textContent = 'Refresh Now';
+                btn.disabled = false;
+            }
+        }, 5000);
+    }
+
+    try {
+        const GRAPHQL_URL = 'https://api.octopus.energy/v1/graphql/';
+
+        // 1. Octopus Auth (with automatic retry for API cold-starts)
+        let authRes, authData;
+        for (let attempt = 1; attempt <= 2; attempt++) {
+            authRes = await fetch(GRAPHQL_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ query: `mutation { obtainKrakenToken(input: { APIKey: "${api}" }) { token } }` })
+            });
+            authData = await authRes.json();
+            if(!authData.errors) break; 
+            if(attempt === 2) throw new Error("Invalid Octopus API Key or API offline");
+        }
+
+        // 2. Fetch GraphQL Data
+        const graphqlRes = await fetch(GRAPHQL_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': authData.data.obtainKrakenToken.token },
+            body: JSON.stringify({ 
+                query: `query getGoData($acc: String!) { 
+                    registeredKrakenflexDevice(accountNumber: $acc) { provider vehicleMake vehicleModel chargePointMake chargePointModel status }
+                    vehicleChargingPreferences(accountNumber: $acc) { weekdayTargetTime weekdayTargetSoc }
+                    plannedDispatches(accountNumber: $acc) { startDt endDt }
+                }`,
+                variables: { acc: acc }
+            })
+        });
+        const gqlData = await graphqlRes.json();
+        const device = gqlData.data?.registeredKrakenflexDevice;
+        const prefs = gqlData.data?.vehicleChargingPreferences;
+        const dispatches = gqlData.data?.plannedDispatches || [];
+        window.currentDispatches = dispatches;
+
+        // Save valid credentials
+        if (!isAutoRefresh) {
+            localStorage.setItem('octoAcc', acc);
+            localStorage.setItem('octoApi', api);
+            localStorage.setItem('foxSn', globalFoxSN);
+            localStorage.setItem('foxToken', globalFoxToken);
+            if (globalGasUrl) localStorage.setItem('gasUrl', globalGasUrl);
+        }
+
+        // 3. Fetch exact rates from REST API
+        let tariffCode = 'Data unavailable'; 
+        let minRate = 0;
+        let maxRate = 0;
+
+        try {
+            const accRes = await fetch(`https://api.octopus.energy/v1/accounts/${acc}/`, {
+                headers: { 'Authorization': 'Basic ' + btoa(api + ':') }
+            });
+            const accData = await accRes.json();
+            const meterPoint = accData.properties?.[0]?.electricity_meter_points?.[0];
+            const agreement = meterPoint?.agreements?.find(a => !a.valid_to || new Date(a.valid_to) > new Date());
+            
+            if (agreement) {
+                tariffCode = agreement.tariff_code;
+                const productCode = tariffCode.split('-').slice(2, -1).join('-'); 
+                const ratesRes = await fetch(`https://api.octopus.energy/v1/products/${productCode}/electricity-tariffs/${tariffCode}/standard-unit-rates/`);
+                const ratesData = await ratesRes.json();
+                
+                if (ratesData?.results?.length > 0) {
+                    window.todayRates = ratesData.results;
+                    const sorted = [...ratesData.results].sort((a,b) => a.value_inc_vat - b.value_inc_vat);
+                    minRate = parseFloat(sorted[0].value_inc_vat.toFixed(2));
+                    maxRate = parseFloat(sorted[sorted.length-1].value_inc_vat.toFixed(2));
+                }
+            }
+        } catch (err) { console.warn("Failed exact rate fetch", err); }
+
+        window.dailyMinPrice = minRate;
+        window.dailyMaxPrice = maxRate;
+
+        // --- FIXED PRICING LOGIC ---
+        // Look up the exact live price based on current time
+        const nowIso = new Date().toISOString();
+        let livePrice = null;
+        let isOffPeak = false;
+        let activeDispatch = false;
+
+        if (window.todayRates) {
+            const currentBlock = window.todayRates.find(r => nowIso >= r.valid_from && nowIso < r.valid_to);
+            if (currentBlock) {
+                livePrice = parseFloat(currentBlock.value_inc_vat.toFixed(2));
+                // Determine 'off-peak' status. Dynamic slots or naturally low price blocks
+                activeDispatch = dispatches.find(d => nowIso >= d.startDt && nowIso < d.endDt) ? true : false;
+                isOffPeak = (livePrice <= minRate + 0.1) || activeDispatch; 
+            }
+        }
+        window.currentLivePrice = livePrice;
+
+        // --- UI RENDERING ---
+        if (!isAutoRefresh) {
+            document.getElementById('loading-overlay').style.display = 'none';
+        }
+        document.getElementById('login-layout').style.display = 'none';
+        document.getElementById('dashboard').classList.add('visible');
+
+        const octoBadge = document.getElementById('octo-api-badge');
+        const octoText = document.getElementById('octo-api-text');
+        if (octoText) octoText.textContent = "🟢 API CONNECTED";
+        if (octoBadge) octoBadge.className = "badge off-peak countdown-border";
+
+        let priceLabel = "🔴 STANDARD RATE";
+        let badgeClass = "peak";
+        if (activeDispatch) {
+            priceLabel = "⚡ SMART DISPATCH";
+            badgeClass = "live";
+        } else if (isOffPeak) {
+            priceLabel = "🟢 OFF-PEAK ACTIVE";
+            badgeClass = "off-peak";
+        }
+        const displayPrice = livePrice !== null ? livePrice + 'p' : '--p';
+
+        document.getElementById('ui-pricing').innerHTML = `
+            <div class="badge ${badgeClass}" style="margin-bottom: 0.5rem;">${priceLabel}</div>
+            <div class="current-price">${displayPrice}</div>
+            <div style="font-size: 0.9rem; color: var(--text-muted); margin-bottom: 0.5rem;">Per kWh (Live Import Rate)</div>
+            <div style="display: inline-block; padding: 0.25rem 0.75rem; background: var(--off-peak-bg); color: #059669; border-radius: 6px; font-size: 0.85rem; font-weight: 700; border: 1px solid #6ee7b7;">
+                Lowest Daily Off-Peak: ${minRate}p
+            </div>
+        `;
+
+        document.getElementById('ui-account-details').innerHTML = `
+            <li><span class="label">Account Number</span> <span class="val">${acc}</span></li>
+            <li><span class="label">Linked Device</span> <span class="val" style="color: var(--accent);">${device?.provider ? device.provider.toUpperCase() : 'NONE DETECTED'}</span></li>
+            <li><span class="label">Active Tariff Code</span> <span class="val" style="font-size: 0.8rem; font-family: monospace;">${tariffCode}</span></li>
+        `;
+
+        if (device) {
+            document.getElementById('ui-device-status').textContent = device.status || 'UNKNOWN';
+            document.getElementById('ui-device-status').className = `badge ${device.status === 'LIVE' ? 'live' : 'neutral'}`;
+            document.getElementById('ui-device-prefs').innerHTML = `
+                <li><span class="label">EV Info</span> <span class="val">${device.vehicleMake || ''} ${device.vehicleModel || 'Unknown'}</span></li>
+                <li><span class="label">Charge Point</span> <span class="val">${device.chargePointMake || ''} ${device.chargePointModel || 'Unknown'}</span></li>
+                <li><span class="label">Target Time</span> <span class="val">${prefs?.weekdayTargetTime || 'N/A'}</span></li>
+                <li><span class="label">Charge Limit</span> <span class="val">${prefs?.weekdayTargetSoc ? prefs.weekdayTargetSoc + '%' : 'N/A'}</span></li>
+            `;
+        }
+
+        drawPriceChart(maxRate, minRate, dispatches);
+        
+        const dispatchHtml = dispatches.length ? 
+            dispatches.map(d => `<div style="padding: 0.5rem 0.75rem; background: #e0f2fe; border: 1px solid #7dd3fc; border-radius: 8px; margin-bottom: 0.5rem; color: #0369a1; font-size: 0.9rem; font-weight: 600;">⚡ ${new Date(d.startDt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})} - ${new Date(d.endDt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</div>`).join('') 
+            : '<div style="color: var(--text-muted); font-size: 0.9rem; text-align: center; padding: 1rem 0;">No smart dispatches scheduled right now.</div>';
+        
+        document.getElementById('ui-dispatches-list').innerHTML = `
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                <h4 style="margin: 0; font-size: 0.95rem; color: var(--text-main);">📅 Schedule created</h4>
+            </div>
+            ${dispatchHtml}
+        `;
+
+        if (!isAutoRefresh) {
+            loadAutomations(minRate, maxRate);
+            startAutoRefreshTimer();
+            if (globalFoxSN && globalGasUrl) {
+                await fetchFoxSchedules(); // Auto-load schedules first
+                await fetchCurrentWorkMode(); // Then fetch mode so schedule overrides evaluate correctly
+                
+                // Smart Startup Sync: If automations are toggled on, check if we need to apply them
+                if (document.getElementById('toggle-auto-price')?.checked || document.getElementById('toggle-auto-dispatch')?.checked) {
+                await evaluateLocalAutomations(null, false); // Pass 'false' to force the sync to FoxESS
+                await fetchFoxSchedules(); // Reload the schedules back to the UI
+            }
+            }
+        }
+
+    } catch (err) {
+        if ((err.message === 'Load failed' || err.message === 'Failed to fetch') && retryCount > 0) {
+            console.warn("Network error caught, retrying automatically...");
+            setTimeout(() => initDashboard(isAutoRefresh, retryCount - 1), 1500);
+            return;
+        }
+        if (!isAutoRefresh) {
+            document.getElementById('loading-overlay').style.display = 'none';
+            showError(err.message);
+        }
+    } finally {
+        if (!isAutoRefresh) { btn.textContent = 'Refresh Now'; btn.disabled = false; }
+    }
+}
+
+function startAutoRefreshTimer() {
+    octoCountdown = octoRefreshInterval;
+    foxCountdown = foxRefreshInterval;
+    
+    setInterval(() => {
+        // 1. Octopus Logic Loop
+        octoCountdown--;
+        updateCircleTimer('octo-timer', octoCountdown, octoRefreshInterval);
+        
+        if (octoCountdown <= 0) {
+            octoCountdown = octoRefreshInterval;
+            initDashboard(true).then(() => {
+                const currentDispatchesStr = JSON.stringify(window.currentDispatches || []);
+                if (currentDispatchesStr !== lastDispatchesStr) {
+                    lastDispatchesStr = currentDispatchesStr;
+                    if (document.getElementById('toggle-auto-dispatch')?.checked) {
+                        evaluateLocalAutomations(); 
+                    }
+                }
+                updateCircleTimer('octo-timer', octoCountdown, octoRefreshInterval);
+            });
+        }
+
+        // 2. FoxESS Logic Loop
+        if (globalFoxSN) {
+            foxCountdown--;
+            updateCircleTimer('fox-timer', foxCountdown, foxRefreshInterval);
+            
+            if (foxCountdown <= 0) {
+                foxCountdown = foxRefreshInterval;
+                fetchCurrentWorkMode();
+            }
+        }
+    }, 1000);
+}
+
+// ==========================================
+// AUTOMATIONS CONTROLLER
+// ==========================================
+
+function getFoxHeaders(apiPath) {
+    const timestamp = Date.now().toString();
+    const signString = `${apiPath}\\r\\n${globalFoxToken}\\r\\n${timestamp}`;
+    return {
+        'Content-Type': 'application/json',
+        'token': globalFoxToken,
+        'timestamp': timestamp,
+        'signature': CryptoJS.MD5(signString).toString(),
+        'lang': 'en'
+    };
+}
+
+async function fetchCurrentWorkMode() {
+    if (!globalGasUrl || !globalFoxSN) return null;
+    const path = '/op/v0/device/setting/get';
+    const realPath = '/op/v0/device/real/query';
+    try {
+        const payload = { url: `https://www.foxesscloud.com${path}`, headers: getFoxHeaders(path), body: { sn: globalFoxSN, key: "WorkMode" } };
+        const socPayload = { url: `https://www.foxesscloud.com${realPath}`, headers: getFoxHeaders(realPath), body: { sn: globalFoxSN, variables: ["SoC"] } };
+        
+        incrementFoxApi();
+        incrementFoxApi(); // Two calls being made
+        
+        const [res, socRes] = await Promise.all([
+            fetch(globalGasUrl, { method: 'POST', body: JSON.stringify(payload) }),
+            fetch(globalGasUrl, { method: 'POST', body: JSON.stringify(socPayload) })
+        ]);
+        
+        const data = await res.json();
+        const socData = await socRes.json();
+        
+        let batterySoc = null;
+        if (socData.errno === 0 && socData.result && socData.result[0] && socData.result[0].datas) {
+            const socItem = socData.result[0].datas.find(d => d.variable === 'SoC');
+            if (socItem) batterySoc = socItem.value;
+        }
+        
+        if (data.errno === 0 && data.result) {
+            localWorkModeState = data.result.value || "Unknown";
+            
+            // Check if we are currently inside an active scheduled time block
+            const now = new Date();
+            const currentMins = now.getHours() * 60 + now.getMinutes();
+            if (window.activeFoxGroups && window.activeFoxGroups.length > 0) {
+                const activeSch = window.activeFoxGroups.find(g => {
+                    const startMins = g.startHour * 60 + g.startMinute;
+                    const endMins = g.endHour * 60 + g.endMinute;
+                    return currentMins >= startMins && currentMins < endMins;
+                });
+                if (activeSch) localWorkModeState = activeSch.workMode; // Override badge with active schedule
+            }
+            
+            updateModeBadge(localWorkModeState, batterySoc);
+            const fbBadge = document.getElementById('fox-api-badge');
+            const fbText = document.getElementById('fox-api-text');
+            if (fbText) fbText.textContent = "🟢 API CONNECTED";
+            if (fbBadge) fbBadge.className = "badge off-peak countdown-border";
+            return localWorkModeState;
+        }
+    } catch (e) { console.warn("Fox API Error", e); }
+    return null;
+}
+
+function updateModeBadge(mode, soc = null) {
+    const modeBadge = document.getElementById('current-work-mode');
+    let text = mode;
+    if (mode === 'SelfUse') text = 'SELF-USE';
+    else if (mode === 'ForceCharge') text = 'FORCED CHARGE';
+    
+    if (soc !== null) text += ` | ${soc}%`;
+    modeBadge.textContent = text;
+    
+    if (mode === 'ForceCharge') modeBadge.className = 'badge live';
+    else if (mode === 'SelfUse') modeBadge.className = 'badge peak';
+    else modeBadge.className = 'badge neutral';
+}
+
+window.activeFoxGroups = [];
+
+async function fetchFoxSchedules() {
+    if (!globalGasUrl || !globalFoxSN) return;
+    const path = '/op/v3/device/scheduler/get';
+    try {
+        const payload = { url: `https://www.foxesscloud.com${path}`, headers: getFoxHeaders(path), body: { deviceSN: globalFoxSN } };
+        incrementFoxApi();
+        const res = await fetch(globalGasUrl, { method: 'POST', body: JSON.stringify(payload) });
+        const data = await res.json();
+        
+        const container = document.getElementById('fox-active-schedules');
+        if (data.errno === 0 && data.result && data.result.groups) {
+            window.activeFoxGroups = data.result.groups;
+            if (window.activeFoxGroups.length === 0) {
+                container.innerHTML = 'No schedules currently set.';
+            } else {
+                container.innerHTML = window.activeFoxGroups.map((g, i) => {
+                    const modeLabel = g.workMode === 'ForceCharge' ? 'FORCED CHARGE' : (g.workMode === 'SelfUse' ? 'SELF-USE' : g.workMode);
+                    return `
+                    <div style="display: flex; justify-content: space-between; align-items: center; background: #fff; padding: 0.6rem; border: 1px solid var(--border); border-radius: 6px; margin-bottom: 0.5rem;">
+                        <span style="font-weight: 600; color: var(--text-main);"><span style="color: var(--fox-orange);">${modeLabel}</span> | ${String(g.startHour).padStart(2,'0')}:${String(g.startMinute).padStart(2,'0')} - ${String(g.endHour).padStart(2,'0')}:${String(g.endMinute).padStart(2,'0')}</span>
+                        <button onclick="deleteFoxSchedule(${i})" style="width: auto; padding: 0.3rem 0.8rem; background: #ef4444; border-radius: 4px; font-size: 0.75rem;">Delete</button>
+                    </div>
+                `}).join('');
+            }
+        } else {
+            container.innerHTML = 'Failed to load schedules.';
+        }
+    } catch (e) { console.warn("Fetch Schedule Error", e); }
+}
+
+function closeModal() {
+    document.getElementById('custom-modal').style.display = 'none';
+}
+
+function deleteFoxSchedule(index) {
+    scheduleToDelete = index;
+    document.getElementById('custom-modal').style.display = 'flex';
+    
+    document.getElementById('confirm-delete-btn').onclick = async () => {
+        const btn = document.getElementById('confirm-delete-btn');
+        btn.textContent = 'Deleting...';
+        btn.disabled = true;
+        
+        window.activeFoxGroups.splice(scheduleToDelete, 1);
+        await pushGroupsToFoxESS(window.activeFoxGroups); // This overwrites/syncs the change
+        
+        btn.textContent = 'Delete';
+        btn.disabled = false;
+        closeModal();
+        fetchFoxSchedules(); // Refresh the list UI after successful delete
+    };
+}
+
+async function pushGroupsToFoxESS(groups) {
+    isCurrentlyUpdatingMode = true;
+    const path = '/op/v3/device/scheduler/enable'; 
+    try {
+        // Dummy schedule logic removed. FoxESS will receive an empty array to fully erase schedules.
+        groups = groups.slice(0, 5); 
+        
+        const payload = {
+            url: `https://www.foxesscloud.com${path}`,
+            headers: getFoxHeaders(path),
+            body: { deviceSN: globalFoxSN, isDefault: false, groups: groups }
+        };
+        incrementFoxApi();
+        const res = await fetch(globalGasUrl, { method: 'POST', body: JSON.stringify(payload) });
+        const data = await res.json();
+        
+        const btn = document.getElementById('btn-save-auto');
+        if(data.errno === 0) {
+            if(btn) { btn.textContent = "✅ Success!"; btn.style.background = "#10b981"; }
+            fetchFoxSchedules(); // Refresh the list UI
+        } else {
+            if(btn) { btn.textContent = "❌ Sync Failed"; btn.style.background = "#ef4444"; }
+            alert("Error syncing to FoxESS: " + (data.msg || data.errno));
+        }
+        if(btn) setTimeout(() => { btn.textContent = "Apply Rules"; btn.style.background = "#16a34a"; }, 3500);
+
+    } catch (err) {
+        console.error("Failed V3 auto-sync", err);
+    } finally {
+        isCurrentlyUpdatingMode = false;
+    }
+}
+
+function loadAutomations(minPrice, maxPrice) {
+    const saved = JSON.parse(localStorage.getItem('foxAutomations') || '{}');
+    
+    // Toggle borders on initial page load
+    const blockPrice = document.getElementById('block-price-auto');
+    const blockDispatch = document.getElementById('block-dispatch-auto');
+    if (blockPrice) blockPrice.classList.toggle('block-countdown-octo', saved.priceCheck === true);
+    if (blockDispatch) blockDispatch.classList.toggle('block-countdown-octo', saved.dispatchCheck === true);
+    const autoPriceEl = document.getElementById('toggle-auto-price');
+    const autoDispatchEl = document.getElementById('toggle-auto-dispatch');
+    if(autoPriceEl) { 
+        autoPriceEl.checked = saved.priceCheck || false; 
+        let b = document.getElementById('btn-save-price');
+        if(b) { b.disabled = !autoPriceEl.checked; b.style.background = autoPriceEl.checked ? '#16a34a' : '#94a3b8'; b.style.cursor = autoPriceEl.checked ? 'pointer' : 'not-allowed'; }
+    }
+    if(autoDispatchEl) { 
+        autoDispatchEl.checked = saved.dispatchCheck || false; 
+        let b = document.getElementById('btn-save-dispatch');
+        if(b) { b.disabled = !autoDispatchEl.checked; b.style.background = autoDispatchEl.checked ? '#16a34a' : '#94a3b8'; b.style.cursor = autoDispatchEl.checked ? 'pointer' : 'not-allowed'; }
+    }
+
+    let thresh = saved.threshold;
+    if ((!thresh || thresh === "0") && minPrice !== undefined) {
+        thresh = ((maxPrice + minPrice) / 2).toFixed(2); 
+    }
+    const threshEl = document.getElementById('price-threshold');
+    if(threshEl) threshEl.value = thresh || "";
+}
+
+// RUNS TO PUSH SCHEDULES VIA V3 API INSTEAD OF V0 LIVE-TOGGLE
+async function evaluateLocalAutomations(btn = null, isStartup = false) {
+    if (!globalFoxSN || !globalGasUrl || isCurrentlyUpdatingMode) return;
+    
+    if (btn) {
+        btn.textContent = "Syncing...";
+        btn.style.opacity = "0.7";
+        btn.disabled = true;
+    }
+
+    const isAutoPrice = document.getElementById('toggle-auto-price')?.checked;
+    const isAutoDispatch = document.getElementById('toggle-auto-dispatch')?.checked;
+
+    // Save configuration implicitly on run
+    localStorage.setItem('foxAutomations', JSON.stringify({
+        priceCheck: isAutoPrice,
+        dispatchCheck: isAutoDispatch,
+        threshold: document.getElementById('price-threshold')?.value
+    }));
+    
+    // Toggle borders when user clicks apply
+    const blockPrice = document.getElementById('block-price-auto');
+    const blockDispatch = document.getElementById('block-dispatch-auto');
+    if (blockPrice) blockPrice.classList.toggle('block-countdown-octo', isAutoPrice === true);
+    if (blockDispatch) blockDispatch.classList.toggle('block-countdown-octo', isAutoDispatch === true);
+    
+    const now = new Date();
+    let groups = [];
+
+    // Helper: Safely push timeslots & split at midnight (23:59) if crossing over
+    const pushSafe = (arr, sHour, sMin, eHour, eMin, mode) => {
+        if (sHour > eHour || (sHour === eHour && sMin > eMin)) {
+            arr.push({ startHour: sHour, startMinute: sMin, endHour: 23, endMinute: 59, workMode: mode });
+            if (eHour !== 0 || eMin !== 0) {
+                arr.push({ startHour: 0, startMinute: 0, endHour: eHour, endMinute: eMin, workMode: mode });
+            }
+        } else {
+            arr.push({ startHour: sHour, startMinute: sMin, endHour: eHour, endMinute: eMin, workMode: mode });
+        }
+    };
+
+    // 1. Dispatch Check (Push ALL upcoming dispatches to FoxESS schedule immediately)
+    if (isAutoDispatch && window.currentDispatches) {
+        window.currentDispatches.forEach(d => {
+            const s = new Date(d.startDt); const e = new Date(d.endDt);
+            if(e > now) { 
+                pushSafe(groups, s.getHours(), s.getMinutes(), e.getHours(), e.getMinutes(), "ForceCharge");
+            }
+        });
+    }
+
+    // 2. Price Check (Midnight split handled by pushSafe, filtered to 24h to prevent duplication bug)
+    if (isAutoPrice && window.todayRates) {
+        const threshold = parseFloat(document.getElementById('price-threshold').value || 0);
+        const limitTime = new Date(now.getTime() + 24 * 60 * 60 * 1000); // Look ahead max 24 hours
+        let current = null;
+        
+        [...window.todayRates]
+            .filter(r => new Date(r.valid_to) > now && new Date(r.valid_from) <= limitTime)
+            .sort((a,b) => new Date(a.valid_from) - new Date(b.valid_from))
+            .forEach(r => {
+                if (r.value_inc_vat <= threshold) {
+                    if (!current) current = { start: new Date(r.valid_from), end: new Date(r.valid_to) };
+                    else if (current.end.getTime() === new Date(r.valid_from).getTime()) current.end = new Date(r.valid_to);
+                    else {
+                        if(current.end > now) pushSafe(groups, current.start.getHours(), current.start.getMinutes(), current.end.getHours(), current.end.getMinutes(), "ForceCharge");
+                        current = { start: new Date(r.valid_from), end: new Date(r.valid_to) };
+                    }
+                }
+            });
+        if (current && current.end > now) {
+            pushSafe(groups, current.start.getHours(), current.start.getMinutes(), current.end.getHours(), current.end.getMinutes(), "ForceCharge");
+        }
+    }
+
+    // Deduplicate overlapping/exact rule blocks to guarantee no duplicates hit FoxESS
+    groups = groups.filter((v, i, a) => a.findIndex(t => (t.startHour === v.startHour && t.startMinute === v.startMinute && t.endHour === v.endHour && t.endMinute === v.endMinute)) === i);
+
+    // If running on startup, check if schedules already match to avoid redundant API hits
+    if (isStartup && window.activeFoxGroups) {
+        const mapGroup = g => `${g.startHour}:${g.startMinute}-${g.endHour}:${g.endMinute}-${g.workMode}`;
+        const localStr = groups.map(mapGroup).sort().join('|');
+        const remoteStr = window.activeFoxGroups.map(mapGroup).sort().join('|');
+        if (localStr === remoteStr) {
+            console.log("Startup Check: Local automations match inverter schedules perfectly. Skipping sync.");
+            return;
+        }
+    }
+
+    await pushGroupsToFoxESS(groups);
+    
+    // Provide brief success feedback on the buttons
+    const btnPrice = document.getElementById('btn-save-price');
+    const btnDispatch = document.getElementById('btn-save-dispatch');
+    if (btnPrice && isAutoPrice) { btnPrice.textContent = "✅ Applied"; setTimeout(() => { btnPrice.textContent = "Apply"; btnPrice.disabled = false; btnPrice.style.opacity = "1"; }, 2500); }
+    if (btnDispatch && isAutoDispatch) { btnDispatch.textContent = "✅ Applied"; setTimeout(() => { btnDispatch.textContent = "Apply"; btnDispatch.disabled = false; btnDispatch.style.opacity = "1"; }, 2500); }
+    
+    // Fetch current work mode 1 minute (60000ms) after applying new schedules
+    setTimeout(fetchCurrentWorkMode, 60000);
+}
+
+// ==========================================
+// MANUAL SCHEDULER (V3)
+// ==========================================
+async function setV3Schedule(mode) {
+    const errorDiv = document.getElementById('fox-error');
+    const successDiv = document.getElementById('fox-success');
+    errorDiv.style.display = 'none'; successDiv.style.display = 'none';
+
+    if (!globalGasUrl || !globalFoxSN) { alert("Load dashboard with Fox credentials first."); return; }
+    
+    const startVal = document.getElementById('v3-start').value.split(':');
+    const endVal = document.getElementById('v3-end').value.split(':');
+    
+    if(startVal.length !== 2 || endVal.length !== 2) {
+        errorDiv.textContent = "Select valid start and end times."; errorDiv.style.display = 'block'; return;
+    }
+
+    const path = '/op/v3/device/scheduler/enable';
+    try {
+        const payload = {
+            url: `https://www.foxesscloud.com${path}`,
+            headers: getFoxHeaders(path),
+            body: {
+                deviceSN: globalFoxSN, isDefault: false,
+                groups: [{
+                    startHour: parseInt(startVal[0], 10), startMinute: parseInt(startVal[1], 10),
+                    endHour: parseInt(endVal[0], 10), endMinute: parseInt(endVal[1], 10),
+                    workMode: mode
+                }]
+            }
+        };
+        incrementFoxApi();
+        const res = await fetch(globalGasUrl, { method: 'POST', body: JSON.stringify(payload) });
+        const data = await res.json();
+        
+        if (data.errno !== 0) throw new Error(data.msg || `API Error: ${data.errno}`);
+        
+        successDiv.innerHTML = `✅ <strong>Success!</strong> Forced ${mode} from ${document.getElementById('v3-start').value} to ${document.getElementById('v3-end').value}`;
+        successDiv.style.display = 'block';
+        fetchFoxSchedules(); // Refresh the active schedules list
+        setTimeout(fetchCurrentWorkMode, 3000); // Verify device mode via API after 3 seconds
+    } catch (err) {
+        errorDiv.textContent = `Scheduler Failed: ${err.message}`; errorDiv.style.display = 'block';
+    }
+}
+
+// Chart Builder
+function drawPriceChart(peak, offPeak, dispatches) {
+    const chartState = JSON.stringify({ peak, offPeak, dispatches });
+    if (window.lastChartState === chartState && priceChartInst) return; // Skip if data hasn't changed
+    window.lastChartState = chartState;
+    
+    if (priceChartInst) priceChartInst.destroy();
+    if (!peak || !offPeak) { document.getElementById('priceChart').style.display = 'none'; return; }
+    
+    document.getElementById('priceChart').style.display = 'block';
+    const ctx = document.getElementById('priceChart').getContext('2d');
+    const labels = [], dataPoints = [];
+    const now = new Date();
+    
+    for (let h = 0; h <= 24; h++) {
+        for (let m = 0; m < 60; m += 30) {
+            if (h === 24 && m > 0) break;
+            labels.push(h === 24 ? '24:00' : `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`);
+            
+            const slotIso = new Date(now.getFullYear(), now.getMonth(), now.getDate(), h===24?0:h, m, 0).toISOString();
+            
+            // Check exact API array if we have it to plot true history
+            let slotPrice = peak; 
+            if (window.todayRates) {
+                const found = window.todayRates.find(r => slotIso >= r.valid_from && slotIso < r.valid_to);
+                if (found) slotPrice = parseFloat(found.value_inc_vat.toFixed(2));
+            } else {
+                // Fallback dummy chart logic
+                let isOffPeak = (h === 23 && m >= 30) || (h < 5) || (h === 5 && m < 30) || (h === 24);
+                slotPrice = isOffPeak ? offPeak : peak;
+            }
+            
+            // OVERRIDE: Apply off-peak rate if the slot falls within an Octopus smart dispatch
+            if (dispatches && dispatches.some(d => slotIso >= d.startDt && slotIso < d.endDt)) {
+                slotPrice = offPeak;
+            }
+            
+            dataPoints.push(slotPrice);
+        }
+    }
+
+    // Generate dynamic chart colors based on current theme
+    const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+    const gridColor = isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)';
+    const textColor = isDark ? '#94a3b8' : '#64748b';
+
+    priceChartInst = new Chart(ctx, {
+        type: 'line',
+        data: { 
+            labels: labels, 
+            datasets: [{ 
+                data: dataPoints, 
+                borderColor: '#10b981', backgroundColor: 'rgba(16, 185, 129, 0.15)',
+                stepped: 'after', fill: true, borderWidth: 2, pointRadius: 0 
+            }] 
+        },
+        options: { 
+            animation: false,
+            responsive: true, maintainAspectRatio: false, 
+            plugins: { legend: { display: false }, tooltip: { intersect: false, mode: 'index' } },
+            scales: { 
+                x: { ticks: { maxTicksLimit: 8, color: textColor }, grid: { display: false } },
+                y: { beginAtZero: true, border: { dash: [4, 4] }, ticks: { color: textColor }, grid: { color: gridColor } } 
+            }
+        }
+    });
+}
+
+function previewScheduleTimes() {
+    const isEnabled = document.getElementById('toggle-auto-price').checked;
+    const threshold = parseFloat(document.getElementById('price-threshold').value || 0);
+    const display = document.getElementById('price-target-times');
+    
+    if (!isEnabled) { display.innerHTML = ''; return; }
+    if (!window.todayRates) { display.innerHTML = 'Waiting for rate data...'; return; }
+
+    const now = new Date();
+    let blocks = [];
+    let current = null;
+
+    [...window.todayRates].sort((a,b) => new Date(a.valid_from) - new Date(b.valid_from)).forEach(r => {
+        if (r.value_inc_vat <= threshold) {
+            if (!current) current = { start: new Date(r.valid_from), end: new Date(r.valid_to) };
+            else if (current.end.getTime() === new Date(r.valid_from).getTime()) current.end = new Date(r.valid_to);
+            else { blocks.push(current); current = { start: new Date(r.valid_from), end: new Date(r.valid_to) }; }
+        }
+    });
+    if (current) blocks.push(current);
+
+    blocks = blocks.filter(b => b.end > now).slice(0, 3); 
+    if (blocks.length === 0) display.innerHTML = `No upcoming drops &le; ${threshold}p.`;
+    else display.innerHTML = blocks.map(b => `🕒 ${b.start.toLocaleString([], {month:'short', day:'numeric', hour:'2-digit', minute:'2-digit'})} - ${b.end.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}`).join('<br>');
+}
+
+function showError(msg) {
+    const errorDiv = document.getElementById('error');
+    errorDiv.textContent = 'Error: ' + msg;
+    errorDiv.style.display = 'block';
+}
+</script>
+</body>
+</html>
