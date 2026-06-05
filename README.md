@@ -1,5 +1,7 @@
 # Octopus & FoxESS Smart Charging Detector
 
+🚀 **Live App:** [https://samuelkcc.github.io/octopus-foxess-smart-charging/](https://samuelkcc.github.io/octopus-foxess-smart-charging/)
+
 A lightweight, zero-install smart automation bridge to prevent FoxESS home batteries from draining during Intelligent Octopus Go EV charging slots.
 
 ![Smart Charging Detector Dashboard](Dashboard.png)
@@ -27,18 +29,19 @@ Before launching the app, you will need to gather 4 specific pieces of informati
 
 ## 🚀 Detailed Setup Guide
 
-### 1. Download & Run the Local File
-Because this application runs entirely client-side for absolute privacy:
-1. Click on `index.html` in this repository.
-2. Click the **Download raw file** button in the top right of the file view to save it locally.
-3. Simply double-click the file to open the dashboard interface natively inside any modern web browser.
+### 1. Launch the Web App
+Because this application runs entirely client-side for absolute privacy, there is no software to install. 
+1. Simply navigate to the live dashboard here: **[Launch Octopus & FoxESS Smart Charging Detector](https://samuelkcc.github.io/octopus-foxess-smart-charging/)**
+2. *(Optional)* If you prefer to run it offline, you can download `index.html` from this repository and run it locally in your browser.
+
+💡 **Always-On Dashboard Use Case:** A popular setup is to open the live app (or the local HTML file) on a dedicated device, such as an Android tablet, when you plug your EV charger in. **Be sure to turn off your device's screen timeout/lock** so the browser remains active and can continuously monitor and sync the charging slots.
 
 ### 2. Deploy Your Google Apps Script Proxy (Required)
 FoxESS cloud servers enforce strict browser security protocols (CORS restrictions) which explicitly block standalone web pages from sending direct network requests. 
 
 To easily bypass this without configuring an expensive server, we use a short, private Google Apps Script relay. 
 
-1. Launch the downloaded app file in your browser.
+1. Launch the [live web app](https://samuelkcc.github.io/octopus-foxess-smart-charging/) in your browser.
 2. Click the red **"View Setup Instructions"** button inside the setup guide panel.
 3. Follow the steps displayed to copy your private routing script and deploy it as a web app.
 4. Paste your generated Google Web App URL into the app login screen along with your cloud credentials.
@@ -47,7 +50,7 @@ To easily bypass this without configuring an expensive server, we use a short, p
 
 ## 🔒 Security, Privacy & Local Storage
 Your security is maintained by design:
-* **Zero Third-Party Logging:** This application does not run on an external web server and does not transmit data to any tracking networks. All logic occurs in your personal browser tab.
+* **Zero Third-Party Logging:** This application is served as a static GitHub Page and does not transmit data to any tracking networks or external servers. All logic occurs locally in your personal browser tab.
 * **Local Encryption:** Your credentials can be saved locally within your browser's standard `localStorage` wrapper. For safe manual backups, you can download a locally encrypted backup data file protected by AES-256 standard encryption.
 
 ---
