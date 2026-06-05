@@ -1080,17 +1080,31 @@ async function initDashboard(isAutoRefresh = false, retryCount = 1) {
 
         // --- FIXED PRICING LOGIC ---
         // Look up the exact live price based on current time
-        const nowIso = new Date().toISOString();
+        const nowTime = new Date().getTime();
         let livePrice = null;
         let isOffPeak = false;
         let activeDispatch = false;
 
         if (window.todayRates) {
-            const currentBlock = window.todayRates.find(r => nowIso >= r.valid_from && nowIso < r.valid_to);
+            const currentBlock = window.todayRates.find(r => {
+                const start = new Date(r.valid_from).getTime();
+                const end = new Date(r.valid_to).getTime();
+                return nowTime >= start && nowTime < end;
+            });
             if (currentBlock) {
                 livePrice = parseFloat(currentBlock.value_inc_vat.toFixed(2));
-                // Determine 'off-peak' status. Dynamic slots or naturally low price blocks
-                activeDispatch = dispatches.find(d => nowIso >= d.startDt && nowIso < d.endDt) ? true : false;
+                // Determine 'off-peak' status using robust timestamp comparisons
+                activeDispatch = dispatches.some(d => {
+                    const start = new Date(d.startDt).getTime();
+                    const end = new Date(d.endDt).getTime();
+                    return nowTime >= start && nowTime < end;
+                });
+                
+                // Override with lowest daily off-peak price if inside a smart dispatch window
+                if (activeDispatch) {
+                    livePrice = minRate;
+                }
+                
                 isOffPeak = (livePrice <= minRate + 0.1) || activeDispatch; 
             }
         }
@@ -1626,8 +1640,15 @@ function drawPriceChart(peak, offPeak, dispatches) {
                 slotPrice = isOffPeak ? offPeak : peak;
             }
             
-            // OVERRIDE: Apply off-peak rate if the slot falls within an Octopus smart dispatch
-            if (dispatches && dispatches.some(d => slotIso >= d.startDt && slotIso < d.endDt)) {
+            // OVERRIDE: Apply off-peak rate if the 30-min slot overlaps with an Octopus smart dispatch
+            const slotTime = new Date(now.getFullYear(), now.getMonth(), now.getDate(), h === 24 ? 0 : h, m, 0).getTime();
+            const slotEnd = slotTime + 30 * 60 * 1000; // Slot duration is 30 mins
+            
+            if (dispatches && dispatches.some(d => {
+                const start = new Date(d.startDt).getTime();
+                const end = new Date(d.endDt).getTime();
+                return (start < slotEnd && end > slotTime); // True overlap condition
+            })) {
                 slotPrice = offPeak;
             }
             
