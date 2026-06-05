@@ -51,7 +51,7 @@ Because FoxESS blocks direct browser connections, we use a free Google Apps Scri
 2. Click **New Project**.
 3. Delete any existing code and paste the exact code below:
 
-    ```javascript
+```javascript
     function doPost(e) {
       try {
         var requestData = JSON.parse(e.postData.contents);
@@ -86,15 +86,20 @@ Navigate to the live application: **[Intelligent Octopus Go & FoxESS Smart Charg
 ### Step 4: Launch the App
 Paste your Octopus credentials, FoxESS credentials, and your new Google Apps Script Web App URL directly into the dashboard and click **Connect**. 
 
+> ⚠️ **CRITICAL: Single Device Operation**
+> **Do not run this dashboard on multiple devices simultaneously.** The FoxESS API enforces strict connection limits. Having the app actively running on more than one device at the same time will cause API communication errors, trigger rate-limiting, and ultimately break the automated mode selection updates for your battery.
+
 > 💡 **Pro-Tip: Always-On Dashboard Setup**
-> A popular use case is to open the app on a dedicated device, such as a wall-mounted Android tablet, whenever you plug your EV in. If you do this, **ensure you disable your device's screen timeout/auto-lock**. The browser tab must remain active to continuously monitor and sync the charging slots.
+> A popular use case is to open the app on a single dedicated device, such as a wall-mounted Android tablet, whenever you plug your EV in. If you do this, **ensure you disable your device's screen timeout/auto-lock**. The browser tab must remain active to continuously monitor and sync the charging slots.
 
 ---
 
-## 🔒 Security & Privacy
+## 🔒 Security, Privacy & Data Management
 Your security is maintained by design:
 * **Zero Third-Party Logging:** This application is a static page. All logic and network requests occur strictly between your browser, your private Google script, and the energy APIs.
-* **Local AES-256 Encryption:** Your credentials can be saved locally within your browser's standard `localStorage` wrapper. For safe manual backups, you can download a locally encrypted backup data file.
+* **Local AES-256 Encryption:** Once successfully connected, you can save your configuration directly within your browser. You will be prompted to create a custom password, which locally encrypts your API keys and URLs so you don't have to re-enter them every time you load the dashboard.
+* **Wipe Data Feature:** If you are using a shared device or simply want to clean up, you can use the built-in "Wipe Data" button. This will instantly and permanently erase all saved credentials, API keys, and Web App URLs from your browser's local storage.
+* **Manual Backups:** For safe manual backups, you can download a locally encrypted backup data file.
 
 ---
 
