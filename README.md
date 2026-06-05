@@ -47,36 +47,38 @@ You need API keys from both providers before starting the app.
 ### Step 2: Deploy the Proxy Bridge (Google Apps Script)
 Because FoxESS blocks direct browser connections, we use a free Google Apps Script to securely route your requests.
 
-1. Go to [script.google.com](https://script.google.com/) and sign in.
-2. Click **New Project**.
-3. Delete any existing code and paste the exact code below:
+#### A. Create the Script
+1. Go to [script.google.com](https://script.google.com/) and sign in with your Google account.
+2. Click **New Project** (top left).
+3. Delete any placeholder code in the editor and paste the exact snippet below:
 
 ```javascript
-    function doPost(e) {
-      try {
-        var requestData = JSON.parse(e.postData.contents);
-        var options = {
-          'method': 'post',
-          'contentType': 'application/json',
-          'headers': requestData.headers,
-          'payload': JSON.stringify(requestData.body),
-          'muteHttpExceptions': true
-        };
-        var response = UrlFetchApp.fetch(requestData.url, options);
-        return ContentService.createTextOutput(response.getContentText())
-                                     .setMimeType(ContentService.MimeType.JSON);
-      } catch (err) {
-        return ContentService.createTextOutput(JSON.stringify({ errno: 999, msg: err.toString() }))
-                                     .setMimeType(ContentService.MimeType.JSON);
-      }
-    }
-    ```
+function doPost(e) {
+  try {
+    var requestData = JSON.parse(e.postData.contents);
+    var options = {
+      'method': 'post',
+      'contentType': 'application/json',
+      'headers': requestData.headers,
+      'payload': JSON.stringify(requestData.body),
+      'muteHttpExceptions': true
+    };
+    var response = UrlFetchApp.fetch(requestData.url, options);
+    return ContentService.createTextOutput(response.getContentText())
+                                 .setMimeType(ContentService.MimeType.JSON);
+  } catch (err) {
+    return ContentService.createTextOutput(JSON.stringify({ errno: 999, msg: err.toString() }))
+                                 .setMimeType(ContentService.MimeType.JSON);
+  }
+}
+```
 
-4. Click **Deploy** (top right) > **New deployment**.
-5. Click the gear icon next to "Select type" and choose **Web app**.
-6. Set **Execute as** to **Me**.
-7. Set **Who has access** to **Anyone** *(Crucial!)*.
-8. Click **Deploy** and copy the generated **Web app URL**. Keep this handy.
+#### B. Deploy as a Web App
+1. Click the blue **Deploy** button in the top right corner, then select **New deployment**.
+2. Click the **Gear icon** next to "Select type" and choose **Web app**.
+3. Set **Execute as** to **Me**.
+4. Set **Who has access** to **Anyone** *(This is crucial for the connection to work)*.
+5. Click **Deploy** and copy the generated **Web app URL** to your clipboard.
 
 ### Step 3: Open the Dashboard
 Navigate to the live application: **[Intelligent Octopus Go & FoxESS Smart Charging Detector](https://samuelkcc.github.io/octopus-foxess-smart-charging/)**
@@ -84,7 +86,7 @@ Navigate to the live application: **[Intelligent Octopus Go & FoxESS Smart Charg
 *(If you prefer to run it locally rather than hosting it on GitHub Pages, you can download `index.html` from this repository and double-click it to open it natively in your browser. Please note that an active internet connection is still required to communicate with the APIs).*
 
 ### Step 4: Launch the App
-Paste your Octopus credentials, FoxESS credentials, and your new Google Apps Script Web App URL directly into the dashboard and click **Connect**. 
+Paste your Octopus credentials, FoxESS credentials, and your new Google Apps Script Web App URL directly into the dashboard configuration fields and click **Connect**. 
 
 > ⚠️ **CRITICAL: Single Device Operation**
 > **Do not run this dashboard on multiple devices simultaneously.** The FoxESS API enforces strict connection limits. Having the app actively running on more than one device at the same time will cause API communication errors, trigger rate-limiting, and ultimately break the automated mode selection updates for your battery.
