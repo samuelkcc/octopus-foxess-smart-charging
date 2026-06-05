@@ -51,7 +51,7 @@ Because FoxESS blocks direct browser connections, we use a free Google Apps Scri
 2. Click **New Project**.
 3. Delete any existing code and paste the exact code below:
 
-
+    ```javascript
     function doPost(e) {
       try {
         var requestData = JSON.parse(e.postData.contents);
@@ -70,7 +70,7 @@ Because FoxESS blocks direct browser connections, we use a free Google Apps Scri
                                      .setMimeType(ContentService.MimeType.JSON);
       }
     }
-
+    ```
 
 4. Click **Deploy** (top right) > **New deployment**.
 5. Click the gear icon next to "Select type" and choose **Web app**.
