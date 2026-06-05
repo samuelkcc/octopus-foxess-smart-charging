@@ -58,3 +58,11 @@ This software is an unofficial, community-driven utility. It is entirely indepen
 Controlling physical battery infrastructure and working with third-party web services introduces natural hardware degradation and rate-limiting risks. By executing this script, you accept full individual liability for system stability, unexpected inverter behaviors, or billing discrepancies. Monitor system logs consistently.
 
 Licensed globally under the **GNU General Public License v3.0**.
+
+---
+
+## Support the Project ☕
+
+If this Octopus & FoxESS bridge has saved you money, kept your house battery healthy, or simply made your home automation setup easier, consider buying me a coffee to support continued features and updates!
+
+[![Buy Me A Coffee](https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png)](https://buymeacoffee.com/samuelchen)
