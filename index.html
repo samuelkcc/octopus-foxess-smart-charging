@@ -469,11 +469,18 @@
 
     </div> <div class="app-footer">
         <div style="text-align: left;">Developer Samuel Chen</div>
-        <div style="text-align: right;">&copy; Copyright 2026 samuelchen.hk Build 20260603</div>
+        <div style="text-align: right;">&copy; Copyright 2026 samuelchen.hk Build 20260605</div>
     </div>
 </div> 
 
 <!-- Beautiful Loading Overlay -->
+<div id="app-toast-notification" style="display: none; position: fixed; bottom: 20px; right: 20px; max-width: 350px; background: #ef4444; color: white; padding: 1rem; border-radius: 8px; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.3); z-index: 10000; font-size: 0.85rem; font-weight: 500;">
+    <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 10px;">
+        <span id="toast-message"></span>
+        <button onclick="document.getElementById('app-toast-notification').style.display='none'" style="background: transparent; color: white; padding: 0; width: auto; font-size: 1.2rem; line-height: 1; cursor: pointer; border: none;">&times;</button>
+    </div>
+</div>
+
 <div id="loading-overlay" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(15, 23, 42, 0.85); backdrop-filter: blur(4px); z-index: 9999; align-items: center; justify-content: center; flex-direction: column; color: white;">
     <div style="width: 60px; height: 60px; border: 5px solid rgba(255,255,255,0.2); border-top-color: #10b981; border-radius: 50%; animation: spin 1s linear infinite; margin-bottom: 1.5rem;"></div>
     <h3 style="margin: 0; font-family: monospace; letter-spacing: 2px; font-size: 1.2rem;">AUTHENTICATING</h3>
@@ -720,7 +727,10 @@ function applyOctoInterval() {
     if (val < 60) {
         const modal = document.getElementById('octo-warning-modal');
         modal.style.display = 'flex';
-        document.getElementById('cancel-octo-btn').onclick = () => { modal.style.display = 'none'; };
+        document.getElementById('cancel-octo-btn').onclick = () => { 
+            modal.style.display = 'none'; 
+            document.getElementById('octo-interval-input').value = 60;
+        };
         document.getElementById('confirm-octo-btn').onclick = () => { modal.style.display = 'none'; commitOctoValue(); };
     } else {
         commitOctoValue();
@@ -744,7 +754,10 @@ function applyFoxInterval() {
     if (val < 600) {
         const modal = document.getElementById('fox-warning-modal');
         modal.style.display = 'flex';
-        document.getElementById('cancel-fox-btn').onclick = () => { modal.style.display = 'none'; };
+        document.getElementById('cancel-fox-btn').onclick = () => { 
+            modal.style.display = 'none'; 
+            document.getElementById('fox-interval-input').value = 600;
+        };
         document.getElementById('confirm-fox-btn').onclick = () => { modal.style.display = 'none'; commitFoxValue(); };
     } else {
         commitFoxValue();
@@ -1149,14 +1162,14 @@ async function initDashboard(isAutoRefresh = false, retryCount = 1) {
             loadAutomations(minRate, maxRate);
             startAutoRefreshTimer();
             if (globalFoxSN && globalGasUrl) {
-                await fetchFoxSchedules(); // Auto-load schedules first
-                await fetchCurrentWorkMode(); // Then fetch mode so schedule overrides evaluate correctly
+                await fetchFoxSchedules(); 
+                await fetchCurrentWorkMode(); 
                 
-                // Smart Startup Sync: If automations are toggled on, check if we need to apply them
+                // Smart Startup Sync: Pass true to enable strict remote configuration verification
                 if (document.getElementById('toggle-auto-price')?.checked || document.getElementById('toggle-auto-dispatch')?.checked) {
-                await evaluateLocalAutomations(null, false); // Pass 'false' to force the sync to FoxESS
-                await fetchFoxSchedules(); // Reload the schedules back to the UI
-            }
+                    await evaluateLocalAutomations(null, true); 
+                    await fetchFoxSchedules(); 
+                }
             }
         }
 
@@ -1205,7 +1218,11 @@ function startAutoRefreshTimer() {
             
             if (foxCountdown <= 0) {
                 foxCountdown = foxRefreshInterval;
-                fetchCurrentWorkMode();
+                fetchCurrentWorkMode().then(() => {
+                    if (document.getElementById('toggle-auto-price')?.checked || document.getElementById('toggle-auto-dispatch')?.checked) {
+                        evaluateLocalAutomations(null, true);
+                    }
+                });
             }
         }
     }, 1000);
@@ -1364,19 +1381,40 @@ async function pushGroupsToFoxESS(groups) {
         const data = await res.json();
         
         const btn = document.getElementById('btn-save-auto');
+        function showAutoCloseToast(message) {
+            const toast = document.getElementById('app-toast-notification');
+            document.getElementById('toast-message').textContent = message;
+            toast.style.display = 'block';
+            if (window.toastTimeout) clearTimeout(window.toastTimeout);
+            window.toastTimeout = setTimeout(() => { toast.style.display = 'none'; }, 30000);
+        }
+
         if(data.errno === 0) {
             if(btn) { btn.textContent = "✅ Success!"; btn.style.background = "#10b981"; }
             fetchFoxSchedules(); // Refresh the list UI
         } else {
             if(btn) { btn.textContent = "❌ Sync Failed"; btn.style.background = "#ef4444"; }
-            alert("Error syncing to FoxESS: " + (data.msg || data.errno));
+            showAutoCloseToast("Error syncing to FoxESS: " + (data.msg || data.errno));
         }
         if(btn) setTimeout(() => { btn.textContent = "Apply Rules"; btn.style.background = "#16a34a"; }, 3500);
 
     } catch (err) {
         console.error("Failed V3 auto-sync", err);
+        // Retry logic implementation (Max 3 attempts with progressive 2-second delay strings)
+        if (!window.v3SyncRetryCount) window.v3SyncRetryCount = 0;
+        if (window.v3SyncRetryCount < 3) {
+            window.v3SyncRetryCount++;
+            console.warn(`FoxESS Schedule sync dropped. Retrying attempt ${window.v3SyncRetryCount}/3 in 2s...`);
+            setTimeout(() => pushGroupsToFoxESS(groups), 2000);
+            return;
+        } else {
+            window.v3SyncRetryCount = 0; // reset
+            showAutoCloseToast("Critical Automation Failure: Inverter synchronization dropped after 3 attempts.");
+        }
     } finally {
-        isCurrentlyUpdatingMode = false;
+        if (!window.v3SyncRetryCount || window.v3SyncRetryCount === 0) {
+            isCurrentlyUpdatingMode = false;
+        }
     }
 }
 
