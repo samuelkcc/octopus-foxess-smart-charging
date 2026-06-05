@@ -29,7 +29,7 @@ Before launching the app, you will need to gather 4 specific pieces of informati
 
 ### 1. Download & Run the Local File
 Because this application runs entirely client-side for absolute privacy:
-1. Click on `Octoups_IGO_Smart_Charing_Detector.html` in this repository.
+1. Click on `index.html` in this repository.
 2. Click the **Download raw file** button in the top right of the file view to save it locally.
 3. Simply double-click the file to open the dashboard interface natively inside any modern web browser.
 
