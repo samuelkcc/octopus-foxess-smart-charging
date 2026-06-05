@@ -1,4 +1,4 @@
-# 🐙🦊 Octopus & FoxESS Smart Charging Detector
+# 🐙🦊 Intelligent Octopus Go & FoxESS Smart Charging Detector
 
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
 [![Hosted on GitHub Pages](https://img.shields.io/badge/Hosted-GitHub%20Pages-success.svg)](https://samuelkcc.github.io/octopus-foxess-smart-charging/)
@@ -15,13 +15,13 @@ A lightweight, client-side automation bridge that prevents your FoxESS home batt
 ## ✨ Key Features
 * **Zero Installation:** Runs entirely inside your browser via GitHub Pages.
 * **Privacy First:** Client-side only. No third-party servers, no telemetry, and local credential encryption.
-* **Automated Protection:** Automatically syncs Octopus smart dispatch intervals with the FoxESS V3 Mode Scheduler.
+* **Automated Protection:** Automatically syncs Intelligent Octopus Go smart dispatch intervals with the FoxESS V3 Mode Scheduler.
 * **Hardware Safe:** Locks your inverter into "Force Charge" only when needed, preserving battery health and maximizing cheap off-peak rates.
 
 ---
 
 ## 📖 The Problem & Solution
-When *Intelligent Octopus Go* dynamically opens a cheap slot to charge your electric vehicle, your FoxESS solar battery thinks your home is experiencing a massive energy load. If your inverter is left in standard "Self-Use" mode, it will aggressively dump all your stored home battery power straight into your EV. 
+When **Intelligent Octopus Go** dynamically opens a cheap slot to charge your electric vehicle, your FoxESS solar battery thinks your home is experiencing a massive energy load. If your inverter is left in standard "Self-Use" mode, it will aggressively dump all your stored home battery power straight into your EV. 
 
 This wastes captured solar energy, degrades your battery cells, and misses the opportunity to soak up cheap grid rates. This dashboard pulls your upcoming smart dispatch intervals and acts as a bridge, instructing your FoxESS system to insulate your home battery exactly when the car starts charging.
 
@@ -34,7 +34,7 @@ Follow these steps in order to get your dashboard up and running.
 ### Step 1: Gather Your API Credentials
 You need API keys from both providers before starting the app.
 
-**Octopus Energy:**
+**Intelligent Octopus Go:**
 1. Log into your standard [Octopus Energy dashboard](https://octopus.energy/dashboard/). Find your **Account Number** at the top (`A-XXXXXXXX`).
 2. Go to **Personal Details** ➔ **API Access** (or [click here](https://octopus.energy/dashboard/new/accounts/personal-details/api-access)). Generate your **API Key** (`sk_live_...`).
 
@@ -44,7 +44,7 @@ You need API keys from both providers before starting the app.
 3. Navigate to **User Profile** ➔ **API Management** to generate and copy your **API Token**.
 
 ### Step 2: Open the Dashboard
-Navigate to the live application: **[Octopus & FoxESS Smart Charging Detector](https://samuelkcc.github.io/octopus-foxess-smart-charging/)**
+Navigate to the live application: **[Intelligent Octopus Go & FoxESS Smart Charging Detector](https://samuelkcc.github.io/octopus-foxess-smart-charging/)**
 
 *(If you prefer to run it completely offline, you can download `index.html` from this repository and double-click it to open it natively in your browser).*
 
