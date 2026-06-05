@@ -2,7 +2,7 @@
 
 A lightweight, zero-install smart automation bridge to prevent FoxESS home batteries from draining during Intelligent Octopus Go EV charging slots.
 
-![Smart Charging Detector Dashboard](Octoups_IGO_Smart_Charing_Detector.png)
+![Smart Charging Detector Dashboard](dashboard.png)
 
 ## ℹ️ The Problem & The Solution
 When *Intelligent Octopus Go* dynamically opens a cheap slot to charge your electric vehicle, your FoxESS solar battery thinks your home is experiencing a massive energy load. If your inverter is left in standard "Self-Use" mode, it will aggressively dump all your stored home battery power straight into your EV. This wastes your captured solar energy, degrades your battery cells, and misses the opportunity to soak up cheap off-peak rates.
