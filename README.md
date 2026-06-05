@@ -1,6 +1,7 @@
 # Octopus & FoxESS Smart Charging Detector
 
 A smart automated bridge to stop FoxESS home batteries from draining during Intelligent Octopus Go EV charging slots.
+![Smart Charging Detector Dashboard](Octoups_IGO_Smart_Charing_Detector.jpg)
 
 ## ℹ️ Overview & Purpose
 When *Intelligent Octopus Go* smartly charges your EV, your FoxESS solar battery thinks your house is using massive amounts of power. If left in "Self-Use" mode, it will completely drain your home battery trying to cover the EV load. This tool automatically detects upcoming cheap EV charging slots and switches your FoxESS inverter to **Force Charge**, protecting your home battery's lifespan and soaking up cheap off-peak rates.
