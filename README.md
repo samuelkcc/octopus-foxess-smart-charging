@@ -40,24 +40,51 @@ You need API keys from both providers before starting the app.
 
 **FoxESS Cloud:**
 1. Find your **Inverter Serial Number (SN)** on the physical unit sticker or right beneath the inverter image in your FoxCloud Mobile App (`60B...`).
-2. Log into the [FoxCloud Web Dashboard](https://www.foxesscloud.com/login) (You *cannot* do this in the mobile app).
+2. Log into the [FoxCloud Web Dashboard V1](https://www.foxesscloud.com/login). 
+   > ⚠️ **Important:** The API token *cannot* be obtained from the V2 website or the mobile app. If you log in and are redirected to the V2 website, click your user profile, scroll to the bottom, and switch back to V1 (or use the V1 direct link above).
 3. Navigate to **User Profile** ➔ **API Management** to generate and copy your **API Token**.
 
-### Step 2: Open the Dashboard
+### Step 2: Deploy the Proxy Bridge (Google Apps Script)
+Because FoxESS blocks direct browser connections, we use a free Google Apps Script to securely route your requests.
+
+1. Go to [script.google.com](https://script.google.com/) and sign in.
+2. Click **New Project**.
+3. Delete any existing code and paste the exact code below:
+
+
+    function doPost(e) {
+      try {
+        var requestData = JSON.parse(e.postData.contents);
+        var options = {
+          'method': 'post',
+          'contentType': 'application/json',
+          'headers': requestData.headers,
+          'payload': JSON.stringify(requestData.body),
+          'muteHttpExceptions': true
+        };
+        var response = UrlFetchApp.fetch(requestData.url, options);
+        return ContentService.createTextOutput(response.getContentText())
+                                     .setMimeType(ContentService.MimeType.JSON);
+      } catch (err) {
+        return ContentService.createTextOutput(JSON.stringify({ errno: 999, msg: err.toString() }))
+                                     .setMimeType(ContentService.MimeType.JSON);
+      }
+    }
+
+
+4. Click **Deploy** (top right) > **New deployment**.
+5. Click the gear icon next to "Select type" and choose **Web app**.
+6. Set **Execute as** to **Me**.
+7. Set **Who has access** to **Anyone** *(Crucial!)*.
+8. Click **Deploy** and copy the generated **Web app URL**. Keep this handy.
+
+### Step 3: Open the Dashboard
 Navigate to the live application: **[Intelligent Octopus Go & FoxESS Smart Charging Detector](https://samuelkcc.github.io/octopus-foxess-smart-charging/)**
 
-*(If you prefer to run it completely offline, you can download `index.html` from this repository and double-click it to open it natively in your browser).*
+*(If you prefer to run it locally rather than hosting it on GitHub Pages, you can download `index.html` from this repository and double-click it to open it natively in your browser. Please note that an active internet connection is still required to communicate with the APIs).*
 
-### Step 3: Deploy the Proxy Bridge (GAS)
-FoxESS cloud servers enforce strict CORS security protocols that block web browsers from making direct API calls. To bypass this for free, we use a private Google Apps Script (GAS).
-
-1. On the app's login screen, click the red **"View Setup Instructions"** button.
-2. Follow the on-screen guide to copy the provided routing script.
-3. Deploy it as a web app on your Google account.
-4. Copy the resulting **Google Web App URL**.
-
-### Step 4: Connect & Monitor
-Paste your Octopus credentials, FoxESS credentials, and your new GAS Web App URL into the dashboard and hit connect. 
+### Step 4: Launch the App
+Paste your Octopus credentials, FoxESS credentials, and your new Google Apps Script Web App URL directly into the dashboard and click **Connect**. 
 
 > 💡 **Pro-Tip: Always-On Dashboard Setup**
 > A popular use case is to open the app on a dedicated device, such as a wall-mounted Android tablet, whenever you plug your EV in. If you do this, **ensure you disable your device's screen timeout/auto-lock**. The browser tab must remain active to continuously monitor and sync the charging slots.
