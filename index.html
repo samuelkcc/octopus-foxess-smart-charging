@@ -39,7 +39,8 @@
         --peak: #f87171; --peak-bg: rgba(239, 68, 68, 0.15);
     }
     [data-theme="dark"] body { background: #080016; }
-    [data-theme="dark"] input, [data-theme="dark"] details { background: rgba(255,255,255,0.05) !important; color: var(--text-main) !important; border-color: var(--border) !important; color-scheme: dark; }
+    [data-theme="dark"] input { background: rgba(255,255,255,0.05) !important; color: var(--text-main) !important; border-color: var(--border) !important; color-scheme: dark; }
+    [data-theme="dark"] details { background: transparent !important; color: var(--text-main) !important; border-color: transparent !important; color-scheme: dark; }
     [data-theme="dark"] div[style*="background: #f8fafc"], [data-theme="dark"] div[style*="background: #fff"], [data-theme="dark"] .automation-block { background: var(--card-bg) !important; color: var(--text-main) !important; border-color: var(--border) !important; }
     [data-theme="dark"] div[style*="background: #eff6ff"] { background: rgba(59, 130, 246, 0.15) !important; border-color: rgba(59, 130, 246, 0.3) !important; }
     [data-theme="dark"] div[style*="background: #f0fdf4"] { background: rgba(34, 197, 94, 0.15) !important; border-color: rgba(34, 197, 94, 0.3) !important; }
@@ -251,7 +252,7 @@
             <input type="text" id="gas-url" placeholder="https://script.google.com/macros/s/.../exec">
         </div>
         
-        <button onclick="initDashboard()" id="btn" style="padding: 1rem; font-size: 1.05rem; border-radius: 10px; box-shadow: 0 4px 10px -2px rgba(225, 29, 72, 0.3); margin-top: 0.5rem;">Load Dashboard</button>
+        <button onclick="initDashboard()" id="btn" style="padding: 1rem; font-size: 1.05rem; border-radius: 10px; box-shadow: 0 4px 10px -2px rgba(225, 29, 72, 0.3); margin-top: 0.5rem;">CONNECT</button>
         
         <div style="display: flex; gap: 0.75rem; margin-top: 1rem;">
             <button onclick="document.getElementById('import-file').click()" class="btn-clear" style="background-color: #3b82f6; font-size: 0.85rem; padding: 0.6rem; border-radius: 8px;">Load Config</button>
@@ -381,46 +382,81 @@
             </div>
             <div id="fox-error" class="error"></div>
             <div id="fox-success" class="success"></div>
-            <div style="background: #fffbeb; border: 1px solid #fde68a; padding: 1rem; border-radius: 8px; margin-bottom: 1.5rem;">
-                <p style="font-size: 0.85rem; color: #92400e; margin: 0; line-height: 1.4;">
-                    <strong>Important Note:</strong><br>
-                    In your official FoxESS app, set the "Remaining Time" mode in the Mode Scheduler to <strong>"Self-use"</strong>.
-                </p>
-            </div>
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; padding: 0 0.5rem;">
                 <h4 style="margin: 0; font-size: 1rem; color: var(--text-main); display: flex; align-items: center; gap: 8px;">
                     🤖 Current Device Mode
                 </h4>
                 <span id="current-work-mode" class="badge neutral">LOADING...</span>
             </div>
-            <div class="automation-block" style="margin-bottom: 0; flex-grow: 1;">
-                <h4 style="margin-top: 0; margin-bottom: 1rem; font-size: 0.95rem; color: var(--text-main);">⏱️ Test mode</h4>
-                <div style="display: flex; gap: 1rem; margin-bottom: 1rem;">
-                    <div style="flex: 1;">
-                        <label style="font-size: 0.8rem;">Start Time</label>
-                        <input type="time" id="v3-start" style="margin: 0; padding: 0.5rem;" onchange="
-                            if(this.value) {
-                                let [h, m] = this.value.split(':').map(Number);
-                                m += 5; if(m >= 60) { m -= 60; h = (h + 1) % 24; }
-                                document.getElementById('v3-end').value = `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}`;
-                            }
-                        ">
-                    </div>
-                    <div style="flex: 1;">
-                        <label style="font-size: 0.8rem;">End Time</label>
-                        <input type="time" id="v3-end" style="margin: 0; padding: 0.5rem;">
-                    </div>
+
+            <div class="automation-block" style="margin-bottom: 1.5rem; padding: 0.75rem 1.25rem;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
+                    <h4 style="margin: 0; font-size: 0.95rem; color: var(--text-main);">📋 Active Mode Scheduler</h4>
+                    <button onclick="event.preventDefault(); this.textContent='Fetching...'; fetchFoxSchedules().then(() => this.textContent='🔄 Fetch Now');" style="width: auto; padding: 0.35rem 0.85rem; font-size: 0.75rem; font-weight: 600; background: #3b82f6; border-radius: 6px; color: white; border: none; cursor: pointer; transition: all 0.2s; box-shadow: 0 2px 4px rgba(59, 130, 246, 0.3);" onmouseover="this.style.transform='translateY(-1px)'; this.style.boxShadow='0 4px 6px rgba(59, 130, 246, 0.4)';" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 2px 4px rgba(59, 130, 246, 0.3)';">🔄 Fetch Now</button>
                 </div>
-                <div style="display: flex; gap: 10px;">
-                    <button onclick="setV3Schedule('SelfUse')" style="background: #10b981; font-size: 0.9rem;">Set Self-Use</button>
-                    <button onclick="setV3Schedule('ForceCharge')" style="background: #f97316; font-size: 0.9rem;">Set Forced Charge</button>
-                </div>
+                <div id="fox-active-schedules" class="block-countdown-fox" style="background: var(--card-bg); padding: 0.5rem 1rem; margin: 0 -1.05rem; border-radius: 8px; border: 1px solid var(--border); font-size: 0.85rem; color: var(--text-muted); text-align: center;">Click "Refresh" to fetch data.</div>
+            </div>
+
+            <div class="automation-block" style="margin-bottom: 1.5rem; padding: 0.5rem 1.25rem;">
+                <details style="font-size: 0.85rem; cursor: pointer;">
+                    <summary style="font-weight: 600; color: var(--text-main); display: flex; justify-content: space-between; align-items: center; list-style: none; padding: 0.75rem 0;">
+                        <h4 style="margin: 0; font-size: 0.95rem; display: flex; align-items: center; gap: 8px;">📊 Live Telemetry</h4>
+                        <span class="telemetry-arrow" style="transition: transform 0.2s; font-size: 0.8rem; color: var(--text-muted);">▼</span>
+                    </summary>
+                    <div style="margin: 0 -1.2rem; padding-top: 0.5rem; padding-bottom: 0.75rem; padding: 3px; border-radius: 12px;" class="block-countdown-fox">
+                        <div style="background: var(--card-bg); padding: 1rem; border-radius: 10px; position: relative; z-index: 2;">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; border-bottom: 1px solid var(--border); padding-bottom: 0.75rem;">
+                                <span style="font-weight: 600; color: var(--text-main);">Inverter Status</span>
+                                <button onclick="event.preventDefault(); this.textContent='Fetching...'; fetchCurrentWorkMode(true).then(() => this.textContent='🔄 Fetch Now');" style="width: auto; padding: 0.35rem 0.85rem; font-size: 0.75rem; font-weight: 600; background: #3b82f6; border-radius: 6px; color: white; border: none; cursor: pointer; transition: all 0.2s; box-shadow: 0 2px 4px rgba(59, 130, 246, 0.3);" onmouseover="this.style.transform='translateY(-1px)'; this.style.boxShadow='0 4px 6px rgba(59, 130, 246, 0.4)';" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 2px 4px rgba(59, 130, 246, 0.3)';">🔄 Fetch Now</button>
+                            </div>
+                            <div id="live-telemetry-panel" style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem;">
+                                <span style="color: var(--text-muted); font-size: 0.85rem; grid-column: 1 / -1; text-align: center;">Waiting for sync...</span>
+                            </div>
+                        </div>
+                    </div>
+                </details>
+                <style>details > summary::-webkit-details-marker { display: none; } details[open] .telemetry-arrow { transform: rotate(180deg); }</style>
+            </div>
+            <div class="automation-block" style="margin-bottom: 0; flex-grow: 1; padding: 0.5rem 1.25rem;">
+                <details style="font-size: 0.85rem; cursor: pointer;">
+                    <summary style="font-weight: 600; color: var(--text-main); display: flex; justify-content: space-between; align-items: center; list-style: none; padding: 0.75rem 0;">
+                        <h4 style="margin: 0; font-size: 0.95rem; display: flex; align-items: center; gap: 8px;">⏱️ Test mode</h4>
+                        <span class="test-arrow" style="transition: transform 0.2s; font-size: 0.8rem; color: var(--text-muted);">▼</span>
+                    </summary>
+                    <div style="padding-top: 0.5rem; padding-bottom: 0.75rem;">
+                        <div style="display: flex; gap: 1rem; margin-bottom: 1rem;">
+                            <div style="flex: 1;">
+                                <label style="font-size: 0.8rem;">Start Time</label>
+                                <input type="time" id="v3-start" style="margin: 0; padding: 0.5rem;" onchange="
+                                    if(this.value) {
+                                        let [h, m] = this.value.split(':').map(Number);
+                                        m += 5; if(m >= 60) { m -= 60; h = (h + 1) % 24; }
+                                        document.getElementById('v3-end').value = `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}`;
+                                    }
+                                ">
+                            </div>
+                            <div style="flex: 1;">
+                                <label style="font-size: 0.8rem;">End Time</label>
+                                <input type="time" id="v3-end" style="margin: 0; padding: 0.5rem;">
+                            </div>
+                        </div>
+                        <div style="display: flex; gap: 10px;">
+                            <button onclick="setV3Schedule('SelfUse')" style="background: #10b981; font-size: 0.9rem;">Set Self-Use</button>
+                            <button onclick="setV3Schedule('ForceCharge')" style="background: #f97316; font-size: 0.9rem;">Set Forced Charge</button>
+                        </div>
+                    </div>
+                </details>
+                <style>details[open] .test-arrow { transform: rotate(180deg); }</style>
             </div>
         </div>
 
         <div class="card">
-            <div class="card-header">
+            <div class="card-header" style="align-items: center;">
                 <span>⚡ Smart Charging Automations</span>
+                <div style="display: flex; gap: 8px;">
+                    <button onclick="document.getElementById('important-note-modal').style.display='flex'" style="background: transparent; color: #d97706; border: 1px solid #fcd34d; padding: 0.2rem 0.5rem; font-size: 0.75rem; border-radius: 6px; width: auto; cursor: pointer;">⚠️ Important Note</button>
+                    <button onclick="document.getElementById('adv-v3-modal').style.display='flex'" style="background: transparent; color: #64748b; border: 1px solid #cbd5e1; padding: 0.2rem 0.5rem; font-size: 0.75rem; border-radius: 6px; width: auto; cursor: pointer;">⚙️ Hardware Limits</button>
+                </div>
             </div>
 
             <div id="block-price-auto" class="automation-block" style="background: #f0fdf4; margin-bottom: 1.5rem;">
@@ -436,6 +472,31 @@
                     <input type="number" step="0.1" id="price-threshold" style="width: 80px; padding: 0.4rem; margin: 0; border: 1px solid #bbf7d0; background: #fff;" oninput="previewScheduleTimes()"> p/kWh
                 </div>
                 <div id="price-target-times" style="width: 100%; margin-bottom: 1rem; font-size: 0.8rem; font-style: italic; color: #166534;"></div>
+                
+                <div style="background: transparent; border-radius: 8px; margin-bottom: 1.2rem;">
+                    <div style="display: flex; align-items: center; justify-content: space-between; padding: 0.75rem 0; border-bottom: 1px solid var(--border);">
+                        <div style="display: flex; align-items: center; gap: 10px;">
+                            <span style="font-size: 0.85rem; font-weight: 600; color: var(--text-main);">Stop grid charge at</span>
+                            <input type="number" id="target-soc-limit" value="80" style="width: 55px; padding: 0.25rem; font-size: 0.85rem; text-align: center; border: 1px solid var(--border); border-radius: 6px; background: var(--bg); color: var(--text-main);">
+                            <span style="font-size: 0.85rem; font-weight: 600; color: var(--text-main);">%</span>
+                        </div>
+                        <label class="switch" style="margin: 0;">
+                            <input type="checkbox" id="toggle-soc-limit">
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+                    <div style="display: flex; align-items: center; justify-content: space-between; padding: 0.75rem 0;">
+                        <div style="display: flex; flex-direction: column;">
+                            <span style="font-size: 0.8rem; font-weight: 600; color: var(--text-main);">Auto-Resume Self-Use</span>
+                            <span style="font-size: 0.7rem; color: var(--text-muted);">End schedule early when target met</span>
+                        </div>
+                        <label class="switch" style="margin: 0;">
+                            <input type="checkbox" id="toggle-auto-resume">
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+                </div>
+
                 <div style="text-align: right;">
                     <button id="btn-save-price" onclick="evaluateLocalAutomations(this)" style="width: auto; padding: 0.4rem 1rem; background: #94a3b8; font-size: 0.85rem; cursor: not-allowed;" disabled>Apply</button>
                 </div>
@@ -455,21 +516,14 @@
                 </div>
             </div>
 
-            <hr style="border: 0; border-top: 1px dashed var(--border); margin: 1.5rem 0;">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
-                <h4 style="margin: 0; font-size: 0.95rem; color: var(--text-main);">📋 Created mode scheduler</h4>
-                <div style="display: flex; align-items: center; gap: 12px;">
-                    <button onclick="fetchFoxSchedules()" style="width: auto; padding: 0.3rem 0.8rem; background: #3b82f6; border-radius: 6px; font-size: 0.8rem; color: white; border: none; cursor: pointer;">Load Schedules</button>
-                </div>
-            </div>
-            <div id="fox-active-schedules" class="block-countdown-fox" style="background: #f8fafc; padding: 1rem; border-radius: 12px; font-size: 0.85rem; color: var(--text-muted);">Click "Load Schedules" to fetch data.</div>
+            
         </div>
     </div>
 </div>
 
     </div> <div class="app-footer">
         <div style="text-align: left;">Developer Samuel Chen</div>
-        <div style="text-align: right;">&copy; Copyright 2026 samuelchen.hk Build 20260605</div>
+        <div style="text-align: right;">&copy; Copyright 2026 samuelchen.hk Build v2026.06.06</div>
     </div>
 </div> 
 
@@ -595,9 +649,9 @@
         <label>Confirm Password</label>
         <input type="password" id="export-pass-2" placeholder="Re-enter password">
         <div id="export-error" style="color: #ef4444; font-size: 0.85rem; margin-bottom: 1rem; display: none;">Passwords do not match!</div>
-        <div style="display: flex; gap: 1rem; justify-content: center;">
-            <button onclick="document.getElementById('export-modal').style.display='none'" class="btn-clear" style="width: auto;">Cancel</button>
-            <button onclick="executeExport()" style="background: #10b981; width: auto;">Save & Download</button>
+        <div style="display: flex; gap: 1rem; justify-content: center; margin-top: 1.5rem;">
+            <button onclick="document.getElementById('export-modal').style.display='none'" class="btn-clear" style="width: 50%; padding: 0.75rem; margin: 0;">Cancel</button>
+            <button onclick="executeExport()" style="background: #10b981; width: 50%; padding: 0.75rem; margin: 0;">Save & Download</button>
         </div>
     </div>
 </div>
@@ -663,6 +717,35 @@
             <li>Paste that URL into the login screen!</li>
         </ol>
         <button onclick="document.getElementById('proxy-modal').style.display='none'" style="background: #f43f5e; color: white; border: none; padding: 0.75rem; border-radius: 8px; font-weight: 600; width: 100%; cursor: pointer;">Got it!</button>
+    </div>
+</div>
+
+<div id="important-note-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; align-items: center; justify-content: center;">
+    <div style="background: var(--card-bg); padding: 2.25rem; border-radius: 12px; max-width: 400px; width: 90%; text-align: left; box-shadow: 0 4px 20px rgba(0,0,0,0.15); border: 1px solid var(--border);">
+        <h3 style="margin-top: 0; color: #d97706; display: flex; align-items: center; gap: 8px;">⚠️ Important Note</h3>
+        <p style="font-size: 0.9rem; color: var(--text-main); line-height: 1.5; margin-bottom: 1.5rem;">
+            In your official FoxESS app, you must set the <strong>"Remaining Time"</strong> mode in the Mode Scheduler to <strong>"Self-use"</strong> for these automations to function safely and correctly.
+        </p>
+        <div style="display: flex; justify-content: flex-end;">
+            <button onclick="document.getElementById('important-note-modal').style.display='none'" style="background: #d97706; width: auto; padding: 0.5rem 1.5rem; font-size: 0.85rem;">Understood</button>
+        </div>
+    </div>
+</div>
+
+<div id="adv-v3-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; align-items: center; justify-content: center;">
+    <div style="background: var(--card-bg); padding: 2rem; border-radius: 12px; max-width: 400px; width: 90%; text-align: left; box-shadow: 0 4px 20px rgba(0,0,0,0.15);">
+        <h3 style="margin-top: 0; color: var(--text-main);">⚙️ Scheduler Hardware Limits</h3>
+        <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 1rem;">These parameters are sent natively to the FoxESS inverter to protect battery health during forced charging modes.</p>
+        
+        <label>Minimum SOC on Grid (%)</label>
+        <input type="number" id="adv-min-soc" value="10" placeholder="Default 10%">
+        
+        <label>Max Grid Charge Power (W)</label>
+        <input type="number" id="adv-fd-pwr" value="5000" placeholder="Default 5000W">
+        
+        <div style="display: flex; gap: 1rem; justify-content: flex-end; margin-top: 1.5rem;">
+            <button onclick="document.getElementById('adv-v3-modal').style.display='none'" style="background: var(--accent); width: auto;">Save Limits</button>
+        </div>
     </div>
 </div>
 
@@ -870,7 +953,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 (g.startHour === h && g.startMinute === m) || (g.endHour === h && g.endMinute === m)
             );
             if (isBoundary && typeof fetchCurrentWorkMode === 'function') {
-                fetchCurrentWorkMode();
+                fetchCurrentWorkMode(true); // Bypass cache on schedule boundary
             }
         }
     }, 1000);
@@ -1258,29 +1341,61 @@ function getFoxHeaders(apiPath) {
     };
 }
 
-async function fetchCurrentWorkMode() {
+async function fetchCurrentWorkMode(forceModeUpdate = false) {
     if (!globalGasUrl || !globalFoxSN) return null;
     const path = '/op/v0/device/setting/get';
     const realPath = '/op/v0/device/real/query';
     try {
         const payload = { url: `https://www.foxesscloud.com${path}`, headers: getFoxHeaders(path), body: { sn: globalFoxSN, key: "WorkMode" } };
-        const socPayload = { url: `https://www.foxesscloud.com${realPath}`, headers: getFoxHeaders(realPath), body: { sn: globalFoxSN, variables: ["SoC"] } };
+        const socPayload = { url: `https://www.foxesscloud.com${realPath}`, headers: getFoxHeaders(realPath), body: { sn: globalFoxSN, variables: ["SoC", "pvPower", "loadsPower", "batTemperature", "ambientTemperation"] } };
         
-        incrementFoxApi();
-        incrementFoxApi(); // Two calls being made
+        let data = { errno: -1 };
+        const nowMs = Date.now();
         
-        const [res, socRes] = await Promise.all([
-            fetch(globalGasUrl, { method: 'POST', body: JSON.stringify(payload) }),
-            fetch(globalGasUrl, { method: 'POST', body: JSON.stringify(socPayload) })
-        ]);
-        
-        const data = await res.json();
+        // 🛡️ API QUOTA SAVER: Cache WorkMode for 10 minutes. Saves 50% API calls!
+        if (forceModeUpdate || !window.lastModeFetchTime || (nowMs - window.lastModeFetchTime > 600000)) {
+            incrementFoxApi(); // Count mode call
+            const res = await fetch(globalGasUrl, { method: 'POST', body: JSON.stringify(payload) });
+            data = await res.json();
+            if (data.errno === 0) {
+                window.lastModeFetchTime = nowMs;
+                window.cachedModeValue = data.result?.value;
+            }
+        } else {
+            data = { errno: 0, result: { value: window.cachedModeValue } };
+        }
+
+        incrementFoxApi(); // Always count telemetry call
+        const socRes = await fetch(globalGasUrl, { method: 'POST', body: JSON.stringify(socPayload) });
         const socData = await socRes.json();
         
         let batterySoc = null;
         if (socData.errno === 0 && socData.result && socData.result[0] && socData.result[0].datas) {
-            const socItem = socData.result[0].datas.find(d => d.variable === 'SoC');
-            if (socItem) batterySoc = socItem.value;
+            const d = socData.result[0].datas;
+            const findVal = (name) => d.find(v => v.variable === name)?.value ?? '--';
+            batterySoc = findVal('SoC');
+            
+            document.getElementById('live-telemetry-panel').innerHTML = `
+                <div>☀️ <strong>PV Power:</strong> ${findVal('pvPower')} kW</div>
+                <div>🏠 <strong>Load:</strong> ${findVal('loadsPower')} kW</div>
+                <div>🔋 <strong>Bat Temp:</strong> ${findVal('batTemperature')} °C</div>
+                <div>🌡️ <strong>Env Temp:</strong> ${findVal('ambientTemperation')} °C</div>
+            `;
+            
+            // Auto-Resume Logic
+            const targetSoc = parseInt(document.getElementById('target-soc-limit')?.value || 80);
+            const autoResumeEnabled = document.getElementById('toggle-auto-resume')?.checked;
+            if (autoResumeEnabled && batterySoc !== '--' && parseInt(batterySoc) >= targetSoc) {
+                if (window.activeFoxGroups && window.activeFoxGroups.length > 0) {
+                    const nowMins = new Date().getHours() * 60 + new Date().getMinutes();
+                    const activeSch = window.activeFoxGroups.find(g => (g.startHour * 60 + g.startMinute) <= nowMins && (g.endHour * 60 + g.endMinute) > nowMins && g.workMode === 'ForceCharge');
+                    if (activeSch && !isCurrentlyUpdatingMode) {
+                        console.log(`Target SOC (${targetSoc}%) reached. Auto-resuming Self-Use...`);
+                        window.activeFoxGroups = window.activeFoxGroups.filter(g => g !== activeSch);
+                        pushGroupsToFoxESS(window.activeFoxGroups);
+                    }
+                }
+            }
         }
         
         if (data.errno === 0 && data.result) {
@@ -1338,12 +1453,13 @@ async function fetchFoxSchedules() {
         if (data.errno === 0 && data.result && data.result.groups) {
             window.activeFoxGroups = data.result.groups;
             if (window.activeFoxGroups.length === 0) {
-                container.innerHTML = 'No schedules currently set.';
+                container.innerHTML = '<div style="text-align: center; padding: 0.5rem 0;">No schedules currently set.</div>';
             } else {
                 container.innerHTML = window.activeFoxGroups.map((g, i) => {
                     const modeLabel = g.workMode === 'ForceCharge' ? 'FORCED CHARGE' : (g.workMode === 'SelfUse' ? 'SELF-USE' : g.workMode);
+                    const borderStyle = i === window.activeFoxGroups.length - 1 ? 'none' : '1px solid var(--border)';
                     return `
-                    <div style="display: flex; justify-content: space-between; align-items: center; background: #fff; padding: 0.6rem; border: 1px solid var(--border); border-radius: 6px; margin-bottom: 0.5rem;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; background: transparent; padding: 0.5rem 0; border-bottom: ${borderStyle};">
                         <span style="font-weight: 600; color: var(--text-main);"><span style="color: var(--fox-orange);">${modeLabel}</span> | ${String(g.startHour).padStart(2,'0')}:${String(g.startMinute).padStart(2,'0')} - ${String(g.endHour).padStart(2,'0')}:${String(g.endMinute).padStart(2,'0')}</span>
                         <button onclick="deleteFoxSchedule(${i})" style="width: auto; padding: 0.3rem 0.8rem; background: #ef4444; border-radius: 4px; font-size: 0.75rem;">Delete</button>
                     </div>
@@ -1435,6 +1551,13 @@ async function pushGroupsToFoxESS(groups) {
 function loadAutomations(minPrice, maxPrice) {
     const saved = JSON.parse(localStorage.getItem('foxAutomations') || '{}');
     
+    // Load advanced V3 Hardware limits
+    if (saved.targetSoc !== undefined) document.getElementById('target-soc-limit').value = saved.targetSoc;
+    if (saved.applyLimit !== undefined) document.getElementById('toggle-soc-limit').checked = saved.applyLimit;
+    if (saved.autoResume !== undefined) document.getElementById('toggle-auto-resume').checked = saved.autoResume;
+    if (saved.minSoc !== undefined) document.getElementById('adv-min-soc').value = saved.minSoc;
+    if (saved.fdPwr !== undefined) document.getElementById('adv-fd-pwr').value = saved.fdPwr;
+
     // Toggle borders on initial page load
     const blockPrice = document.getElementById('block-price-auto');
     const blockDispatch = document.getElementById('block-dispatch-auto');
@@ -1478,7 +1601,12 @@ async function evaluateLocalAutomations(btn = null, isStartup = false) {
     localStorage.setItem('foxAutomations', JSON.stringify({
         priceCheck: isAutoPrice,
         dispatchCheck: isAutoDispatch,
-        threshold: document.getElementById('price-threshold')?.value
+        threshold: document.getElementById('price-threshold')?.value,
+        targetSoc: parseInt(document.getElementById('target-soc-limit')?.value || 80),
+        applyLimit: document.getElementById('toggle-soc-limit')?.checked || false,
+        autoResume: document.getElementById('toggle-auto-resume')?.checked || false,
+        minSoc: parseInt(document.getElementById('adv-min-soc')?.value || 10),
+        fdPwr: parseInt(document.getElementById('adv-fd-pwr')?.value || 5000)
     }));
     
     // Toggle borders when user clicks apply
@@ -1539,11 +1667,26 @@ async function evaluateLocalAutomations(btn = null, isStartup = false) {
     // Deduplicate overlapping/exact rule blocks to guarantee no duplicates hit FoxESS
     groups = groups.filter((v, i, a) => a.findIndex(t => (t.startHour === v.startHour && t.startMinute === v.startMinute && t.endHour === v.endHour && t.endMinute === v.endMinute)) === i);
 
+    // Apply Scheduler-V3 Hardware Limits
+    const applyLimit = document.getElementById('toggle-soc-limit')?.checked;
+    const targetSoc = parseInt(document.getElementById('target-soc-limit')?.value || 80);
+    const minSoc = parseInt(document.getElementById('adv-min-soc')?.value || 10);
+    const fdPwr = parseInt(document.getElementById('adv-fd-pwr')?.value || 5000);
+
+    groups.forEach(g => {
+        g.extraParam = {
+            minSocOnGrid: minSoc,
+            fdPwr: fdPwr,
+            fdSoc: applyLimit ? targetSoc : 100 // FoxESS native hardware charge limit
+        };
+    });
+
     // If running on startup, check if schedules already match to avoid redundant API hits
     if (isStartup && window.activeFoxGroups) {
-        const mapGroup = g => `${g.startHour}:${g.startMinute}-${g.endHour}:${g.endMinute}-${g.workMode}`;
+        // Include fdSoc in stringification to ensure hardware limits match
+        const mapGroup = g => `${g.startHour}:${g.startMinute}-${g.endHour}:${g.endMinute}-${g.workMode}-${g.extraParam?.fdSoc || 100}`;
         const localStr = groups.map(mapGroup).sort().join('|');
-        const remoteStr = window.activeFoxGroups.map(mapGroup).sort().join('|');
+        const remoteStr = window.activeFoxGroups.filter(g => g.enable !== 0).map(mapGroup).sort().join('|');
         if (localStr === remoteStr) {
             console.log("Startup Check: Local automations match inverter schedules perfectly. Skipping sync.");
             return;
@@ -1558,8 +1701,8 @@ async function evaluateLocalAutomations(btn = null, isStartup = false) {
     if (btnPrice && isAutoPrice) { btnPrice.textContent = "✅ Applied"; setTimeout(() => { btnPrice.textContent = "Apply"; btnPrice.disabled = false; btnPrice.style.opacity = "1"; }, 2500); }
     if (btnDispatch && isAutoDispatch) { btnDispatch.textContent = "✅ Applied"; setTimeout(() => { btnDispatch.textContent = "Apply"; btnDispatch.disabled = false; btnDispatch.style.opacity = "1"; }, 2500); }
     
-    // Fetch current work mode 1 minute (60000ms) after applying new schedules
-    setTimeout(fetchCurrentWorkMode, 60000);
+    // Fetch current work mode 1 minute (60000ms) after applying new schedules (bypass cache)
+    setTimeout(() => fetchCurrentWorkMode(true), 60000);
 }
 
 // ==========================================
@@ -1602,7 +1745,7 @@ async function setV3Schedule(mode) {
         successDiv.innerHTML = `✅ <strong>Success!</strong> Forced ${mode} from ${document.getElementById('v3-start').value} to ${document.getElementById('v3-end').value}`;
         successDiv.style.display = 'block';
         fetchFoxSchedules(); // Refresh the active schedules list
-        setTimeout(fetchCurrentWorkMode, 3000); // Verify device mode via API after 3 seconds
+        setTimeout(() => fetchCurrentWorkMode(true), 3000); // Verify device mode via API after 3 seconds
     } catch (err) {
         errorDiv.textContent = `Scheduler Failed: ${err.message}`; errorDiv.style.display = 'block';
     }
