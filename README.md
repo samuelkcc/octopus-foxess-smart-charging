@@ -12,11 +12,14 @@ A lightweight, client-side automation bridge that prevents your FoxESS home batt
 
 ---
 
-## ✨ Key Features
+## ✨ Key Features & What's New
 * **Zero Installation:** Runs entirely inside your browser via GitHub Pages.
 * **Privacy First:** Client-side only. No third-party servers, no telemetry, and local credential encryption.
 * **Automated Protection:** Automatically syncs Intelligent Octopus Go smart dispatch intervals with the FoxESS V3 Mode Scheduler.
-* **Hardware Safe:** Locks your inverter into "Force Charge" only when needed, preserving battery health and maximizing cheap off-peak rates.
+* **Hardware-Level Safety (New!):** Pushes native V3 Hardware Limits (Target SOC, Max Charge Power, Min SOC) directly to the inverter, ensuring failsafe battery protection.
+* **Smart API Quota Management (New!):** Intelligent caching system safely throttles requests to ensure you never hit the strict FoxESS 1,440 daily API call limit.
+* **Live Telemetry (New!):** Real-time, expandable dashboard showing live PV Power, Home Load, Battery Temperature, and Ambient Temperature.
+* **Auto-Resume (New!):** Automatically ends grid-charging schedules early and reverts to Self-Use mode once your custom Target SOC is reached.
 
 ---
 
