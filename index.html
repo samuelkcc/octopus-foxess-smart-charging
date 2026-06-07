@@ -252,7 +252,13 @@
             <input type="text" id="gas-url" placeholder="https://script.google.com/macros/s/.../exec">
         </div>
         
-        <button onclick="initDashboard()" id="btn" style="padding: 1rem; font-size: 1.05rem; border-radius: 10px; box-shadow: 0 4px 10px -2px rgba(225, 29, 72, 0.3); margin-top: 0.5rem;">CONNECT</button>
+        <button onclick="handleConnectClick()" id="btn" style="height: 58px; padding: 0 1rem; box-sizing: border-box; font-size: 1.05rem; border-radius: 10px; box-shadow: 0 4px 10px -2px rgba(225, 29, 72, 0.3); margin-top: 0.5rem; display: flex; align-items: center; justify-content: center; gap: 10px; transition: background-color 0.3s;">
+            <span id="btn-text">CONNECT</span>
+            <div id="auto-connect-timer" style="display: none; width: 24px; height: 24px; position: relative; flex-shrink: 0;">
+                <div style="position: absolute; inset: 0; border-radius: 50%; background: conic-gradient(rgba(255,255,255,0.9) var(--progress, 100%), rgba(255,255,255,0.2) 0); -webkit-mask: radial-gradient(closest-side, transparent 72%, black 73%); mask: radial-gradient(closest-side, transparent 72%, black 73%);"></div>
+                <span id="auto-connect-sec" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 0.75rem; color: white; font-weight: bold; line-height: 1;">10</span>
+            </div>
+        </button>
         
         <div style="display: flex; gap: 0.75rem; margin-top: 1rem;">
             <button onclick="document.getElementById('import-file').click()" class="btn-clear" style="background-color: #3b82f6; font-size: 0.85rem; padding: 0.6rem; border-radius: 8px;">Load Config</button>
@@ -303,6 +309,14 @@
                     Your browser explicitly blocks direct background connections to FoxESS for security (CORS restriction). A free Google Script acts as a safe, private server relay to bypass this.
                 </p>
                 <button type="button" onclick="closeAllDrawers(); document.getElementById('proxy-modal').style.display='flex'" style="background: #f43f5e; color: white; border: none; padding: 0.5rem 0.8rem; border-radius: 6px; cursor: pointer; font-size: 0.8rem; width: 100%; font-weight: 600;">View Setup Instructions</button>
+            </div>
+
+            <div style="background: #f8fafc; padding: 1rem; border-radius: 10px; border: 1px solid #e2e8f0;">
+                <strong style="color: #6366f1;">🖥️ Kiosk / Device Tips</strong>
+                <ul style="margin: 0.5rem 0 0; padding-left: 1.25rem; color: #475569; font-size: 0.8rem;">
+                    <li style="margin-bottom: 0.5rem;"><strong>Raspberry Pi OS:</strong> Emojis may show as empty boxes. To fix this, open the terminal and install the emoji pack:<br><code style="background: #e2e8f0; padding: 2px 4px; border-radius: 4px; display: inline-block; margin-top: 4px; color: #0f172a;">sudo apt install fonts-noto-color-emoji</code></li>
+                    <li><strong>Android Tablets:</strong> To run continuously as a dashboard, ensure you disable the automatic screen lock/sleep timeout in your tablet's <strong>Settings ➔ Display</strong>.</li>
+                </ul>
             </div>
         </div>
     </div>
@@ -783,6 +797,55 @@ let octoCountdown = 60;
 let foxRefreshInterval = 600;
 let foxCountdown = 600;
 
+let autoConnectTimer = null;
+let autoConnectCountdown = 10;
+
+function startAutoConnect() {
+    const btn = document.getElementById('btn');
+    const btnText = document.getElementById('btn-text');
+    const timerUI = document.getElementById('auto-connect-timer');
+    const timerSec = document.getElementById('auto-connect-sec');
+    
+    btnText.textContent = "Cancel Auto-Connect";
+    btn.style.backgroundColor = ""; 
+    timerUI.style.display = "block";
+    
+    autoConnectCountdown = 10;
+    timerSec.textContent = autoConnectCountdown;
+    timerUI.style.setProperty('--progress', '100%');
+    
+    autoConnectTimer = setInterval(() => {
+        autoConnectCountdown--;
+        timerSec.textContent = autoConnectCountdown;
+        timerUI.style.setProperty('--progress', `${(autoConnectCountdown / 10) * 100}%`);
+        
+        if (autoConnectCountdown <= 0) {
+            clearInterval(autoConnectTimer);
+            autoConnectTimer = null;
+            btnText.textContent = "CONNECT";
+            btn.style.backgroundColor = ""; 
+            timerUI.style.display = "none";
+            initDashboard();
+        }
+    }, 1000);
+}
+
+function handleConnectClick() {
+    if (autoConnectTimer) {
+        clearInterval(autoConnectTimer);
+        autoConnectTimer = null;
+        const btn = document.getElementById('btn');
+        const btnText = document.getElementById('btn-text');
+        const timerUI = document.getElementById('auto-connect-timer');
+        
+        btnText.textContent = "CONNECT";
+        btn.style.backgroundColor = ""; 
+        timerUI.style.display = "none";
+    } else {
+        initDashboard();
+    }
+}
+
 function toggleDrawer(idToOpen) {
     const target = document.getElementById(idToOpen);
     const backdrop = document.getElementById('drawer-backdrop');
@@ -954,11 +1017,16 @@ document.addEventListener("DOMContentLoaded", () => {
     const counterSpan = document.getElementById('fox-api-counter');
     if(counterSpan) counterSpan.textContent = apiData.count;
 
-    if(localStorage.getItem('octoAcc')) document.getElementById('acc').value = localStorage.getItem('octoAcc');
-    if(localStorage.getItem('octoApi')) document.getElementById('api').value = localStorage.getItem('octoApi');
-    if(localStorage.getItem('foxSn')) document.getElementById('fox-sn').value = localStorage.getItem('foxSn');
-    if(localStorage.getItem('foxToken')) document.getElementById('fox-token').value = localStorage.getItem('foxToken');
-    if(localStorage.getItem('gasUrl')) document.getElementById('gas-url').value = localStorage.getItem('gasUrl');
+    let hasCreds = false;
+    if(localStorage.getItem('octoAcc')) { document.getElementById('acc').value = localStorage.getItem('octoAcc'); hasCreds = true; }
+    if(localStorage.getItem('octoApi')) { document.getElementById('api').value = localStorage.getItem('octoApi'); hasCreds = true; }
+    if(localStorage.getItem('foxSn')) { document.getElementById('fox-sn').value = localStorage.getItem('foxSn'); }
+    if(localStorage.getItem('foxToken')) { document.getElementById('fox-token').value = localStorage.getItem('foxToken'); }
+    if(localStorage.getItem('gasUrl')) { document.getElementById('gas-url').value = localStorage.getItem('gasUrl'); }
+
+    if (hasCreds) {
+        startAutoConnect();
+    }
 
     // Master Clock Ticker - Drives real-time evaluation
     setInterval(() => {
