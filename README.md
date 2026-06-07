@@ -4,7 +4,7 @@
 [![Hosted on GitHub Pages](https://img.shields.io/badge/Hosted-GitHub%20Pages-success.svg)](https://samuelkcc.github.io/octopus-foxess-smart-charging/)
 [![Zero Install](https://img.shields.io/badge/Setup-Zero%20Install-orange.svg)]()
 
-A lightweight, client-side automation bridge that prevents your FoxESS home battery from draining during Intelligent Octopus Go EV charging slots. 
+A lightweight, zero-install automation bridge that prevents your FoxESS home battery from draining during Intelligent Octopus Go EV charging slots. 
 
 ### 🚀 [Launch the Live App Here](https://samuelkcc.github.io/octopus-foxess-smart-charging/)
 
@@ -12,19 +12,30 @@ A lightweight, client-side automation bridge that prevents your FoxESS home batt
 
 ---
 
+## ⚡ The Home Assistant (HA) Alternative
+Building a home automation ecosystem usually means setting up a dedicated server, configuring Home Assistant, installing custom HACS integrations, and writing complex automations. 
+
+**This tool is the instant alternative:**
+* **Instant Deployment:** Works out of the box in under 10 minutes.
+* **No Hardware Required:** No Raspberry Pi, server, or container setups.
+* **Zero Configuration Hassle:** No YAML, no MQTT brokers, and no custom integration maintenance. Just paste your credentials, and the automation is running.
+
+---
+
 ## ✨ Key Features & What's New
-* **Zero Installation:** Runs entirely inside your browser via GitHub Pages.
-* **Privacy First:** Client-side only. No third-party servers, no telemetry, and local credential encryption.
-* **Automated Protection:** Automatically syncs Intelligent Octopus Go smart dispatch intervals with the FoxESS V3 Mode Scheduler.
-* **Hardware-Level Safety (New!):** Pushes native V3 Hardware Limits (Target SOC, Max Charge Power, Min SOC) directly to the inverter, ensuring failsafe battery protection.
-* **Smart API Quota Management (New!):** Intelligent caching system safely throttles requests to ensure you never hit the strict FoxESS 1,440 daily API call limit.
-* **Live Telemetry (New!):** Real-time, expandable dashboard showing live PV Power, Home Load, Battery Temperature, and Ambient Temperature.
-* **Auto-Resume (New!):** Automatically ends grid-charging schedules early and reverts to Self-Use mode once your custom Target SOC is reached.
+* **Zero Installation:** Runs entirely inside your web browser via GitHub Pages or a local file.
+* **Privacy First:** Client-side architecture. No third-party servers, no telemetry, and local credential encryption.
+* **Automated Protection:** Automatically syncs Intelligent Octopus Go smart dispatch intervals with your FoxESS V3 Mode Scheduler.
+* **Tablet Optimized (New!):** Built-in **Full Screen Mode** and an automated **Screen Saver (Blank Screen)** utility—perfect for dedicated Android wall tablets. 
+* **Hardware-Level Safety:** Pushes native V3 Hardware Limits (Target SOC, Max Charge Power, Min SOC) directly to the inverter, ensuring failsafe battery protection.
+* **Smart API Quota Management:** Caching system throttles requests to ensure you never breach the strict FoxESS 1,440 daily API call limit.
+* **Live Telemetry:** Real-time, expandable dashboard showing live PV Power, Home Load, Battery Temperature, and Ambient Temperature.
+* **Auto-Resume:** Automatically ends grid-charging schedules early and reverts to Self-Use mode once your custom Target SOC is reached.
 
 ---
 
 ## 📖 The Problem & Solution
-When **Intelligent Octopus Go** dynamically opens a cheap slot to charge your electric vehicle, your FoxESS solar battery thinks your home is experiencing a massive energy load. If your inverter is left in standard "Self-Use" mode, it will aggressively dump all your stored home battery power straight into your EV. 
+When **Intelligent Octopus Go** dynamically opens a cheap slot to charge your electric vehicle, your FoxESS solar battery assumes your home is experiencing a massive energy spike. If left in standard "Self-Use" mode, your inverter will aggressively dump all your stored home battery power straight into your EV. 
 
 This wastes captured solar energy, degrades your battery cells, and misses the opportunity to soak up cheap grid rates. This dashboard pulls your upcoming smart dispatch intervals and acts as a bridge, instructing your FoxESS system to insulate your home battery exactly when the car starts charging.
 
@@ -32,28 +43,30 @@ This wastes captured solar energy, degrades your battery cells, and misses the o
 
 ## 🛠️ Getting Started 
 
-Follow these steps in order to get your dashboard up and running. 
+Follow these steps to get your dashboard up and running. 
 
 ### Step 1: Gather Your API Credentials
 You need API keys from both providers before starting the app.
 
-**Intelligent Octopus Go:**
+#### Octopus Energy
 1. Log into your standard [Octopus Energy dashboard](https://octopus.energy/dashboard/). Find your **Account Number** at the top (`A-XXXXXXXX`).
 2. Go to **Personal Details** ➔ **API Access** (or [click here](https://octopus.energy/dashboard/new/accounts/personal-details/api-access)). Generate your **API Key** (`sk_live_...`).
 
-**FoxESS Cloud:**
-1. Find your **Inverter Serial Number (SN)** on the physical unit sticker or right beneath the inverter image in your FoxCloud Mobile App (`60B...`).
+#### FoxESS Cloud
+1. Find your **Inverter Serial Number (SN)** on the physical unit sticker or beneath the inverter image in your FoxCloud Mobile App (`60B...`).
 2. Log into the [FoxCloud Web Dashboard V1](https://www.foxesscloud.com/login). 
-   > ⚠️ **Important:** The API token *cannot* be obtained from the V2 website or the mobile app. If you log in and are redirected to the V2 website, click your user profile, scroll to the bottom, and switch back to V1 (or use the V1 direct link above).
+   > ⚠️ **Important:** The API token *cannot* be obtained from the V2 website or mobile app. If redirected to V2, click your user profile, scroll to the bottom, and switch back to V1.
 3. Navigate to **User Profile** ➔ **API Management** to generate and copy your **API Token**.
 
+---
+
 ### Step 2: Deploy the Proxy Bridge (Google Apps Script)
-Because FoxESS blocks direct browser connections, we use a free Google Apps Script to securely route your requests.
+Because FoxESS blocks direct browser connections (CORS), we use a free Google Apps Script to securely route your requests.
 
 #### A. Create the Script
 1. Go to [script.google.com](https://script.google.com/) and sign in with your Google account.
 2. Click **New Project** (top left).
-3. Delete any placeholder code in the editor and paste the exact snippet below:
+3. Delete any placeholder code and paste the exact snippet below:
 
 ```javascript
 function doPost(e) {
