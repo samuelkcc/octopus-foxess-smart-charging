@@ -13,22 +13,22 @@ A lightweight, zero-install automation bridge that prevents your FoxESS home bat
 ---
 
 ## ⚡ The Home Assistant (HA) Alternative
-Building a home automation ecosystem usually means setting up a dedicated server, configuring Home Assistant, installing custom HACS integrations, and writing complex automations. 
+For many, optimizing smart charging means diving into a full home automation ecosystem. While Home Assistant is incredibly powerful, it comes with a steep learning curve for beginners—requiring you to understand complex concepts like entity IDs, YAML configurations, state triggers, and custom HACS integrations just to get a basic sync working.
 
-**This tool is the instant alternative:**
-* **Instant Deployment:** Works out of the box in under 10 minutes.
-* **No Hardware Required:** No Raspberry Pi, server, or container setups.
-* **Zero Configuration Hassle:** No YAML, no MQTT brokers, and no custom integration maintenance. Just paste your credentials, and the automation is running.
+**This tool offers a streamlined, instant alternative:**
+* **Instant Deployment:** Works out of the box in under 10 minutes without any complex configuration setups.
+* **Leverage Existing Hardware:** There is no need to set up a dedicated home automation server or manage Docker containers. You can run this dashboard directly on an old Android tablet, an existing Raspberry Pi 4/5, or any browser-enabled device you already own.
+* **Zero Configuration Hassle:** Skip the steep learning curve of automation logic and entity mapping. Just paste your credentials, and the bridge safely handles the rest.
 
 ---
 
 ## ✨ Key Features & What's New
-* **Zero Installation:** Runs entirely inside your web browser via GitHub Pages or a local file.
+* **Zero Installation:** Runs entirely inside your web browser via GitHub Pages or as a downloaded local file.
 * **Privacy First:** Client-side architecture. No third-party servers, no telemetry, and local credential encryption.
 * **Automated Protection:** Automatically syncs Intelligent Octopus Go smart dispatch intervals with your FoxESS V3 Mode Scheduler.
-* **Tablet Optimized (New!):** Built-in **Full Screen Mode** and an automated **Screen Saver (Blank Screen)** utility—perfect for dedicated Android wall tablets. 
+* **Tablet Optimized (New!):** Built-in **Full Screen Mode** and an automated **Screen Saver (Blank Screen)** utility—perfect for dedicated Android wall tablets and low-power displays. 
 * **Hardware-Level Safety:** Pushes native V3 Hardware Limits (Target SOC, Max Charge Power, Min SOC) directly to the inverter, ensuring failsafe battery protection.
-* **Smart API Quota Management:** Caching system throttles requests to ensure you never breach the strict FoxESS 1,440 daily API call limit.
+* **Smart API Quota Management:** Built-in caching system throttles requests to ensure you never breach the strict FoxESS 1,440 daily API call limit.
 * **Live Telemetry:** Real-time, expandable dashboard showing live PV Power, Home Load, Battery Temperature, and Ambient Temperature.
 * **Auto-Resume:** Automatically ends grid-charging schedules early and reverts to Self-Use mode once your custom Target SOC is reached.
 
