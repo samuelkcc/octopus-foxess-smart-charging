@@ -318,6 +318,8 @@
                     <div style="display: flex; gap: 8px;">
                         <button onclick="document.getElementById('disclaimer-modal').style.display='flex'" style="width: fit-content; padding: 0.25rem 0.6rem; font-size: 0.75rem; background: #3b82f6; border-radius: 6px; border: none; color: white; cursor: pointer;">Save Config</button>
                         <button onclick="toggleDarkMode()" class="theme-toggle-btn" style="width: fit-content; padding: 0.25rem 0.6rem; font-size: 0.75rem; background: transparent; border-radius: 6px; border: 1px solid var(--border); color: var(--text-main); cursor: pointer;">🌗 Dark Mode</button>
+                        <button onclick="toggleFullScreen()" style="width: fit-content; padding: 0.25rem 0.6rem; font-size: 0.75rem; background: transparent; border-radius: 6px; border: 1px solid var(--border); color: var(--text-main); cursor: pointer;">⛶ Full Screen</button>
+                        <button onclick="toggleScreenSaver()" style="width: fit-content; padding: 0.25rem 0.6rem; font-size: 0.75rem; background: transparent; border-radius: 6px; border: 1px solid var(--border); color: var(--text-main); cursor: pointer;">🌙 Screen Saver</button>
                     </div>
                 </div>
                 <div style="display: flex; flex-direction: column; align-items: flex-end; gap: 8px;">
@@ -1958,6 +1960,24 @@ function showError(msg) {
     errorDiv.textContent = 'Error: ' + msg;
     errorDiv.style.display = 'block';
 }
+
+function toggleFullScreen() {
+    if (!document.fullscreenElement) {
+        document.documentElement.requestFullscreen().catch(err => {
+            console.warn(`Error attempting to enable fullscreen: ${err.message}`);
+        });
+    } else {
+        if (document.exitFullscreen) {
+            document.exitFullscreen();
+        }
+    }
+}
+
+function toggleScreenSaver() {
+    const overlay = document.getElementById('screen-saver-overlay');
+    overlay.style.display = (overlay.style.display === 'none') ? 'block' : 'none';
+}
 </script>
+<div id="screen-saver-overlay" onclick="toggleScreenSaver()" style="display: none; position: fixed; inset: 0; width: 100%; height: 100%; background: #000; z-index: 100000; cursor: pointer;"></div>
 </body>
 </html>
