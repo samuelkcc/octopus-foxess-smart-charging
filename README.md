@@ -23,7 +23,7 @@ This wastes captured solar energy, degrades your battery cells, and misses the o
 For many, optimizing smart charging means diving into a full home automation ecosystem. While Home Assistant is incredibly powerful, it comes with a steep learning curve for beginners—requiring you to understand complex concepts like entity IDs, YAML configurations, state triggers, and custom HACS integrations just to get a basic sync working.
 
 **This tool offers a streamlined, instant alternative:**
-* **Instant Deployment:** Works out of the box in under 10 minutes without any complex configuration setups.
+* **Instant Deployment:** Works out of the box in under 30 minutes without any complex configuration setups.
 * **Leverage Existing Hardware:** There is no need to set up a dedicated home automation server or manage Docker containers. You can run this dashboard directly on an old Android tablet, an existing Raspberry Pi 4/5, or any browser-enabled device you already own.
 * **Zero Configuration Hassle:** Skip the steep learning curve of automation logic and entity mapping. Just paste your credentials, and the bridge safely handles the rest.
 
