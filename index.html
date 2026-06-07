@@ -408,7 +408,7 @@
             <div class="automation-block" style="margin-bottom: 1.5rem; padding: 0.75rem 1.25rem;">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
                     <h4 style="margin: 0; font-size: 0.95rem; color: var(--text-main);">📋 Active Mode Scheduler</h4>
-                    <button onclick="event.preventDefault(); this.textContent='Fetching...'; fetchFoxSchedules().then(() => this.textContent='🔄 Fetch Now');" style="width: auto; padding: 0.35rem 0.85rem; font-size: 0.75rem; font-weight: 600; background: #3b82f6; border-radius: 6px; color: white; border: none; cursor: pointer; transition: all 0.2s; box-shadow: 0 2px 4px rgba(59, 130, 246, 0.3);" onmouseover="this.style.transform='translateY(-1px)'; this.style.boxShadow='0 4px 6px rgba(59, 130, 246, 0.4)';" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 2px 4px rgba(59, 130, 246, 0.3)';">🔄 Fetch Now</button>
+                    <button onclick="event.preventDefault(); this.textContent='Fetching...'; fetchFoxSchedules().then(() => { this.textContent='🔄 Fetch Now'; if (document.getElementById('toggle-auto-price')?.checked || document.getElementById('toggle-auto-dispatch')?.checked) evaluateLocalAutomations(null, true); });" style="width: auto; padding: 0.35rem 0.85rem; font-size: 0.75rem; font-weight: 600; background: #3b82f6; border-radius: 6px; color: white; border: none; cursor: pointer; transition: all 0.2s; box-shadow: 0 2px 4px rgba(59, 130, 246, 0.3);" onmouseover="this.style.transform='translateY(-1px)'; this.style.boxShadow='0 4px 6px rgba(59, 130, 246, 0.4)';" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 2px 4px rgba(59, 130, 246, 0.3)';">🔄 Fetch Now</button>
                 </div>
                 <div id="fox-active-schedules" class="block-countdown-fox" style="background: var(--card-bg); padding: 0.5rem 1rem; margin: 0 -1.05rem; border-radius: 8px; border: 1px solid var(--border); font-size: 0.85rem; color: var(--text-muted); text-align: center;">Click "Refresh" to fetch data.</div>
             </div>
@@ -1412,7 +1412,7 @@ function startAutoRefreshTimer() {
             
             if (now >= window.nextFoxTime) {
                 window.nextFoxTime = now + (foxRefreshInterval * 1000);
-                fetchCurrentWorkMode().then(() => {
+                fetchFoxSchedules().then(() => {
                     if (document.getElementById('toggle-auto-price')?.checked || document.getElementById('toggle-auto-dispatch')?.checked) {
                         evaluateLocalAutomations(null, true);
                     }
