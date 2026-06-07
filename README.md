@@ -12,6 +12,13 @@ A lightweight, zero-install automation bridge that prevents your FoxESS home bat
 
 ---
 
+## 📖 The Problem & Solution
+When **Intelligent Octopus Go** dynamically opens a cheap slot to charge your electric vehicle, your FoxESS solar battery assumes your home is experiencing a massive energy spike. If left in standard "Self-Use" mode, your inverter will aggressively dump all your stored home battery power straight into your EV. 
+
+This wastes captured solar energy, degrades your battery cells, and misses the opportunity to soak up cheap grid rates. This dashboard pulls your upcoming smart dispatch intervals and acts as a bridge, instructing your FoxESS system to insulate your home battery exactly when the car starts charging.
+
+---
+
 ## ⚡ The Home Assistant (HA) Alternative
 For many, optimizing smart charging means diving into a full home automation ecosystem. While Home Assistant is incredibly powerful, it comes with a steep learning curve for beginners—requiring you to understand complex concepts like entity IDs, YAML configurations, state triggers, and custom HACS integrations just to get a basic sync working.
 
@@ -31,13 +38,6 @@ For many, optimizing smart charging means diving into a full home automation eco
 * **Smart API Quota Management:** Built-in caching system throttles requests to ensure you never breach the strict FoxESS 1,440 daily API call limit.
 * **Live Telemetry:** Real-time, expandable dashboard showing live PV Power, Home Load, Battery Temperature, and Ambient Temperature.
 * **Auto-Resume:** Automatically ends grid-charging schedules early and reverts to Self-Use mode once your custom Target SOC is reached.
-
----
-
-## 📖 The Problem & Solution
-When **Intelligent Octopus Go** dynamically opens a cheap slot to charge your electric vehicle, your FoxESS solar battery assumes your home is experiencing a massive energy spike. If left in standard "Self-Use" mode, your inverter will aggressively dump all your stored home battery power straight into your EV. 
-
-This wastes captured solar energy, degrades your battery cells, and misses the opportunity to soak up cheap grid rates. This dashboard pulls your upcoming smart dispatch intervals and acts as a bridge, instructing your FoxESS system to insulate your home battery exactly when the car starts charging.
 
 ---
 
