@@ -459,11 +459,31 @@
                 </div>
             </div>
 
-            <div id="block-price-auto" class="automation-block" style="background: #f0fdf4; margin-bottom: 1.5rem;">
-                <div class="rule-row">
-                    <span class="rule-title">Forced charge on target price</span>
+            <div id="block-unified-auto" class="automation-block" style="background: #f0fdf4; margin-bottom: 1.5rem;">
+                <div class="rule-row" style="border-bottom: 1px dashed var(--border); padding-bottom: 1rem; margin-bottom: 1rem;">
+                    <span class="rule-title" style="color: #0369a1; font-size: 1rem;">⚡ Sync Smart Dispatches</span>
                     <label class="switch">
-                        <input type="checkbox" id="toggle-auto-price" onchange="if(this.checked) { let d = document.getElementById('toggle-auto-dispatch'); if(d.checked) d.click(); } previewScheduleTimes(); let b = document.getElementById('btn-save-price'); b.disabled = !this.checked; b.style.background = this.checked ? '#16a34a' : '#94a3b8'; b.style.cursor = this.checked ? 'pointer' : 'not-allowed';">
+                        <input type="checkbox" id="toggle-auto-dispatch" onchange="let b = document.getElementById('btn-save-unified'); b.disabled = false; b.style.background = '#16a34a'; b.style.cursor = 'pointer';">
+                        <span class="slider"></span>
+                    </label>
+                </div>
+                <div id="ui-dispatches-list" style="margin-bottom: 1rem;"></div>
+                <div style="display: flex; align-items: center; justify-content: space-between; padding-bottom: 1.5rem;">
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                        <span style="font-size: 0.85rem; font-weight: 600; color: var(--text-main);">Stop dispatch charge at</span>
+                        <input type="number" id="dispatch-soc-limit" value="80" style="width: 55px; padding: 0.25rem; font-size: 0.85rem; text-align: center; border: 1px solid var(--border); border-radius: 6px; background: var(--bg); color: var(--text-main);">
+                        <span style="font-size: 0.85rem; font-weight: 600; color: var(--text-main);">%</span>
+                    </div>
+                    <label class="switch" style="margin: 0;">
+                        <input type="checkbox" id="toggle-dispatch-soc-limit">
+                        <span class="slider"></span>
+                    </label>
+                </div>
+
+                <div class="rule-row" style="border-top: 1px dashed var(--border); padding-top: 1rem; margin-bottom: 1rem;">
+                    <span class="rule-title" style="color: #166534; font-size: 1rem;">🎯 Forced Charge on Target Price</span>
+                    <label class="switch">
+                        <input type="checkbox" id="toggle-auto-price" onchange="previewScheduleTimes(); let b = document.getElementById('btn-save-unified'); b.disabled = false; b.style.background = '#16a34a'; b.style.cursor = 'pointer';">
                         <span class="slider"></span>
                     </label>
                 </div>
@@ -473,10 +493,10 @@
                 </div>
                 <div id="price-target-times" style="width: 100%; margin-bottom: 1rem; font-size: 0.8rem; font-style: italic; color: #166534;"></div>
                 
-                <div style="background: transparent; border-radius: 8px; margin-bottom: 1.2rem; border-top: 1px dashed var(--border); padding-top: 0.5rem;">
+                <div style="background: transparent; border-radius: 8px; margin-bottom: 1.2rem;">
                     <div style="display: flex; align-items: center; justify-content: space-between; padding: 0.75rem 0; border-bottom: 1px solid var(--border);">
                         <div style="display: flex; align-items: center; gap: 10px;">
-                            <span style="font-size: 0.85rem; font-weight: 600; color: var(--text-main);">Stop grid charge at</span>
+                            <span style="font-size: 0.85rem; font-weight: 600; color: var(--text-main);">Stop target price charge at</span>
                             <input type="number" id="target-soc-limit" value="80" style="width: 55px; padding: 0.25rem; font-size: 0.85rem; text-align: center; border: 1px solid var(--border); border-radius: 6px; background: var(--bg); color: var(--text-main);">
                             <span style="font-size: 0.85rem; font-weight: 600; color: var(--text-main);">%</span>
                         </div>
@@ -507,41 +527,12 @@
                         </label>
                     </div>
                     <div style="display: flex; justify-content: space-between; align-items: center; padding: 0.5rem 0 0 0;">
-                        <span style="font-size: 0.7rem; color: #ef4444; font-weight: 500; line-height: 1.3;">⚠️ Note: Peak export slots will overwrite conflicting charge slots and force a grid discharge state.</span>
+                        <span style="font-size: 0.7rem; color: #ef4444; font-weight: 500; line-height: 1.3;">⚠️ Note: Peak export slots will overwrite conflicting charge slots.</span>
                     </div>
                 </div>
 
-                <div style="text-align: right;">
-                    <button id="btn-save-price" onclick="evaluateLocalAutomations(this)" style="width: auto; padding: 0.4rem 1rem; background: #94a3b8; font-size: 0.85rem; cursor: not-allowed;" disabled>Apply</button>
-                </div>
-            </div>
-
-            <div id="block-dispatch-auto" class="automation-block" style="background: #eff6ff; margin-bottom: 1.5rem;">
-                <div class="rule-row">
-                    <span class="rule-title">Smarting charging schedule</span>
-                    <label class="switch">
-                        <input type="checkbox" id="toggle-auto-dispatch" onchange="if(this.checked) { let p = document.getElementById('toggle-auto-price'); if(p.checked) p.click(); } let b = document.getElementById('btn-save-dispatch'); b.disabled = !this.checked; b.style.background = this.checked ? '#16a34a' : '#94a3b8'; b.style.cursor = this.checked ? 'pointer' : 'not-allowed';">
-                        <span class="slider"></span>
-                    </label>
-                </div>
-                <div id="ui-dispatches-list" style="margin-bottom: 1rem;"></div>
-                
-                <div style="background: transparent; border-radius: 8px; margin-bottom: 1.2rem; border-top: 1px dashed var(--border); padding-top: 0.5rem;">
-                    <div style="display: flex; align-items: center; justify-content: space-between; padding: 0.75rem 0;">
-                        <div style="display: flex; align-items: center; gap: 10px;">
-                            <span style="font-size: 0.85rem; font-weight: 600; color: var(--text-main);">Stop grid charge at</span>
-                            <input type="number" id="dispatch-soc-limit" value="80" style="width: 55px; padding: 0.25rem; font-size: 0.85rem; text-align: center; border: 1px solid var(--border); border-radius: 6px; background: var(--bg); color: var(--text-main);">
-                            <span style="font-size: 0.85rem; font-weight: 600; color: var(--text-main);">%</span>
-                        </div>
-                        <label class="switch" style="margin: 0;">
-                            <input type="checkbox" id="toggle-dispatch-soc-limit">
-                            <span class="slider"></span>
-                        </label>
-                    </div>
-                </div>
-
-                <div style="text-align: right;">
-                    <button id="btn-save-dispatch" onclick="evaluateLocalAutomations(this)" style="width: auto; padding: 0.4rem 1rem; background: #94a3b8; font-size: 0.85rem; cursor: not-allowed;" disabled>Apply</button>
+                <div style="text-align: right; border-top: 1px dashed var(--border); padding-top: 1rem;">
+                    <button id="btn-save-unified" onclick="evaluateLocalAutomations(this)" style="width: auto; padding: 0.6rem 1.5rem; background: #94a3b8; font-size: 0.9rem; font-weight: 600; cursor: pointer;">Apply Combined Automations</button>
                 </div>
             </div>
 
@@ -552,7 +543,7 @@
 
     </div> <div class="app-footer">
         <div style="text-align: left;">Developer Samuel Chen</div>
-        <div style="text-align: right;">&copy; Copyright 2026 samuelchen.hk Build v2026.06.06</div>
+        <div style="text-align: right;">&copy; Copyright 2026 samuelchen.hk Build v2026.06.07</div>
     </div>
 </div> 
 
@@ -1598,21 +1589,15 @@ function loadAutomations(minPrice, maxPrice) {
     if (saved.applyDispatchLimit !== undefined) document.getElementById('toggle-dispatch-soc-limit').checked = saved.applyDispatchLimit;
 
     // Toggle borders on initial page load
-    const blockPrice = document.getElementById('block-price-auto');
-    const blockDispatch = document.getElementById('block-dispatch-auto');
-    if (blockPrice) blockPrice.classList.toggle('block-countdown-octo', saved.priceCheck === true);
-    if (blockDispatch) blockDispatch.classList.toggle('block-countdown-octo', saved.dispatchCheck === true);
+    const blockUnified = document.getElementById('block-unified-auto');
     const autoPriceEl = document.getElementById('toggle-auto-price');
     const autoDispatchEl = document.getElementById('toggle-auto-dispatch');
-    if(autoPriceEl) { 
-        autoPriceEl.checked = saved.priceCheck || false; 
-        let b = document.getElementById('btn-save-price');
-        if(b) { b.disabled = !autoPriceEl.checked; b.style.background = autoPriceEl.checked ? '#16a34a' : '#94a3b8'; b.style.cursor = autoPriceEl.checked ? 'pointer' : 'not-allowed'; }
-    }
-    if(autoDispatchEl) { 
-        autoDispatchEl.checked = saved.dispatchCheck || false; 
-        let b = document.getElementById('btn-save-dispatch');
-        if(b) { b.disabled = !autoDispatchEl.checked; b.style.background = autoDispatchEl.checked ? '#16a34a' : '#94a3b8'; b.style.cursor = autoDispatchEl.checked ? 'pointer' : 'not-allowed'; }
+    
+    if (autoPriceEl) autoPriceEl.checked = saved.priceCheck || false;
+    if (autoDispatchEl) autoDispatchEl.checked = saved.dispatchCheck || false;
+    
+    if (blockUnified) {
+        blockUnified.classList.toggle('block-countdown-octo', (saved.priceCheck === true || saved.dispatchCheck === true));
     }
 
     let thresh = saved.threshold;
@@ -1654,10 +1639,8 @@ async function evaluateLocalAutomations(btn = null, isStartup = false) {
     }));
     
     // Toggle borders when user clicks apply
-    const blockPrice = document.getElementById('block-price-auto');
-    const blockDispatch = document.getElementById('block-dispatch-auto');
-    if (blockPrice) blockPrice.classList.toggle('block-countdown-octo', isAutoPrice === true);
-    if (blockDispatch) blockDispatch.classList.toggle('block-countdown-octo', isAutoDispatch === true);
+    const blockUnified = document.getElementById('block-unified-auto');
+    if (blockUnified) blockUnified.classList.toggle('block-countdown-octo', isAutoPrice === true || isAutoDispatch === true);
     
     const now = new Date();
     let groups = [];
@@ -1741,8 +1724,21 @@ async function evaluateLocalAutomations(btn = null, isStartup = false) {
         }
     }
 
-    // Deduplicate overlapping/exact rule blocks to guarantee no duplicates hit FoxESS
-    groups = groups.filter((v, i, a) => a.findIndex(t => (t.startHour === v.startHour && t.startMinute === v.startMinute && t.endHour === v.endHour && t.endMinute === v.endMinute)) === i);
+    // Merge overlapping blocks to guarantee FoxESS API doesn't reject conflicting schedule boundaries
+    groups.sort((a,b) => (a.startHour*60+a.startMinute) - (b.startHour*60+b.startMinute));
+    let merged = [];
+    groups.forEach(g => {
+        if (merged.length === 0) { merged.push(g); return; }
+        let last = merged[merged.length-1];
+        if (last.workMode === g.workMode && (g.startHour*60+g.startMinute) <= (last.endHour*60+last.endMinute)) {
+            let lastEnd = last.endHour*60+last.endMinute;
+            let gEnd = g.endHour*60+g.endMinute;
+            if(gEnd > lastEnd) { last.endHour = g.endHour; last.endMinute = g.endMinute; }
+        } else {
+            merged.push(g);
+        }
+    });
+    groups = merged;
 
     // Apply Scheduler-V3 Hardware Limits
     const applyLimit = document.getElementById('toggle-soc-limit')?.checked;
@@ -1784,10 +1780,16 @@ async function evaluateLocalAutomations(btn = null, isStartup = false) {
     await pushGroupsToFoxESS(groups);
     
     // Provide brief success feedback on the buttons
-    const btnPrice = document.getElementById('btn-save-price');
-    const btnDispatch = document.getElementById('btn-save-dispatch');
-    if (btnPrice && isAutoPrice) { btnPrice.textContent = "✅ Applied"; setTimeout(() => { btnPrice.textContent = "Apply"; btnPrice.disabled = false; btnPrice.style.opacity = "1"; }, 2500); }
-    if (btnDispatch && isAutoDispatch) { btnDispatch.textContent = "✅ Applied"; setTimeout(() => { btnDispatch.textContent = "Apply"; btnDispatch.disabled = false; btnDispatch.style.opacity = "1"; }, 2500); }
+    const btnUnified = document.getElementById('btn-save-unified');
+    if (btnUnified) { 
+        btnUnified.textContent = "✅ Applied Automations"; 
+        setTimeout(() => { 
+            btnUnified.textContent = "Apply Combined Automations"; 
+            btnUnified.disabled = false; 
+            btnUnified.style.opacity = "1"; 
+            btnUnified.style.background = "#94a3b8"; 
+        }, 2500); 
+    }
     
     // Fetch current work mode 1 minute (60000ms) after applying new schedules (bypass cache)
     setTimeout(() => fetchCurrentWorkMode(true), 60000);
