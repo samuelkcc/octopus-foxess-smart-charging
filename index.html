@@ -809,8 +809,8 @@ function closeAllDrawers() {
     document.getElementById('drawer-backdrop').classList.remove('visible');
 }
 
-function forceOctoRefresh() { if (octoCountdown > 2) octoCountdown = 1; }
-function forceFoxRefresh() { if (foxCountdown > 2) foxCountdown = 1; }
+function forceOctoRefresh() { if (octoCountdown > 2) window.nextOctoTime = Date.now() + 1000; }
+function forceFoxRefresh() { if (foxCountdown > 2) window.nextFoxTime = Date.now() + 1000; }
 let localWorkModeState = "Unknown";
 
 function applyOctoInterval() {
@@ -818,7 +818,7 @@ function applyOctoInterval() {
     if (isNaN(val) || val < 10) return;
     
     const commitOctoValue = () => {
-        octoRefreshInterval = val; octoCountdown = val;
+        octoRefreshInterval = val; window.nextOctoTime = Date.now() + (val * 1000);
         const btn = document.getElementById('btn-apply-octo');
         if (btn) {
             btn.textContent = "✅"; btn.style.background = "#10b981";
@@ -845,7 +845,7 @@ function applyFoxInterval() {
     if (isNaN(val) || val < 10) return;
     
     const commitFoxValue = () => {
-        foxRefreshInterval = val; foxCountdown = val;
+        foxRefreshInterval = val; window.nextFoxTime = Date.now() + (val * 1000);
         const btn = document.getElementById('btn-apply-fox');
         if (btn) {
             btn.textContent = "✅"; btn.style.background = "#10b981";
@@ -961,6 +961,11 @@ document.addEventListener("DOMContentLoaded", () => {
     // Master Clock Ticker - Drives real-time evaluation
     setInterval(() => {
         const now = new Date();
+        
+        // Kiosk Auto-Refresh: Hard reload the page daily at 03:00:00 to clear browser memory leaks
+        if (now.getHours() === 3 && now.getMinutes() === 0 && now.getSeconds() === 0) {
+            window.location.reload(true);
+        }
         const clockEl = document.getElementById('real-time-clock');
         if (clockEl) {
             clockEl.textContent = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
@@ -1306,16 +1311,18 @@ async function initDashboard(isAutoRefresh = false, retryCount = 1) {
 }
 
 function startAutoRefreshTimer() {
-    octoCountdown = octoRefreshInterval;
-    foxCountdown = foxRefreshInterval;
+    window.nextOctoTime = Date.now() + (octoRefreshInterval * 1000);
+    window.nextFoxTime = Date.now() + (foxRefreshInterval * 1000);
     
     setInterval(() => {
+        const now = Date.now();
+        
         // 1. Octopus Logic Loop
-        octoCountdown--;
+        octoCountdown = Math.max(0, Math.ceil((window.nextOctoTime - now) / 1000));
         updateCircleTimer('octo-timer', octoCountdown, octoRefreshInterval);
         
-        if (octoCountdown <= 0) {
-            octoCountdown = octoRefreshInterval;
+        if (now >= window.nextOctoTime) {
+            window.nextOctoTime = now + (octoRefreshInterval * 1000);
             initDashboard(true).then(() => {
                 const currentDispatchesStr = JSON.stringify(window.currentDispatches || []);
                 if (currentDispatchesStr !== lastDispatchesStr) {
@@ -1330,11 +1337,11 @@ function startAutoRefreshTimer() {
 
         // 2. FoxESS Logic Loop
         if (globalFoxSN) {
-            foxCountdown--;
+            foxCountdown = Math.max(0, Math.ceil((window.nextFoxTime - now) / 1000));
             updateCircleTimer('fox-timer', foxCountdown, foxRefreshInterval);
             
-            if (foxCountdown <= 0) {
-                foxCountdown = foxRefreshInterval;
+            if (now >= window.nextFoxTime) {
+                window.nextFoxTime = now + (foxRefreshInterval * 1000);
                 fetchCurrentWorkMode().then(() => {
                     if (document.getElementById('toggle-auto-price')?.checked || document.getElementById('toggle-auto-dispatch')?.checked) {
                         evaluateLocalAutomations(null, true);
@@ -1803,7 +1810,11 @@ async function setV3Schedule(mode) {
     const successDiv = document.getElementById('fox-success');
     errorDiv.style.display = 'none'; successDiv.style.display = 'none';
 
-    if (!globalGasUrl || !globalFoxSN) { alert("Load dashboard with Fox credentials first."); return; }
+    if (!globalGasUrl || !globalFoxSN) { 
+        errorDiv.textContent = "Load dashboard with Fox credentials first."; 
+        errorDiv.style.display = 'block'; 
+        return; 
+    }
     
     const startVal = document.getElementById('v3-start').value.split(':');
     const endVal = document.getElementById('v3-end').value.split(':');
