@@ -486,7 +486,7 @@
                 <div id="ui-dispatches-list" style="margin-bottom: 1rem;"></div>
                 <div style="display: flex; align-items: center; justify-content: space-between; padding-bottom: 1.5rem;">
                     <div style="display: flex; align-items: center; gap: 10px;">
-                        <span style="font-size: 0.85rem; font-weight: 600; color: var(--text-main);">Stop dispatch charge at</span>
+                        <span style="font-size: 0.85rem; font-weight: 600; color: var(--text-main);">Set Max SOC Limit to</span>
                         <input type="number" id="dispatch-soc-limit" value="80" style="width: 55px; padding: 0.25rem; font-size: 0.85rem; text-align: center; border: 1px solid var(--border); border-radius: 6px; background: var(--bg); color: var(--text-main);">
                         <span style="font-size: 0.85rem; font-weight: 600; color: var(--text-main);">%</span>
                     </div>
@@ -512,7 +512,7 @@
                 <div style="background: transparent; border-radius: 8px; margin-bottom: 1.2rem;">
                     <div style="display: flex; align-items: center; justify-content: space-between; padding: 0.75rem 0; border-bottom: 1px solid var(--border);">
                         <div style="display: flex; align-items: center; gap: 10px;">
-                            <span style="font-size: 0.85rem; font-weight: 600; color: var(--text-main);">Stop target price charge at</span>
+                            <span style="font-size: 0.85rem; font-weight: 600; color: var(--text-main);">Set Max SOC Limit to</span>
                             <input type="number" id="target-soc-limit" value="80" style="width: 55px; padding: 0.25rem; font-size: 0.85rem; text-align: center; border: 1px solid var(--border); border-radius: 6px; background: var(--bg); color: var(--text-main);">
                             <span style="font-size: 0.85rem; font-weight: 600; color: var(--text-main);">%</span>
                         </div>
@@ -535,7 +535,7 @@
                         <div style="display: flex; align-items: center; gap: 8px; font-size: 0.85rem; font-weight: 600; color: var(--text-main);">
                             <span>Discharge when price &ge;</span>
                             <input type="number" step="0.1" id="export-threshold" value="35" style="width: 55px; padding: 0.25rem; font-size: 0.85rem; text-align: center; border: 1px solid var(--border); border-radius: 6px; background: var(--bg); color: var(--text-main);">
-                            <span>p</span>
+                            <span>p/kWh</span>
                         </div>
                         <label class="switch" style="margin: 0;">
                             <input type="checkbox" id="toggle-auto-export">
@@ -1555,11 +1555,42 @@ async function fetchFoxSchedules() {
                 container.innerHTML = '<div style="text-align: center; padding: 0.5rem 0;">No schedules currently set.</div>';
             } else {
                 container.innerHTML = window.activeFoxGroups.map((g, i) => {
-                    const modeLabel = g.workMode === 'ForceCharge' ? 'FORCED CHARGE' : (g.workMode === 'SelfUse' ? 'SELF-USE' : g.workMode);
+                    let originLabel = g.workMode === 'ForceCharge' ? 'FORCED CHARGE' : (g.workMode === 'ForceDischarge' ? 'FORCE DISCHARGE' : (g.workMode === 'SelfUse' ? 'SELF-USE' : g.workMode));
+                    let detailLabel = "";
+                    let badgeColor = g.workMode === 'ForceDischarge' ? '#ef4444' : "var(--fox-orange)";
+
+                    if (g.workMode === 'ForceCharge') {
+                        let isDispatch = false;
+                        const gStartMins = g.startHour * 60 + g.startMinute;
+                        let gEndMins = g.endHour * 60 + g.endMinute;
+                        if (gEndMins === 0) gEndMins = 1440;
+                        
+                        if (window.currentDispatches) {
+                            isDispatch = window.currentDispatches.some(d => {
+                                const dsMins = new Date(d.startDt).getHours() * 60 + new Date(d.startDt).getMinutes();
+                                let deMins = new Date(d.endDt).getHours() * 60 + new Date(d.endDt).getMinutes();
+                                if (deMins === 0 && new Date(d.endDt) > new Date(d.startDt)) deMins = 1440;
+                                return Math.max(gStartMins, dsMins) < Math.min(gEndMins, deMins);
+                            });
+                        }
+                        
+                        const subText = isDispatch ? '⚡ Smart Dispatch' : '🎯 Target Price';
+                        const soc = g.fdSoc || g.extraParam?.fdSoc || 100;
+                        
+                        detailLabel = `<span style="color: var(--text-muted); font-size: 0.8rem; font-weight: normal; margin-left: 4px;">(${subText} | Max SOC: ${soc}%)</span>`;
+                    } else if (g.workMode === 'ForceDischarge') {
+                        const soc = g.fdSoc || g.extraParam?.fdSoc || 11;
+                        detailLabel = `<span style="color: #ef4444; font-size: 0.8rem; font-weight: 600; margin-left: 4px;">(📤 Export Mode | Min SOC: ${soc}%)</span>`;
+                    }
+
                     const borderStyle = i === window.activeFoxGroups.length - 1 ? 'none' : '1px solid var(--border)';
                     return `
                     <div style="display: flex; justify-content: space-between; align-items: center; background: transparent; padding: 0.5rem 0; border-bottom: ${borderStyle};">
-                        <span style="font-weight: 600; color: var(--text-main);"><span style="color: var(--fox-orange);">${modeLabel}</span> | ${String(g.startHour).padStart(2,'0')}:${String(g.startMinute).padStart(2,'0')} - ${String(g.endHour).padStart(2,'0')}:${String(g.endMinute).padStart(2,'0')}</span>
+                        <span style="font-weight: 600; color: var(--text-main);">
+                            <span style="color: ${badgeColor};">${originLabel}</span> | 
+                            ${String(g.startHour).padStart(2,'0')}:${String(g.startMinute).padStart(2,'0')} - ${String(g.endHour).padStart(2,'0')}:${String(g.endMinute).padStart(2,'0')}
+                            ${detailLabel}
+                        </span>
                         <button onclick="deleteFoxSchedule(${i})" style="width: auto; padding: 0.3rem 0.8rem; background: #ef4444; border-radius: 4px; font-size: 0.75rem;">Delete</button>
                     </div>
                 `}).join('');
@@ -1720,35 +1751,41 @@ async function evaluateLocalAutomations(btn = null, isStartup = false) {
     if (blockUnified) blockUnified.classList.toggle('block-countdown-octo', isAutoPrice === true || isAutoDispatch === true);
     
     const now = new Date();
-    let groups = [];
+    
+    // Apply Scheduler-V3 Hardware Limits early to embed them during timeline generation
+    const applyLimit = document.getElementById('toggle-soc-limit')?.checked;
+    const targetSoc = parseInt(document.getElementById('target-soc-limit')?.value || 80);
+    const applyDispatchLimit = document.getElementById('toggle-dispatch-soc-limit')?.checked;
+    const dispatchSocLimit = parseInt(document.getElementById('dispatch-soc-limit')?.value || 80);
+    const minSoc = Math.max(11, parseInt(document.getElementById('adv-min-soc')?.value || 11));
+    const fdPwr = parseInt(document.getElementById('adv-fd-pwr')?.value || 5000);
 
-    // Helper: Safely push timeslots & split at midnight (23:59) if crossing over
-    const pushSafe = (arr, sHour, sMin, eHour, eMin, mode) => {
-        if (sHour > eHour || (sHour === eHour && sMin > eMin)) {
-            arr.push({ startHour: sHour, startMinute: sMin, endHour: 23, endMinute: 59, workMode: mode });
-            if (eHour !== 0 || eMin !== 0) {
-                arr.push({ startHour: 0, startMinute: 0, endHour: eHour, endMinute: eMin, workMode: mode });
-            }
+    // Create a 1440-minute timeline to resolve overlapping priorities beautifully
+    let timeline = new Array(1440).fill(null);
+
+    const fillTimeline = (startDt, endDt, mode, soc) => {
+        const sMins = startDt.getHours() * 60 + startDt.getMinutes();
+        let eMins = endDt.getHours() * 60 + endDt.getMinutes();
+        if (eMins === 0 && endDt.getTime() > startDt.getTime()) eMins = 1440; // Treat exactly midnight as 1440
+        
+        const fill = (start, end) => {
+            for (let i = start; i < end; i++) timeline[i] = { workMode: mode, finalFdSoc: soc };
+        };
+        
+        if (sMins >= eMins && eMins !== 1440) { // Crosses midnight
+            fill(sMins, 1440);
+            if (eMins > 0) fill(0, eMins);
         } else {
-            arr.push({ startHour: sHour, startMinute: sMin, endHour: eHour, endMinute: eMin, workMode: mode });
+            fill(sMins, eMins);
         }
     };
 
-    // 1. Dispatch Check (Push ALL upcoming dispatches to FoxESS schedule immediately)
-    if (isAutoDispatch && window.currentDispatches) {
-        window.currentDispatches.forEach(d => {
-            const s = new Date(d.startDt); const e = new Date(d.endDt);
-            if(e > now) { 
-                pushSafe(groups, s.getHours(), s.getMinutes(), e.getHours(), e.getMinutes(), "ForceCharge");
-            }
-        });
-    }
-
-    // 2. Price Check (Midnight split handled by pushSafe, filtered to 24h to prevent duplication bug)
+    // 1. Target Price Check (Base priority)
     if (isAutoPrice && window.todayRates) {
         const threshold = parseFloat(document.getElementById('price-threshold').value || 0);
         const limitTime = new Date(now.getTime() + 24 * 60 * 60 * 1000); 
         let current = null;
+        const soc = applyLimit ? targetSoc : 100;
         
         [...window.todayRates]
             .filter(r => new Date(r.valid_to) > now && new Date(r.valid_from) <= limitTime)
@@ -1758,17 +1795,24 @@ async function evaluateLocalAutomations(btn = null, isStartup = false) {
                     if (!current) current = { start: new Date(r.valid_from), end: new Date(r.valid_to) };
                     else if (current.end.getTime() === new Date(r.valid_from).getTime()) current.end = new Date(r.valid_to);
                     else {
-                        if(current.end > now) pushSafe(groups, current.start.getHours(), current.start.getMinutes(), current.end.getHours(), current.end.getMinutes(), "ForceCharge");
+                        if(current.end > now) fillTimeline(current.start, current.end, "ForceCharge", soc);
                         current = { start: new Date(r.valid_from), end: new Date(r.valid_to) };
                     }
                 }
             });
-        if (current && current.end > now) {
-            pushSafe(groups, current.start.getHours(), current.start.getMinutes(), current.end.getHours(), current.end.getMinutes(), "ForceCharge");
-        }
+        if (current && current.end > now) fillTimeline(current.start, current.end, "ForceCharge", soc);
     }
 
-    // 2b. Price Export Feature (Calculates peak windows and maps them to ForceDischarge mode)
+    // 2. Dispatch Check (Higher priority - overwrites target price blocks if they overlap)
+    if (isAutoDispatch && window.currentDispatches) {
+        const soc = applyDispatchLimit ? dispatchSocLimit : 100;
+        window.currentDispatches.forEach(d => {
+            const s = new Date(d.startDt); const e = new Date(d.endDt);
+            if(e > now) fillTimeline(s, e, "ForceCharge", soc);
+        });
+    }
+
+    // 3. Price Export Feature (Highest priority - overwrites any charge blocks)
     if (isAutoPrice && isAutoExport && window.todayRates) {
         const expThreshold = parseFloat(document.getElementById('export-threshold').value || 99);
         const limitTime = new Date(now.getTime() + 24 * 60 * 60 * 1000);
@@ -1782,65 +1826,43 @@ async function evaluateLocalAutomations(btn = null, isStartup = false) {
                     if (!currentExp) currentExp = { start: new Date(r.valid_from), end: new Date(r.valid_to) };
                     else if (currentExp.end.getTime() === new Date(r.valid_from).getTime()) currentExp.end = new Date(r.valid_to);
                     else {
-                        if(currentExp.end > now) pushSafe(groups, currentExp.start.getHours(), currentExp.start.getMinutes(), currentExp.end.getHours(), currentExp.end.getMinutes(), "ForceDischarge");
+                        if(currentExp.end > now) fillTimeline(currentExp.start, currentExp.end, "ForceDischarge", 11);
                         currentExp = { start: new Date(r.valid_from), end: new Date(r.valid_to) };
                     }
                 }
             });
-        if (currentExp && currentExp.end > now) {
-            pushSafe(groups, currentExp.start.getHours(), currentExp.start.getMinutes(), currentExp.end.getHours(), currentExp.end.getMinutes(), "ForceDischarge");
-        }
-        
-        // Priority Switch Filter: Ensure that any matching high-value discharge blocks override low-value charge blocks
-        const dischargeBlocks = groups.filter(g => g.workMode === "ForceDischarge");
-        if (dischargeBlocks.length > 0) {
-            groups = groups.filter(g => g.workMode === "ForceDischarge" || !dischargeBlocks.some(d => 
-                (g.startHour === d.startHour && g.startMinute === d.startMinute) || 
-                (g.startHour >= d.startHour && g.endHour <= d.endHour)
-            ));
-        }
+        if (currentExp && currentExp.end > now) fillTimeline(currentExp.start, currentExp.end, "ForceDischarge", 11);
     }
 
-    // Merge overlapping blocks to guarantee FoxESS API doesn't reject conflicting schedule boundaries
-    groups.sort((a,b) => (a.startHour*60+a.startMinute) - (b.startHour*60+b.startMinute));
-    let merged = [];
-    groups.forEach(g => {
-        if (merged.length === 0) { merged.push(g); return; }
-        let last = merged[merged.length-1];
-        if (last.workMode === g.workMode && (g.startHour*60+g.startMinute) <= (last.endHour*60+last.endMinute)) {
-            let lastEnd = last.endHour*60+last.endMinute;
-            let gEnd = g.endHour*60+g.endMinute;
-            if(gEnd > lastEnd) { last.endHour = g.endHour; last.endMinute = g.endMinute; }
-        } else {
-            merged.push(g);
+    // Reconstruct continuous groups from the minute-by-minute timeline map
+    let groups = [];
+    let currentBlock = null;
+    
+    for (let i = 0; i <= 1440; i++) {
+        let state = i < 1440 ? timeline[i] : null;
+        
+        if (!currentBlock && state) {
+            currentBlock = { start: i, workMode: state.workMode, finalFdSoc: state.finalFdSoc };
+        } else if (currentBlock && (!state || state.workMode !== currentBlock.workMode || state.finalFdSoc !== currentBlock.finalFdSoc)) {
+            groups.push({
+                startHour: Math.floor(currentBlock.start / 60),
+                startMinute: currentBlock.start % 60,
+                endHour: i === 1440 ? 23 : Math.floor(i / 60),
+                endMinute: i === 1440 ? 59 : i % 60,
+                workMode: currentBlock.workMode,
+                extraParam: {
+                    minSocOnGrid: minSoc,
+                    fdPwr: fdPwr,
+                    fdSoc: currentBlock.finalFdSoc
+                }
+            });
+            if (state) {
+                currentBlock = { start: i, workMode: state.workMode, finalFdSoc: state.finalFdSoc };
+            } else {
+                currentBlock = null;
+            }
         }
-    });
-    groups = merged;
-
-    // Apply Scheduler-V3 Hardware Limits
-    const applyLimit = document.getElementById('toggle-soc-limit')?.checked;
-    const targetSoc = parseInt(document.getElementById('target-soc-limit')?.value || 80);
-    const applyDispatchLimit = document.getElementById('toggle-dispatch-soc-limit')?.checked;
-    const dispatchSocLimit = parseInt(document.getElementById('dispatch-soc-limit')?.value || 80);
-    const minSoc = Math.max(11, parseInt(document.getElementById('adv-min-soc')?.value || 11));
-    const fdPwr = parseInt(document.getElementById('adv-fd-pwr')?.value || 5000);
-
-    groups.forEach(g => {
-        let finalFdSoc = 100; // default for charge parameters
-        if (g.workMode === 'ForceDischarge') {
-            finalFdSoc = 11; // physical safe baseline for export parameters
-        } else if (isAutoDispatch && applyDispatchLimit) {
-            finalFdSoc = dispatchSocLimit; // apply smart schedule limit parameters
-        } else if (isAutoPrice && applyLimit) {
-            finalFdSoc = targetSoc; // apply target price limit parameters
-        }
-
-        g.extraParam = {
-            minSocOnGrid: minSoc,
-            fdPwr: fdPwr,
-            fdSoc: finalFdSoc
-        };
-    });
+    }
 
     // If running on startup, check if schedules already match to avoid redundant API hits
     if (isStartup && window.activeFoxGroups) {
