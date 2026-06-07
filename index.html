@@ -1430,16 +1430,18 @@ async function fetchCurrentWorkMode(forceModeUpdate = false) {
         if (data.errno === 0 && data.result) {
             localWorkModeState = data.result.value || "Unknown";
             
-            // Check if we are currently inside an active scheduled time block
-            const now = new Date();
-            const currentMins = now.getHours() * 60 + now.getMinutes();
-            if (window.activeFoxGroups && window.activeFoxGroups.length > 0) {
-                const activeSch = window.activeFoxGroups.find(g => {
-                    const startMins = g.startHour * 60 + g.startMinute;
-                    const endMins = g.endHour * 60 + g.endMinute;
-                    return currentMins >= startMins && currentMins < endMins;
-                });
-                if (activeSch) localWorkModeState = activeSch.workMode; // Override badge with active schedule
+            // Check if we are currently inside an active scheduled time block (Only override if API returned a blank/generic state)
+            if (localWorkModeState === "Unknown" || !localWorkModeState) {
+                const now = new Date();
+                const currentMins = now.getHours() * 60 + now.getMinutes();
+                if (window.activeFoxGroups && window.activeFoxGroups.length > 0) {
+                    const activeSch = window.activeFoxGroups.find(g => {
+                        const startMins = g.startHour * 60 + g.startMinute;
+                        const endMins = g.endHour * 60 + g.endMinute;
+                        return currentMins >= startMins && currentMins < endMins;
+                    });
+                    if (activeSch) localWorkModeState = activeSch.workMode;
+                }
             }
             
             updateModeBadge(localWorkModeState, batterySoc);
@@ -1497,6 +1499,8 @@ async function fetchFoxSchedules() {
         } else {
             container.innerHTML = 'Failed to load schedules.';
         }
+        // Force an immediate refresh of the current work mode badge and live battery telemetry to reflect schedule changes
+        await fetchCurrentWorkMode(true);
     } catch (e) { console.warn("Fetch Schedule Error", e); }
 }
 
