@@ -1480,16 +1480,30 @@ async function fetchCurrentWorkMode(forceModeUpdate = false) {
             `;
             
             // Auto-Resume Logic
-            const targetSoc = parseInt(document.getElementById('target-soc-limit')?.value || 80);
             const autoResumeEnabled = document.getElementById('toggle-auto-resume')?.checked;
-            if (autoResumeEnabled && batterySoc !== '--' && parseInt(batterySoc) >= targetSoc) {
+            if (autoResumeEnabled && batterySoc !== '--') {
                 if (window.activeFoxGroups && window.activeFoxGroups.length > 0) {
                     const nowMins = new Date().getHours() * 60 + new Date().getMinutes();
-                    const activeSch = window.activeFoxGroups.find(g => (g.startHour * 60 + g.startMinute) <= nowMins && (g.endHour * 60 + g.endMinute) > nowMins && g.workMode === 'ForceCharge');
+                    const activeSch = window.activeFoxGroups.find(g => {
+                        let eMins = g.endHour * 60 + g.endMinute;
+                        if (eMins === 0) eMins = 1440; // Fix to support midnight boundary
+                        return (g.startHour * 60 + g.startMinute) <= nowMins && eMins > nowMins && g.workMode === 'ForceCharge';
+                    });
+                    
                     if (activeSch && !isCurrentlyUpdatingMode) {
-                        console.log(`Target SOC (${targetSoc}%) reached. Auto-resuming Self-Use...`);
-                        window.activeFoxGroups = window.activeFoxGroups.filter(g => g !== activeSch);
-                        pushGroupsToFoxESS(window.activeFoxGroups);
+                        // Dynamically read the SOC limit assigned to THIS specific block
+                        const activeSocLimit = activeSch.extraParam?.fdSoc || activeSch.fdSoc || parseInt(document.getElementById('target-soc-limit')?.value || 80);
+                        if (parseInt(batterySoc) >= activeSocLimit) {
+                            console.log(`Target SOC (${activeSocLimit}%) reached. Auto-resuming Self-Use...`);
+                            window.activeFoxGroups = window.activeFoxGroups.filter(g => g !== activeSch);
+                            
+                            // Mark this specific time block as fulfilled so the background loop doesn't re-add it
+                            let endMins = activeSch.endHour * 60 + activeSch.endMinute;
+                            if (endMins === 0) endMins = 1440;
+                            window.fulfilledScheduleEnd = endMins; 
+                            
+                            pushGroupsToFoxESS(window.activeFoxGroups);
+                        }
                     }
                 }
             }
@@ -1768,8 +1782,20 @@ async function evaluateLocalAutomations(btn = null, isStartup = false) {
         let eMins = endDt.getHours() * 60 + endDt.getMinutes();
         if (eMins === 0 && endDt.getTime() > startDt.getTime()) eMins = 1440; // Treat exactly midnight as 1440
         
+        // Clear memory if we have safely passed the suppressed time block
+        const nowMins = new Date().getHours() * 60 + new Date().getMinutes();
+        if (window.fulfilledScheduleEnd && nowMins >= window.fulfilledScheduleEnd) {
+            window.fulfilledScheduleEnd = null; 
+        }
+        
         const fill = (start, end) => {
-            for (let i = start; i < end; i++) timeline[i] = { workMode: mode, finalFdSoc: soc };
+            for (let i = start; i < end; i++) {
+                // If auto-resume already finished this block, skip re-adding it!
+                if (mode === 'ForceCharge' && window.fulfilledScheduleEnd && i < window.fulfilledScheduleEnd) {
+                    continue; 
+                }
+                timeline[i] = { workMode: mode, finalFdSoc: soc };
+            }
         };
         
         if (sMins >= eMins && eMins !== 1440) { // Crosses midnight
