@@ -559,7 +559,7 @@
 
     </div> <div class="app-footer">
         <div style="text-align: left;">Developer Samuel Chen</div>
-        <div style="text-align: right;">&copy; Copyright 2026 samuelchen.hk Build v2026.06.07 Rev1</div>
+        <div style="text-align: right;">&copy; Copyright 2026 samuelchen.hk Build v2026.06.07</div>
     </div>
 </div> 
 
@@ -1782,7 +1782,7 @@ async function evaluateLocalAutomations(btn = null, isStartup = false) {
     // Create a 1440-minute timeline to resolve overlapping priorities beautifully
     let timeline = new Array(1440).fill(null);
 
-    const fillTimeline = (startDt, endDt, mode, soc) => {
+    const fillTimeline = (startDt, endDt, mode, soc, ruleSource = null) => {
         const sMins = startDt.getHours() * 60 + startDt.getMinutes();
         let eMins = endDt.getHours() * 60 + endDt.getMinutes();
         if (eMins === 0 && endDt.getTime() > startDt.getTime()) eMins = 1440; // Treat exactly midnight as 1440
@@ -1793,10 +1793,11 @@ async function evaluateLocalAutomations(btn = null, isStartup = false) {
             window.fulfilledScheduleEnd = null; 
         }
         
-        const fill = (start, end, ruleSource = null) => {
+        const fill = (start, end) => {
             for (let i = start; i < end; i++) {
                 // If auto-resume already finished this block, skip re-adding it!
-                if (mode === 'ForceCharge' && window.fulfilledScheduleEnd && i < window.fulfilledScheduleEnd) {
+                // Fix: Only suppress blocks originating from 'price' target rules
+                if (mode === 'ForceCharge' && ruleSource === 'price' && window.fulfilledScheduleEnd && i < window.fulfilledScheduleEnd) {
                     continue; 
                 }
                 timeline[i] = { workMode: mode, finalFdSoc: soc, source: ruleSource };
@@ -1811,7 +1812,7 @@ async function evaluateLocalAutomations(btn = null, isStartup = false) {
         }
     };
 
-    // 1. Target Price Check (Base priority)
+    // 1. Target Price Check (Lower priority - forms the base off-peak schedule)
     if (isAutoPrice && window.todayRates) {
         const threshold = parseFloat(document.getElementById('price-threshold').value || 0);
         const limitTime = new Date(now.getTime() + 24 * 60 * 60 * 1000); 
@@ -1834,7 +1835,7 @@ async function evaluateLocalAutomations(btn = null, isStartup = false) {
         if (current && current.end > now) fillTimeline(current.start, current.end, "ForceCharge", soc, "price");
     }
 
-    // 2. Dispatch Check (Higher priority - overwrites target price blocks if they overlap)
+    // 2. Dispatch Check (Higher priority - overrides price blocks to ensure EV is protected from Auto-Resume)
     if (isAutoDispatch && window.currentDispatches) {
         const soc = applyDispatchLimit ? dispatchSocLimit : 100;
         window.currentDispatches.forEach(d => {
