@@ -1487,7 +1487,8 @@ async function fetchCurrentWorkMode(forceModeUpdate = false) {
                     const activeSch = window.activeFoxGroups.find(g => {
                         let eMins = g.endHour * 60 + g.endMinute;
                         if (eMins === 0) eMins = 1440; // Fix to support midnight boundary
-                        return (g.startHour * 60 + g.startMinute) <= nowMins && eMins > nowMins && g.workMode === 'ForceCharge';
+                        const sourceAttr = g.extraParam?.schSource || g.schSource;
+                        return (g.startHour * 60 + g.startMinute) <= nowMins && eMins > nowMins && g.workMode === 'ForceCharge' && sourceAttr === 'price';
                     });
                     
                     if (activeSch && !isCurrentlyUpdatingMode) {
@@ -1792,13 +1793,13 @@ async function evaluateLocalAutomations(btn = null, isStartup = false) {
             window.fulfilledScheduleEnd = null; 
         }
         
-        const fill = (start, end) => {
+        const fill = (start, end, ruleSource = null) => {
             for (let i = start; i < end; i++) {
                 // If auto-resume already finished this block, skip re-adding it!
                 if (mode === 'ForceCharge' && window.fulfilledScheduleEnd && i < window.fulfilledScheduleEnd) {
                     continue; 
                 }
-                timeline[i] = { workMode: mode, finalFdSoc: soc };
+                timeline[i] = { workMode: mode, finalFdSoc: soc, source: ruleSource };
             }
         };
         
@@ -1825,12 +1826,12 @@ async function evaluateLocalAutomations(btn = null, isStartup = false) {
                     if (!current) current = { start: new Date(r.valid_from), end: new Date(r.valid_to) };
                     else if (current.end.getTime() === new Date(r.valid_from).getTime()) current.end = new Date(r.valid_to);
                     else {
-                        if(current.end > now) fillTimeline(current.start, current.end, "ForceCharge", soc);
+                        if(current.end > now) fillTimeline(current.start, current.end, "ForceCharge", soc, "price");
                         current = { start: new Date(r.valid_from), end: new Date(r.valid_to) };
                     }
                 }
             });
-        if (current && current.end > now) fillTimeline(current.start, current.end, "ForceCharge", soc);
+        if (current && current.end > now) fillTimeline(current.start, current.end, "ForceCharge", soc, "price");
     }
 
     // 2. Dispatch Check (Higher priority - overwrites target price blocks if they overlap)
@@ -1838,7 +1839,7 @@ async function evaluateLocalAutomations(btn = null, isStartup = false) {
         const soc = applyDispatchLimit ? dispatchSocLimit : 100;
         window.currentDispatches.forEach(d => {
             const s = new Date(d.startDt); const e = new Date(d.endDt);
-            if(e > now) fillTimeline(s, e, "ForceCharge", soc);
+            if(e > now) fillTimeline(s, e, "ForceCharge", soc, "dispatch");
         });
     }
 
@@ -1856,12 +1857,12 @@ async function evaluateLocalAutomations(btn = null, isStartup = false) {
                     if (!currentExp) currentExp = { start: new Date(r.valid_from), end: new Date(r.valid_to) };
                     else if (currentExp.end.getTime() === new Date(r.valid_from).getTime()) currentExp.end = new Date(r.valid_to);
                     else {
-                        if(currentExp.end > now) fillTimeline(currentExp.start, currentExp.end, "ForceDischarge", 11);
+                        if(currentExp.end > now) fillTimeline(currentExp.start, currentExp.end, "ForceDischarge", 11, "export");
                         currentExp = { start: new Date(r.valid_from), end: new Date(r.valid_to) };
                     }
                 }
             });
-        if (currentExp && currentExp.end > now) fillTimeline(currentExp.start, currentExp.end, "ForceDischarge", 11);
+        if (currentExp && currentExp.end > now) fillTimeline(currentExp.start, currentExp.end, "ForceDischarge", 11, "export");
     }
 
     // Reconstruct continuous groups from the minute-by-minute timeline map
@@ -1872,8 +1873,8 @@ async function evaluateLocalAutomations(btn = null, isStartup = false) {
         let state = i < 1440 ? timeline[i] : null;
         
         if (!currentBlock && state) {
-            currentBlock = { start: i, workMode: state.workMode, finalFdSoc: state.finalFdSoc };
-        } else if (currentBlock && (!state || state.workMode !== currentBlock.workMode || state.finalFdSoc !== currentBlock.finalFdSoc)) {
+            currentBlock = { start: i, workMode: state.workMode, finalFdSoc: state.finalFdSoc, source: state.source };
+        } else if (currentBlock && (!state || state.workMode !== currentBlock.workMode || state.finalFdSoc !== currentBlock.finalFdSoc || state.source !== currentBlock.source)) {
             groups.push({
                 startHour: Math.floor(currentBlock.start / 60),
                 startMinute: currentBlock.start % 60,
@@ -1883,11 +1884,12 @@ async function evaluateLocalAutomations(btn = null, isStartup = false) {
                 extraParam: {
                     minSocOnGrid: minSoc,
                     fdPwr: fdPwr,
-                    fdSoc: currentBlock.finalFdSoc
+                    fdSoc: currentBlock.finalFdSoc,
+                    schSource: currentBlock.source
                 }
             });
             if (state) {
-                currentBlock = { start: i, workMode: state.workMode, finalFdSoc: state.finalFdSoc };
+                currentBlock = { start: i, workMode: state.workMode, finalFdSoc: state.finalFdSoc, source: state.source };
             } else {
                 currentBlock = null;
             }
