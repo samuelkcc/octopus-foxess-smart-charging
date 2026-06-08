@@ -1800,7 +1800,15 @@ async function evaluateLocalAutomations(btn = null, isStartup = false) {
                 if (mode === 'ForceCharge' && ruleSource === 'price' && window.fulfilledScheduleEnd && i < window.fulfilledScheduleEnd) {
                     continue; 
                 }
-                timeline[i] = { workMode: mode, finalFdSoc: soc, source: ruleSource };
+                
+                // Best Practice: If a Smart Dispatch overlaps an existing Target Price block, 
+                // automatically inherit the lower SOC so we don't accidentally charge the house battery to 100%
+                let finalSoc = soc;
+                if (ruleSource === 'dispatch' && timeline[i] && timeline[i].workMode === 'ForceCharge') {
+                    finalSoc = Math.min(soc, timeline[i].finalFdSoc);
+                }
+                
+                timeline[i] = { workMode: mode, finalFdSoc: finalSoc, source: ruleSource };
             }
         };
         
