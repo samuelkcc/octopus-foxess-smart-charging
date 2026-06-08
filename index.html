@@ -1738,6 +1738,10 @@ async function evaluateLocalAutomations(btn = null, isStartup = false) {
         btn.textContent = "Syncing...";
         btn.style.opacity = "0.7";
         btn.disabled = true;
+        
+        // Wipe the Auto-Resume memory lock because the user manually clicked Apply
+        window.fulfilledScheduleEnd = null;
+        console.log("Manual Apply: Auto-Resume memory cleared.");
     }
 
     const isAutoPrice = document.documentElement.querySelector('#toggle-auto-price')?.checked;
