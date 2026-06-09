@@ -1783,8 +1783,14 @@ async function evaluateLocalAutomations(btn = null, isStartup = false) {
     let timeline = new Array(1440).fill(null);
 
     const fillTimeline = (startDt, endDt, mode, soc, ruleSource = null) => {
-        const sMins = startDt.getHours() * 60 + startDt.getMinutes();
+        // Round odd smart dispatch times to make them legal for the inverter hardware
+        let sMins = startDt.getHours() * 60 + startDt.getMinutes();
         let eMins = endDt.getHours() * 60 + endDt.getMinutes();
+        
+        if (ruleSource === "dispatch") {
+            sMins = Math.ceil(sMins / 5) * 5;  // Round 17:35 -> 17:35 (or 17:33 -> 17:35)
+            eMins = Math.floor(eMins / 5) * 5; // Clean boundary rounding
+        }
         if (eMins === 0 && endDt.getTime() > startDt.getTime()) eMins = 1440; // Treat exactly midnight as 1440
         
         // Clear memory if we have safely passed the suppressed time block
@@ -1828,7 +1834,7 @@ async function evaluateLocalAutomations(btn = null, isStartup = false) {
         const soc = applyLimit ? targetSoc : 100;
         
         [...window.todayRates]
-            .filter(r => new Date(r.valid_to) > now && new Date(r.valid_from) <= limitTime)
+            .filter(r => new Date(r.valid_to) > now && new Date(r.valid_from) <= limitTime && new Date(r.valid_from).getDate() === now.getDate())
             .sort((a,b) => new Date(a.valid_from) - new Date(b.valid_from))
             .forEach(r => {
                 if (r.value_inc_vat <= threshold) {
@@ -1848,7 +1854,7 @@ async function evaluateLocalAutomations(btn = null, isStartup = false) {
         const soc = applyDispatchLimit ? dispatchSocLimit : 100;
         window.currentDispatches.forEach(d => {
             const s = new Date(d.startDt); const e = new Date(d.endDt);
-            if(e > now) fillTimeline(s, e, "ForceCharge", soc, "dispatch");
+            if(e > now && s.getDate() === now.getDate()) fillTimeline(s, e, "ForceCharge", soc, "dispatch");
         });
     }
 
@@ -1859,7 +1865,7 @@ async function evaluateLocalAutomations(btn = null, isStartup = false) {
         let currentExp = null;
 
         [...window.todayRates]
-            .filter(r => new Date(r.valid_to) > now && new Date(r.valid_from) <= limitTime)
+            .filter(r => new Date(r.valid_to) > now && new Date(r.valid_from) <= limitTime && new Date(r.valid_from).getDate() === now.getDate())
             .sort((a,b) => new Date(a.valid_from) - new Date(b.valid_from))
             .forEach(r => {
                 if (r.value_inc_vat >= expThreshold) {
