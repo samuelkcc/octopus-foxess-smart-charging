@@ -559,7 +559,7 @@
 
     </div> <div class="app-footer">
         <div style="text-align: left;">Developer Samuel Chen</div>
-        <div style="text-align: right;">&copy; Copyright 2026 samuelchen.hk Build v2026.06.07 Rev.2</div>
+        <div style="text-align: right;">&copy; Copyright 2026 samuelchen.hk Build v2026.06.18</div>
     </div>
 </div> 
 
@@ -1645,8 +1645,20 @@ async function pushGroupsToFoxESS(groups) {
     isCurrentlyUpdatingMode = true;
     const path = '/op/v3/device/scheduler/enable'; 
     try {
-        // Dummy schedule logic removed. FoxESS will receive an empty array to fully erase schedules.
-        groups = groups.slice(0, 5); 
+        // Ghost schedule fix: Explicitly send 5 slots. Unused slots are forced to 'enable: 0' to wipe out old ghosts.
+        const finalGroups = [];
+        for (let i = 0; i < 5; i++) {
+            if (i < groups.length) {
+                finalGroups.push({ ...groups[i], enable: 1 });
+            } else {
+                finalGroups.push({ 
+                    startHour: 0, startMinute: 0, 
+                    endHour: 0, endMinute: 0, 
+                    workMode: "SelfUse", enable: 0 
+                });
+            }
+        }
+        groups = finalGroups; 
         
         const payload = {
             url: `https://www.foxesscloud.com${path}`,
@@ -1787,10 +1799,7 @@ async function evaluateLocalAutomations(btn = null, isStartup = false) {
         let sMins = startDt.getHours() * 60 + startDt.getMinutes();
         let eMins = endDt.getHours() * 60 + endDt.getMinutes();
         
-        if (ruleSource === "dispatch") {
-            sMins = Math.ceil(sMins / 5) * 5;  // Round 17:35 -> 17:35 (or 17:33 -> 17:35)
-            eMins = Math.floor(eMins / 5) * 5; // Clean boundary rounding
-        }
+        
         if (eMins === 0 && endDt.getTime() > startDt.getTime()) eMins = 1440; // Treat exactly midnight as 1440
         
         // Clear memory if we have safely passed the suppressed time block
