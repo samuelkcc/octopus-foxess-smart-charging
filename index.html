@@ -322,6 +322,26 @@
     </div>
 </div>
 
+<style>
+    #app-menu-panel { position: fixed !important; top: 50% !important; left: 50% !important; right: auto !important; transform: translate(-50%, -35%) !important; z-index: 10005 !important; }
+    #app-menu-panel.open { transform: translate(-50%, -50%) !important; opacity: 1 !important; pointer-events: auto !important; }
+</style>
+<div class="slide-panel" id="app-menu-panel">
+    <h3 style="margin-top: 0; color: var(--text-main); display: flex; align-items: center; justify-content: space-between;">
+        ⚙️ Dashboard Menu
+        <span style="cursor: pointer; font-size: 1.5rem; color: #94a3b8; line-height: 1;" onclick="toggleAppMenu()">&times;</span>
+    </h3>
+    <div style="display: flex; flex-direction: column; gap: 12px; margin-top: 1.5rem;">
+        <button onclick="document.getElementById('disclaimer-modal').style.display='flex'; toggleAppMenu();" style="width: 100%; padding: 0.85rem; font-size: 0.9rem; background: #3b82f6; border-radius: 8px; border: none; color: white; cursor: pointer; text-align: left; display: flex; align-items: center; gap: 8px;">💾 Save Config</button>
+        <button onclick="toggleDarkMode(); toggleAppMenu();" class="theme-toggle-btn" style="width: 100%; padding: 0.85rem; font-size: 0.9rem; background: var(--card-bg); border-radius: 8px; border: 1px solid var(--border); color: var(--text-main); cursor: pointer; text-align: left; display: flex; align-items: center; gap: 8px;">🌗 Dark Mode</button>
+        <button onclick="toggleFullScreen(); toggleAppMenu();" style="width: 100%; padding: 0.85rem; font-size: 0.9rem; background: var(--card-bg); border-radius: 8px; border: 1px solid var(--border); color: var(--text-main); cursor: pointer; text-align: left; display: flex; align-items: center; gap: 8px;">⛶ Full Screen</button>
+        <button onclick="toggleScreenSaver(); toggleAppMenu();" style="width: 100%; padding: 0.85rem; font-size: 0.9rem; background: var(--card-bg); border-radius: 8px; border: 1px solid var(--border); color: var(--text-main); cursor: pointer; text-align: left; display: flex; align-items: center; gap: 8px;">🌙 Screen Saver</button>
+        <button onclick="toggleMiniViewer(); toggleAppMenu();" style="width: 100%; padding: 0.85rem; font-size: 0.9rem; background: #10b981; border-radius: 8px; border: none; color: white; cursor: pointer; text-align: left; box-shadow: 0 2px 4px rgba(16, 185, 129, 0.3); display: flex; align-items: center; gap: 8px;">📱 Mini HUD</button>
+        <div style="border-top: 1px dashed var(--border); margin: 0.5rem 0;"></div>
+        <button onclick="document.getElementById('wipe-modal').style.display='flex'; toggleAppMenu();" style="width: 100%; padding: 0.85rem; font-size: 0.9rem; background: transparent; border-radius: 8px; border: 1px dashed #ef4444; color: #ef4444; cursor: pointer; text-align: left; display: flex; align-items: center; gap: 8px;">🗑️ Wipe Local Data</button>
+    </div>
+</div>
+
 <div class="dashboard" id="dashboard">
     <div style="display: flex; flex-direction: column; gap: 1.5rem;">
         
@@ -330,10 +350,9 @@
                 <div style="display: flex; flex-direction: column; gap: 6px;">
                     <span>🐙 Intelligent Octopus Go</span>
                     <div style="display: flex; gap: 8px;">
-                        <button onclick="document.getElementById('disclaimer-modal').style.display='flex'" style="width: fit-content; padding: 0.25rem 0.6rem; font-size: 0.75rem; background: #3b82f6; border-radius: 6px; border: none; color: white; cursor: pointer;">Save Config</button>
-                        <button onclick="toggleDarkMode()" class="theme-toggle-btn" style="width: fit-content; padding: 0.25rem 0.6rem; font-size: 0.75rem; background: transparent; border-radius: 6px; border: 1px solid var(--border); color: var(--text-main); cursor: pointer;">🌗 Dark Mode</button>
-                        <button onclick="toggleFullScreen()" style="width: fit-content; padding: 0.25rem 0.6rem; font-size: 0.75rem; background: transparent; border-radius: 6px; border: 1px solid var(--border); color: var(--text-main); cursor: pointer;">⛶ Full Screen</button>
-                        <button onclick="toggleScreenSaver()" style="width: fit-content; padding: 0.25rem 0.6rem; font-size: 0.75rem; background: transparent; border-radius: 6px; border: 1px solid var(--border); color: var(--text-main); cursor: pointer;">🌙 Screen Saver</button>
+                        <button onclick="toggleAppMenu()" style="width: fit-content; padding: 0.3rem 0.75rem; font-size: 0.9rem; background: var(--card-bg); border-radius: 6px; border: 1px solid var(--border); color: var(--text-main); cursor: pointer; display: flex; align-items: center; gap: 6px; font-weight: 600; box-shadow: 0 2px 4px rgba(0,0,0,0.05); transition: all 0.2s;">
+                            <span style="font-size: 1.1rem; line-height: 1;">☰</span> Menu
+                        </button>
                     </div>
                 </div>
                 <div style="display: flex; flex-direction: column; align-items: flex-end; gap: 8px;">
@@ -868,10 +887,24 @@ function toggleDrawer(idToOpen) {
     }
 }
 
+function toggleAppMenu() {
+    const panel = document.getElementById('app-menu-panel');
+    const backdrop = document.getElementById('drawer-backdrop');
+    if (panel.classList.contains('open')) {
+        panel.classList.remove('open');
+        backdrop.classList.remove('visible');
+    } else {
+        closeAllDrawers(); // Close others first
+        panel.classList.add('open');
+        backdrop.classList.add('visible');
+    }
+}
+
 function closeAllDrawers() {
-    document.getElementById('why-use-panel').classList.remove('open');
-    document.getElementById('setup-guide-panel').classList.remove('open');
-    document.getElementById('drawer-backdrop').classList.remove('visible');
+    document.getElementById('why-use-panel')?.classList.remove('open');
+    document.getElementById('setup-guide-panel')?.classList.remove('open');
+    document.getElementById('app-menu-panel')?.classList.remove('open');
+    document.getElementById('drawer-backdrop')?.classList.remove('visible');
 }
 
 function forceOctoRefresh() { if (octoCountdown > 2) window.nextOctoTime = Date.now() + 1000; }
@@ -1799,6 +1832,11 @@ async function evaluateLocalAutomations(btn = null, isStartup = false) {
         let sMins = startDt.getHours() * 60 + startDt.getMinutes();
         let eMins = endDt.getHours() * 60 + endDt.getMinutes();
         
+        // Snap to 15-min boundaries for FoxESS hardware compatibility
+        if (ruleSource === 'dispatch') {
+            sMins = Math.floor(sMins / 15) * 15;
+            eMins = Math.ceil(eMins / 15) * 15;
+        }
         
         if (eMins === 0 && endDt.getTime() > startDt.getTime()) eMins = 1440; // Treat exactly midnight as 1440
         
@@ -2123,7 +2161,79 @@ function toggleScreenSaver() {
     const overlay = document.getElementById('screen-saver-overlay');
     overlay.style.display = (overlay.style.display === 'none') ? 'block' : 'none';
 }
+
+function toggleMiniViewer() {
+    const hud = document.getElementById('mini-viewer-hud');
+    if (hud.style.display === 'none' || !hud.style.display) {
+        hud.style.display = 'block';
+        updateMiniViewer();
+    } else {
+        hud.style.display = 'none';
+    }
+}
+
+function updateMiniViewer() {
+    const hudOcto = document.getElementById('hud-octo-schedules');
+    const hudFox = document.getElementById('hud-fox-schedules');
+    if (!hudOcto || !hudFox) return;
+
+    // Render Octopus Dispatches
+    if (window.currentDispatches && window.currentDispatches.length > 0) {
+        hudOcto.innerHTML = window.currentDispatches.map(d => {
+            const s = new Date(d.startDt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+            const e = new Date(d.endDt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+            return `<div style="background: rgba(14, 165, 233, 0.2); padding: 4px 8px; border-radius: 4px; margin-bottom: 4px; border-left: 3px solid #38bdf8;">⚡ ${s} - ${e}</div>`;
+        }).join('');
+    } else {
+        hudOcto.innerHTML = '<div style="color: #64748b; font-style: italic;">No dispatches scheduled.</div>';
+    }
+
+    // Render FoxESS Schedules
+    if (window.activeFoxGroups && window.activeFoxGroups.length > 0) {
+        const activeGroups = window.activeFoxGroups.filter(g => g.enable !== 0); // Hide disabled ghost slots
+        if (activeGroups.length > 0) {
+            hudFox.innerHTML = activeGroups.map(g => {
+                const s = `${String(g.startHour).padStart(2,'0')}:${String(g.startMinute).padStart(2,'0')}`;
+                const e = `${String(g.endHour).padStart(2,'0')}:${String(g.endMinute).padStart(2,'0')}`;
+                let modeLabel = g.workMode === 'ForceCharge' ? 'CHG' : (g.workMode === 'ForceDischarge' ? 'DIS' : 'SLF');
+                let color = g.workMode === 'ForceCharge' ? '#fb923c' : (g.workMode === 'ForceDischarge' ? '#f87171' : '#34d399');
+                let bg = g.workMode === 'ForceCharge' ? 'rgba(249, 115, 22, 0.15)' : (g.workMode === 'ForceDischarge' ? 'rgba(239, 68, 68, 0.15)' : 'rgba(52, 211, 153, 0.15)');
+                return `<div style="background: ${bg}; padding: 4px 8px; border-radius: 4px; margin-bottom: 4px; border-left: 3px solid ${color};">
+                    <span style="color: ${color}; font-weight: 600; display: inline-block; width: 35px;">${modeLabel}</span> | ${s} - ${e}
+                </div>`;
+            }).join('');
+        } else {
+            hudFox.innerHTML = '<div style="color: #64748b; font-style: italic;">No active schedules.</div>';
+        }
+    } else {
+        hudFox.innerHTML = '<div style="color: #64748b; font-style: italic;">No active schedules.</div>';
+    }
+}
+
+// Auto-update the HUD every 5 seconds if left open
+setInterval(() => {
+    if (document.getElementById('mini-viewer-hud')?.style.display === 'block') updateMiniViewer();
+}, 5000);
 </script>
+
 <div id="screen-saver-overlay" onclick="toggleScreenSaver()" style="display: none; position: fixed; inset: 0; width: 100%; height: 100%; background: #000; z-index: 100000; cursor: pointer;"></div>
+
+<div id="mini-viewer-hud" style="display: none; position: fixed; top: 1rem; left: 1rem; width: 280px; max-height: 85vh; overflow-y: auto; background: rgba(15, 23, 42, 0.95); backdrop-filter: blur(8px); color: #f8fafc; padding: 1.25rem; border-radius: 12px; z-index: 99999; font-size: 0.85rem; box-shadow: 0 10px 25px rgba(0,0,0,0.5); border: 1px solid #3b82f6; font-family: system-ui, -apple-system, sans-serif;">
+    <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: nowrap; border-bottom: 1px solid #334155; padding-bottom: 0.5rem; margin-bottom: 1rem;">
+        <strong style="font-size: 1rem; color: #60a5fa; display: flex; align-items: center; gap: 6px; white-space: nowrap; padding-top: 2px;">📱 Status HUD</strong>
+        <button onclick="toggleMiniViewer()" style="background: transparent; color: #94a3b8; border: none; font-size: 1.5rem; cursor: pointer; line-height: 1; padding: 0; flex-shrink: 0; margin-left: auto;">&times;</button>
+    </div>
+    
+    <div style="margin-bottom: 1.25rem;">
+        <div style="color: #94a3b8; font-weight: 600; margin-bottom: 0.5rem; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.5px;">🐙 Octopus Dispatches</div>
+        <div id="hud-octo-schedules" style="color: #e2e8f0; line-height: 1.4;">Waiting for sync...</div>
+    </div>
+    
+    <div>
+        <div style="color: #94a3b8; font-weight: 600; margin-bottom: 0.5rem; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.5px;">🦊 FoxESS Modes</div>
+        <div id="hud-fox-schedules" style="color: #e2e8f0; line-height: 1.4;">Waiting for sync...</div>
+    </div>
+</div>
+
 </body>
 </html>
