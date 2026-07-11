@@ -1,0 +1,659 @@
+<!--
+    Octopus Intelligent Go & FoxESS Smart Charging Detector
+    Copyright (C) 2026 Samuel Chen (samuelchen.hk)
+
+    This program is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program. If not, see <https://www.gnu.org/licenses/>.
+-->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart Charging Detector</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
+        <link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+
+<div class="app-wrapper">
+    <div class="app-content">
+
+<div class="slide-backdrop" id="drawer-backdrop" onclick="closeAllDrawers()"></div>
+
+<div class="auth-layout" id="login-layout">
+    <div class="slide-panel left-drawer" id="why-use-panel">
+        <h3 style="margin-top: 0; color: var(--text-main); display: flex; align-items: center; justify-content: space-between;">
+            ℹ️ App Overview & Purpose
+            <span style="cursor: pointer; font-size: 1.5rem; color: #94a3b8; line-height: 1;" onclick="closeAllDrawers()">&times;</span>
+        </h3>
+        <div style="font-size: 0.88rem; color: var(--text-muted); line-height: 1.6; margin-top: 1rem;">
+            When <em>Intelligent Octopus Go</em> smartly charges your EV, your FoxESS solar battery thinks your house is using massive amounts of power. If left in "Self-Use" mode, it will completely drain your home battery trying to cover the EV load—destroying its lifespan!
+            <br><br>
+            This app acts as a smart bridge. It detects your upcoming cheap EV charging slots and automatically switches your FoxESS inverter to <strong>Force Charge</strong>. This stops your home battery from draining into your car, protects its lifespan, and lets your home battery soak up the cheap off-peak rates too.
+        </div>
+    </div>
+
+    <div class="auth-card" id="login-card">
+        <h2>⚡ Smart Charging Detector</h2>
+        <div class="auth-subtitle">Intelligent Octopus Go & FoxESS</div>
+        
+        <button type="button" onclick="toggleDrawer('why-use-panel')" style="background: transparent; border: 1px solid var(--border); color: var(--text-muted); font-size: 0.85rem; padding: 0.65rem; border-radius: 10px; cursor: pointer; width: 100%; font-weight: 600; margin-bottom: 1.5rem; transition: all 0.2s;" onmouseover="this.style.color='var(--text-main)'; this.style.borderColor='var(--text-muted)';" onmouseout="this.style.color='var(--text-muted)'; this.style.borderColor='var(--border)';">
+            ℹ️ App Overview & Purpose
+        </button>
+
+        <div id="error" class="error"></div>
+        
+        <div class="input-group">
+            <label>🐙 Octopus Account Number</label>
+            <input type="text" id="acc" placeholder="e.g., A-12345678">
+        </div>
+        
+        <div class="input-group">
+            <label>🐙 Octopus API Key</label>
+            <input type="password" id="api" placeholder="sk_live_...">
+        </div>
+
+        <div class="auth-divider">FoxESS Integration</div>
+
+        <div class="input-group">
+            <label>🦊 FoxESS Inverter Serial Number</label>
+            <input type="text" id="fox-sn" placeholder="e.g., 60B21000000000">
+        </div>
+        
+        <div class="input-group">
+            <label>🦊 FoxESS API Token</label>
+            <input type="password" id="fox-token" placeholder="Generated from FoxCloud">
+        </div>
+
+        <div class="input-group" style="margin-bottom: 1.5rem;">
+            <label>📜 Google Apps Script Relay URL</label>
+            <input type="text" id="gas-url" placeholder="https://script.google.com/macros/s/.../exec">
+        </div>
+        
+        <button onclick="handleConnectClick()" id="btn" style="height: 58px; padding: 0 1rem; box-sizing: border-box; font-size: 1.05rem; border-radius: 10px; box-shadow: 0 4px 10px -2px rgba(225, 29, 72, 0.3); margin-top: 0.5rem; display: flex; align-items: center; justify-content: center; gap: 10px; transition: background-color 0.3s;">
+            <span id="btn-text">CONNECT</span>
+            <div id="auto-connect-timer" style="display: none; width: 24px; height: 24px; position: relative; flex-shrink: 0;">
+                <div style="position: absolute; inset: 0; border-radius: 50%; background: conic-gradient(rgba(255,255,255,0.9) var(--progress, 100%), rgba(255,255,255,0.2) 0); -webkit-mask: radial-gradient(closest-side, transparent 72%, black 73%); mask: radial-gradient(closest-side, transparent 72%, black 73%);"></div>
+                <span id="auto-connect-sec" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 0.75rem; color: white; font-weight: bold; line-height: 1;">10</span>
+            </div>
+        </button>
+        
+        <div style="display: flex; gap: 0.75rem; margin-top: 1rem;">
+            <button onclick="document.getElementById('import-file').click()" class="btn-clear" style="background-color: #3b82f6; font-size: 0.85rem; padding: 0.6rem; border-radius: 8px;">Load Config</button>
+            <button onclick="document.getElementById('wipe-modal').style.display='flex'" id="btn-clear" style="background-color: #ffffff; color: #3b82f6; border: 2px dotted #3b82f6; font-size: 0.85rem; padding: 0.6rem; border-radius: 8px; font-weight: 600; cursor: pointer; transition: all 0.2s;" onmouseover="this.style.backgroundColor='#f8fafc'" onmouseout="this.style.backgroundColor='#ffffff'">Wipe Data</button>
+        </div>
+        <input type="file" id="import-file" style="display: none;" accept=".enc,.txt" onchange="handleImportFile(event)">
+
+        <div style="text-align: center; margin-top: 1.5rem; display: flex; gap: 0.75rem; flex-direction: column; align-items: center;">
+            <button type="button" onclick="toggleDrawer('setup-guide-panel')" style="background: #f1f5f9; border: 1px solid #cbd5e1; color: #475569; font-size: 0.85rem; padding: 0.6rem 1.2rem; border-radius: 8px; cursor: pointer; width: 100%; font-weight: 600; transition: background 0.2s;">
+                Toggle Setup Guide
+            </button>
+            <span onclick="openLicenseModal(false)" style="color: #64748b; font-size: 0.8rem; text-decoration: underline; cursor: pointer; transition: color 0.2s;" onmouseover="this.style.color='var(--text-main)'" onmouseout="this.style.color='#64748b'">⚖️ View Legal & Disclaimer</span>
+            <button type="button" class="theme-toggle-btn" onclick="toggleDarkMode()" style="background: transparent; border: 1px solid var(--border); color: var(--text-main); font-size: 0.85rem; padding: 0.6rem 1.2rem; border-radius: 8px; cursor: pointer; width: 100%; transition: background 0.2s; margin-top: 0.5rem;">🌗 Dark Mode</button>
+        </div>
+
+        </div>
+
+    <div class="slide-panel right-drawer" id="setup-guide-panel">
+        <h3 style="margin-top: 0; color: var(--text-main); display: flex; align-items: center; justify-content: space-between;">
+            Setup & Credentials
+            <span style="cursor: pointer; font-size: 1.5rem; color: #94a3b8; line-height: 1;" onclick="closeAllDrawers()">&times;</span>
+        </h3>
+        
+        <p style="font-size: 0.8rem; color: #64748b; margin-bottom: 1.5rem;">
+            <strong style="color: #ef4444;">Disclaimer:</strong> This application is strictly for personal home use and is not intended for commercial purposes. It is an independent tool.
+        </p>
+
+        <div style="display: flex; flex-direction: column; gap: 1rem; font-size: 0.85rem;">
+            <div style="background: #f8fafc; padding: 1rem; border-radius: 10px; border: 1px solid #e2e8f0;">
+                <strong style="color: #0f172a;">🐙 Octopus Energy</strong>
+                <ul style="margin: 0.5rem 0 0; padding-left: 1.25rem; color: #475569;">
+                    <li style="margin-bottom: 0.25rem;"><strong>Account:</strong> Usually starts with <code>A-XXXXXXXX</code>.</li>
+                    <li><strong>API Key:</strong> Generate it on your <a href="https://octopus.energy/dashboard/new/accounts/personal-details/api-access" target="_blank" style="color: #e11d48; text-decoration: none; font-weight: 600;">API Access Dashboard</a>.</li>
+                </ul>
+            </div>
+            
+            <div style="background: #f8fafc; padding: 1rem; border-radius: 10px; border: 1px solid #e2e8f0;">
+                <strong style="color: #f97316;">🦊 FoxESS Cloud</strong>
+                <ul style="margin: 0.5rem 0 0; padding-left: 1.25rem; color: #475569;">
+                    <li style="margin-bottom: 0.25rem;"><strong>API Token:</strong> Login to the <a href="https://www.foxesscloud.com/login" target="_blank" style="color: #f97316; text-decoration: none; font-weight: 600;">FoxCloud V1 website</a>. Go to <strong>User Profile</strong> ➔ <strong>API Management</strong>.</li>
+                    <li><strong>Inverter Serial:</strong> Open the <strong>FoxCloud App</strong> ➔ <strong>Device</strong>. The serial is below the image.</li>
+                </ul>
+            </div>
+            
+            <div style="background: #f8fafc; padding: 1rem; border-radius: 10px; border: 1px solid #e2e8f0;">
+                <strong style="color: #10b981;">📜 Google Apps Script Relay</strong>
+                <p style="margin: 0.5rem 0; color: #475569; line-height: 1.4;">
+                    Your browser explicitly blocks direct background connections to FoxESS for security (CORS restriction). A free Google Script acts as a safe, private server relay to bypass this.
+                </p>
+                <button type="button" onclick="closeAllDrawers(); document.getElementById('proxy-modal').style.display='flex'" style="background: #f43f5e; color: white; border: none; padding: 0.5rem 0.8rem; border-radius: 6px; cursor: pointer; font-size: 0.8rem; width: 100%; font-weight: 600;">View Setup Instructions</button>
+            </div>
+
+            <div style="background: #f8fafc; padding: 1rem; border-radius: 10px; border: 1px solid #e2e8f0;">
+                <strong style="color: #6366f1;">🖥️ Kiosk / Device Tips</strong>
+                <ul style="margin: 0.5rem 0 0; padding-left: 1.25rem; color: #475569; font-size: 0.8rem;">
+                    <li style="margin-bottom: 0.5rem;"><strong>Raspberry Pi OS:</strong> Emojis may show as empty boxes. To fix this, open the terminal and install the emoji pack:<br><code style="background: #e2e8f0; padding: 2px 4px; border-radius: 4px; display: inline-block; margin-top: 4px; color: #0f172a;">sudo apt install fonts-noto-color-emoji</code></li>
+                    <li><strong>Android Tablets:</strong> To run continuously as a dashboard, ensure you disable the automatic screen lock/sleep timeout in your tablet's <strong>Settings ➔ Display</strong>.</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    #app-menu-panel { position: fixed !important; top: 50% !important; left: 50% !important; right: auto !important; transform: translate(-50%, -35%) !important; z-index: 10005 !important; }
+    #app-menu-panel.open { transform: translate(-50%, -50%) !important; opacity: 1 !important; pointer-events: auto !important; }
+</style>
+<div class="slide-panel" id="app-menu-panel">
+    <h3 style="margin-top: 0; color: var(--text-main); display: flex; align-items: center; justify-content: space-between;">
+        ⚙️ Dashboard Menu
+        <span style="cursor: pointer; font-size: 1.5rem; color: #94a3b8; line-height: 1;" onclick="toggleAppMenu()">&times;</span>
+    </h3>
+    <div style="display: flex; flex-direction: column; gap: 12px; margin-top: 1.5rem;">
+        <button onclick="document.getElementById('disclaimer-modal').style.display='flex'; toggleAppMenu();" style="width: 100%; padding: 0.85rem; font-size: 0.9rem; background: #3b82f6; border-radius: 8px; border: none; color: white; cursor: pointer; text-align: left; display: flex; align-items: center; gap: 8px;">💾 Save Config</button>
+        <button onclick="toggleDarkMode(); toggleAppMenu();" class="theme-toggle-btn" style="width: 100%; padding: 0.85rem; font-size: 0.9rem; background: var(--card-bg); border-radius: 8px; border: 1px solid var(--border); color: var(--text-main); cursor: pointer; text-align: left; display: flex; align-items: center; gap: 8px;">🌗 Dark Mode</button>
+        <button onclick="toggleFullScreen(); toggleAppMenu();" style="width: 100%; padding: 0.85rem; font-size: 0.9rem; background: var(--card-bg); border-radius: 8px; border: 1px solid var(--border); color: var(--text-main); cursor: pointer; text-align: left; display: flex; align-items: center; gap: 8px;">⛶ Full Screen</button>
+        <button onclick="toggleScreenSaver(); toggleAppMenu();" style="width: 100%; padding: 0.85rem; font-size: 0.9rem; background: var(--card-bg); border-radius: 8px; border: 1px solid var(--border); color: var(--text-main); cursor: pointer; text-align: left; display: flex; align-items: center; gap: 8px;">🌙 Screen Saver</button>
+        <button onclick="toggleMiniViewer(); toggleAppMenu();" style="width: 100%; padding: 0.85rem; font-size: 0.9rem; background: #10b981; border-radius: 8px; border: none; color: white; cursor: pointer; text-align: left; box-shadow: 0 2px 4px rgba(16, 185, 129, 0.3); display: flex; align-items: center; gap: 8px;">📱 Mini HUD</button>
+        <div style="border-top: 1px dashed var(--border); margin: 0.5rem 0;"></div>
+        <button onclick="document.getElementById('wipe-modal').style.display='flex'; toggleAppMenu();" style="width: 100%; padding: 0.85rem; font-size: 0.9rem; background: transparent; border-radius: 8px; border: 1px dashed #ef4444; color: #ef4444; cursor: pointer; text-align: left; display: flex; align-items: center; gap: 8px;">🗑️ Wipe Local Data</button>
+    </div>
+</div>
+
+<div class="dashboard" id="dashboard">
+    <div style="display: flex; flex-direction: column; gap: 1.5rem;">
+        
+        <div class="card">
+            <div class="card-header" style="align-items: flex-start;">
+                <div style="display: flex; flex-direction: column; gap: 6px;">
+                    <span>🐙 Intelligent Octopus Go</span>
+                    <div style="display: flex; gap: 8px;">
+                        <button onclick="toggleAppMenu()" style="width: fit-content; padding: 0.3rem 0.75rem; font-size: 0.9rem; background: var(--card-bg); border-radius: 6px; border: 1px solid var(--border); color: var(--text-main); cursor: pointer; display: flex; align-items: center; gap: 6px; font-weight: 600; box-shadow: 0 2px 4px rgba(0,0,0,0.05); transition: all 0.2s;">
+                            <span style="font-size: 1.1rem; line-height: 1;">☰</span> Menu
+                        </button>
+                    </div>
+                </div>
+                <div style="display: flex; flex-direction: column; align-items: flex-end; gap: 8px;">
+                    <div id="octo-api-badge" class="badge neutral countdown-border" style="cursor: pointer; transition: opacity 0.2s; display: flex; align-items: center; --progress: 100%;" onclick="forceOctoRefresh()" onmouseover="this.style.opacity=0.7" onmouseout="this.style.opacity=1" title="Click to force refresh">
+                        <span id="octo-api-text">CONNECTING...</span>
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <label style="font-size: 0.75rem; color: var(--text-muted); margin: 0; line-height: 1;">Interval:</label>
+                        <input type="number" id="octo-interval-input" value="60" style="width: 50px; padding: 0.2rem; margin: 0; font-size: 0.75rem; border: 1px solid var(--border); border-radius: 4px; background: #fff;">
+                        <button id="btn-apply-octo" onclick="applyOctoInterval()" style="width: auto; padding: 0.2rem 0.6rem; margin: 0; font-size: 0.75rem; border-radius: 4px; transition: all 0.3s;">Apply</button>
+                    </div>
+                </div>
+            </div>
+            <div style="font-size: 2.5rem; font-weight: 900; text-align: center; margin-bottom: 1.5rem; font-family: monospace; color: var(--accent); letter-spacing: 2px;" id="real-time-clock">--:--:--</div>
+            <div class="summary-grid">
+                <div class="price-display" style="padding-bottom: 1rem;">
+                    <div id="ui-pricing"></div>
+                    
+                    <div style="height: 160px; margin-top: 1.5rem; position: relative; width: 100%;">
+                        <canvas id="priceChart"></canvas>
+                    </div>
+                </div>
+
+                <div style="background: #f8fafc; padding: 1rem; border-radius: 12px; border: 1px solid var(--border);">
+                    <ul class="data-list" id="ui-account-details"></ul>
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header" style="align-items: center;">
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <span>🔌 Device & Settings</span>
+                </div>
+                <span id="ui-device-status" class="badge neutral">UNKNOWN</span>
+            </div>
+            <div style="background: #f8fafc; padding: 1rem; border-radius: 12px; border: 1px solid var(--border);">
+                <ul class="data-list" id="ui-device-prefs"></ul>
+            </div>
+        </div>
+
+    </div>
+
+    <div style="display: flex; flex-direction: column; gap: 1.5rem;">
+        
+        <div class="card">
+            <div class="card-header" style="align-items: flex-start;">
+                <div style="display: flex; flex-direction: column; gap: 4px;">
+                    <span>☀️ FoxESS Mode Selector</span>
+                    <span style="font-size: 0.8rem; font-weight: normal; color: var(--text-muted);">API Calls Today: <span id="fox-api-counter" style="font-weight:bold; color: var(--text-main);">0</span>/1440</span>
+                </div>
+                <div style="display: flex; flex-direction: column; align-items: flex-end; gap: 8px;">
+                    <div id="fox-api-badge" class="badge neutral countdown-border" style="cursor: pointer; transition: opacity 0.2s; display: flex; align-items: center; --progress: 100%;" onclick="forceFoxRefresh()" onmouseover="this.style.opacity=0.7" onmouseout="this.style.opacity=1" title="Click to force refresh">
+                        <span id="fox-api-text">CONNECTING...</span>
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <label style="font-size: 0.75rem; color: var(--text-muted); margin: 0; line-height: 1;">Interval:</label>
+                        <input type="number" id="fox-interval-input" value="600" style="width: 50px; padding: 0.2rem; margin: 0; font-size: 0.75rem; border: 1px solid var(--border); border-radius: 4px; background: #fff;">
+                        <button id="btn-apply-fox" onclick="applyFoxInterval()" style="width: auto; padding: 0.2rem 0.6rem; margin: 0; font-size: 0.75rem; border-radius: 4px; transition: all 0.3s;">Apply</button>
+                    </div>
+                </div>
+            </div>
+            <div id="fox-error" class="error"></div>
+            <div id="fox-success" class="success"></div>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; padding: 0 0.5rem;">
+                <h4 style="margin: 0; font-size: 1rem; color: var(--text-main); display: flex; align-items: center; gap: 8px;">
+                    🤖 Current Device Mode
+                </h4>
+                <span id="current-work-mode" class="badge neutral">LOADING...</span>
+            </div>
+
+            <div class="automation-block" style="margin-bottom: 1.5rem; padding: 0.75rem 1.25rem;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
+                    <h4 style="margin: 0; font-size: 0.95rem; color: var(--text-main);">📋 Active Mode Scheduler</h4>
+                    <button onclick="event.preventDefault(); this.textContent='Fetching...'; fetchFoxSchedules().then(() => { this.textContent='🔄 Fetch Now'; if (document.getElementById('toggle-auto-price')?.checked || document.getElementById('toggle-auto-dispatch')?.checked) evaluateLocalAutomations(null, true); });" style="width: auto; padding: 0.35rem 0.85rem; font-size: 0.75rem; font-weight: 600; background: #3b82f6; border-radius: 6px; color: white; border: none; cursor: pointer; transition: all 0.2s; box-shadow: 0 2px 4px rgba(59, 130, 246, 0.3);" onmouseover="this.style.transform='translateY(-1px)'; this.style.boxShadow='0 4px 6px rgba(59, 130, 246, 0.4)';" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 2px 4px rgba(59, 130, 246, 0.3)';">🔄 Fetch Now</button>
+                </div>
+                <div id="fox-active-schedules" class="block-countdown-fox" style="background: var(--card-bg); padding: 0.5rem 1rem; margin: 0 -1.05rem; border-radius: 8px; border: 1px solid var(--border); font-size: 0.85rem; color: var(--text-muted); text-align: center;">Click "Refresh" to fetch data.</div>
+            </div>
+
+            <div class="automation-block" style="margin-bottom: 1.5rem; padding: 0.5rem 1.25rem;">
+                <details style="font-size: 0.85rem; cursor: pointer;">
+                    <summary style="font-weight: 600; color: var(--text-main); display: flex; justify-content: space-between; align-items: center; list-style: none; padding: 0.75rem 0;">
+                        <h4 style="margin: 0; font-size: 0.95rem; display: flex; align-items: center; gap: 8px;">📊 Live Telemetry</h4>
+                        <span class="telemetry-arrow" style="transition: transform 0.2s; font-size: 0.8rem; color: var(--text-muted);">▼</span>
+                    </summary>
+                    <div style="margin: 0 -1.2rem; padding-top: 0.5rem; padding-bottom: 0.75rem; padding: 3px; border-radius: 12px;" class="block-countdown-fox">
+                        <div style="background: var(--card-bg); padding: 1rem; border-radius: 10px; position: relative; z-index: 2;">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; border-bottom: 1px solid var(--border); padding-bottom: 0.75rem;">
+                                <span style="font-weight: 600; color: var(--text-main);">Inverter Status</span>
+                                <button onclick="event.preventDefault(); this.textContent='Fetching...'; fetchCurrentWorkMode(true).then(() => this.textContent='🔄 Fetch Now');" style="width: auto; padding: 0.35rem 0.85rem; font-size: 0.75rem; font-weight: 600; background: #3b82f6; border-radius: 6px; color: white; border: none; cursor: pointer; transition: all 0.2s; box-shadow: 0 2px 4px rgba(59, 130, 246, 0.3);" onmouseover="this.style.transform='translateY(-1px)'; this.style.boxShadow='0 4px 6px rgba(59, 130, 246, 0.4)';" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 2px 4px rgba(59, 130, 246, 0.3)';">🔄 Fetch Now</button>
+                            </div>
+                            <div id="live-telemetry-panel" style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem;">
+                                <span style="color: var(--text-muted); font-size: 0.85rem; grid-column: 1 / -1; text-align: center;">Waiting for sync...</span>
+                            </div>
+                        </div>
+                    </div>
+                </details>
+                <style>details > summary::-webkit-details-marker { display: none; } details[open] .telemetry-arrow { transform: rotate(180deg); }</style>
+            </div>
+            <div class="automation-block" style="margin-bottom: 0; flex-grow: 1; padding: 0.5rem 1.25rem;">
+                <details style="font-size: 0.85rem; cursor: pointer;">
+                    <summary style="font-weight: 600; color: var(--text-main); display: flex; justify-content: space-between; align-items: center; list-style: none; padding: 0.75rem 0;">
+                        <h4 style="margin: 0; font-size: 0.95rem; display: flex; align-items: center; gap: 8px;">⏱️ Test mode</h4>
+                        <span class="test-arrow" style="transition: transform 0.2s; font-size: 0.8rem; color: var(--text-muted);">▼</span>
+                    </summary>
+                    <div style="padding-top: 0.5rem; padding-bottom: 0.75rem;">
+                        <div style="display: flex; gap: 1rem; margin-bottom: 1rem;">
+                            <div style="flex: 1;">
+                                <label style="font-size: 0.8rem;">Start Time</label>
+                                <input type="time" id="v3-start" style="margin: 0; padding: 0.5rem;" onchange="
+                                    if(this.value) {
+                                        let [h, m] = this.value.split(':').map(Number);
+                                        m += 5; if(m >= 60) { m -= 60; h = (h + 1) % 24; }
+                                        document.getElementById('v3-end').value = `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}`;
+                                    }
+                                ">
+                            </div>
+                            <div style="flex: 1;">
+                                <label style="font-size: 0.8rem;">End Time</label>
+                                <input type="time" id="v3-end" style="margin: 0; padding: 0.5rem;">
+                            </div>
+                        </div>
+                        <div style="display: flex; gap: 10px;">
+                            <button onclick="setV3Schedule('SelfUse')" style="background: #10b981; font-size: 0.9rem;">Set Self-Use</button>
+                            <button onclick="setV3Schedule('ForceCharge')" style="background: #f97316; font-size: 0.9rem;">Set Forced Charge</button>
+                        </div>
+                    </div>
+                </details>
+                <style>details[open] .test-arrow { transform: rotate(180deg); }</style>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header" style="align-items: center;">
+                <span>⚡ Smart Charging Automations</span>
+                <div style="display: flex; gap: 8px;">
+                    <button onclick="document.getElementById('important-note-modal').style.display='flex'" style="background: transparent; color: #d97706; border: 1px solid #fcd34d; padding: 0.2rem 0.5rem; font-size: 0.75rem; border-radius: 6px; width: auto; cursor: pointer;">⚠️ Important Note</button>
+                    <button onclick="document.getElementById('adv-v3-modal').style.display='flex'" style="background: transparent; color: #64748b; border: 1px solid #cbd5e1; padding: 0.2rem 0.5rem; font-size: 0.75rem; border-radius: 6px; width: auto; cursor: pointer;">⚙️ Hardware Limits</button>
+                </div>
+            </div>
+
+            <div id="block-unified-auto" class="automation-block" style="background: #f0fdf4; margin-bottom: 1.5rem;">
+                <div class="rule-row" style="border-bottom: 1px dashed var(--border); padding-bottom: 1rem; margin-bottom: 1rem;">
+                    <span class="rule-title" style="color: #0369a1; font-size: 1rem;">⚡ Sync Smart Dispatches</span>
+                    <label class="switch">
+                        <input type="checkbox" id="toggle-auto-dispatch" onchange="let b = document.getElementById('btn-save-unified'); b.disabled = false; b.style.background = '#16a34a'; b.style.cursor = 'pointer';">
+                        <span class="slider"></span>
+                    </label>
+                </div>
+                <div id="ui-dispatches-list" style="margin-bottom: 1rem;"></div>
+                <div style="display: flex; align-items: center; justify-content: space-between; padding-bottom: 1.5rem;">
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                        <span style="font-size: 0.85rem; font-weight: 600; color: var(--text-main);">Set Max SOC Limit to</span>
+                        <input type="number" id="dispatch-soc-limit" value="80" style="width: 55px; padding: 0.25rem; font-size: 0.85rem; text-align: center; border: 1px solid var(--border); border-radius: 6px; background: var(--bg); color: var(--text-main);">
+                        <span style="font-size: 0.85rem; font-weight: 600; color: var(--text-main);">%</span>
+                    </div>
+                    <label class="switch" style="margin: 0;">
+                        <input type="checkbox" id="toggle-dispatch-soc-limit">
+                        <span class="slider"></span>
+                    </label>
+                </div>
+
+                <div class="rule-row" style="border-top: 1px dashed var(--border); padding-top: 1rem; margin-bottom: 1rem;">
+                    <span class="rule-title" style="color: #166534; font-size: 1rem;">🎯 Forced Charge on Target Price</span>
+                    <label class="switch">
+                        <input type="checkbox" id="toggle-auto-price" onchange="previewScheduleTimes(); let b = document.getElementById('btn-save-unified'); b.disabled = false; b.style.background = '#16a34a'; b.style.cursor = 'pointer';">
+                        <span class="slider"></span>
+                    </label>
+                </div>
+                <div style="margin-bottom: 1rem; display: flex; align-items: center; gap: 8px; font-size: 0.9rem; color: #166534;">
+                    Trigger when price is &le; 
+                    <input type="number" step="0.1" id="price-threshold" style="width: 80px; padding: 0.4rem; margin: 0; border: 1px solid #bbf7d0; background: #fff;" oninput="previewScheduleTimes()"> p/kWh
+                </div>
+                <div id="price-target-times" style="width: 100%; margin-bottom: 1rem; font-size: 0.8rem; font-style: italic; color: #166534;"></div>
+                
+                <div style="background: transparent; border-radius: 8px; margin-bottom: 1.2rem;">
+                    <div style="display: flex; align-items: center; justify-content: space-between; padding: 0.75rem 0; border-bottom: 1px solid var(--border);">
+                        <div style="display: flex; align-items: center; gap: 10px;">
+                            <span style="font-size: 0.85rem; font-weight: 600; color: var(--text-main);">Set Max SOC Limit to</span>
+                            <input type="number" id="target-soc-limit" value="80" style="width: 55px; padding: 0.25rem; font-size: 0.85rem; text-align: center; border: 1px solid var(--border); border-radius: 6px; background: var(--bg); color: var(--text-main);">
+                            <span style="font-size: 0.85rem; font-weight: 600; color: var(--text-main);">%</span>
+                        </div>
+                        <label class="switch" style="margin: 0;">
+                            <input type="checkbox" id="toggle-soc-limit">
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+                    <div style="display: flex; align-items: center; justify-content: space-between; padding: 0.75rem 0; border-bottom: 1px solid var(--border);">
+                        <div style="display: flex; flex-direction: column;">
+                            <span style="font-size: 0.8rem; font-weight: 600; color: var(--text-main);">Auto-Resume Self-Use</span>
+                            <span style="font-size: 0.7rem; color: var(--text-muted);">End schedule early when target met</span>
+                        </div>
+                        <label class="switch" style="margin: 0;">
+                            <input type="checkbox" id="toggle-auto-resume">
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+                    <div style="display: flex; align-items: center; justify-content: space-between; padding: 0.75rem 0; border-bottom: 1px solid var(--border);">
+                        <div style="display: flex; align-items: center; gap: 8px; font-size: 0.85rem; font-weight: 600; color: var(--text-main);">
+                            <span>Discharge when price &ge;</span>
+                            <input type="number" step="0.1" id="export-threshold" value="35" style="width: 55px; padding: 0.25rem; font-size: 0.85rem; text-align: center; border: 1px solid var(--border); border-radius: 6px; background: var(--bg); color: var(--text-main);">
+                            <span>p/kWh</span>
+                        </div>
+                        <label class="switch" style="margin: 0;">
+                            <input type="checkbox" id="toggle-auto-export">
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; align-items: center; padding: 0.5rem 0 0 0;">
+                        <span style="font-size: 0.7rem; color: #ef4444; font-weight: 500; line-height: 1.3;">⚠️ Note: Peak export slots will overwrite conflicting charge slots.</span>
+                    </div>
+                </div>
+
+                <div style="text-align: right; border-top: 1px dashed var(--border); padding-top: 1rem;">
+                    <button id="btn-save-unified" onclick="evaluateLocalAutomations(this)" style="width: auto; padding: 0.6rem 1.5rem; background: #94a3b8; font-size: 0.9rem; font-weight: 600; cursor: pointer;">Apply Combined Automations</button>
+                </div>
+            </div>
+
+            
+        </div>
+    </div>
+</div>
+
+    </div> <div class="app-footer">
+        <div style="text-align: left;">Developer Samuel Chen</div>
+        <div style="text-align: right;">&copy; Copyright 2026 samuelchen.hk Build v2026.06.19</div>
+    </div>
+</div> 
+
+<!-- Beautiful Loading Overlay -->
+<div id="app-toast-notification" style="display: none; position: fixed; bottom: 20px; right: 20px; max-width: 350px; background: #ef4444; color: white; padding: 1rem; border-radius: 8px; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.3); z-index: 10000; font-size: 0.85rem; font-weight: 500;">
+    <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 10px;">
+        <span id="toast-message"></span>
+        <button onclick="document.getElementById('app-toast-notification').style.display='none'" style="background: transparent; color: white; padding: 0; width: auto; font-size: 1.2rem; line-height: 1; cursor: pointer; border: none;">&times;</button>
+    </div>
+</div>
+
+<div id="loading-overlay" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(15, 23, 42, 0.85); backdrop-filter: blur(4px); z-index: 9999; align-items: center; justify-content: center; flex-direction: column; color: white;">
+    <div style="width: 60px; height: 60px; border: 5px solid rgba(255,255,255,0.2); border-top-color: #10b981; border-radius: 50%; animation: spin 1s linear infinite; margin-bottom: 1.5rem;"></div>
+    <h3 style="margin: 0; font-family: monospace; letter-spacing: 2px; font-size: 1.2rem;">AUTHENTICATING</h3>
+    <p style="margin: 0.5rem 0 0 0; font-size: 0.85rem; color: #94a3b8;">Connecting to Octopus & FoxESS...</p>
+    <style>@keyframes spin { to { transform: rotate(360deg); } }</style>
+</div>
+
+<div id="license-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; align-items: center; justify-content: center;">
+    <div style="background: white; padding: 2rem; border-radius: 12px; max-width: 500px; width: 90%; max-height: 80vh; overflow-y: auto; box-shadow: 0 4px 20px rgba(0,0,0,0.15); text-align: left;">
+        <h3 style="margin-top: 0; color: #0f172a; text-align: center;">⚖️ License & Disclaimer</h3>
+        
+        <p style="color: #475569; font-size: 0.85rem; margin-bottom: 1rem; font-weight: 600;">Disclaimer of Affiliation:</p>
+        <p style="color: #64748b; font-size: 0.8rem; margin-bottom: 1rem;">This is an unofficial, independent tool. It is not affiliated with, endorsed by, or supported by Octopus Energy Ltd or FoxESS Co., Ltd. All product and company names are trademarks™ or registered® trademarks of their respective holders.</p>
+
+        <p style="color: #475569; font-size: 0.85rem; margin-bottom: 1rem; font-weight: 600;">Use at Your Own Risk:</p>
+        <p style="color: #64748b; font-size: 0.8rem; margin-bottom: 1rem;">This software controls physical hardware and relies on third-party APIs. By using this tool, you accept full responsibility for any financial loss, hardware degradation, or unexpected behavior. Always monitor your inverter's behavior after applying new schedules.</p>
+
+        <p style="color: #475569; font-size: 0.85rem; margin-bottom: 0.5rem; font-weight: 600;">GNU General Public License v3.0:</p>
+        <div style="background: #f8fafc; padding: 1rem; border-radius: 8px; border: 1px solid #cbd5e1; font-size: 0.75rem; color: #475569; max-height: 150px; overflow-y: auto; margin-bottom: 1.5rem; font-family: monospace;">
+            This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.<br><br>
+            This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.<br><br>
+            You should have received a copy of the GNU General Public License along with this program. If not, see https://www.gnu.org/licenses/.
+        </div>
+
+        <div id="license-modal-buttons" style="text-align: center; display: flex; gap: 1rem; justify-content: center;">
+            <!-- Buttons dynamically injected via JS -->
+        </div>
+    </div>
+</div>
+
+<div id="octo-warning-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(15, 23, 42, 0.7); backdrop-filter: blur(4px); z-index: 2000; align-items: center; justify-content: center;">
+    <div style="background: var(--card-bg); padding: 2.25rem; border-radius: 16px; max-width: 460px; width: 90%; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.15); border: 1px solid var(--border); text-align: left;">
+        <h3 style="margin-top: 0; color: #ef4444; display: flex; align-items: center; gap: 8px; font-size: 1.2rem;">
+            ⚠️ Octopus API Rate Limit Warning
+        </h3>
+        <p style="color: var(--text-main); font-size: 0.9rem; margin-bottom: 1.25rem; line-height: 1.5;">
+            You are setting an Octopus frequency under 60 seconds. Running at this rate introduces immediate operational risks:
+        </p>
+        <div style="background: rgba(239, 68, 68, 0.06); border-left: 4px solid #ef4444; padding: 0.85rem 1rem; border-radius: 0 8px 8px 0; font-size: 0.85rem; margin-bottom: 1.25rem;">
+            <strong style="color: var(--text-main);">🐙 Dynamic Rate-Limiting Risk:</strong>
+            <div style="color: var(--text-muted); margin-top: 0.2rem;">Refreshing calculations too quickly can trigger an automated safety block from Kraken servers, resulting in a temporary block/suspension of your API token connectivity.</div>
+        </div>
+        <p style="color: #ef4444; font-size: 0.82rem; font-weight: 600; margin-bottom: 1.5rem; line-height: 1.4;">
+            ❗ Impact: Automation sync loop cycles will fail to sync target energy price drop states if the connection drops.
+        </p>
+        <div style="display: flex; gap: 1rem; justify-content: flex-end;">
+            <button id="cancel-octo-btn" style="background: #94a3b8; width: auto; padding: 0.6rem 1.2rem; font-size: 0.88rem;">Cancel</button>
+            <button id="confirm-octo-btn" style="background: #ef4444; width: auto; padding: 0.6rem 1.2rem; font-size: 0.88rem;">I Accept the Risk</button>
+        </div>
+    </div>
+</div>
+
+<div id="fox-warning-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(15, 23, 42, 0.7); backdrop-filter: blur(4px); z-index: 2000; align-items: center; justify-content: center;">
+    <div style="background: var(--card-bg); padding: 2.25rem; border-radius: 16px; max-width: 460px; width: 90%; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.15); border: 1px solid var(--border); text-align: left;">
+        <h3 style="margin-top: 0; color: #f97316; display: flex; align-items: center; gap: 8px; font-size: 1.2rem;">
+            ⚠️ FoxESS Daily Quota Warning
+        </h3>
+        <p style="color: var(--text-main); font-size: 0.9rem; margin-bottom: 1.25rem; line-height: 1.5;">
+            You are setting a FoxESS frequency under 600 seconds. Running at this rate introduces immediate operational risks:
+        </p>
+        <div style="background: rgba(249, 115, 22, 0.06); border-left: 4px solid #f97316; padding: 0.85rem 1rem; border-radius: 0 8px 8px 0; font-size: 0.85rem; margin-bottom: 1.25rem;">
+            <strong style="color: var(--text-main);">🦊 Quota Exhaustion Risk (1,440/day):</strong>
+            <div style="color: var(--text-muted); margin-top: 0.2rem;">Refreshing faster than every 10 minutes makes it highly probable that you exhaust your limited allowance prematurely. The inverter account will become blocked until the counter resets at midnight.</div>
+        </div>
+        <p style="color: #f97316; font-size: 0.82rem; font-weight: 600; margin-bottom: 1.5rem; line-height: 1.4;">
+            ❗ Impact: The application becomes blind and cannot change inverter scheduling parameters for the remaining part of the day.
+        </p>
+        <div style="display: flex; gap: 1rem; justify-content: flex-end;">
+            <button id="cancel-fox-btn" style="background: #94a3b8; width: auto; padding: 0.6rem 1.2rem; font-size: 0.88rem;">Cancel</button>
+            <button id="confirm-fox-btn" style="background: #f97316; width: auto; padding: 0.6rem 1.2rem; font-size: 0.88rem;">I Accept the Risk</button>
+        </div>
+    </div>
+</div>
+
+<div id="wipe-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; align-items: center; justify-content: center;">
+    <div style="background: var(--card-bg); border: 1px solid var(--border); padding: 2rem; border-radius: 12px; max-width: 400px; width: 90%; text-align: center; box-shadow: 0 4px 20px rgba(0,0,0,0.15);">
+        <h3 style="margin-top: 0; color: #ef4444;">⚠️ Wipe Local Data?</h3>
+        <p style="color: #64748b; margin-bottom: 1.5rem; font-size: 0.9rem;">Are you absolutely sure? This will permanently delete your stored API keys, account numbers, and preferences from this browser. This action cannot be undone.</p>
+        <div style="display: flex; gap: 1rem; justify-content: center;">
+            <button onclick="document.getElementById('wipe-modal').style.display='none'" class="btn-clear" style="width: auto;">Cancel</button>
+            <button onclick="clearCredentials()" style="background: #ef4444; width: auto;">Yes, Wipe Data</button>
+        </div>
+    </div>
+</div>
+
+<div id="disclaimer-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; align-items: center; justify-content: center;">
+    <div style="background: white; padding: 2rem; border-radius: 12px; max-width: 450px; width: 90%; box-shadow: 0 4px 20px rgba(0,0,0,0.15);">
+        <h3 style="margin-top: 0; color: #0f172a; text-align: center;">🛡️ Privacy Disclaimer</h3>
+        <p style="color: #475569; font-size: 0.9rem; margin-bottom: 1rem; line-height: 1.5;">
+            By saving this configuration, an encrypted file will be downloaded containing your highly sensitive credentials:
+        </p>
+        <ul style="color: #334155; font-size: 0.85rem; background: #f8fafc; padding: 1rem 1rem 1rem 2rem; border-radius: 8px; border: 1px solid #cbd5e1; margin-bottom: 1.5rem;">
+            <li><strong>Octopus Energy:</strong> Account Number & API Key</li>
+            <li><strong>FoxESS:</strong> Inverter Serial Number & Cloud API Token</li>
+            <li><strong>Google App Script:</strong> Web URL</li>
+        </ul>
+        <p style="color: #ef4444; font-size: 0.85rem; font-weight: 600; text-align: center; margin-bottom: 1.5rem;">
+            Keep this file secure and never share it publicly!
+        </p>
+        <div style="display: flex; gap: 1rem; justify-content: center;">
+            <button onclick="document.getElementById('disclaimer-modal').style.display='none'" class="btn-clear" style="width: auto;">Cancel</button>
+            <button onclick="document.getElementById('disclaimer-modal').style.display='none'; showExportModal();" style="background: #3b82f6; width: auto;">I Understand, Proceed</button>
+        </div>
+    </div>
+</div>
+
+<div id="export-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; align-items: center; justify-content: center;">
+    <div style="background: white; padding: 2rem; border-radius: 12px; max-width: 400px; width: 90%; box-shadow: 0 4px 20px rgba(0,0,0,0.15);">
+        <h3 style="margin-top: 0; color: #0f172a; text-align: center;">Save Encrypted Config</h3>
+        <label>Encryption Password</label>
+        <input type="password" id="export-pass-1" placeholder="Enter password">
+        <label>Confirm Password</label>
+        <input type="password" id="export-pass-2" placeholder="Re-enter password">
+        <div id="export-error" style="color: #ef4444; font-size: 0.85rem; margin-bottom: 1rem; display: none;">Passwords do not match!</div>
+        <div style="display: flex; gap: 1rem; justify-content: center; margin-top: 1.5rem;">
+            <button onclick="document.getElementById('export-modal').style.display='none'" class="btn-clear" style="width: 50%; padding: 0.75rem; margin: 0;">Cancel</button>
+            <button onclick="executeExport()" style="background: #10b981; width: 50%; padding: 0.75rem; margin: 0;">Save & Download</button>
+        </div>
+    </div>
+</div>
+
+<div id="import-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; align-items: center; justify-content: center;">
+    <div style="background: white; padding: 2rem; border-radius: 12px; max-width: 400px; width: 90%; box-shadow: 0 4px 20px rgba(0,0,0,0.15);">
+        <h3 style="margin-top: 0; color: #0f172a; text-align: center;">Load Encrypted Config</h3>
+        <label>Decryption Password</label>
+        <input type="password" id="import-pass" placeholder="Enter password">
+        <div id="import-error" style="color: #ef4444; font-size: 0.85rem; margin-bottom: 1rem; display: none;">⚠️ Decryption failed: Incorrect password or corrupted file. Please try again.</div>
+        <div style="display: flex; gap: 1rem; justify-content: center; margin-top: 1rem;">
+            <button onclick="document.getElementById('import-modal').style.display='none'; document.getElementById('import-file').value='';" class="btn-clear" style="flex: 1; width: auto; white-space: nowrap;">Cancel</button>
+            <button onclick="executeImport()" style="background: #3b82f6; flex: 1; width: auto; white-space: nowrap;">Decrypt & Load</button>
+        </div>
+    </div>
+</div>
+
+<div id="custom-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; align-items: center; justify-content: center;">
+    <div style="background: white; padding: 2rem; border-radius: 12px; max-width: 400px; width: 90%; text-align: center; box-shadow: 0 4px 20px rgba(0,0,0,0.15);">
+        <h3 style="margin-top: 0; color: #0f172a;">Delete Schedule?</h3>
+        <p style="color: #64748b; margin-bottom: 1.5rem;">Are you sure you want to delete this schedule from your inverter?</p>
+        <div style="display: flex; gap: 1rem; justify-content: center;">
+            <button onclick="closeModal()" style="background: #94a3b8; width: auto;">Cancel</button>
+            <button id="confirm-delete-btn" style="background: #ef4444; width: auto;">Delete</button>
+        </div>
+    </div>
+</div>
+
+<div id="proxy-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; align-items: center; justify-content: center;">
+    <div style="background: white; padding: 2rem; border-radius: 12px; max-width: 550px; width: 90%; max-height: 90vh; overflow-y: auto; box-shadow: 0 4px 20px rgba(0,0,0,0.15); position: relative;">
+        <button onclick="document.getElementById('proxy-modal').style.display='none'" style="position: absolute; top: 1rem; right: 1rem; background: transparent; border: none; font-size: 1.5rem; color: #64748b; cursor: pointer; width: auto; padding: 0;">&times;</button>
+        <h3 style="margin-top: 0; color: #0f172a;">How to Create Your Google Proxy</h3>
+        <p style="color: #475569; font-size: 0.9rem; margin-bottom: 1rem;">Because FoxESS blocks direct browser connections, we use a free Google Apps Script to securely route your requests.</p>
+        <ol style="color: #334155; font-size: 0.85rem; padding-left: 1.2rem; line-height: 1.6; margin-bottom: 1rem;">
+            <li>Go to <a href="https://script.google.com" target="_blank" style="color: #3b82f6; text-decoration: none;">script.google.com</a> and sign in.</li>
+            <li>Click <strong>New Project</strong>.</li>
+            <li>Delete any existing code and paste the exact code below:</li>
+        </ol>
+        <pre style="background: #1e293b; color: #e2e8f0; padding: 1rem; border-radius: 8px; font-size: 0.8rem; overflow-x: auto; margin-bottom: 1rem; text-align: left;"><code style="font-family: monospace;">function doPost(e) {
+  try {
+    var requestData = JSON.parse(e.postData.contents);
+    var options = {
+      'method': 'post',
+      'contentType': 'application/json',
+      'headers': requestData.headers,
+      'payload': JSON.stringify(requestData.body),
+      'muteHttpExceptions': true
+    };
+    var response = UrlFetchApp.fetch(requestData.url, options);
+    return ContentService.createTextOutput(response.getContentText())
+                                 .setMimeType(ContentService.MimeType.JSON);
+  } catch (err) {
+    return ContentService.createTextOutput(JSON.stringify({ errno: 999, msg: err.toString() }))
+                                 .setMimeType(ContentService.MimeType.JSON);
+  }
+}</code></pre>
+        <ol start="4" style="color: #334155; font-size: 0.85rem; padding-left: 1.2rem; line-height: 1.6; margin-bottom: 1.5rem;">
+            <li>Click <strong>Deploy</strong> (top right) > <strong>New deployment</strong>.</li>
+            <li>Click the gear icon next to "Select type" and choose <strong>Web app</strong>.</li>
+            <li>Set <em>Execute as</em> to <strong>Me</strong>.</li>
+            <li>Set <em>Who has access</em> to <strong>Anyone</strong> (Crucial!).</li>
+            <li>Click <strong>Deploy</strong> and copy the generated "Web app URL".</li>
+            <li>Paste that URL into the login screen!</li>
+        </ol>
+        <button onclick="document.getElementById('proxy-modal').style.display='none'" style="background: #f43f5e; color: white; border: none; padding: 0.75rem; border-radius: 8px; font-weight: 600; width: 100%; cursor: pointer;">Got it!</button>
+    </div>
+</div>
+
+<div id="important-note-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; align-items: center; justify-content: center;">
+    <div style="background: var(--card-bg); padding: 2.25rem; border-radius: 12px; max-width: 400px; width: 90%; text-align: left; box-shadow: 0 4px 20px rgba(0,0,0,0.15); border: 1px solid var(--border);">
+        <h3 style="margin-top: 0; color: #d97706; display: flex; align-items: center; gap: 8px;">⚠️ Important Note</h3>
+        <p style="font-size: 0.9rem; color: var(--text-main); line-height: 1.5; margin-bottom: 1.5rem;">
+            In your official FoxESS app, you must set the <strong>"Remaining Time"</strong> mode in the Mode Scheduler to <strong>"Self-use"</strong> for these automations to function safely and correctly.
+        </p>
+        <div style="display: flex; justify-content: flex-end;">
+            <button onclick="document.getElementById('important-note-modal').style.display='none'" style="background: #d97706; width: auto; padding: 0.5rem 1.5rem; font-size: 0.85rem;">Understood</button>
+        </div>
+    </div>
+</div>
+
+<div id="adv-v3-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; align-items: center; justify-content: center;">
+    <div style="background: var(--card-bg); padding: 2rem; border-radius: 12px; max-width: 400px; width: 90%; text-align: left; box-shadow: 0 4px 20px rgba(0,0,0,0.15);">
+        <h3 style="margin-top: 0; color: var(--text-main);">⚙️ Scheduler Hardware Limits</h3>
+        <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 1rem;">These parameters are sent natively to the FoxESS inverter to protect battery health during forced charging modes.</p>
+        
+        <label>Minimum SOC on Grid (%)</label>
+        <input type="number" id="adv-min-soc" value="11" min="11" placeholder="Default 11% (API Minimum)">
+        
+        <label>Max Grid Charge Power (W)</label>
+        <input type="number" id="adv-fd-pwr" value="5000" placeholder="Default 5000W">
+        
+        <div style="display: flex; gap: 1rem; justify-content: flex-end; margin-top: 1.5rem;">
+            <button onclick="document.getElementById('adv-v3-modal').style.display='none'" style="background: var(--accent); width: auto;">Save Limits</button>
+        </div>
+    </div>
+</div>
+
+<script src="./app.js"></script>
+
+<div id="screen-saver-overlay" onclick="toggleScreenSaver()" style="display: none; position: fixed; inset: 0; width: 100%; height: 100%; background: #000; z-index: 100000; cursor: pointer;"></div>
+
+<div id="mini-viewer-hud" style="display: none; position: fixed; top: 1rem; left: 1rem; width: 280px; max-height: 85vh; overflow-y: auto; overflow-x: hidden; box-sizing: border-box; background: rgba(15, 23, 42, 0.95); backdrop-filter: blur(8px); color: #f8fafc; padding: 1.25rem; border-radius: 12px; z-index: 99999; font-size: 0.85rem; box-shadow: 0 10px 25px rgba(0,0,0,0.5); border: 1px solid #3b82f6; font-family: system-ui, -apple-system, sans-serif;">
+    <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: nowrap; border-bottom: 1px solid #334155; padding-bottom: 0.5rem; margin-bottom: 1rem;">
+        <strong style="font-size: 1rem; color: #60a5fa; display: flex; align-items: center; gap: 6px; white-space: nowrap; padding-top: 2px;">📱 Status HUD</strong>
+        <button onclick="toggleMiniViewer()" style="background: transparent; color: #94a3b8; border: none; font-size: 1.5rem; cursor: pointer; line-height: 1; padding: 0; flex-shrink: 0; margin-left: auto;">&times;</button>
+    </div>
+    
+    <div style="margin-bottom: 1.25rem;">
+        <div style="color: #94a3b8; font-weight: 600; margin-bottom: 0.5rem; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.5px;">🐙 Octopus Dispatches</div>
+        <div id="hud-octo-schedules" style="color: #e2e8f0; line-height: 1.4;">Waiting for sync...</div>
+    </div>
+    
+    <div>
+        <div style="color: #94a3b8; font-weight: 600; margin-bottom: 0.5rem; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.5px;">🦊 FoxESS Modes</div>
+        <div id="hud-fox-schedules" style="color: #e2e8f0; line-height: 1.4;">Waiting for sync...</div>
+    </div>
+</div>
+
+</body>
+</html>

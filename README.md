@@ -121,6 +121,34 @@ Your security is maintained by design:
 
 ---
 
+## 🧑‍💻 Development and Builds
+
+The maintainable source is split by responsibility:
+
+```text
+src/
+  index.html     App markup
+  styles.css     App styles
+  app.js         App behaviour and API integrations
+scripts/
+  build.mjs      Creates the standalone SPA
+prototype/       Original single-file app retained as a reference
+dist/            Generated build output (not committed)
+```
+
+Node.js 18 or newer is required. There are currently no third-party npm packages to install.
+
+```bash
+npm run check
+npm run build
+```
+
+The build creates `dist/Octopus_IGO_Smart_Charging_Detector.html`. Edit the files in `src/`, not the generated file in `dist/`.
+
+Pushes to `main` are checked and deployed by the GitHub Pages workflow. In **Settings → Pages**, select **GitHub Actions** as the source.
+
+---
+
 ## ⚖️ Legal Disclaimer
 This software is an unofficial, community-driven utility. It is entirely independent and has no official affiliation, endorsement, or operational relationship with Octopus Energy Ltd or FoxESS Co., Ltd. Product names, trademarks, and branding belong exclusively to their respective corporate holders. 
 
