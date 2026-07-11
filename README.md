@@ -115,9 +115,10 @@ Paste your Octopus credentials, FoxESS credentials, and your new Google Apps Scr
 ## 🔒 Security, Privacy & Data Management
 Your security is maintained by design:
 * **Zero Third-Party Logging:** This application is a static page. All logic and network requests occur strictly between your browser, your private Google script, and the energy APIs.
-* **Local AES-256 Encryption:** Once successfully connected, you can save your configuration directly within your browser. You will be prompted to create a custom password, which locally encrypts your API keys and URLs so you don't have to re-enter them every time you load the dashboard.
+* **Encrypted Browser Storage:** After a successful connection, credentials are encrypted with a non-exportable AES-GCM device key before persistent browser storage. If secure persistent storage is unavailable, credentials are retained for the current browser session only.
 * **Wipe Data Feature:** If you are using a shared device or simply want to clean up, you can use the built-in "Wipe Data" button. This will instantly and permanently erase all saved credentials, API keys, and Web App URLs from your browser's local storage.
 * **Manual Backups:** For safe manual backups, you can download a locally encrypted backup data file.
+* **Password-Protected Backups:** Exported configuration files use the password entered during export and must be kept private.
 
 ---
 

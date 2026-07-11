@@ -8,6 +8,110 @@ let octoRefreshInterval = 60;
 let octoCountdown = 60;
 let foxRefreshInterval = 600;
 let foxCountdown = 600;
+let refreshTimerId = null;
+
+const CREDENTIAL_STORAGE_KEY = 'encryptedCredentialsV1';
+const CREDENTIAL_DB_NAME = 'octopusFoxessSecureStorage';
+const REQUEST_TIMEOUT_MS = 15000;
+
+function escapeHtml(value) {
+    return String(value ?? '')
+        .replaceAll('&', '&amp;')
+        .replaceAll('<', '&lt;')
+        .replaceAll('>', '&gt;')
+        .replaceAll('"', '&quot;')
+        .replaceAll("'", '&#039;');
+}
+
+function showToast(message) {
+    const toast = document.getElementById('app-toast-notification');
+    const messageElement = document.getElementById('toast-message');
+    if (!toast || !messageElement) return;
+    messageElement.textContent = message;
+    toast.style.display = 'block';
+    if (window.toastTimeout) clearTimeout(window.toastTimeout);
+    window.toastTimeout = setTimeout(() => { toast.style.display = 'none'; }, 30000);
+}
+
+async function fetchJson(url, options = {}, timeoutMs = REQUEST_TIMEOUT_MS) {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+    try {
+        const response = await fetch(url, { ...options, signal: controller.signal });
+        if (!response.ok) throw new Error(`HTTP ${response.status} from ${new URL(url).hostname}`);
+        return await response.json();
+    } catch (error) {
+        if (error.name === 'AbortError') throw new Error(`Request timed out after ${Math.round(timeoutMs / 1000)} seconds`);
+        throw error;
+    } finally {
+        clearTimeout(timeoutId);
+    }
+}
+
+function openCredentialDatabase() {
+    return new Promise((resolve, reject) => {
+        const request = indexedDB.open(CREDENTIAL_DB_NAME, 1);
+        request.onupgradeneeded = () => request.result.createObjectStore('keys');
+        request.onsuccess = () => resolve(request.result);
+        request.onerror = () => reject(request.error);
+    });
+}
+
+async function getCredentialKey() {
+    const database = await openCredentialDatabase();
+    const existingKey = await new Promise((resolve, reject) => {
+        const request = database.transaction('keys').objectStore('keys').get('credential-key');
+        request.onsuccess = () => resolve(request.result);
+        request.onerror = () => reject(request.error);
+    });
+    if (existingKey) {
+        database.close();
+        return existingKey;
+    }
+
+    const key = await crypto.subtle.generateKey({ name: 'AES-GCM', length: 256 }, false, ['encrypt', 'decrypt']);
+    await new Promise((resolve, reject) => {
+        const request = database.transaction('keys', 'readwrite').objectStore('keys').put(key, 'credential-key');
+        request.onsuccess = resolve;
+        request.onerror = () => reject(request.error);
+    });
+    database.close();
+    return key;
+}
+
+async function saveCredentials(credentials) {
+    try {
+        const key = await getCredentialKey();
+        const iv = crypto.getRandomValues(new Uint8Array(12));
+        const plaintext = new TextEncoder().encode(JSON.stringify(credentials));
+        const ciphertext = new Uint8Array(await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, plaintext));
+        const encode = bytes => btoa(String.fromCharCode(...bytes));
+        localStorage.setItem(CREDENTIAL_STORAGE_KEY, JSON.stringify({ iv: encode(iv), data: encode(ciphertext) }));
+        sessionStorage.removeItem('sessionCredentials');
+    } catch (error) {
+        console.warn('Encrypted persistent storage unavailable; using session-only storage.', error);
+        sessionStorage.setItem('sessionCredentials', JSON.stringify(credentials));
+    }
+    ['octoAcc', 'octoApi', 'foxSn', 'foxToken', 'gasUrl'].forEach(key => localStorage.removeItem(key));
+}
+
+async function loadCredentials() {
+    const sessionCredentials = sessionStorage.getItem('sessionCredentials');
+    if (sessionCredentials) return JSON.parse(sessionCredentials);
+    const stored = localStorage.getItem(CREDENTIAL_STORAGE_KEY);
+    if (!stored) return null;
+    try {
+        const payload = JSON.parse(stored);
+        const decode = value => Uint8Array.from(atob(value), character => character.charCodeAt(0));
+        const key = await getCredentialKey();
+        const plaintext = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: decode(payload.iv) }, key, decode(payload.data));
+        return JSON.parse(new TextDecoder().decode(plaintext));
+    } catch (error) {
+        console.warn('Unable to decrypt saved credentials.', error);
+        localStorage.removeItem(CREDENTIAL_STORAGE_KEY);
+        return null;
+    }
+}
 
 let autoConnectTimer = null;
 let autoConnectCountdown = 10;
@@ -230,7 +334,7 @@ function toggleDarkMode() {
 }
 
 // On Load init
-document.addEventListener("DOMContentLoaded", () => {
+document.addEventListener("DOMContentLoaded", async () => {
     const savedTheme = localStorage.getItem('theme') || 'light';
     document.documentElement.setAttribute('data-theme', savedTheme);
     updateThemeButtons(savedTheme);
@@ -243,12 +347,24 @@ document.addEventListener("DOMContentLoaded", () => {
     const counterSpan = document.getElementById('fox-api-counter');
     if(counterSpan) counterSpan.textContent = apiData.count;
 
-    let hasCreds = false;
-    if(localStorage.getItem('octoAcc')) { document.getElementById('acc').value = localStorage.getItem('octoAcc'); hasCreds = true; }
-    if(localStorage.getItem('octoApi')) { document.getElementById('api').value = localStorage.getItem('octoApi'); hasCreds = true; }
-    if(localStorage.getItem('foxSn')) { document.getElementById('fox-sn').value = localStorage.getItem('foxSn'); }
-    if(localStorage.getItem('foxToken')) { document.getElementById('fox-token').value = localStorage.getItem('foxToken'); }
-    if(localStorage.getItem('gasUrl')) { document.getElementById('gas-url').value = localStorage.getItem('gasUrl'); }
+    const legacyCredentials = localStorage.getItem('octoApi') ? {
+        acc: localStorage.getItem('octoAcc') || '',
+        api: localStorage.getItem('octoApi') || '',
+        foxSN: localStorage.getItem('foxSn') || '',
+        foxToken: localStorage.getItem('foxToken') || '',
+        gasUrl: localStorage.getItem('gasUrl') || ''
+    } : null;
+    if (legacyCredentials) await saveCredentials(legacyCredentials);
+
+    const credentials = legacyCredentials || await loadCredentials();
+    const hasCreds = Boolean(credentials?.acc && credentials?.api);
+    if (credentials) {
+        document.getElementById('acc').value = credentials.acc || '';
+        document.getElementById('api').value = credentials.api || '';
+        document.getElementById('fox-sn').value = credentials.foxSN || '';
+        document.getElementById('fox-token').value = credentials.foxToken || '';
+        document.getElementById('gas-url').value = credentials.gasUrl || '';
+    }
 
     if (hasCreds) {
         startAutoConnect();
@@ -280,8 +396,15 @@ document.addEventListener("DOMContentLoaded", () => {
     }, 1000);
 });
 
-function clearCredentials() {
+async function clearCredentials() {
     localStorage.clear();
+    sessionStorage.clear();
+    await new Promise(resolve => {
+        const request = indexedDB.deleteDatabase(CREDENTIAL_DB_NAME);
+        request.onsuccess = resolve;
+        request.onerror = resolve;
+        request.onblocked = resolve;
+    });
     document.querySelectorAll('input').forEach(input => input.value = '');
     document.getElementById('wipe-modal').style.display = 'none';
     location.reload(); 
@@ -345,7 +468,7 @@ function handleImportFile(event) {
     reader.readAsText(file);
 }
 
-function executeImport() {
+async function executeImport() {
     const pass = document.getElementById('import-pass').value;
     const errDiv = document.getElementById('import-error');
     
@@ -362,12 +485,7 @@ function executeImport() {
         document.getElementById('fox-token').value = config.foxToken || '';
         document.getElementById('gas-url').value = config.gasUrl || '';
         
-        // Save to browser storage
-        if (config.acc) localStorage.setItem('octoAcc', config.acc);
-        if (config.api) localStorage.setItem('octoApi', config.api);
-        if (config.foxSN) localStorage.setItem('foxSn', config.foxSN);
-        if (config.foxToken) localStorage.setItem('foxToken', config.foxToken);
-        if (config.gasUrl) localStorage.setItem('gasUrl', config.gasUrl);
+        await saveCredentials(config);
 
         document.getElementById('import-modal').style.display = 'none';
         document.getElementById('import-file').value = ''; // reset file input
@@ -411,20 +529,19 @@ async function initDashboard(isAutoRefresh = false, retryCount = 1) {
         const GRAPHQL_URL = 'https://api.octopus.energy/v1/graphql/';
 
         // 1. Octopus Auth (with automatic retry for API cold-starts)
-        let authRes, authData;
+        let authData;
         for (let attempt = 1; attempt <= 2; attempt++) {
-            authRes = await fetch(GRAPHQL_URL, {
+            authData = await fetchJson(GRAPHQL_URL, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ query: `mutation { obtainKrakenToken(input: { APIKey: "${api}" }) { token } }` })
+                body: JSON.stringify({ query: `mutation { obtainKrakenToken(input: { APIKey: ${JSON.stringify(api)} }) { token } }` })
             });
-            authData = await authRes.json();
             if(!authData.errors) break; 
             if(attempt === 2) throw new Error("Invalid Octopus API Key or API offline");
         }
 
         // 2. Fetch GraphQL Data
-        const graphqlRes = await fetch(GRAPHQL_URL, {
+        const gqlData = await fetchJson(GRAPHQL_URL, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'Authorization': authData.data.obtainKrakenToken.token },
             body: JSON.stringify({ 
@@ -436,7 +553,6 @@ async function initDashboard(isAutoRefresh = false, retryCount = 1) {
                 variables: { acc: acc }
             })
         });
-        const gqlData = await graphqlRes.json();
         const device = gqlData.data?.registeredKrakenflexDevice;
         const prefs = gqlData.data?.vehicleChargingPreferences;
         const dispatches = gqlData.data?.plannedDispatches || [];
@@ -444,11 +560,7 @@ async function initDashboard(isAutoRefresh = false, retryCount = 1) {
 
         // Save valid credentials
         if (!isAutoRefresh) {
-            localStorage.setItem('octoAcc', acc);
-            localStorage.setItem('octoApi', api);
-            localStorage.setItem('foxSn', globalFoxSN);
-            localStorage.setItem('foxToken', globalFoxToken);
-            if (globalGasUrl) localStorage.setItem('gasUrl', globalGasUrl);
+            await saveCredentials({ acc, api, foxSN: globalFoxSN, foxToken: globalFoxToken, gasUrl: globalGasUrl });
         }
 
         // 3. Fetch exact rates from REST API
@@ -457,18 +569,16 @@ async function initDashboard(isAutoRefresh = false, retryCount = 1) {
         let maxRate = 0;
 
         try {
-            const accRes = await fetch(`https://api.octopus.energy/v1/accounts/${acc}/`, {
+            const accData = await fetchJson(`https://api.octopus.energy/v1/accounts/${encodeURIComponent(acc)}/`, {
                 headers: { 'Authorization': 'Basic ' + btoa(api + ':') }
             });
-            const accData = await accRes.json();
             const meterPoint = accData.properties?.[0]?.electricity_meter_points?.[0];
             const agreement = meterPoint?.agreements?.find(a => !a.valid_to || new Date(a.valid_to) > new Date());
             
             if (agreement) {
                 tariffCode = agreement.tariff_code;
                 const productCode = tariffCode.split('-').slice(2, -1).join('-'); 
-                const ratesRes = await fetch(`https://api.octopus.energy/v1/products/${productCode}/electricity-tariffs/${tariffCode}/standard-unit-rates/`);
-                const ratesData = await ratesRes.json();
+                const ratesData = await fetchJson(`https://api.octopus.energy/v1/products/${encodeURIComponent(productCode)}/electricity-tariffs/${encodeURIComponent(tariffCode)}/standard-unit-rates/`);
                 
                 if (ratesData?.results?.length > 0) {
                     window.todayRates = ratesData.results;
@@ -547,19 +657,19 @@ async function initDashboard(isAutoRefresh = false, retryCount = 1) {
         `;
 
         document.getElementById('ui-account-details').innerHTML = `
-            <li><span class="label">Account Number</span> <span class="val">${acc}</span></li>
-            <li><span class="label">Linked Device</span> <span class="val" style="color: var(--accent);">${device?.provider ? device.provider.toUpperCase() : 'NONE DETECTED'}</span></li>
-            <li><span class="label">Active Tariff Code</span> <span class="val" style="font-size: 0.8rem; font-family: monospace;">${tariffCode}</span></li>
+            <li><span class="label">Account Number</span> <span class="val">${escapeHtml(acc)}</span></li>
+            <li><span class="label">Linked Device</span> <span class="val" style="color: var(--accent);">${escapeHtml(device?.provider ? device.provider.toUpperCase() : 'NONE DETECTED')}</span></li>
+            <li><span class="label">Active Tariff Code</span> <span class="val" style="font-size: 0.8rem; font-family: monospace;">${escapeHtml(tariffCode)}</span></li>
         `;
 
         if (device) {
             document.getElementById('ui-device-status').textContent = device.status || 'UNKNOWN';
             document.getElementById('ui-device-status').className = `badge ${device.status === 'LIVE' ? 'live' : 'neutral'}`;
             document.getElementById('ui-device-prefs').innerHTML = `
-                <li><span class="label">EV Info</span> <span class="val">${device.vehicleMake || ''} ${device.vehicleModel || 'Unknown'}</span></li>
-                <li><span class="label">Charge Point</span> <span class="val">${device.chargePointMake || ''} ${device.chargePointModel || 'Unknown'}</span></li>
-                <li><span class="label">Target Time</span> <span class="val">${prefs?.weekdayTargetTime || 'N/A'}</span></li>
-                <li><span class="label">Charge Limit</span> <span class="val">${prefs?.weekdayTargetSoc ? prefs.weekdayTargetSoc + '%' : 'N/A'}</span></li>
+                <li><span class="label">EV Info</span> <span class="val">${escapeHtml(device.vehicleMake || '')} ${escapeHtml(device.vehicleModel || 'Unknown')}</span></li>
+                <li><span class="label">Charge Point</span> <span class="val">${escapeHtml(device.chargePointMake || '')} ${escapeHtml(device.chargePointModel || 'Unknown')}</span></li>
+                <li><span class="label">Target Time</span> <span class="val">${escapeHtml(prefs?.weekdayTargetTime || 'N/A')}</span></li>
+                <li><span class="label">Charge Limit</span> <span class="val">${escapeHtml(prefs?.weekdayTargetSoc ? prefs.weekdayTargetSoc + '%' : 'N/A')}</span></li>
             `;
         }
 
@@ -609,8 +719,9 @@ async function initDashboard(isAutoRefresh = false, retryCount = 1) {
 function startAutoRefreshTimer() {
     window.nextOctoTime = Date.now() + (octoRefreshInterval * 1000);
     window.nextFoxTime = Date.now() + (foxRefreshInterval * 1000);
-    
-    setInterval(() => {
+
+    if (refreshTimerId !== null) clearInterval(refreshTimerId);
+    refreshTimerId = setInterval(() => {
         const now = Date.now();
         
         // 1. Octopus Logic Loop
@@ -678,8 +789,7 @@ async function fetchCurrentWorkMode(forceModeUpdate = false) {
         // 🛡️ API QUOTA SAVER: Cache WorkMode for 10 minutes. Saves 50% API calls!
         if (forceModeUpdate || !window.lastModeFetchTime || (nowMs - window.lastModeFetchTime > 600000)) {
             incrementFoxApi(); // Count mode call
-            const res = await fetch(globalGasUrl, { method: 'POST', body: JSON.stringify(payload) });
-            data = await res.json();
+            data = await fetchJson(globalGasUrl, { method: 'POST', body: JSON.stringify(payload) });
             if (data.errno === 0) {
                 window.lastModeFetchTime = nowMs;
                 window.cachedModeValue = data.result?.value;
@@ -689,8 +799,7 @@ async function fetchCurrentWorkMode(forceModeUpdate = false) {
         }
 
         incrementFoxApi(); // Always count telemetry call
-        const socRes = await fetch(globalGasUrl, { method: 'POST', body: JSON.stringify(socPayload) });
-        const socData = await socRes.json();
+        const socData = await fetchJson(globalGasUrl, { method: 'POST', body: JSON.stringify(socPayload) });
         
         let batterySoc = null;
         if (socData.errno === 0 && socData.result && socData.result[0] && socData.result[0].datas) {
@@ -699,10 +808,10 @@ async function fetchCurrentWorkMode(forceModeUpdate = false) {
             batterySoc = findVal('SoC');
             
             document.getElementById('live-telemetry-panel').innerHTML = `
-                <div>☀️ <strong>PV Power:</strong> ${findVal('pvPower')} kW</div>
-                <div>🏠 <strong>Load:</strong> ${findVal('loadsPower')} kW</div>
-                <div>🔋 <strong>Bat Temp:</strong> ${findVal('batTemperature')} °C</div>
-                <div>🌡️ <strong>Env Temp:</strong> ${findVal('ambientTemperation')} °C</div>
+                <div>☀️ <strong>PV Power:</strong> ${escapeHtml(findVal('pvPower'))} kW</div>
+                <div>🏠 <strong>Load:</strong> ${escapeHtml(findVal('loadsPower'))} kW</div>
+                <div>🔋 <strong>Bat Temp:</strong> ${escapeHtml(findVal('batTemperature'))} °C</div>
+                <div>🌡️ <strong>Env Temp:</strong> ${escapeHtml(findVal('ambientTemperation'))} °C</div>
             `;
             
             // Auto-Resume Logic
@@ -729,7 +838,9 @@ async function fetchCurrentWorkMode(forceModeUpdate = false) {
                             if (endMins === 0) endMins = 1440;
                             window.fulfilledScheduleEnd = endMins; 
                             
-                            pushGroupsToFoxESS(window.activeFoxGroups);
+                            pushGroupsToFoxESS(window.activeFoxGroups).catch(error => {
+                                showToast(`Auto-resume schedule update failed: ${error.message}`);
+                            });
                         }
                     }
                 }
@@ -785,14 +896,17 @@ const wait = (milliseconds) => new Promise(resolve => setTimeout(resolve, millis
 function scheduleFingerprint(groups) {
     return (groups || [])
         .filter(group => group.enable !== 0)
-        .map(group => [
-            group.startHour,
-            group.startMinute,
-            group.endHour,
-            group.endMinute,
-            group.workMode,
-            group.extraParam?.fdSoc ?? group.fdSoc ?? ''
-        ].join(':'))
+        .map(group => {
+            const defaultSoc = group.workMode === 'ForceCharge' ? 100 : (group.workMode === 'ForceDischarge' ? 11 : '');
+            return [
+                group.startHour,
+                group.startMinute,
+                group.endHour,
+                group.endMinute,
+                group.workMode,
+                group.extraParam?.fdSoc ?? group.fdSoc ?? defaultSoc
+            ].join(':');
+        })
         .sort()
         .join('|');
 }
@@ -806,8 +920,7 @@ async function fetchFoxSchedules({ expectedGroups = null, attempts = 1 } = {}) {
         try {
             const payload = { url: `https://www.foxesscloud.com${path}`, headers: getFoxHeaders(path), body: { deviceSN: globalFoxSN } };
             incrementFoxApi();
-            const res = await fetch(globalGasUrl, { method: 'POST', body: JSON.stringify(payload) });
-            const data = await res.json();
+            const data = await fetchJson(globalGasUrl, { method: 'POST', body: JSON.stringify(payload) });
         
             const container = document.getElementById('fox-active-schedules');
             if (data.errno === 0 && data.result && data.result.groups) {
@@ -889,80 +1002,76 @@ function deleteFoxSchedule(index) {
         btn.textContent = 'Deleting...';
         btn.disabled = true;
         
-        window.activeFoxGroups.splice(scheduleToDelete, 1);
-        await pushGroupsToFoxESS(window.activeFoxGroups); // This overwrites/syncs the change
-        
-        btn.textContent = 'Delete';
-        btn.disabled = false;
-        closeModal();
+        const remainingGroups = window.activeFoxGroups.filter((_, index) => index !== scheduleToDelete);
+        try {
+            await pushGroupsToFoxESS(remainingGroups);
+            closeModal();
+        } catch (error) {
+            showToast(`Schedule deletion failed: ${error.message}`);
+        } finally {
+            btn.textContent = 'Delete';
+            btn.disabled = false;
+        }
     };
 }
 
-async function pushGroupsToFoxESS(groups) {
+function prepareFoxSchedulePayload(groups) {
+    const activeGroups = (groups || []).filter(group => group.enable !== 0).slice(0, 5).map(group => ({ ...group, enable: 1 }));
+    const droppedCount = Math.max(0, (groups || []).filter(group => group.enable !== 0).length - activeGroups.length);
+    const paddedGroups = [...activeGroups];
+    while (paddedGroups.length < 5) {
+        paddedGroups.push({
+            startHour: 0,
+            startMinute: 0,
+            endHour: 0,
+            endMinute: 0,
+            workMode: 'SelfUse',
+            enable: 0
+        });
+    }
+    return { activeGroups, paddedGroups, droppedCount };
+}
+
+async function pushGroupsToFoxESS(groups, maxAttempts = 3) {
     isCurrentlyUpdatingMode = true;
-    const path = '/op/v3/device/scheduler/enable'; 
+    const path = '/op/v3/device/scheduler/enable';
+    const { activeGroups, paddedGroups, droppedCount } = prepareFoxSchedulePayload(groups);
+    if (droppedCount > 0) {
+        showToast(`FoxESS supports five active scheduler periods. The earliest five were applied; ${droppedCount} later period${droppedCount === 1 ? '' : 's'} could not be sent.`);
+    }
+
     try {
-        // Ghost schedule fix: Explicitly send 5 slots. Unused slots are forced to 'enable: 0' to wipe out old ghosts.
-        const finalGroups = [];
-        for (let i = 0; i < 5; i++) {
-            if (i < groups.length) {
-                finalGroups.push({ ...groups[i], enable: 1 });
-            } else {
-                finalGroups.push({ 
-                    startHour: 0, startMinute: 0, 
-                    endHour: 0, endMinute: 0, 
-                    workMode: "SelfUse", enable: 0 
-                });
-            }
-        }
-        groups = finalGroups; 
-        
         const payload = {
             url: `https://www.foxesscloud.com${path}`,
             headers: getFoxHeaders(path),
-            body: { deviceSN: globalFoxSN, isDefault: false, groups: groups }
+            body: { deviceSN: globalFoxSN, isDefault: false, groups: paddedGroups }
         };
-        incrementFoxApi();
-        const res = await fetch(globalGasUrl, { method: 'POST', body: JSON.stringify(payload) });
-        const data = await res.json();
-        
-        const btn = document.getElementById('btn-save-auto');
-        function showAutoCloseToast(message) {
-            const toast = document.getElementById('app-toast-notification');
-            document.getElementById('toast-message').textContent = message;
-            toast.style.display = 'block';
-            if (window.toastTimeout) clearTimeout(window.toastTimeout);
-            window.toastTimeout = setTimeout(() => { toast.style.display = 'none'; }, 30000);
+
+        let lastError = null;
+        for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+            try {
+                incrementFoxApi();
+                const data = await fetchJson(globalGasUrl, { method: 'POST', body: JSON.stringify(payload) });
+                if (data.errno !== 0) throw new Error(data.msg || `FoxESS API error ${data.errno}`);
+
+                const refreshedGroups = await fetchFoxSchedules({ expectedGroups: activeGroups, attempts: 4 });
+                if (scheduleFingerprint(refreshedGroups) !== scheduleFingerprint(activeGroups)) {
+                    throw new Error('FoxESS did not confirm the updated schedules');
+                }
+                window.v3SyncRetryCount = 0;
+                return { groups: activeGroups, droppedCount };
+            } catch (error) {
+                lastError = error;
+                window.v3SyncRetryCount = attempt;
+                console.warn(`FoxESS schedule sync failed (attempt ${attempt}/${maxAttempts})`, error);
+                if (attempt < maxAttempts) await wait(2000 * attempt);
+            }
         }
 
-        if(data.errno === 0) {
-            if(btn) { btn.textContent = "✅ Success!"; btn.style.background = "#10b981"; }
-            // FoxESS schedule writes are eventually consistent. Poll until the
-            // read endpoint returns the groups we just wrote, then redraw the UI.
-            await fetchFoxSchedules({ expectedGroups: groups, attempts: 4 });
-        } else {
-            if(btn) { btn.textContent = "❌ Sync Failed"; btn.style.background = "#ef4444"; }
-            showAutoCloseToast("Error syncing to FoxESS: " + (data.msg || data.errno));
-        }
-        if(btn) setTimeout(() => { btn.textContent = "Apply Rules"; btn.style.background = "#16a34a"; }, 3500);
-
-    } catch (err) {
-        console.error("Failed V3 auto-sync", err);
-        // Retry logic implementation (Max 3 attempts with progressive 2-second delay strings)
-        if (!window.v3SyncRetryCount) window.v3SyncRetryCount = 0;
-        if (window.v3SyncRetryCount < 3) {
-            window.v3SyncRetryCount++;
-            console.warn(`FoxESS Schedule sync dropped. Retrying attempt ${window.v3SyncRetryCount}/3 in 2s...`);
-            setTimeout(() => pushGroupsToFoxESS(groups), 2000);
-            return;
-        } else {
-            window.v3SyncRetryCount = 0; // reset
-            showAutoCloseToast("Critical Automation Failure: Inverter synchronization dropped after 3 attempts.");
-        }
+        window.v3SyncRetryCount = 0;
+        throw lastError || new Error('FoxESS schedule synchronization failed');
     } finally {
-        if (!window.v3SyncRetryCount || window.v3SyncRetryCount === 0) {
-            isCurrentlyUpdatingMode = false;
-        }
+        isCurrentlyUpdatingMode = false;
     }
 }
 
@@ -1188,7 +1297,7 @@ async function evaluateLocalAutomations(btn = null, isStartup = false) {
     if (isStartup && window.activeFoxGroups) {
         // Include fdSoc in stringification to ensure hardware limits match
         const mapGroup = g => `${g.startHour}:${g.startMinute}-${g.endHour}:${g.endMinute}-${g.workMode}-${g.extraParam?.fdSoc || 100}`;
-        const localStr = groups.map(mapGroup).sort().join('|');
+        const localStr = prepareFoxSchedulePayload(groups).activeGroups.map(mapGroup).sort().join('|');
         const remoteStr = window.activeFoxGroups.filter(g => g.enable !== 0).map(mapGroup).sort().join('|');
         if (localStr === remoteStr) {
             console.log("Startup Check: Local automations match inverter schedules perfectly. Skipping sync.");
@@ -1196,7 +1305,18 @@ async function evaluateLocalAutomations(btn = null, isStartup = false) {
         }
     }
 
-    await pushGroupsToFoxESS(groups);
+    try {
+        await pushGroupsToFoxESS(groups);
+    } catch (error) {
+        showToast(`Automation schedules were not applied: ${error.message}`);
+        if (btn) {
+            btn.textContent = '❌ Apply Failed';
+            btn.style.background = '#ef4444';
+            btn.style.opacity = '1';
+            btn.disabled = false;
+        }
+        return false;
+    }
     
     // Provide brief success feedback on the buttons
     const btnUnified = document.getElementById('btn-save-unified');
@@ -1212,6 +1332,7 @@ async function evaluateLocalAutomations(btn = null, isStartup = false) {
     
     // Fetch current work mode 1 minute (60000ms) after applying new schedules (bypass cache)
     setTimeout(() => fetchCurrentWorkMode(true), 60000);
+    return true;
 }
 
 // ==========================================
@@ -1250,17 +1371,19 @@ async function setV3Schedule(mode) {
             }
         };
         incrementFoxApi();
-        const res = await fetch(globalGasUrl, { method: 'POST', body: JSON.stringify(payload) });
-        const data = await res.json();
+        const data = await fetchJson(globalGasUrl, { method: 'POST', body: JSON.stringify(payload) });
         
         if (data.errno !== 0) throw new Error(data.msg || `API Error: ${data.errno}`);
         
-        successDiv.innerHTML = `✅ <strong>Success!</strong> Forced ${mode} from ${document.getElementById('v3-start').value} to ${document.getElementById('v3-end').value}`;
-        successDiv.style.display = 'block';
-        await fetchFoxSchedules({
+        const refreshedGroups = await fetchFoxSchedules({
             expectedGroups: payload.body.groups,
             attempts: 4
         }); // Wait for FoxESS propagation before redrawing the list
+        if (scheduleFingerprint(refreshedGroups) !== scheduleFingerprint(payload.body.groups)) {
+            throw new Error('FoxESS did not confirm the manual schedule');
+        }
+        successDiv.innerHTML = `✅ <strong>Success!</strong> Forced ${escapeHtml(mode)} from ${escapeHtml(document.getElementById('v3-start').value)} to ${escapeHtml(document.getElementById('v3-end').value)}`;
+        successDiv.style.display = 'block';
         setTimeout(() => fetchCurrentWorkMode(true), 3000); // Verify device mode via API after 3 seconds
     } catch (err) {
         errorDiv.textContent = `Scheduler Failed: ${err.message}`; errorDiv.style.display = 'block';
