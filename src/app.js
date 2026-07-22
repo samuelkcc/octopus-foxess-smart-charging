@@ -901,9 +901,18 @@ window.activeFoxGroups = [];
 
 const wait = (milliseconds) => new Promise(resolve => setTimeout(resolve, milliseconds));
 
+function isActiveFoxSchedule(group) {
+    if (!group || group.enable === 0 || group.enable === false) return false;
+    const isDisabledPadding =
+        group.workMode === 'SelfUse' &&
+        group.startHour === 0 && group.startMinute === 0 &&
+        group.endHour === 0 && group.endMinute === 0;
+    return !isDisabledPadding;
+}
+
 function scheduleFingerprint(groups) {
     return (groups || [])
-        .filter(group => group.enable !== 0)
+        .filter(isActiveFoxSchedule)
         .map(group => {
             const defaultSoc = group.workMode === 'ForceCharge' ? 100 : (group.workMode === 'ForceDischarge' ? 11 : '');
             return [
@@ -932,7 +941,7 @@ async function fetchFoxSchedules({ expectedGroups = null, attempts = 1 } = {}) {
         
             const container = document.getElementById('fox-active-schedules');
             if (data.errno === 0 && data.result && data.result.groups) {
-                window.activeFoxGroups = data.result.groups.filter(group => group.enable !== 0);
+                window.activeFoxGroups = data.result.groups.filter(isActiveFoxSchedule);
             if (window.activeFoxGroups.length === 0) {
                 container.innerHTML = '<div style="text-align: center; padding: 0.5rem 0;">No schedules currently set.</div>';
             } else {
@@ -1029,8 +1038,9 @@ function deleteFoxSchedule(index) {
 }
 
 function prepareFoxSchedulePayload(groups) {
-    const activeGroups = (groups || []).filter(group => group.enable !== 0).slice(0, 5).map(group => ({ ...group, enable: 1 }));
-    const droppedCount = Math.max(0, (groups || []).filter(group => group.enable !== 0).length - activeGroups.length);
+    const requestedGroups = (groups || []).filter(isActiveFoxSchedule);
+    const activeGroups = requestedGroups.slice(0, 5).map(group => ({ ...group, enable: 1 }));
+    const droppedCount = Math.max(0, requestedGroups.length - activeGroups.length);
     const paddedGroups = [...activeGroups];
     while (paddedGroups.length < 5) {
         paddedGroups.push({
@@ -1473,7 +1483,7 @@ async function evaluateLocalAutomations(btn = null, isStartup = false) {
         // Include fdSoc in stringification to ensure hardware limits match
         const mapGroup = g => `${g.startHour}:${g.startMinute}-${g.endHour}:${g.endMinute}-${g.workMode}-${g.extraParam?.fdSoc || 100}`;
         const localStr = prepareFoxSchedulePayload(groups).activeGroups.map(mapGroup).sort().join('|');
-        const remoteStr = window.activeFoxGroups.filter(g => g.enable !== 0).map(mapGroup).sort().join('|');
+        const remoteStr = window.activeFoxGroups.filter(isActiveFoxSchedule).map(mapGroup).sort().join('|');
         if (localStr === remoteStr) {
             console.log("Startup Check: Local automations match inverter schedules perfectly. Skipping sync.");
             return;

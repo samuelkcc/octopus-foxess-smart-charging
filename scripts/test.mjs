@@ -17,6 +17,7 @@ function extractFunction(name) {
 }
 
 const utilities = new Function(`
+  ${extractFunction('isActiveFoxSchedule')}
   ${extractFunction('scheduleFingerprint')}
   ${extractFunction('prepareFoxSchedulePayload')}
   ${extractFunction('getWeeklyForcedChargePeriods')}
@@ -47,6 +48,12 @@ assert.equal(sparse.activeGroups.length, 2);
 assert.equal(sparse.paddedGroups.filter(group => group.enable === 0).length, 3);
 const preparedAgain = utilities.prepareFoxSchedulePayload(sparse.paddedGroups);
 assert.equal(preparedAgain.activeGroups.length, 2, 'Disabled padding must stay disabled on reuse');
+const foxResponsePadding = sparse.paddedGroups.map(group => {
+  const { enable, ...withoutEnable } = group;
+  return withoutEnable;
+});
+const preparedFoxResponse = utilities.prepareFoxSchedulePayload(foxResponsePadding);
+assert.equal(preparedFoxResponse.activeGroups.length, 2, '00:00 Self-Use padding without an enable flag must stay disabled');
 
 assert.equal(
   utilities.scheduleFingerprint([{ ...sampleGroups[0], extraParam: undefined }]),
