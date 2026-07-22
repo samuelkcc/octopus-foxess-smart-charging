@@ -19,8 +19,12 @@ function extractFunction(name) {
 const utilities = new Function(`
   ${extractFunction('scheduleFingerprint')}
   ${extractFunction('prepareFoxSchedulePayload')}
-  ${extractFunction('getWeeklyForcedChargePeriod')}
-  return { scheduleFingerprint, prepareFoxSchedulePayload, getWeeklyForcedChargePeriod };
+  ${extractFunction('getWeeklyForcedChargePeriods')}
+  ${extractFunction('buildScheduleGroupsFromTimeline')}
+  ${extractFunction('getAutoResumeSource')}
+  ${extractFunction('getAutoResumeUntil')}
+  ${extractFunction('isScheduleMinuteSuppressed')}
+  return { scheduleFingerprint, prepareFoxSchedulePayload, getWeeklyForcedChargePeriods, buildScheduleGroupsFromTimeline, getAutoResumeSource, getAutoResumeUntil, isScheduleMinuteSuppressed };
 `)();
 
 const sampleGroups = Array.from({ length: 7 }, (_, index) => ({
@@ -50,27 +54,58 @@ assert.equal(
   'Default ForceCharge SOC should compare as 100%'
 );
 
-const weeklyOvernight = utilities.getWeeklyForcedChargePeriod({
+const weeklyOvernight = utilities.getWeeklyForcedChargePeriods({
   enabled: true,
   startTime: '23:30',
   endTime: '05:30',
-  days: [1, 3, 5]
+  days: [2, 3]
 }, new Date(2026, 6, 22, 12, 0));
-assert.deepEqual(weeklyOvernight, {
-  startHour: 23,
-  startMinute: 30,
-  endHour: 5,
-  endMinute: 30,
-  workMode: 'ForceCharge',
-  extraParam: { schSource: 'weekly', fdSoc: 100 }
-});
-assert.equal(utilities.getWeeklyForcedChargePeriod({ enabled: true, startTime: '23:30', endTime: '05:30', days: [1] }, new Date(2026, 6, 22, 12, 0)), null);
-assert.ok(utilities.getWeeklyForcedChargePeriod({ enabled: true, startTime: '23:30', endTime: '05:30', days: [1] }, new Date(2026, 6, 21, 1, 0)), 'Monday period must remain active until 05:30 Tuesday');
-assert.equal(utilities.getWeeklyForcedChargePeriod({ enabled: true, startTime: '23:30', endTime: '05:30', days: [2] }, new Date(2026, 6, 21, 1, 0)), null, 'Tuesday schedule must not start early on Monday night');
-assert.equal(utilities.getWeeklyForcedChargePeriod({ enabled: true, startTime: '05:30', endTime: '05:30', days: [1] }, new Date(2026, 6, 20, 12, 0)), null);
+assert.deepEqual(weeklyOvernight.map(period => [period.startHour, period.startMinute, period.endHour, period.endMinute]), [
+  [0, 0, 5, 30],
+  [23, 30, 23, 59]
+], 'An overnight rule must be split into the two periods FoxESS accepts');
+assert.deepEqual(
+  utilities.getWeeklyForcedChargePeriods({ enabled: true, startTime: '23:30', endTime: '05:30', days: [1] }, new Date(2026, 6, 21, 12, 0)).map(period => [period.startHour, period.startMinute, period.endHour, period.endMinute]),
+  [[0, 0, 5, 30]],
+  'Tuesday must retain Monday night only until the morning boundary'
+);
+assert.deepEqual(
+  utilities.getWeeklyForcedChargePeriods({ enabled: true, startTime: '23:30', endTime: '05:30', days: [2] }, new Date(2026, 6, 21, 12, 0)).map(period => [period.startHour, period.startMinute, period.endHour, period.endMinute]),
+  [[23, 30, 23, 59]],
+  'Tuesday selection must not create an early Tuesday period from Monday night'
+);
+assert.deepEqual(utilities.getWeeklyForcedChargePeriods({ enabled: true, startTime: '05:30', endTime: '05:30', days: [1] }, new Date(2026, 6, 20, 12, 0)), []);
+
+const mergedTimeline = new Array(1440).fill(null);
+for (let minute = 0; minute < 330; minute++) {
+  mergedTimeline[minute] = {
+    workMode: 'ForceCharge',
+    finalFdSoc: 100,
+    source: minute >= 60 && minute < 180 ? 'dispatch' : 'weekly'
+  };
+}
+const mergedGroups = utilities.buildScheduleGroupsFromTimeline(mergedTimeline, 11, 5000);
+assert.equal(mergedGroups.length, 1, 'FoxESS-equivalent adjacent charge periods must stay merged despite different UI sources');
+assert.deepEqual(
+  [mergedGroups[0].startHour, mergedGroups[0].startMinute, mergedGroups[0].endHour, mergedGroups[0].endMinute],
+  [0, 0, 5, 30]
+);
+assert.equal(mergedGroups[0].extraParam.schSource, 'weekly', 'The base weekly source must remain available for display and Auto-Resume');
+
+assert.equal(utilities.getAutoResumeSource(['weekly'], false), 'weekly');
+assert.equal(utilities.getAutoResumeSource(['price'], false), 'price');
+assert.equal(utilities.getAutoResumeSource(['weekly', 'dispatch'], true), null, 'Auto-Resume must not cancel an active Smart Dispatch');
+const weeklyConfig = { enabled: true, startTime: '23:30', endTime: '05:30', days: [3] };
+const overnightResumeUntil = utilities.getAutoResumeUntil('weekly', mergedGroups[0], new Date(2026, 6, 22, 23, 45), weeklyConfig);
+assert.equal(overnightResumeUntil.getTime(), new Date(2026, 6, 23, 5, 30).getTime(), 'Late-night Auto-Resume lock must end after midnight');
+const fulfilledWeekly = { source: 'weekly', until: new Date(2026, 6, 23, 5, 30).getTime() };
+assert.equal(utilities.isScheduleMinuteSuppressed(fulfilledWeekly, 'weekly', new Date(2026, 6, 23, 2, 0).getTime()), true);
+assert.equal(utilities.isScheduleMinuteSuppressed(fulfilledWeekly, 'dispatch', new Date(2026, 6, 23, 2, 0).getTime()), false, 'Smart Dispatch must survive weekly Auto-Resume');
+assert.equal(utilities.isScheduleMinuteSuppressed(fulfilledWeekly, 'weekly', new Date(2026, 6, 23, 23, 30).getTime()), false, 'The next nightly schedule must remain available');
 
 assert.doesNotMatch(source, /localStorage\.setItem\(['"](?:octoAcc|octoApi|foxSn|foxToken|gasUrl)['"]/);
 assert.match(source, /if \(refreshTimerId !== null\) clearInterval\(refreshTimerId\)/);
 assert.match(source, /async function fetchJson/);
+assert.match(source, /dispatchActiveNow/, 'Auto-Resume must not cancel an active Smart Dispatch');
 
 console.log('Scheduler, storage, timer, and request-safety checks passed.');

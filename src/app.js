@@ -821,29 +821,34 @@ async function fetchCurrentWorkMode(forceModeUpdate = false) {
             const autoResumeEnabled = document.getElementById('toggle-auto-resume')?.checked;
             if (autoResumeEnabled && batterySoc !== '--') {
                 if (window.activeFoxGroups && window.activeFoxGroups.length > 0) {
-                    const nowMins = new Date().getHours() * 60 + new Date().getMinutes();
+                    const resumeNow = new Date();
+                    const nowMins = resumeNow.getHours() * 60 + resumeNow.getMinutes();
+                    const dispatchActiveNow = (window.currentDispatches || []).some(dispatch => {
+                        const start = new Date(dispatch.startDt);
+                        const end = new Date(dispatch.endDt);
+                        return start <= resumeNow && end > resumeNow;
+                    });
                     const activeSch = window.activeFoxGroups.find(g => {
                         let eMins = g.endHour * 60 + g.endMinute;
-                        if (eMins === 0) eMins = 1440; // Fix to support midnight boundary
-                        const sourceAttr = g.extraParam?.schSource || g.schSource;
-                        return (g.startHour * 60 + g.startMinute) <= nowMins && eMins > nowMins && g.workMode === 'ForceCharge' && sourceAttr === 'price';
+                        if (eMins === 0 || (g.endHour === 23 && g.endMinute === 59)) eMins = 1440;
+                        const sources = getAutomationSourcesForGroup(g, resumeNow);
+                        const autoResumeSource = getAutoResumeSource(sources, dispatchActiveNow);
+                        g.__autoResumeSource = autoResumeSource;
+                        return !dispatchActiveNow && (g.startHour * 60 + g.startMinute) <= nowMins && eMins > nowMins && g.workMode === 'ForceCharge' && autoResumeSource;
                     });
                     
-                    if (activeSch && !isCurrentlyUpdatingMode) {
+                    if (activeSch && !isCurrentlyUpdatingMode && !window.autoResumeInProgress) {
                         // Dynamically read the SOC limit assigned to THIS specific block
                         const activeSocLimit = activeSch.extraParam?.fdSoc || activeSch.fdSoc || parseInt(document.getElementById('target-soc-limit')?.value || 80);
                         if (parseInt(batterySoc) >= activeSocLimit) {
                             console.log(`Target SOC (${activeSocLimit}%) reached. Auto-resuming Self-Use...`);
-                            window.activeFoxGroups = window.activeFoxGroups.filter(g => g !== activeSch);
-                            
-                            // Mark this specific time block as fulfilled so the background loop doesn't re-add it
-                            let endMins = activeSch.endHour * 60 + activeSch.endMinute;
-                            if (endMins === 0) endMins = 1440;
-                            window.fulfilledScheduleEnd = endMins; 
-                            
-                            pushGroupsToFoxESS(window.activeFoxGroups).catch(error => {
-                                showToast(`Auto-resume schedule update failed: ${error.message}`);
-                            });
+                            const source = activeSch.__autoResumeSource;
+                            const until = getAutoResumeUntil(source, activeSch, resumeNow);
+                            window.fulfilledSchedule = { source, until: until.getTime() };
+                            window.autoResumeInProgress = true;
+                            Promise.resolve(evaluateLocalAutomations(null, true))
+                                .catch(error => showToast(`Auto-resume schedule update failed: ${error.message}`))
+                                .finally(() => { window.autoResumeInProgress = false; });
                         }
                     }
                 }
@@ -951,8 +956,12 @@ async function fetchFoxSchedules({ expectedGroups = null, attempts = 1 } = {}) {
                             });
                         }
                         
-                        const source = g.extraParam?.schSource;
-                        const subText = isDispatch ? '⚡ Smart Dispatch' : (source === 'weekly' ? '📅 Weekly Schedule' : '🎯 Target Price');
+                        const sources = getAutomationSourcesForGroup(g, new Date());
+                        const sourceLabels = [];
+                        if (sources.includes('weekly')) sourceLabels.push('📅 Weekly Schedule');
+                        if (sources.includes('dispatch') || (isDispatch && !sources.includes('weekly'))) sourceLabels.push('⚡ Smart Dispatch');
+                        if (sources.includes('price') && !sources.includes('weekly')) sourceLabels.push('🎯 Target Price');
+                        const subText = sourceLabels.join(' + ') || '⚙️ Manual Schedule';
                         const soc = g.fdSoc || g.extraParam?.fdSoc || 100;
                         
                         detailLabel = `<span style="color: var(--text-muted); font-size: 0.8rem; font-weight: normal; margin-left: 4px;">(${subText} | Max SOC: ${soc}%)</span>`;
@@ -1036,37 +1045,151 @@ function prepareFoxSchedulePayload(groups) {
     return { activeGroups, paddedGroups, droppedCount };
 }
 
-function getWeeklyForcedChargePeriod(config, now = new Date()) {
+function getWeeklyForceConfig() {
+    return {
+        enabled: document.getElementById('toggle-weekly-force')?.checked === true,
+        startTime: document.getElementById('weekly-force-start')?.value || '',
+        endTime: document.getElementById('weekly-force-end')?.value || '',
+        days: Array.from(document.querySelectorAll('input[name="weekly-force-day"]:checked')).map(input => Number(input.value))
+    };
+}
+
+function getWeeklyForcedChargePeriods(config, now = new Date()) {
     const selectedDays = Array.isArray(config?.days) ? config.days : [];
     const isTime = value => /^\d{2}:\d{2}$/.test(value || '');
-    if (!config?.enabled || !isTime(config.startTime) || !isTime(config.endTime)) return null;
+    if (!config?.enabled || !isTime(config.startTime) || !isTime(config.endTime)) return [];
 
     const [startHour, startMinute] = config.startTime.split(':').map(Number);
     const [endHour, endMinute] = config.endTime.split(':').map(Number);
     const startMinutes = startHour * 60 + startMinute;
     const endMinutes = endHour * 60 + endMinute;
-    if (startMinutes === endMinutes) return null;
+    if (startMinutes === endMinutes) return [];
 
     const currentDay = now.getDay();
-    const currentMinutes = now.getHours() * 60 + now.getMinutes();
-    let appliesToday = selectedDays.includes(currentDay);
-
-    // For an overnight period, retain yesterday's schedule only until it ends.
-    // This prevents a selected upcoming day from starting the prior night's charge early.
-    if (startMinutes > endMinutes && currentMinutes < endMinutes) {
-        const previousDay = (currentDay + 6) % 7;
-        appliesToday = selectedDays.includes(previousDay);
-    }
-    if (!appliesToday) return null;
-
-    return {
-        startHour,
-        startMinute,
-        endHour,
-        endMinute,
+    const previousDay = (currentDay + 6) % 7;
+    const makePeriod = (sHour, sMinute, eHour, eMinute) => ({
+        startHour: sHour,
+        startMinute: sMinute,
+        endHour: eHour,
+        endMinute: eMinute,
         workMode: 'ForceCharge',
         extraParam: { schSource: 'weekly', fdSoc: 100 }
-    };
+    });
+
+    if (startMinutes < endMinutes) {
+        return selectedDays.includes(currentDay) ? [makePeriod(startHour, startMinute, endHour, endMinute)] : [];
+    }
+
+    // FoxESS schedules do not understand weekdays or overnight ranges. Split an
+    // overnight rule into today's carry-over and tonight's period explicitly.
+    const periods = [];
+    if (endMinutes > 0 && selectedDays.includes(previousDay)) periods.push(makePeriod(0, 0, endHour, endMinute));
+    if (selectedDays.includes(currentDay)) periods.push(makePeriod(startHour, startMinute, 23, 59));
+    return periods;
+}
+
+function getAutomationSourcesForGroup(group, now = new Date()) {
+    const sources = new Set();
+    const addSource = source => String(source || '').split('+').filter(Boolean).forEach(value => sources.add(value));
+    addSource(group?.extraParam?.schSource || group?.schSource);
+
+    const groupStart = group.startHour * 60 + group.startMinute;
+    let groupEnd = group.endHour * 60 + group.endMinute;
+    if (groupEnd === 0 || (group.endHour === 23 && group.endMinute === 59)) groupEnd = 1440;
+    const overlaps = (start, end) => Math.max(groupStart, start) < Math.min(groupEnd, end);
+
+    (window.lastAutomationGroups || []).forEach(localGroup => {
+        if (localGroup.workMode !== group.workMode) return;
+        const start = localGroup.startHour * 60 + localGroup.startMinute;
+        let end = localGroup.endHour * 60 + localGroup.endMinute;
+        if (end === 0 || (localGroup.endHour === 23 && localGroup.endMinute === 59)) end = 1440;
+        if (overlaps(start, end)) addSource(localGroup.extraParam?.schSource || localGroup.schSource);
+    });
+
+    getWeeklyForcedChargePeriods(getWeeklyForceConfig(), now).forEach(period => {
+        const start = period.startHour * 60 + period.startMinute;
+        let end = period.endHour * 60 + period.endMinute;
+        if (period.endHour === 23 && period.endMinute === 59) end = 1440;
+        if (overlaps(start, end)) sources.add('weekly');
+    });
+
+    (window.currentDispatches || []).forEach(dispatch => {
+        const startDate = new Date(dispatch.startDt);
+        const endDate = new Date(dispatch.endDt);
+        const start = startDate.getHours() * 60 + startDate.getMinutes();
+        let end = endDate.getHours() * 60 + endDate.getMinutes();
+        if (end === 0 && endDate > startDate) end = 1440;
+        if (overlaps(start, end)) sources.add('dispatch');
+    });
+
+    return ['weekly', 'dispatch', 'price', 'export'].filter(source => sources.has(source));
+}
+
+function getAutoResumeSource(sources, dispatchActiveNow = false) {
+    if (dispatchActiveNow) return null;
+    if (sources.includes('weekly')) return 'weekly';
+    if (sources.includes('price')) return 'price';
+    return null;
+}
+
+function getAutoResumeUntil(source, group, now = new Date(), weeklyConfig = null) {
+    if (source === 'weekly') {
+        const config = weeklyConfig || getWeeklyForceConfig();
+        const [startHour, startMinute] = config.startTime.split(':').map(Number);
+        const [endHour, endMinute] = config.endTime.split(':').map(Number);
+        const startMinutes = startHour * 60 + startMinute;
+        const endMinutes = endHour * 60 + endMinute;
+        const nowMinutes = now.getHours() * 60 + now.getMinutes();
+        const until = new Date(now.getFullYear(), now.getMonth(), now.getDate(), endHour, endMinute);
+        if (startMinutes > endMinutes && nowMinutes >= startMinutes) until.setDate(until.getDate() + 1);
+        return until;
+    }
+
+    let endMinutes = group.endHour * 60 + group.endMinute;
+    const until = new Date(now.getFullYear(), now.getMonth(), now.getDate(), group.endHour, group.endMinute);
+    if (endMinutes === 0 || (group.endHour === 23 && group.endMinute === 59)) until.setHours(24, 0, 0, 0);
+    if (until <= now) until.setDate(until.getDate() + 1);
+    return until;
+}
+
+function isScheduleMinuteSuppressed(fulfilledSchedule, ruleSource, minuteTime) {
+    return Boolean(
+        fulfilledSchedule &&
+        fulfilledSchedule.source === ruleSource &&
+        minuteTime < fulfilledSchedule.until
+    );
+}
+
+function buildScheduleGroupsFromTimeline(timeline, minSoc, fdPwr) {
+    const groups = [];
+    let currentBlock = null;
+
+    for (let i = 0; i <= 1440; i++) {
+        const state = i < 1440 ? timeline[i] : null;
+
+        if (!currentBlock && state) {
+            currentBlock = { start: i, workMode: state.workMode, finalFdSoc: state.finalFdSoc, source: state.source };
+        } else if (currentBlock && (!state || state.workMode !== currentBlock.workMode || state.finalFdSoc !== currentBlock.finalFdSoc)) {
+            groups.push({
+                startHour: Math.floor(currentBlock.start / 60),
+                startMinute: currentBlock.start % 60,
+                endHour: i === 1440 ? 23 : Math.floor(i / 60),
+                endMinute: i === 1440 ? 59 : i % 60,
+                workMode: currentBlock.workMode,
+                extraParam: {
+                    minSocOnGrid: minSoc,
+                    fdPwr,
+                    fdSoc: currentBlock.finalFdSoc,
+                    schSource: currentBlock.source
+                }
+            });
+            currentBlock = state
+                ? { start: i, workMode: state.workMode, finalFdSoc: state.finalFdSoc, source: state.source }
+                : null;
+        }
+    }
+
+    return groups;
 }
 
 async function pushGroupsToFoxESS(groups, maxAttempts = 3) {
@@ -1169,19 +1292,14 @@ async function evaluateLocalAutomations(btn = null, isStartup = false) {
         btn.disabled = true;
         
         // Wipe the Auto-Resume memory lock because the user manually clicked Apply
-        window.fulfilledScheduleEnd = null;
+        window.fulfilledSchedule = null;
         console.log("Manual Apply: Auto-Resume memory cleared.");
     }
 
     const isAutoPrice = document.documentElement.querySelector('#toggle-auto-price')?.checked;
     const isAutoDispatch = document.documentElement.querySelector('#toggle-auto-dispatch')?.checked;
     const isAutoExport = document.documentElement.querySelector('#toggle-auto-export')?.checked;
-    const weeklyForce = {
-        enabled: document.getElementById('toggle-weekly-force')?.checked === true,
-        startTime: document.getElementById('weekly-force-start')?.value || '',
-        endTime: document.getElementById('weekly-force-end')?.value || '',
-        days: Array.from(document.querySelectorAll('input[name="weekly-force-day"]:checked')).map(input => Number(input.value))
-    };
+    const weeklyForce = getWeeklyForceConfig();
 
     if (weeklyForce.enabled && (!weeklyForce.startTime || !weeklyForce.endTime || weeklyForce.startTime === weeklyForce.endTime)) {
         showToast('Set different start and end times for the weekly forced-charge schedule.');
@@ -1243,18 +1361,18 @@ async function evaluateLocalAutomations(btn = null, isStartup = false) {
         
         if (eMins === 0 && endDt.getTime() > startDt.getTime()) eMins = 1440; // Treat exactly midnight as 1440
         
-        // Clear memory if we have safely passed the suppressed time block
-        const nowMins = new Date().getHours() * 60 + new Date().getMinutes();
-        if (window.fulfilledScheduleEnd && nowMins >= window.fulfilledScheduleEnd) {
-            window.fulfilledScheduleEnd = null; 
+        // Clear Auto-Resume memory after the fulfilled block has ended.
+        if (window.fulfilledSchedule && now.getTime() >= window.fulfilledSchedule.until) {
+            window.fulfilledSchedule = null;
         }
         
         const fill = (start, end) => {
             for (let i = start; i < end; i++) {
-                // If auto-resume already finished this block, skip re-adding it!
-                // Fix: Only suppress blocks originating from 'price' target rules
-                if (mode === 'ForceCharge' && ruleSource === 'price' && window.fulfilledScheduleEnd && i < window.fulfilledScheduleEnd) {
-                    continue; 
+                // If Auto-Resume already finished this source, suppress only the
+                // affected minutes. Higher-priority dispatch periods remain intact.
+                if (mode === 'ForceCharge' && window.fulfilledSchedule?.source === ruleSource) {
+                    const minuteTime = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, i).getTime();
+                    if (isScheduleMinuteSuppressed(window.fulfilledSchedule, ruleSource, minuteTime)) continue;
                 }
                 
                 // Best Practice: If a Smart Dispatch overlaps an existing Target Price block, 
@@ -1300,8 +1418,8 @@ async function evaluateLocalAutomations(btn = null, isStartup = false) {
     }
 
     // Weekly forced charge runs even when Octopus tariff data is unavailable.
-    const weeklyPeriod = getWeeklyForcedChargePeriod(weeklyForce, now);
-    if (weeklyPeriod) {
+    const weeklyPeriods = getWeeklyForcedChargePeriods(weeklyForce, now);
+    weeklyPeriods.forEach(weeklyPeriod => {
         fillTimeline(
             new Date(now.getFullYear(), now.getMonth(), now.getDate(), weeklyPeriod.startHour, weeklyPeriod.startMinute),
             new Date(now.getFullYear(), now.getMonth(), now.getDate(), weeklyPeriod.endHour, weeklyPeriod.endMinute),
@@ -1309,7 +1427,7 @@ async function evaluateLocalAutomations(btn = null, isStartup = false) {
             weeklyPeriod.extraParam.fdSoc,
             weeklyPeriod.extraParam.schSource
         );
-    }
+    });
 
     // 3. Dispatch Check (Higher priority - overrides target-price and weekly charge blocks)
     if (isAutoDispatch && window.currentDispatches) {
@@ -1342,36 +1460,13 @@ async function evaluateLocalAutomations(btn = null, isStartup = false) {
         if (currentExp && currentExp.end > now) fillTimeline(currentExp.start, currentExp.end, "ForceDischarge", 11, "export");
     }
 
-    // Reconstruct continuous groups from the minute-by-minute timeline map
-    let groups = [];
-    let currentBlock = null;
-    
-    for (let i = 0; i <= 1440; i++) {
-        let state = i < 1440 ? timeline[i] : null;
-        
-        if (!currentBlock && state) {
-            currentBlock = { start: i, workMode: state.workMode, finalFdSoc: state.finalFdSoc, source: state.source };
-        } else if (currentBlock && (!state || state.workMode !== currentBlock.workMode || state.finalFdSoc !== currentBlock.finalFdSoc || state.source !== currentBlock.source)) {
-            groups.push({
-                startHour: Math.floor(currentBlock.start / 60),
-                startMinute: currentBlock.start % 60,
-                endHour: i === 1440 ? 23 : Math.floor(i / 60),
-                endMinute: i === 1440 ? 59 : i % 60,
-                workMode: currentBlock.workMode,
-                extraParam: {
-                    minSocOnGrid: minSoc,
-                    fdPwr: fdPwr,
-                    fdSoc: currentBlock.finalFdSoc,
-                    schSource: currentBlock.source
-                }
-            });
-            if (state) {
-                currentBlock = { start: i, workMode: state.workMode, finalFdSoc: state.finalFdSoc, source: state.source };
-            } else {
-                currentBlock = null;
-            }
-        }
-    }
+    // Reconstruct continuous groups. FoxESS merges adjacent periods when mode
+    // and SOC match, even if the app's internal source label is different.
+    const groups = buildScheduleGroupsFromTimeline(timeline, minSoc, fdPwr);
+
+    // Keep source information locally because FoxESS strips unknown metadata and
+    // may merge adjacent periods with identical mode/SOC values.
+    window.lastAutomationGroups = groups.map(group => ({ ...group, extraParam: { ...group.extraParam } }));
 
     // If running on startup, check if schedules already match to avoid redundant API hits
     if (isStartup && window.activeFoxGroups) {

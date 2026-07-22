@@ -362,7 +362,7 @@
                     <div class="rule-row" style="margin-bottom: 0.8rem;">
                         <div style="display: flex; flex-direction: column; gap: 2px;">
                             <span class="rule-title" style="color: #c2410c; font-size: 1rem;">📅 Forced Charge on Schedule</span>
-                            <span style="font-size: 0.72rem; color: var(--text-muted);">Runs in your device's local time and uses one FoxESS scheduler period.</span>
+                            <span style="font-size: 0.72rem; color: var(--text-muted);">Runs in your device's local time. Overnight ranges use two FoxESS periods: before and after midnight.</span>
                         </div>
                         <label class="switch">
                             <input type="checkbox" id="toggle-weekly-force" onchange="let b = document.getElementById('btn-save-unified'); b.disabled = false; b.style.background = '#16a34a'; b.style.cursor = 'pointer';">
