@@ -38,6 +38,7 @@ For many, optimizing smart charging means diving into a full home automation eco
 * **Smart API Quota Management:** Built-in caching system throttles requests to ensure you never breach the strict FoxESS 1,440 daily API call limit.
 * **Live Telemetry:** Real-time, expandable dashboard showing live PV Power, Home Load, Battery Temperature, and Ambient Temperature.
 * **Auto-Resume:** Automatically ends grid-charging schedules early and reverts to Self-Use mode once your custom Target SOC is reached.
+* **Weekly Forced Charge:** Create a fixed Force Charge window (including overnight schedules such as 23:30–05:30) and select the weekdays when it runs.
 
 ---
 

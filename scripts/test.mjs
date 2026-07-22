@@ -19,7 +19,8 @@ function extractFunction(name) {
 const utilities = new Function(`
   ${extractFunction('scheduleFingerprint')}
   ${extractFunction('prepareFoxSchedulePayload')}
-  return { scheduleFingerprint, prepareFoxSchedulePayload };
+  ${extractFunction('getWeeklyForcedChargePeriod')}
+  return { scheduleFingerprint, prepareFoxSchedulePayload, getWeeklyForcedChargePeriod };
 `)();
 
 const sampleGroups = Array.from({ length: 7 }, (_, index) => ({
@@ -48,6 +49,25 @@ assert.equal(
   utilities.scheduleFingerprint([{ ...sampleGroups[0], fdSoc: 100, extraParam: undefined }]),
   'Default ForceCharge SOC should compare as 100%'
 );
+
+const weeklyOvernight = utilities.getWeeklyForcedChargePeriod({
+  enabled: true,
+  startTime: '23:30',
+  endTime: '05:30',
+  days: [1, 3, 5]
+}, new Date(2026, 6, 22, 12, 0));
+assert.deepEqual(weeklyOvernight, {
+  startHour: 23,
+  startMinute: 30,
+  endHour: 5,
+  endMinute: 30,
+  workMode: 'ForceCharge',
+  extraParam: { schSource: 'weekly', fdSoc: 100 }
+});
+assert.equal(utilities.getWeeklyForcedChargePeriod({ enabled: true, startTime: '23:30', endTime: '05:30', days: [1] }, new Date(2026, 6, 22, 12, 0)), null);
+assert.ok(utilities.getWeeklyForcedChargePeriod({ enabled: true, startTime: '23:30', endTime: '05:30', days: [1] }, new Date(2026, 6, 21, 1, 0)), 'Monday period must remain active until 05:30 Tuesday');
+assert.equal(utilities.getWeeklyForcedChargePeriod({ enabled: true, startTime: '23:30', endTime: '05:30', days: [2] }, new Date(2026, 6, 21, 1, 0)), null, 'Tuesday schedule must not start early on Monday night');
+assert.equal(utilities.getWeeklyForcedChargePeriod({ enabled: true, startTime: '05:30', endTime: '05:30', days: [1] }, new Date(2026, 6, 20, 12, 0)), null);
 
 assert.doesNotMatch(source, /localStorage\.setItem\(['"](?:octoAcc|octoApi|foxSn|foxToken|gasUrl)['"]/);
 assert.match(source, /if \(refreshTimerId !== null\) clearInterval\(refreshTimerId\)/);

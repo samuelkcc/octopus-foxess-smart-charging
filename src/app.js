@@ -694,7 +694,7 @@ async function initDashboard(isAutoRefresh = false, retryCount = 1) {
                 await fetchCurrentWorkMode(); 
                 
                 // Smart Startup Sync: Pass true to enable strict remote configuration verification
-                if (document.getElementById('toggle-auto-price')?.checked || document.getElementById('toggle-auto-dispatch')?.checked) {
+                if (hasEnabledLocalAutomation()) {
                     await evaluateLocalAutomations(null, true); 
                     await fetchFoxSchedules(); 
                 }
@@ -738,6 +738,9 @@ function startAutoRefreshTimer() {
                         evaluateLocalAutomations(); 
                     }
                 }
+                if (document.getElementById('toggle-weekly-force')?.checked) {
+                    evaluateLocalAutomations(null, true);
+                }
                 updateCircleTimer('octo-timer', octoCountdown, octoRefreshInterval);
             });
         }
@@ -750,7 +753,7 @@ function startAutoRefreshTimer() {
             if (now >= window.nextFoxTime) {
                 window.nextFoxTime = now + (foxRefreshInterval * 1000);
                 fetchFoxSchedules().then(() => {
-                    if (document.getElementById('toggle-auto-price')?.checked || document.getElementById('toggle-auto-dispatch')?.checked) {
+                    if (hasEnabledLocalAutomation()) {
                         evaluateLocalAutomations(null, true);
                     }
                 });
@@ -948,7 +951,8 @@ async function fetchFoxSchedules({ expectedGroups = null, attempts = 1 } = {}) {
                             });
                         }
                         
-                        const subText = isDispatch ? '⚡ Smart Dispatch' : '🎯 Target Price';
+                        const source = g.extraParam?.schSource;
+                        const subText = isDispatch ? '⚡ Smart Dispatch' : (source === 'weekly' ? '📅 Weekly Schedule' : '🎯 Target Price');
                         const soc = g.fdSoc || g.extraParam?.fdSoc || 100;
                         
                         detailLabel = `<span style="color: var(--text-muted); font-size: 0.8rem; font-weight: normal; margin-left: 4px;">(${subText} | Max SOC: ${soc}%)</span>`;
@@ -1032,6 +1036,39 @@ function prepareFoxSchedulePayload(groups) {
     return { activeGroups, paddedGroups, droppedCount };
 }
 
+function getWeeklyForcedChargePeriod(config, now = new Date()) {
+    const selectedDays = Array.isArray(config?.days) ? config.days : [];
+    const isTime = value => /^\d{2}:\d{2}$/.test(value || '');
+    if (!config?.enabled || !isTime(config.startTime) || !isTime(config.endTime)) return null;
+
+    const [startHour, startMinute] = config.startTime.split(':').map(Number);
+    const [endHour, endMinute] = config.endTime.split(':').map(Number);
+    const startMinutes = startHour * 60 + startMinute;
+    const endMinutes = endHour * 60 + endMinute;
+    if (startMinutes === endMinutes) return null;
+
+    const currentDay = now.getDay();
+    const currentMinutes = now.getHours() * 60 + now.getMinutes();
+    let appliesToday = selectedDays.includes(currentDay);
+
+    // For an overnight period, retain yesterday's schedule only until it ends.
+    // This prevents a selected upcoming day from starting the prior night's charge early.
+    if (startMinutes > endMinutes && currentMinutes < endMinutes) {
+        const previousDay = (currentDay + 6) % 7;
+        appliesToday = selectedDays.includes(previousDay);
+    }
+    if (!appliesToday) return null;
+
+    return {
+        startHour,
+        startMinute,
+        endHour,
+        endMinute,
+        workMode: 'ForceCharge',
+        extraParam: { schSource: 'weekly', fdSoc: 100 }
+    };
+}
+
 async function pushGroupsToFoxESS(groups, maxAttempts = 3) {
     isCurrentlyUpdatingMode = true;
     const path = '/op/v3/device/scheduler/enable';
@@ -1090,6 +1127,14 @@ function loadAutomations(minPrice, maxPrice) {
     if (saved.exportThreshold !== undefined) document.getElementById('export-threshold').value = saved.exportThreshold;
     if (saved.dispatchSocLimit !== undefined) document.getElementById('dispatch-soc-limit').value = saved.dispatchSocLimit;
     if (saved.applyDispatchLimit !== undefined) document.getElementById('toggle-dispatch-soc-limit').checked = saved.applyDispatchLimit;
+    if (saved.weeklyForceCheck !== undefined) document.getElementById('toggle-weekly-force').checked = saved.weeklyForceCheck;
+    if (saved.weeklyForceStart) document.getElementById('weekly-force-start').value = saved.weeklyForceStart;
+    if (saved.weeklyForceEnd) document.getElementById('weekly-force-end').value = saved.weeklyForceEnd;
+    if (Array.isArray(saved.weeklyForceDays)) {
+        document.querySelectorAll('input[name="weekly-force-day"]').forEach(input => {
+            input.checked = saved.weeklyForceDays.includes(Number(input.value));
+        });
+    }
 
     // Toggle borders on initial page load
     const blockUnified = document.getElementById('block-unified-auto');
@@ -1099,9 +1144,7 @@ function loadAutomations(minPrice, maxPrice) {
     if (autoPriceEl) autoPriceEl.checked = saved.priceCheck || false;
     if (autoDispatchEl) autoDispatchEl.checked = saved.dispatchCheck || false;
     
-    if (blockUnified) {
-        blockUnified.classList.toggle('block-countdown-octo', (saved.priceCheck === true || saved.dispatchCheck === true));
-    }
+    if (blockUnified) blockUnified.classList.toggle('block-countdown-octo', hasEnabledLocalAutomation());
 
     let thresh = saved.threshold;
     if ((!thresh || thresh === "0") && minPrice !== undefined) {
@@ -1109,6 +1152,11 @@ function loadAutomations(minPrice, maxPrice) {
     }
     const threshEl = document.getElementById('price-threshold');
     if(threshEl) threshEl.value = thresh || "";
+}
+
+function hasEnabledLocalAutomation() {
+    return ['toggle-auto-price', 'toggle-auto-dispatch', 'toggle-weekly-force']
+        .some(id => document.getElementById(id)?.checked === true);
 }
 
 // RUNS TO PUSH SCHEDULES VIA V3 API INSTEAD OF V0 LIVE-TOGGLE
@@ -1128,6 +1176,22 @@ async function evaluateLocalAutomations(btn = null, isStartup = false) {
     const isAutoPrice = document.documentElement.querySelector('#toggle-auto-price')?.checked;
     const isAutoDispatch = document.documentElement.querySelector('#toggle-auto-dispatch')?.checked;
     const isAutoExport = document.documentElement.querySelector('#toggle-auto-export')?.checked;
+    const weeklyForce = {
+        enabled: document.getElementById('toggle-weekly-force')?.checked === true,
+        startTime: document.getElementById('weekly-force-start')?.value || '',
+        endTime: document.getElementById('weekly-force-end')?.value || '',
+        days: Array.from(document.querySelectorAll('input[name="weekly-force-day"]:checked')).map(input => Number(input.value))
+    };
+
+    if (weeklyForce.enabled && (!weeklyForce.startTime || !weeklyForce.endTime || weeklyForce.startTime === weeklyForce.endTime)) {
+        showToast('Set different start and end times for the weekly forced-charge schedule.');
+        if (btn) {
+            btn.textContent = 'Apply Combined Automations';
+            btn.style.opacity = '1';
+            btn.disabled = false;
+        }
+        return false;
+    }
 
     // Save configuration implicitly on run
     localStorage.setItem('foxAutomations', JSON.stringify({
@@ -1141,13 +1205,17 @@ async function evaluateLocalAutomations(btn = null, isStartup = false) {
         autoResume: document.getElementById('toggle-auto-resume')?.checked || false,
         dispatchSocLimit: parseInt(document.getElementById('dispatch-soc-limit')?.value || 80),
         applyDispatchLimit: document.getElementById('toggle-dispatch-soc-limit')?.checked || false,
+        weeklyForceCheck: weeklyForce.enabled,
+        weeklyForceStart: weeklyForce.startTime,
+        weeklyForceEnd: weeklyForce.endTime,
+        weeklyForceDays: weeklyForce.days,
         minSoc: Math.max(11, parseInt(document.getElementById('adv-min-soc')?.value || 11)),
         fdPwr: parseInt(document.getElementById('adv-fd-pwr')?.value || 5000)
     }));
     
     // Toggle borders when user clicks apply
     const blockUnified = document.getElementById('block-unified-auto');
-    if (blockUnified) blockUnified.classList.toggle('block-countdown-octo', isAutoPrice === true || isAutoDispatch === true);
+    if (blockUnified) blockUnified.classList.toggle('block-countdown-octo', hasEnabledLocalAutomation());
     
     const now = new Date();
     
@@ -1231,7 +1299,19 @@ async function evaluateLocalAutomations(btn = null, isStartup = false) {
         if (current && current.end > now) fillTimeline(current.start, current.end, "ForceCharge", soc, "price");
     }
 
-    // 2. Dispatch Check (Higher priority - overrides price blocks to ensure EV is protected from Auto-Resume)
+    // Weekly forced charge runs even when Octopus tariff data is unavailable.
+    const weeklyPeriod = getWeeklyForcedChargePeriod(weeklyForce, now);
+    if (weeklyPeriod) {
+        fillTimeline(
+            new Date(now.getFullYear(), now.getMonth(), now.getDate(), weeklyPeriod.startHour, weeklyPeriod.startMinute),
+            new Date(now.getFullYear(), now.getMonth(), now.getDate(), weeklyPeriod.endHour, weeklyPeriod.endMinute),
+            weeklyPeriod.workMode,
+            weeklyPeriod.extraParam.fdSoc,
+            weeklyPeriod.extraParam.schSource
+        );
+    }
+
+    // 3. Dispatch Check (Higher priority - overrides target-price and weekly charge blocks)
     if (isAutoDispatch && window.currentDispatches) {
         const soc = applyDispatchLimit ? dispatchSocLimit : 100;
         window.currentDispatches.forEach(d => {
@@ -1240,7 +1320,7 @@ async function evaluateLocalAutomations(btn = null, isStartup = false) {
         });
     }
 
-    // 3. Price Export Feature (Highest priority - overwrites any charge blocks)
+    // 4. Price Export Feature (Highest priority - overwrites any charge blocks)
     if (isAutoPrice && isAutoExport && window.todayRates) {
         const expThreshold = parseFloat(document.getElementById('export-threshold').value || 99);
         const limitTime = new Date(now.getTime() + 24 * 60 * 60 * 1000);

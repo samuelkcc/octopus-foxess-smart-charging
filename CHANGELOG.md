@@ -1,5 +1,12 @@
 # Changelog
 
+## v2026.07.22 — 2026-07-22
+
+- Added a configurable weekly Forced Charge schedule with selectable Monday–Sunday operation.
+- Supports overnight windows such as 23:30–05:30 and persists the selected days and times locally.
+- Weekly Force Charge works independently of Octopus tariff-rate availability, while still sharing the FoxESS five-period safety limit.
+- Preserved Smart Dispatch priority so an overlapping dispatch keeps its safer configured SOC limit.
+
 ## v2026.07.11 — 2026-07-11
 
 - Split the maintainable application source into HTML, CSS, and JavaScript files.

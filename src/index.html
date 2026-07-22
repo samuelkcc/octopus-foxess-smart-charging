@@ -257,7 +257,7 @@
             <div class="automation-block" style="margin-bottom: 1.5rem; padding: 0.75rem 1.25rem;">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
                     <h4 style="margin: 0; font-size: 0.95rem; color: var(--text-main);">📋 Active Mode Scheduler</h4>
-                    <button onclick="event.preventDefault(); this.textContent='Fetching...'; fetchFoxSchedules().then(() => { this.textContent='🔄 Fetch Now'; if (document.getElementById('toggle-auto-price')?.checked || document.getElementById('toggle-auto-dispatch')?.checked) evaluateLocalAutomations(null, true); });" style="width: auto; padding: 0.35rem 0.85rem; font-size: 0.75rem; font-weight: 600; background: #3b82f6; border-radius: 6px; color: white; border: none; cursor: pointer; transition: all 0.2s; box-shadow: 0 2px 4px rgba(59, 130, 246, 0.3);" onmouseover="this.style.transform='translateY(-1px)'; this.style.boxShadow='0 4px 6px rgba(59, 130, 246, 0.4)';" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 2px 4px rgba(59, 130, 246, 0.3)';">🔄 Fetch Now</button>
+                    <button onclick="event.preventDefault(); this.textContent='Fetching...'; fetchFoxSchedules().then(() => { this.textContent='🔄 Fetch Now'; if (hasEnabledLocalAutomation()) evaluateLocalAutomations(null, true); });" style="width: auto; padding: 0.35rem 0.85rem; font-size: 0.75rem; font-weight: 600; background: #3b82f6; border-radius: 6px; color: white; border: none; cursor: pointer; transition: all 0.2s; box-shadow: 0 2px 4px rgba(59, 130, 246, 0.3);" onmouseover="this.style.transform='translateY(-1px)'; this.style.boxShadow='0 4px 6px rgba(59, 130, 246, 0.4)';" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 2px 4px rgba(59, 130, 246, 0.3)';">🔄 Fetch Now</button>
                 </div>
                 <div id="fox-active-schedules" class="block-countdown-fox" style="background: var(--card-bg); padding: 0.5rem 1rem; margin: 0 -1.05rem; border-radius: 8px; border: 1px solid var(--border); font-size: 0.85rem; color: var(--text-muted); text-align: center;">Click "Refresh" to fetch data.</div>
             </div>
@@ -357,6 +357,38 @@
                     <input type="number" step="0.1" id="price-threshold" style="width: 80px; padding: 0.4rem; margin: 0; border: 1px solid #bbf7d0; background: #fff;" oninput="previewScheduleTimes()"> p/kWh
                 </div>
                 <div id="price-target-times" style="width: 100%; margin-bottom: 1rem; font-size: 0.8rem; font-style: italic; color: #166534;"></div>
+
+                <div style="border-top: 1px dashed var(--border); padding-top: 1rem; margin-bottom: 1.2rem;">
+                    <div class="rule-row" style="margin-bottom: 0.8rem;">
+                        <div style="display: flex; flex-direction: column; gap: 2px;">
+                            <span class="rule-title" style="color: #c2410c; font-size: 1rem;">📅 Forced Charge on Schedule</span>
+                            <span style="font-size: 0.72rem; color: var(--text-muted);">Runs in your device's local time and uses one FoxESS scheduler period.</span>
+                        </div>
+                        <label class="switch">
+                            <input type="checkbox" id="toggle-weekly-force" onchange="let b = document.getElementById('btn-save-unified'); b.disabled = false; b.style.background = '#16a34a'; b.style.cursor = 'pointer';">
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+                    <div style="display: flex; gap: 0.75rem; margin-bottom: 0.75rem;">
+                        <div style="flex: 1;">
+                            <label for="weekly-force-start" style="font-size: 0.78rem;">Start</label>
+                            <input type="time" id="weekly-force-start" value="23:30" style="margin: 0; padding: 0.45rem;">
+                        </div>
+                        <div style="flex: 1;">
+                            <label for="weekly-force-end" style="font-size: 0.78rem;">End</label>
+                            <input type="time" id="weekly-force-end" value="05:30" style="margin: 0; padding: 0.45rem;">
+                        </div>
+                    </div>
+                    <div style="display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 4px;">
+                        <label style="font-size: 0.72rem; text-align: center; margin: 0; color: var(--text-main);"><input type="checkbox" name="weekly-force-day" value="1" checked> Mon</label>
+                        <label style="font-size: 0.72rem; text-align: center; margin: 0; color: var(--text-main);"><input type="checkbox" name="weekly-force-day" value="2" checked> Tue</label>
+                        <label style="font-size: 0.72rem; text-align: center; margin: 0; color: var(--text-main);"><input type="checkbox" name="weekly-force-day" value="3" checked> Wed</label>
+                        <label style="font-size: 0.72rem; text-align: center; margin: 0; color: var(--text-main);"><input type="checkbox" name="weekly-force-day" value="4" checked> Thu</label>
+                        <label style="font-size: 0.72rem; text-align: center; margin: 0; color: var(--text-main);"><input type="checkbox" name="weekly-force-day" value="5" checked> Fri</label>
+                        <label style="font-size: 0.72rem; text-align: center; margin: 0; color: var(--text-main);"><input type="checkbox" name="weekly-force-day" value="6" checked> Sat</label>
+                        <label style="font-size: 0.72rem; text-align: center; margin: 0; color: var(--text-main);"><input type="checkbox" name="weekly-force-day" value="0" checked> Sun</label>
+                    </div>
+                </div>
                 
                 <div style="background: transparent; border-radius: 8px; margin-bottom: 1.2rem;">
                     <div style="display: flex; align-items: center; justify-content: space-between; padding: 0.75rem 0; border-bottom: 1px solid var(--border);">
@@ -408,7 +440,7 @@
 
     </div> <div class="app-footer">
         <div style="text-align: left;">Developer Samuel Chen</div>
-        <div style="text-align: right;">&copy; Copyright 2026 samuelchen.hk Build v2026.07.11</div>
+        <div style="text-align: right;">&copy; Copyright 2026 samuelchen.hk Build v2026.07.22</div>
     </div>
 </div> 
 
