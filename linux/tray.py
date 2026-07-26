@@ -44,7 +44,7 @@ ICONS = {
 }
 
 
-def api_json(path, method="GET", payload=None):
+def api_json(path, method="GET", payload=None, timeout=5):
     body = None if payload is None else json.dumps(payload).encode("utf-8")
     request = urllib.request.Request(
         f"{BASE_URL}{path}",
@@ -52,7 +52,7 @@ def api_json(path, method="GET", payload=None):
         data=body,
         headers={"Content-Type": "application/json"},
     )
-    with urllib.request.urlopen(request, timeout=3) as response:
+    with urllib.request.urlopen(request, timeout=timeout) as response:
         if response.status == 204:
             return {}
         return json.loads(response.read().decode("utf-8"))
@@ -83,30 +83,37 @@ class ServerConfigurationWindow(Gtk.Window):
     def __init__(self, controller):
         super().__init__(title="Octopus FoxESS Server Configuration")
         self.controller = controller
-        self.access_loaded = False
-        self.set_default_size(520, 430)
-        self.set_border_width(18)
+        self.config_loaded = False
+        self.set_default_size(680, 760)
+        self.set_border_width(12)
         self.connect("delete-event", self.hide_on_close)
 
-        root = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=14)
+        root = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=10)
         self.add(root)
+
+        scroller = Gtk.ScrolledWindow()
+        scroller.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC)
+        root.pack_start(scroller, True, True, 0)
+        content = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=12)
+        content.set_border_width(8)
+        scroller.add(content)
 
         heading = Gtk.Label()
         heading.set_markup("<span size='x-large' weight='bold'>Octopus FoxESS Server</span>")
         heading.set_xalign(0)
-        root.pack_start(heading, False, False, 0)
+        content.pack_start(heading, False, False, 0)
 
         intro = Gtk.Label(
-            label="The server and automation worker run in the background. "
-            "Use the address below from any device on the same local network."
+            label="This is the private Raspberry Pi configuration screen. "
+            "The background worker keeps running when this window and every browser are closed."
         )
         intro.set_xalign(0)
         intro.set_line_wrap(True)
-        root.pack_start(intro, False, False, 0)
+        content.pack_start(intro, False, False, 0)
 
         grid = Gtk.Grid(column_spacing=14, row_spacing=10)
         grid.set_column_homogeneous(False)
-        root.pack_start(grid, False, False, 0)
+        content.pack_start(grid, False, False, 0)
 
         self.address = Gtk.Entry()
         self.address.set_editable(False)
@@ -114,19 +121,79 @@ class ServerConfigurationWindow(Gtk.Window):
         grid.attach(Gtk.Label(label="Listen address", xalign=0), 0, 0, 1, 1)
         grid.attach(self.address, 1, 0, 2, 1)
 
+        self.access_required = Gtk.CheckButton(
+            label="Require an access code from Mobile / LAN dashboard clients"
+        )
+        self.access_required.set_active(True)
+        self.access_required.connect("toggled", self.update_access_sensitivity)
+        grid.attach(self.access_required, 0, 1, 3, 1)
+
         self.access_code = Gtk.Entry()
         self.access_code.set_visibility(False)
         self.access_code.set_input_purpose(Gtk.InputPurpose.PASSWORD)
         self.access_code.set_hexpand(True)
-        grid.attach(Gtk.Label(label="LAN access code", xalign=0), 0, 1, 1, 1)
-        grid.attach(self.access_code, 1, 1, 1, 1)
+        grid.attach(Gtk.Label(label="LAN access code", xalign=0), 0, 2, 1, 1)
+        grid.attach(self.access_code, 1, 2, 1, 1)
 
         show_code = Gtk.CheckButton(label="Show")
         show_code.connect("toggled", lambda button: self.access_code.set_visibility(button.get_active()))
-        grid.attach(show_code, 2, 1, 1, 1)
+        grid.attach(show_code, 2, 2, 1, 1)
+
+        warning = Gtk.Label(
+            label="If access-code protection is off, anyone on this local network can view the "
+            "dashboard and change charging schedules."
+        )
+        warning.set_xalign(0)
+        warning.set_line_wrap(True)
+        content.pack_start(warning, False, False, 0)
+
+        integration_frame = Gtk.Frame(label="Integration settings")
+        content.pack_start(integration_frame, False, False, 0)
+        integration_grid = Gtk.Grid(column_spacing=14, row_spacing=9, margin=12)
+        integration_grid.set_column_homogeneous(False)
+        integration_frame.add(integration_grid)
+
+        self.fields = {}
+
+        def add_entry(row, key, label, secret=False):
+            entry = Gtk.Entry()
+            entry.set_hexpand(True)
+            entry.set_visibility(not secret)
+            if secret:
+                entry.set_input_purpose(Gtk.InputPurpose.PASSWORD)
+            integration_grid.attach(Gtk.Label(label=label, xalign=0), 0, row, 1, 1)
+            integration_grid.attach(entry, 1, row, 2, 1)
+            self.fields[key] = entry
+
+        add_entry(0, "acc", "Octopus account", True)
+        add_entry(1, "api", "Octopus API key", True)
+        add_entry(2, "foxSN", "FoxESS serial number")
+        add_entry(3, "foxToken", "FoxESS API token", True)
+
+        integration_grid.attach(Gtk.Label(label="Telemetry source", xalign=0), 0, 4, 1, 1)
+        self.live_mode = Gtk.ComboBoxText()
+        self.live_mode.append("live-ws", "Live WebSocket (REST fallback)")
+        self.live_mode.append("rest", "Official REST API only")
+        self.live_mode.set_active_id("live-ws")
+        self.live_mode.connect("changed", self.update_live_sensitivity)
+        integration_grid.attach(self.live_mode, 1, 4, 2, 1)
+
+        add_entry(5, "foxWebUsername", "FoxESS web-login email")
+        add_entry(6, "foxWebPassword", "FoxESS web-login password", True)
+
+        self.show_secrets = Gtk.CheckButton(label="Show account, keys, tokens, and passwords")
+        self.show_secrets.connect("toggled", self.update_secret_visibility)
+        integration_grid.attach(self.show_secrets, 1, 7, 2, 1)
+
+        live_note = Gtk.Label(
+            label="Live WS is read-only and undocumented. All commands continue through official REST."
+        )
+        live_note.set_xalign(0)
+        live_note.set_line_wrap(True)
+        integration_grid.attach(live_note, 0, 8, 3, 1)
 
         status_frame = Gtk.Frame(label="Connection status")
-        root.pack_start(status_frame, True, True, 0)
+        content.pack_start(status_frame, False, False, 0)
         status_grid = Gtk.Grid(column_spacing=14, row_spacing=11, margin=12)
         status_frame.add(status_grid)
         self.status_values = {}
@@ -147,28 +214,28 @@ class ServerConfigurationWindow(Gtk.Window):
 
         self.message = Gtk.Label(xalign=0)
         self.message.set_line_wrap(True)
-        root.pack_start(self.message, False, False, 0)
+        content.pack_start(self.message, False, False, 0)
 
         buttons = Gtk.ButtonBox(orientation=Gtk.Orientation.HORIZONTAL)
         buttons.set_layout(Gtk.ButtonBoxStyle.END)
         buttons.set_spacing(8)
         root.pack_end(buttons, False, False, 0)
 
-        advanced = Gtk.Button(label="Integration Settings…")
-        advanced.connect("clicked", lambda _button: run_detached(["/usr/local/bin/octopus-foxess-settings"]))
-        buttons.add(advanced)
-
         dashboard = Gtk.Button(label="Open Dashboard Client")
         dashboard.connect("clicked", lambda _button: run_detached(["/usr/local/bin/octopus-foxess-dashboard"]))
         buttons.add(dashboard)
 
         refresh = Gtk.Button(label="Refresh")
-        refresh.connect("clicked", lambda _button: self.controller.refresh())
+        refresh.connect("clicked", self.refresh_all)
         buttons.add(refresh)
 
-        save = Gtk.Button(label="Save Access Code")
+        live_test = Gtk.Button(label="Save & Test Live WS")
+        live_test.connect("clicked", self.test_live_connection)
+        buttons.add(live_test)
+
+        save = Gtk.Button(label="Save Configuration")
         save.get_style_context().add_class("suggested-action")
-        save.connect("clicked", self.save_access_code)
+        save.connect("clicked", self.save_configuration)
         buttons.add(save)
 
     def hide_on_close(self, *_args):
@@ -178,7 +245,45 @@ class ServerConfigurationWindow(Gtk.Window):
     def show_window(self):
         self.show_all()
         self.present()
+        self.refresh_all()
+
+    def update_access_sensitivity(self, *_args):
+        self.access_code.set_sensitive(self.access_required.get_active())
+
+    def update_live_sensitivity(self, *_args):
+        enabled = self.live_mode.get_active_id() != "rest"
+        self.fields["foxWebUsername"].set_sensitive(enabled)
+        self.fields["foxWebPassword"].set_sensitive(enabled)
+
+    def update_secret_visibility(self, button):
+        visible = button.get_active()
+        for key in ("acc", "api", "foxToken", "foxWebPassword"):
+            self.fields[key].set_visibility(visible)
+
+    def refresh_all(self, *_args):
+        self.load_configuration()
         self.controller.refresh()
+
+    def load_configuration(self):
+        try:
+            config = api_json("/api/native-config")
+            credentials = config.get("credentials") or {}
+            self.access_required.set_active(config.get("accessRequired") is not False)
+            self.access_code.set_text(config.get("accessKey", ""))
+            for key, entry in self.fields.items():
+                entry.set_text(str(credentials.get(key, "")))
+            self.live_mode.set_active_id(
+                "rest" if credentials.get("foxLiveMode") == "rest" else "live-ws"
+            )
+            self.config_loaded = True
+            self.update_access_sensitivity()
+            self.update_live_sensitivity()
+            self.message.set_text("")
+        except (OSError, ValueError, urllib.error.URLError) as error:
+            self.message.set_markup(
+                f"<span foreground='#b91c1c'>Could not load configuration: "
+                f"{GLib.markup_escape_text(str(error))}</span>"
+            )
 
     def update_status(self, status):
         urls = status.get("lanUrls") or []
@@ -200,14 +305,6 @@ class ServerConfigurationWindow(Gtk.Window):
             live_text = f"❌ REST fallback · {live.get('lastError') or live.get('reason') or 'Live WS problem'}"
         self.status_values["foxLive"].set_text(live_text)
 
-        if not self.access_loaded:
-            try:
-                key = api_json("/api/access-key").get("accessKey", "")
-                self.access_code.set_text(key)
-                self.access_loaded = True
-            except (OSError, ValueError, urllib.error.URLError):
-                pass
-
     def show_offline(self, message):
         self.address.set_text(f"http://raspberrypi.local:{PORT}")
         self.status_values["server"].set_text("❌ Server is not responding")
@@ -215,17 +312,71 @@ class ServerConfigurationWindow(Gtk.Window):
             self.status_values[key].set_text("❌ Unavailable while server is offline")
         self.message.set_text(message)
 
-    def save_access_code(self, _button):
+    def configuration_payload(self):
+        return {
+            "accessRequired": self.access_required.get_active(),
+            "accessKey": self.access_code.get_text().strip(),
+            "credentials": {
+                "acc": self.fields["acc"].get_text().strip(),
+                "api": self.fields["api"].get_text().strip(),
+                "foxSN": self.fields["foxSN"].get_text().strip(),
+                "foxToken": self.fields["foxToken"].get_text().strip(),
+                "foxLiveMode": self.live_mode.get_active_id() or "live-ws",
+                "foxWebUsername": self.fields["foxWebUsername"].get_text().strip(),
+                "foxWebPassword": self.fields["foxWebPassword"].get_text(),
+                "gasUrl": "/api/foxess",
+            },
+        }
+
+    def save_configuration(self, _button=None, quiet=False):
         access_code = self.access_code.get_text().strip()
-        if not 8 <= len(access_code) <= 64:
+        if self.access_required.get_active() and not 8 <= len(access_code) <= 64:
             self.message.set_markup("<span foreground='#b91c1c'>Use 8–64 printable characters.</span>")
-            return
+            return False
         try:
-            api_json("/api/access-key", "PUT", {"accessKey": access_code})
-            self.message.set_markup("<span foreground='#047857'>LAN access code saved.</span>")
+            api_json("/api/native-config", "PUT", self.configuration_payload())
+            if not quiet:
+                self.message.set_markup(
+                    "<span foreground='#047857'>Server configuration saved. "
+                    "The background worker will reload it automatically.</span>"
+                )
+            self.controller.refresh()
+            return True
         except (OSError, ValueError, urllib.error.URLError) as error:
             self.message.set_markup(
                 f"<span foreground='#b91c1c'>Could not save: {GLib.markup_escape_text(str(error))}</span>"
+            )
+            return False
+
+    def test_live_connection(self, _button):
+        if not self.save_configuration(quiet=True):
+            return
+        if self.live_mode.get_active_id() == "rest":
+            self.message.set_markup(
+                "<span foreground='#047857'>Configuration saved. Official REST is selected, "
+                "so no Live WS test is needed.</span>"
+            )
+            return
+        self.message.set_text("Waiting for a fresh FoxESS Live WS telemetry frame…")
+        while Gtk.events_pending():
+            Gtk.main_iteration()
+        try:
+            status = api_json("/api/foxess/live/test", "POST", {}, timeout=35)
+            if status.get("source") == "live-ws" and status.get("state") == "live":
+                self.message.set_markup(
+                    "<span foreground='#047857'>Live WS test successful and live updates are active.</span>"
+                )
+            else:
+                detail = status.get("lastError") or status.get("reason") or "connection unavailable"
+                self.message.set_markup(
+                    f"<span foreground='#b45309'>Live WS unavailable; official REST fallback is active. "
+                    f"{GLib.markup_escape_text(str(detail))}</span>"
+                )
+            self.controller.refresh()
+        except (OSError, ValueError, urllib.error.URLError) as error:
+            self.message.set_markup(
+                f"<span foreground='#b91c1c'>Live WS test failed; REST fallback remains active. "
+                f"{GLib.markup_escape_text(str(error))}</span>"
             )
 
 
@@ -254,10 +405,6 @@ class TrayController:
         dashboard = Gtk.MenuItem(label="Open Dashboard Client")
         dashboard.connect("activate", lambda _item: run_detached(["/usr/local/bin/octopus-foxess-dashboard"]))
         self.menu.append(dashboard)
-
-        advanced = Gtk.MenuItem(label="Integration Settings…")
-        advanced.connect("activate", lambda _item: run_detached(["/usr/local/bin/octopus-foxess-settings"]))
-        self.menu.append(advanced)
 
         self.menu.append(Gtk.SeparatorMenuItem())
         quit_item = Gtk.MenuItem(label="Quit Status Icon")

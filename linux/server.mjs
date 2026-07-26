@@ -77,8 +77,14 @@ async function saveAccessKey(accessKey) {
   return normalized;
 }
 
+async function isLanAccessRequired() {
+  const state = await loadState();
+  return state.lanAccessRequired !== false;
+}
+
 async function isAuthorized(request) {
   if (isLoopback(request) && !isExplicitClientRequest(request)) return true;
+  if (!(await isLanAccessRequired())) return true;
   const expected = Buffer.from(await getAccessKey());
   const supplied = Buffer.from(String(request.headers['x-octopus-access-key'] || ''));
   return supplied.length === expected.length && timingSafeEqual(supplied, expected);
@@ -373,6 +379,7 @@ const contentTypes = {
   '.css': 'text/css; charset=utf-8',
   '.js': 'text/javascript; charset=utf-8',
   '.json': 'application/json; charset=utf-8',
+  '.webmanifest': 'application/manifest+json; charset=utf-8',
   '.png': 'image/png',
   '.svg': 'image/svg+xml'
 };
@@ -421,6 +428,7 @@ const server = http.createServer(async (request, response) => {
         status: 'ok',
         version,
         lanUrls: getLanUrls(),
+        accessRequired: state.lanAccessRequired !== false,
         octopus: publicIntegrationStatus('octopus', Boolean(credentials.acc && credentials.api)),
         foxRest: publicIntegrationStatus('foxRest', Boolean(credentials.foxSN && credentials.foxToken)),
         foxLive: foxessLive.getPublicStatus()
@@ -429,11 +437,16 @@ const server = http.createServer(async (request, response) => {
     if (request.method === 'GET' && pathname === '/api/runtime') {
       const workerRequested = requestUrl.searchParams.get('worker') === '1';
       const clientRequested = requestUrl.searchParams.get('client') === '1';
+      const localConfiguration = isLoopback(request) && !clientRequested && !workerRequested;
+      const accessRequired = await isLanAccessRequired();
+      const role = workerRequested && isLoopback(request) ? 'worker' : 'dashboard';
       return sendJson(response, 200, {
         mode: 'linux',
         version,
-        role: workerRequested && isLoopback(request) ? 'worker' : 'dashboard',
-        authRequired: clientRequested || !isLoopback(request),
+        role,
+        localConfiguration,
+        accessRequired,
+        authRequired: accessRequired && role !== 'worker' && !localConfiguration,
         lanUrls: getLanUrls()
       });
     }
@@ -447,11 +460,66 @@ const server = http.createServer(async (request, response) => {
         return sendJson(response, 403, { error: 'The access code can only be managed from the Raspberry Pi' });
       }
       if (request.method === 'GET') {
-        return sendJson(response, 200, { accessKey: await getAccessKey() });
+        return sendJson(response, 200, {
+          accessKey: await getAccessKey(),
+          accessRequired: await isLanAccessRequired()
+        });
       }
       if (request.method === 'PUT') {
         const body = await readJsonBody(request);
         return sendJson(response, 200, { saved: true, accessKey: await saveAccessKey(body.accessKey) });
+      }
+    }
+    if (pathname === '/api/native-config') {
+      if (!isLoopback(request)) {
+        return sendJson(response, 403, { error: 'Server configuration is only available on the Raspberry Pi' });
+      }
+      if (request.method === 'GET') {
+        const state = await loadState();
+        return sendJson(response, 200, {
+          accessRequired: state.lanAccessRequired !== false,
+          accessKey: await getAccessKey(),
+          credentials: {
+            acc: state.credentials?.acc || '',
+            api: state.credentials?.api || '',
+            foxSN: state.credentials?.foxSN || '',
+            foxToken: state.credentials?.foxToken || '',
+            foxLiveMode: state.credentials?.foxLiveMode === 'rest' ? 'rest' : 'live-ws',
+            foxWebUsername: state.credentials?.foxWebUsername || '',
+            foxWebPassword: state.credentials?.foxWebPassword || '',
+            gasUrl: '/api/foxess'
+          }
+        });
+      }
+      if (request.method === 'PUT') {
+        const update = await readJsonBody(request);
+        const accessRequired = update.accessRequired !== false;
+        if (accessRequired) await saveAccessKey(update.accessKey);
+        const current = await loadState();
+        const supplied = update.credentials || {};
+        const credentials = {
+          acc: String(supplied.acc || '').trim(),
+          api: String(supplied.api || '').trim(),
+          foxSN: String(supplied.foxSN || '').trim(),
+          foxToken: String(supplied.foxToken || '').trim(),
+          foxLiveMode: supplied.foxLiveMode === 'rest' ? 'rest' : 'live-ws',
+          foxWebUsername: String(supplied.foxWebUsername || '').trim(),
+          foxWebPassword: String(supplied.foxWebPassword || ''),
+          gasUrl: '/api/foxess'
+        };
+        const next = {
+          ...current,
+          lanAccessRequired: accessRequired,
+          credentials,
+          revision: Date.now()
+        };
+        await saveState(next);
+        void foxessLive.reconcile({ force: true });
+        return sendJson(response, 200, {
+          saved: true,
+          revision: next.revision,
+          accessRequired
+        });
       }
     }
 
@@ -463,11 +531,11 @@ const server = http.createServer(async (request, response) => {
 
     if (pathname === '/api/config' && request.method === 'GET') {
       const state = await loadState();
-      return sendJson(response, 200, isLoopback(request) ? state : getClientState(state));
+      return sendJson(response, 200, getClientState(state));
     }
     if (pathname === '/api/config' && request.method === 'PUT') {
       const update = await readJsonBody(request);
-      if (!isLoopback(request) && Object.hasOwn(update, 'credentials')) {
+      if (Object.hasOwn(update, 'credentials')) {
         return sendJson(response, 403, { error: 'Service credentials can only be changed from the Raspberry Pi Settings app' });
       }
       const current = await loadState();

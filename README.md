@@ -47,8 +47,8 @@ Features include:
 ## Credentials required during initial setup
 
 The web edition asks for these details in its browser login. For the Raspberry
-Pi edition, enter them once through **Integration Settings** from the Pi
-taskbar icon. Mobile / LAN clients never ask for them.
+Pi edition, enter them once through native **Server Configuration…** from the
+Pi taskbar icon. Mobile / LAN clients never ask for them.
 
 ### Octopus Energy
 
@@ -105,25 +105,27 @@ connection problem. Its menu shows individual **Octopus API**, **FoxESS REST**,
 and **FoxESS Live WS** states.
 
 Select **Server Configuration…** from the taskbar icon to open the native
-Raspberry Pi configuration window. It displays the listen address, lets you set
-or reveal the LAN access code, and shows the same integration health states.
-Select **Integration Settings…** only when you need to enter or change Octopus,
-FoxESS REST, or optional Live WS credentials.
+Raspberry Pi configuration window. It is the only Pi integration editor and
+contains the listen address, optional LAN access-code protection, Octopus
+account/API key, FoxESS serial/API token, Live WS selector and optional
+web-login, self-test, and all integration health states. The browser dashboard
+never displays or edits these service credentials.
 
 ### FoxESS telemetry connection
 
-The Pi-local Integration Settings screen offers:
+The native Server Configuration screen offers:
 
 - **Live WebSocket (default, REST fallback)** — optionally enter the same
   FoxESS Cloud web-login email/username and password used at
-  `foxesscloud.com`, then select **Test Live Connection**. When a fresh
+  `foxesscloud.com`, then select **Save & Test Live WS**. When a fresh
   self-test frame is received, supported telemetry updates approximately every
   five seconds.
 - **Official REST API only** — disables the undocumented live stream and uses
   the FoxESS Open API.
 
-If either optional web-login field is empty, login fails, the stream closes, or
-no fresh frame arrives within 30 seconds, the Pi automatically changes to
+The Pi requests a fresh Live WS frame every five seconds. If either optional
+web-login field is empty, login fails, the stream closes, or no fresh frame
+arrives within 30 seconds, the Pi automatically changes to
 `REST FALLBACK`. REST telemetry is cached for at least one minute to respect
 FoxESS's daily quota. The dashboard displays `LIVE WS`, `REST FALLBACK`, or
 `OFFICIAL REST` so the active source is visible.
@@ -140,7 +142,10 @@ computer connected to the same LAN, for example:
 http://192.168.1.42:8787
 ```
 
-Enter the LAN access code. There is no Google Apps Script field in this edition,
+Enter the LAN access code if protection is enabled in Server Configuration. You
+may turn protection off for a trusted private LAN; in that mode the client opens
+without a password and anyone on that LAN can view and control the dashboard.
+There is no Google Apps Script field in this edition,
 and the client does not show Octopus or FoxESS credential fields,
 configuration import, or wipe controls. After the one-key check, the Pi service
 authenticates with Octopus and signs FoxESS requests on the client's behalf.
@@ -151,11 +156,13 @@ window and every LAN browser are closed.
 The Mobile / LAN view is not a pixel-by-pixel screen mirror. It is a responsive client of
 the Pi service: it reads the same live dashboard state and sends deliberate
 automation changes back to the Pi. Octopus and FoxESS service credentials can
-only be viewed, changed, imported, or wiped from the Pi-local Settings app. The
-Pi remains the source of truth and the only unattended automation worker.
+only be viewed or changed in native Server Configuration on the Pi. The Pi
+remains the source of truth and the only unattended automation worker.
 
 The Raspberry Pi client login displays **Mobile / LAN access** followed by the
 detected local URL, and the native taskbar configuration window shows it too.
+Adding the page to an iOS or Android home screen uses the dedicated Octopus,
+fox, and charging-bolt app icon.
 
 If the IP address changes, try `http://raspberrypi.local:8787` or run
 `hostname -I` on the Pi. The Mobile view uses safe-area spacing, 16 px form
@@ -238,7 +245,7 @@ run the web edition's timers; use the Raspberry Pi edition for unattended use.
   browser storage is available.
 - Raspberry Pi credentials and automation settings are encrypted with AES-256-GCM
   in `/var/lib/octopus-foxess`.
-- Authenticated LAN clients receive only managed-configuration status; Octopus
+- LAN clients receive only managed-configuration status; Octopus
   API keys, FoxESS tokens, and inverter serial numbers are not returned.
 - Optional FoxESS web-login credentials for Live WS are also encrypted on the
   Pi and are never returned to a LAN client.
@@ -250,12 +257,14 @@ run the web edition's timers; use the Raspberry Pi edition for unattended use.
 - The optional read-only live stream connects from the Pi to the undocumented
   `wss://www.foxesscloud.com/dew/v0/wsmaitian` endpoint. It never carries
   scheduler or inverter-control commands.
-- LAN API access requires the configured access code; loopback access is reserved
-  for the supervised worker.
+- LAN API access requires the configured access code by default. Server
+  Configuration can disable this protection only for a trusted private LAN;
+  loopback access remains reserved for native configuration and the supervised
+  worker.
 - Port `8787` uses HTTP on the trusted home LAN. Do not expose it through router
   port forwarding, a public IP, or an untrusted Wi-Fi network.
-- Use **Wipe Data** in the Pi-local Settings app to clear saved configuration.
-  Remote LAN clients cannot wipe or replace service credentials.
+- The complete uninstall command removes the encrypted Pi configuration.
+  LAN clients cannot wipe or replace service credentials.
 
 FoxESS enforces API limits. The Pi worker owns unattended automation; connected
 clients do not perform duplicate automatic schedule writes. Deliberate manual

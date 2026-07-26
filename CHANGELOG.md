@@ -1,5 +1,17 @@
 # Changelog
 
+## v2026.07.26.13 — 2026-07-26
+
+- Consolidated Pi credentials, telemetry selection, LAN access protection, and
+  Live WS testing in the native taskbar Server Configuration window.
+- Removed integration editing from the Linux browser client while preserving
+  the standalone GitHub Pages SPA setup.
+- Added optional password-free trusted-LAN access, defaulting to protected.
+- Added a five-second Live WS request heartbeat to prevent a successful
+  connection from incorrectly becoming stale and falling back.
+- Added dedicated iOS/Android home-screen icons and manifest metadata.
+- Kept the Mobile account-number row on one line.
+
 ## v2026.07.26.12 — 2026-07-26
 
 - Hide both scheduler and telemetry **Fetch Now** controls while FoxESS Live WS

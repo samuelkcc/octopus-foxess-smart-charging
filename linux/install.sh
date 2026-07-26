@@ -73,7 +73,6 @@ cp -R "$TEMP_DIR/octopus-foxess/." "$RELEASE_ROOT/"
 chmod -R u=rwX,go=rX "$RELEASE_ROOT"
 ln -sfn "$RELEASE_ROOT" "$APP_ROOT/current"
 
-install -m 0755 "$RELEASE_ROOT/open-settings.sh" /usr/local/bin/octopus-foxess-settings
 install -m 0755 "$RELEASE_ROOT/open-dashboard.sh" /usr/local/bin/octopus-foxess-dashboard
 install -m 0755 "$RELEASE_ROOT/tray.py" /usr/local/bin/octopus-foxess-tray
 install -m 0644 "$RELEASE_ROOT/octopus-foxess.desktop" /usr/share/applications/octopus-foxess.desktop
@@ -99,6 +98,7 @@ if [ -n "$DESKTOP_USER" ] && [ "$DESKTOP_USER" != "root" ] && id "$DESKTOP_USER"
     printf '%s\n' "$DESKTOP_SHORTCUT" > "$CONFIG_ROOT/desktop-shortcut.path"
   fi
 fi
+rm -f /usr/local/bin/octopus-foxess-settings
 
 cat > /etc/systemd/system/octopus-foxess.service <<EOF
 [Unit]

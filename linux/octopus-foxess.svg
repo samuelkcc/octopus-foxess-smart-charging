@@ -1,11 +1,13 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Octopus FoxESS">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Octopus and FoxESS smart charging">
   <defs>
     <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
       <stop offset="0" stop-color="#e11d48"/>
       <stop offset="1" stop-color="#f97316"/>
     </linearGradient>
   </defs>
-  <rect width="512" height="512" rx="112" fill="url(#bg)"/>
+  <rect width="512" height="512" fill="url(#bg)"/>
+  <path d="M180 174 199 73l61 72zM332 174 313 73l-61 72z" fill="#fff"/>
+  <path d="m198 134 9-42 27 38zM314 134l-9-42-27 38z" fill="#fb7185"/>
   <path d="M167 238c0-62 40-110 89-110s89 48 89 110v42c0 18 15 32 33 32 15 0 27-12 27-27v-18c0-13 11-24 24-24s24 11 24 24v24c0 49-36 86-81 86-12 0-24-3-34-8-12 33-43 55-82 55s-70-22-82-55c-10 5-22 8-34 8-45 0-81-37-81-86v-24c0-13 11-24 24-24s24 11 24 24v18c0 15 12 27 27 27 18 0 33-14 33-32z" fill="#fff"/>
   <circle cx="218" cy="225" r="13" fill="#9f1239"/>
   <circle cx="294" cy="225" r="13" fill="#9f1239"/>

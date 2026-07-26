@@ -31,7 +31,7 @@ assert.match(installerSource, /ExecStart=\/usr\/bin\/chromium --headless=new/);
 assert.match(installerSource, /releases\/latest\/download/);
 assert.match(installerSource, /\(umask 077 && printf/);
 assert.match(installerSource, /chmod -R u=rwX,go=rX "\$RELEASE_ROOT"/);
-assert.match(installerSource, /octopus-foxess-settings/);
+assert.doesNotMatch(installerSource, /install -m 0755 .*octopus-foxess-settings/);
 assert.match(installerSource, /octopus-foxess-dashboard/);
 assert.match(installerSource, /octopus-foxess-tray/);
 assert.match(installerSource, /pkill -u "\$DESKTOP_UID" -f '\^\/usr\/bin\/python3 \/usr\/local\/bin\/octopus-foxess-tray\$'/);
@@ -46,26 +46,21 @@ assert.match(stylesSource, /font-size: 16px/);
 assert.match(stylesSource, /\.fox-live-settings-heading > div \{ flex: 1 1 12rem/);
 assert.match(stylesSource, /\.fox-live-source-row \.badge/);
 assert.match(markupSource, /no Google Apps Script/);
-assert.match(markupSource, /LAN Access Code/);
 assert.match(markupSource, /Dashboard Access Code/);
 assert.match(markupSource, /Mobile \/ LAN dashboard client/);
 assert.match(markupSource, /Octopus and FoxESS credentials stay managed by the Pi service/);
-assert.match(markupSource, /Live WebSocket \(default, REST fallback\)/);
-assert.match(markupSource, /id="fox-web-username"/);
-assert.match(markupSource, /id="fox-web-password"/);
-assert.match(markupSource, /Test Live Connection/);
 assert.match(markupSource, /class="input-group pi-config-only"/);
 assert.match(markupSource, /id="octopus-account-toggle"/);
-assert.match(markupSource, /styles\.css\?v=2026\.7\.26\.12/);
-assert.match(markupSource, /app\.js\?v=2026\.7\.26\.12/);
-assert.match(stylesSource, /\.linux-runtime\.linux-auth-required \.pi-config-only \{ display: none !important; \}/);
-assert.match(stylesSource, /\.linux-runtime \.linux-local-only \{ display: none !important; \}/);
-assert.match(appSource, /\/api\/access-key/);
+assert.match(markupSource, /rel="apple-touch-icon"/);
+assert.match(markupSource, /rel="manifest"/);
+assert.match(markupSource, /styles\.css\?v=2026\.7\.26\.13/);
+assert.match(markupSource, /app\.js\?v=2026\.7\.26\.13/);
+assert.match(stylesSource, /\.linux-runtime \.pi-config-only \{ display: none !important; \}/);
+assert.match(stylesSource, /\.account-number-row \.account-secret-control \.val \{ max-width: none; white-space: nowrap/);
 assert.match(appSource, /LINUX_OCTOPUS_ENDPOINT = '\/api\/octopus'/);
 assert.match(appSource, /LINUX_FOX_LIVE_ENDPOINT = '\/api\/foxess\/live'/);
 assert.match(appSource, /startLinuxLiveTelemetryPoll/);
-assert.match(appSource, /window\.linuxRuntime && window\.linuxAuthRequired\s*\?\s*activeCredentials/);
-assert.match(appSource, /SAVE SETTINGS & OPEN DASHBOARD/);
+assert.match(appSource, /const credentials = window\.linuxRuntime\s*\?\s*activeCredentials/);
 assert.match(appSource, /OPEN DASHBOARD/);
 assert.match(await readFile(path.join(root, 'linux', 'server.mjs'), 'utf8'), /function getClientState\(state\)/);
 assert.match(await readFile(path.join(root, 'linux', 'server.mjs'), 'utf8'), /api: credentials\.api \? 'pi-managed' : ''/);
@@ -75,6 +70,8 @@ assert.match(await readFile(path.join(root, 'linux', 'server.mjs'), 'utf8'), /cr
 assert.match(await readFile(path.join(root, 'linux', 'server.mjs'), 'utf8'), /FoxessLiveTelemetry/);
 assert.match(await readFile(path.join(root, 'linux', 'server.mjs'), 'utf8'), /\/api\/foxess\/live\/test/);
 assert.match(await readFile(path.join(root, 'linux', 'server.mjs'), 'utf8'), /\/api\/service-status/);
+assert.match(await readFile(path.join(root, 'linux', 'server.mjs'), 'utf8'), /\/api\/native-config/);
+assert.match(await readFile(path.join(root, 'linux', 'server.mjs'), 'utf8'), /lanAccessRequired/);
 assert.match(await readFile(path.join(root, 'linux', 'server.mjs'), 'utf8'), /'Cache-Control': 'no-cache'/);
 assert.match(linuxBuildSource, /octopus-foxess\.desktop/);
 assert.match(linuxBuildSource, /octopus-foxess-tray\.desktop/);
@@ -82,6 +79,8 @@ assert.match(linuxBuildSource, /open-dashboard\.sh/);
 assert.match(linuxBuildSource, /tray\.py/);
 assert.match(linuxBuildSource, /octopus-foxess\.svg/);
 assert.match(linuxBuildSource, /packageRoot, 'web', 'octopus-foxess\.svg'/);
+assert.match(linuxBuildSource, /site\.webmanifest/);
+assert.match(linuxBuildSource, /packageRoot, 'web', 'icons'/);
 assert.match(linuxBuildSource, /foxess-signature\.wasm/);
 assert.match(linuxBuildSource, /node_modules', 'ws'/);
 assert.match(traySource, /AyatanaAppIndicator3/);
@@ -93,9 +92,16 @@ assert.match(traySource, /FoxESS REST/);
 assert.match(traySource, /FoxESS Live WS/);
 assert.match(traySource, /live\.get\("state"\) in \("connected", "live"\)/);
 assert.match(traySource, /LAN access code/);
+assert.match(traySource, /Require an access code from Mobile \/ LAN dashboard clients/);
+assert.match(traySource, /Octopus account/);
+assert.match(traySource, /FoxESS web-login email/);
+assert.match(traySource, /Save & Test Live WS/);
+assert.doesNotMatch(traySource, /Integration Settings/);
 assert.match(dashboardLauncherSource, /\?client=1/);
 assert.match(dashboardLauncherSource, /octopus-foxess-dashboard/);
 assert.match(pagesWorkflow, /npm ci[\s\S]*npm run check/);
+assert.match(pagesWorkflow, /src\/site\.webmanifest/);
+assert.match(pagesWorkflow, /src\/icons/);
 assert.match(releaseWorkflow, /npm ci[\s\S]*npm run check/);
 
 await mkdir(stateRoot);
@@ -134,11 +140,13 @@ try {
   assert.equal(runtime.mode, 'linux');
   assert.equal(runtime.role, 'worker');
   assert.equal(runtime.authRequired, false);
+  assert.equal(runtime.accessRequired, true);
   assert.ok(Array.isArray(runtime.lanUrls));
 
   const clientRuntime = await fetch(`http://127.0.0.1:${port}/api/runtime?client=1`).then(response => response.json());
   assert.equal(clientRuntime.role, 'dashboard');
   assert.equal(clientRuntime.authRequired, true);
+  assert.equal(clientRuntime.localConfiguration, false);
   const rejectedLocalClient = await fetch(`http://127.0.0.1:${port}/api/auth`, {
     method: 'POST',
     headers: { Referer: `http://127.0.0.1:${port}/?client=1` }
@@ -180,17 +188,45 @@ try {
     foxWebPassword: '',
     gasUrl: '/api/foxess'
   };
-  const saveResponse = await fetch(`http://127.0.0.1:${port}/api/config`, {
+  const automationResponse = await fetch(`http://127.0.0.1:${port}/api/config`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ credentials, automations: { dispatchCheck: true } })
+    body: JSON.stringify({ automations: { dispatchCheck: true } })
   });
-  assert.equal(saveResponse.status, 200);
+  assert.equal(automationResponse.status, 200);
 
-  const stored = await fetch(`http://127.0.0.1:${port}/api/config`).then(response => response.json());
-  assert.deepEqual(stored.credentials, credentials);
-  assert.equal(stored.automations.dispatchCheck, true);
-  assert.equal(typeof stored.revision, 'number');
+  const nativeSaveResponse = await fetch(`http://127.0.0.1:${port}/api/native-config`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      accessRequired: true,
+      accessKey: changedAccessKey,
+      credentials
+    })
+  });
+  assert.equal(nativeSaveResponse.status, 200);
+
+  const nativeConfig = await fetch(`http://127.0.0.1:${port}/api/native-config`).then(response => response.json());
+  assert.equal(nativeConfig.accessRequired, true);
+  assert.equal(nativeConfig.accessKey, changedAccessKey);
+  assert.deepEqual(nativeConfig.credentials, credentials);
+
+  const workerState = await fetch(`http://127.0.0.1:${port}/api/config`, {
+    headers: { Referer: `http://127.0.0.1:${port}/?worker=1` }
+  }).then(response => response.json());
+  assert.equal(workerState.credentials.api, 'pi-managed');
+  assert.equal(workerState.credentials.foxToken, 'pi-managed');
+  assert.equal(workerState.automations.dispatchCheck, true);
+  assert.equal(typeof workerState.revision, 'number');
+
+  const clientState = await fetch(`http://127.0.0.1:${port}/api/config`, {
+    headers: {
+      Referer: `http://127.0.0.1:${port}/?client=1`,
+      'X-Octopus-Access-Key': changedAccessKey
+    }
+  }).then(response => response.json());
+  assert.equal(clientState.credentials.api, 'pi-managed');
+  assert.equal(clientState.credentials.foxToken, 'pi-managed');
 
   const encryptedFile = await readFile(path.join(stateRoot, 'config.enc'), 'utf8');
   assert.doesNotMatch(encryptedFile, /sk_live_test|fox-test|A-TEST/);
@@ -206,6 +242,7 @@ try {
   assert.equal(serviceStatus.foxRest.configured, true);
   assert.equal(serviceStatus.foxLive.reason, 'live-credentials-empty');
   assert.ok(Array.isArray(serviceStatus.lanUrls));
+  assert.equal(serviceStatus.accessRequired, true);
 
   const rejectedProxy = await fetch(`http://127.0.0.1:${port}/api/foxess`, {
     method: 'POST',
@@ -213,6 +250,26 @@ try {
     body: JSON.stringify({ url: 'https://example.com/op/test', body: {} })
   });
   assert.equal(rejectedProxy.status, 400);
+
+  const passwordFreeResponse = await fetch(`http://127.0.0.1:${port}/api/native-config`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      accessRequired: false,
+      accessKey: '',
+      credentials
+    })
+  });
+  assert.equal(passwordFreeResponse.status, 200);
+  const openClientRuntime = await fetch(`http://127.0.0.1:${port}/api/runtime?client=1`)
+    .then(response => response.json());
+  assert.equal(openClientRuntime.accessRequired, false);
+  assert.equal(openClientRuntime.authRequired, false);
+  const passwordFreeAuth = await fetch(`http://127.0.0.1:${port}/api/auth`, {
+    method: 'POST',
+    headers: { Referer: `http://127.0.0.1:${port}/?client=1` }
+  });
+  assert.equal(passwordFreeAuth.status, 204);
 
   const page = await fetch(`http://127.0.0.1:${port}/`).then(response => response.text());
   assert.match(page, /Smart Charging Detector/);

@@ -1,4 +1,20 @@
-## Live WS dashboard status hotfix v2026.07.26.12
+## Native Pi configuration and Mobile home-screen polish v2026.07.26.13
+
+This release completes the server/client separation:
+
+- Moves every Linux integration field into the native taskbar **Server
+  Configuration** window. The Linux browser is now only a redacted dashboard
+  client; the standalone GitHub Pages SPA keeps its browser setup screen.
+- Adds a native toggle for access-code protection. Protection remains enabled
+  by default, but a trusted private LAN can be configured for direct access.
+- Keeps Live WS healthy by requesting a fresh telemetry frame every five
+  seconds after a successful self-test, with official REST still the automatic
+  fallback.
+- Adds dedicated iOS/Android home-screen artwork and a web-app manifest.
+- Keeps the hidden Octopus account number and Show button on one line in the
+  narrow Mobile view.
+
+## Previous Live WS dashboard status hotfix v2026.07.26.12
 
 This hotfix completes the Live WS dashboard behaviour:
 

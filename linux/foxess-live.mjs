@@ -23,6 +23,7 @@ const WEB_LOGIN_PATH = '/basic/v0/user/login';
 const WEB_SOCKET_PATH = '/dew/v0/wsmaitian';
 const DEFAULT_WEB_BASE_URL = 'https://www.foxesscloud.com';
 const LIVE_STALE_MS = 30_000;
+const LIVE_REQUEST_INTERVAL_MS = 5_000;
 const CONNECT_TIMEOUT_MS = 25_000;
 const REST_CACHE_MS = 60_000;
 const RECONCILE_INTERVAL_MS = 30_000;
@@ -124,7 +125,8 @@ export class FoxessLiveTelemetry {
     WebSocketImpl = WebSocket,
     webBaseUrl = process.env.FOXESS_WEB_BASE_URL || DEFAULT_WEB_BASE_URL,
     logger = console,
-    now = () => Date.now()
+    now = () => Date.now(),
+    liveRequestIntervalMs = LIVE_REQUEST_INTERVAL_MS
   }) {
     this.loadState = loadState;
     this.foxOpenApiJson = foxOpenApiJson;
@@ -133,7 +135,9 @@ export class FoxessLiveTelemetry {
     this.webBaseUrl = webBaseUrl.replace(/\/$/, '');
     this.logger = logger;
     this.now = now;
+    this.liveRequestIntervalMs = liveRequestIntervalMs;
     this.socket = null;
+    this.liveRequestTimer = null;
     this.fingerprint = '';
     this.connectPromise = null;
     this.connectionGeneration = 0;
@@ -170,12 +174,30 @@ export class FoxessLiveTelemetry {
   }
 
   closeSocket() {
+    if (this.liveRequestTimer) clearInterval(this.liveRequestTimer);
+    this.liveRequestTimer = null;
     const socket = this.socket;
     this.socket = null;
     if (!socket) return;
     socket.removeAllListeners?.();
     if (socket.readyState === this.WebSocketImpl.OPEN) socket.close(1000, 'configuration changed');
     else if (socket.readyState !== this.WebSocketImpl.CLOSED) socket.terminate?.();
+  }
+
+  startLiveRequests(socket, generation) {
+    if (this.liveRequestTimer) clearInterval(this.liveRequestTimer);
+    const requestFrame = () => {
+      if (
+        generation === this.connectionGeneration
+        && this.socket === socket
+        && socket.readyState === this.WebSocketImpl.OPEN
+      ) {
+        socket.send('getdata');
+      }
+    };
+    requestFrame();
+    this.liveRequestTimer = setInterval(requestFrame, this.liveRequestIntervalMs);
+    this.liveRequestTimer.unref?.();
   }
 
   setFallback(mode, reason, error = null) {
@@ -285,7 +307,7 @@ export class FoxessLiveTelemetry {
           socket.close();
           return;
         }
-        socket.send('getdata');
+        this.startLiveRequests(socket, generation);
       });
       socket.on('message', raw => {
         if (generation !== this.connectionGeneration) return;
@@ -321,12 +343,16 @@ export class FoxessLiveTelemetry {
       });
       socket.on('error', error => {
         if (generation === this.connectionGeneration) {
+          if (this.liveRequestTimer) clearInterval(this.liveRequestTimer);
+          this.liveRequestTimer = null;
           this.setFallback(FOX_LIVE_MODE, 'connection-error', error);
         }
         finish(error);
       });
       socket.on('close', () => {
         if (generation === this.connectionGeneration) {
+          if (this.liveRequestTimer) clearInterval(this.liveRequestTimer);
+          this.liveRequestTimer = null;
           this.socket = null;
           this.setFallback(FOX_LIVE_MODE, 'connection-closed');
         }

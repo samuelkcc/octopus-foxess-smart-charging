@@ -63,6 +63,7 @@ assert.equal((await fallbackService.getTelemetry()).cached, true);
 assert.equal(restCalls, 1);
 fallbackService.stop();
 
+let liveFramesRequested = 0;
 class FakeWebSocket extends EventEmitter {
   static OPEN = 1;
   static CLOSED = 3;
@@ -79,6 +80,7 @@ class FakeWebSocket extends EventEmitter {
 
   send(message) {
     assert.equal(message, 'getdata');
+    liveFramesRequested += 1;
     queueMicrotask(() => {
       this.emit('message', Buffer.from(JSON.stringify({
         errno: 0,
@@ -131,6 +133,7 @@ const liveService = new FoxessLiveTelemetry({
     };
   },
   WebSocketImpl: FakeWebSocket,
+  liveRequestIntervalMs: 10,
   logger: { warn() {} }
 });
 const liveStatus = await liveService.selfTest();
@@ -144,6 +147,9 @@ assert.equal(liveTelemetry.source, 'live-ws');
 assert.equal(liveTelemetry.values.SoC, 82);
 assert.equal(liveTelemetry.values.batDischargePower, 1.2);
 assert.equal(liveOpenApiCalls, 1);
+await new Promise(resolve => setTimeout(resolve, 35));
+assert.ok(liveFramesRequested >= 3, 'Live WS should request fresh telemetry repeatedly');
+assert.equal(liveService.getPublicStatus().source, 'live-ws');
 liveService.stop();
 
 const restOnlyService = new FoxessLiveTelemetry({

@@ -21,11 +21,12 @@ const REQUEST_TIMEOUT_MS = 15000;
 const LINUX_CONFIG_ENDPOINT = '/api/config';
 const LINUX_OCTOPUS_ENDPOINT = '/api/octopus';
 const LINUX_FOX_LIVE_ENDPOINT = '/api/foxess/live';
-const LINUX_FOX_LIVE_TEST_ENDPOINT = '/api/foxess/live/test';
 
 window.linuxRuntime = false;
 window.linuxRole = 'web';
 window.linuxAuthRequired = false;
+window.linuxAccessRequired = true;
+window.linuxLocalConfiguration = false;
 window.linuxRevision = null;
 
 function escapeHtml(value) {
@@ -93,44 +94,6 @@ function getLinuxAccessKey() {
         || '';
 }
 
-function isPiSettingsMode() {
-    return new URLSearchParams(window.location.search).get('settings') === '1';
-}
-
-async function loadManagedAccessKey() {
-    if (!window.linuxRuntime || window.linuxRole !== 'dashboard' || window.linuxAuthRequired) return;
-    const response = await fetch('/api/access-key', { cache: 'no-store' });
-    if (!response.ok) throw new Error(`Unable to load LAN access code (HTTP ${response.status})`);
-    const result = await response.json();
-    const field = document.getElementById('managed-access-key');
-    if (field) field.value = result.accessKey || '';
-}
-
-async function saveManagedAccessKey() {
-    if (!window.linuxRuntime || window.linuxRole !== 'dashboard' || window.linuxAuthRequired) return;
-    const accessKey = document.getElementById('managed-access-key')?.value.trim() || '';
-    if (accessKey.length < 8 || accessKey.length > 64) {
-        throw new Error('The LAN access code must contain 8 to 64 characters.');
-    }
-    const response = await fetch('/api/access-key', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ accessKey })
-    });
-    if (!response.ok) {
-        const result = await response.json().catch(() => ({}));
-        throw new Error(result.error || `Unable to save LAN access code (HTTP ${response.status})`);
-    }
-}
-
-function toggleManagedAccessKeyVisibility() {
-    const field = document.getElementById('managed-access-key');
-    if (!field) return;
-    field.type = field.type === 'password' ? 'text' : 'password';
-    const button = document.getElementById('managed-access-toggle');
-    if (button) button.textContent = field.type === 'password' ? 'Show' : 'Hide';
-}
-
 function toggleOctopusAccountVisibility() {
     const field = document.getElementById('acc');
     const button = document.getElementById('octopus-account-toggle');
@@ -139,23 +102,8 @@ function toggleOctopusAccountVisibility() {
     button.textContent = field.type === 'password' ? 'Show' : 'Hide';
 }
 
-async function openPiSettingsView() {
-    closeAllDrawers();
-    document.getElementById('dashboard')?.classList.remove('visible');
-    const login = document.getElementById('login-layout');
-    if (login) login.style.display = 'flex';
-    window.history.replaceState({}, '', `${window.location.pathname}?settings=1`);
-    const credentials = await loadCredentials();
-    if (credentials) populateCredentialInputs(credentials);
-    await loadManagedAccessKey();
-    await loadFoxLiveStatus();
-    const buttonText = document.getElementById('btn-text');
-    if (buttonText) buttonText.textContent = 'SAVE SETTINGS & OPEN DASHBOARD';
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-}
-
 async function loadFoxLiveStatus() {
-    if (!window.linuxRuntime || window.linuxAuthRequired) return;
+    if (!window.linuxRuntime || (window.linuxAuthRequired && !getLinuxAccessKey())) return;
     try {
         const status = await fetchJson('/api/foxess/live/status');
         renderFoxLiveStatus(status);
@@ -183,11 +131,14 @@ async function detectLinuxRuntime() {
         window.linuxRuntime = true;
         window.linuxRole = runtime.role;
         window.linuxAuthRequired = runtime.authRequired;
+        window.linuxAccessRequired = runtime.accessRequired !== false;
+        window.linuxLocalConfiguration = runtime.localConfiguration === true;
         document.body.classList.add('linux-runtime', `linux-role-${runtime.role}`);
         if (runtime.authRequired) document.body.classList.add('linux-auth-required');
+        if (!runtime.authRequired) {
+            document.body.classList.add('linux-password-free');
+        }
         if (!runtime.authRequired && runtime.role === 'dashboard') {
-            document.body.classList.add('linux-local');
-            await loadManagedAccessKey();
             await loadFoxLiveStatus();
         }
         document.querySelectorAll('[data-linux-version]').forEach(element => {
@@ -200,7 +151,7 @@ async function detectLinuxRuntime() {
         const gasUrl = document.getElementById('gas-url');
         if (gasUrl) gasUrl.value = '/api/foxess';
         const buttonText = document.getElementById('btn-text');
-        if (buttonText && runtime.authRequired) buttonText.textContent = 'OPEN DASHBOARD';
+        if (buttonText) buttonText.textContent = 'OPEN DASHBOARD';
     } catch {
         // Static GitHub Pages and downloaded HTML intentionally have no runtime endpoint.
     }
@@ -358,35 +309,6 @@ function renderFoxLiveStatus(status, messageTarget = null) {
     }
 }
 
-async function testFoxLiveConnection() {
-    if (!window.linuxRuntime || window.linuxAuthRequired) return;
-    const message = document.getElementById('fox-live-test-message');
-    const button = document.querySelector('.fox-live-test-button');
-    if (message) message.textContent = 'Saving Pi settings and waiting for a fresh FoxESS telemetry frame…';
-    if (button) {
-        button.disabled = true;
-        button.textContent = 'Testing…';
-    }
-    try {
-        await saveCredentials(getCredentialInputs());
-        const response = await fetch(LINUX_FOX_LIVE_TEST_ENDPOINT, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            signal: AbortSignal.timeout(30000)
-        });
-        if (!response.ok) throw new Error(`Live self-test returned HTTP ${response.status}`);
-        renderFoxLiveStatus(await response.json(), message);
-    } catch (error) {
-        if (message) message.textContent = `REST FALLBACK. ${error.message}`;
-        renderFoxLiveStatus({ source: 'rest-fallback', state: 'fallback', mode: 'live-ws' });
-    } finally {
-        if (button) {
-            button.disabled = false;
-            button.textContent = 'Test Live Connection';
-        }
-    }
-}
-
 function getActiveAgreement(meterPoint, now = new Date()) {
     const nowTime = now.getTime();
     return (meterPoint?.agreements || [])
@@ -489,10 +411,7 @@ async function saveCredentials(credentials) {
     if (window.linuxRuntime) {
         const linuxCredentials = { ...credentials, gasUrl: '/api/foxess' };
         activeCredentials = linuxCredentials;
-        if (!window.linuxAuthRequired) {
-            sessionStorage.setItem('sessionCredentials', JSON.stringify(linuxCredentials));
-            await updateLinuxState({ credentials: linuxCredentials });
-        }
+        sessionStorage.setItem('sessionCredentials', JSON.stringify(linuxCredentials));
         return;
     }
     try {
@@ -515,9 +434,7 @@ async function loadCredentials() {
         const state = await loadLinuxState();
         if (state.credentials) {
             activeCredentials = { ...state.credentials, gasUrl: '/api/foxess' };
-            if (!window.linuxAuthRequired) {
-                sessionStorage.setItem('sessionCredentials', JSON.stringify(activeCredentials));
-            }
+            sessionStorage.setItem('sessionCredentials', JSON.stringify(activeCredentials));
             return activeCredentials;
         }
         return null;
@@ -586,19 +503,15 @@ async function handleConnectClick() {
     } else {
         try {
             if (!(await ensureLinuxAccess())) return;
-            if (window.linuxRuntime && window.linuxAuthRequired) {
+            if (window.linuxRuntime) {
                 const state = await loadLinuxState();
                 activeCredentials = state.credentials
                     ? { ...state.credentials, gasUrl: '/api/foxess' }
                     : null;
                 if (!activeCredentials?.acc || !activeCredentials?.api) {
-                    throw new Error('Complete the Octopus and FoxESS setup from the Pi taskbar Integration Settings first.');
+                    throw new Error('Complete the integration setup from the Pi taskbar Server Configuration first.');
                 }
-            } else if (window.linuxRuntime && !document.getElementById('acc').value.trim()) {
-                const state = await loadLinuxState();
-                if (state.credentials) populateCredentialInputs(state.credentials);
             }
-            await saveManagedAccessKey();
             await initDashboard();
         } catch (error) {
             showError(error.message);
@@ -792,7 +705,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     const counterSpan = document.getElementById('fox-api-counter');
     if(counterSpan) counterSpan.textContent = apiData.count;
 
-    const legacyCredentials = (!window.linuxRuntime || !window.linuxAuthRequired) && localStorage.getItem('octoApi') ? {
+    const legacyCredentials = !window.linuxRuntime && localStorage.getItem('octoApi') ? {
         acc: localStorage.getItem('octoAcc') || '',
         api: localStorage.getItem('octoApi') || '',
         foxSN: localStorage.getItem('foxSn') || '',
@@ -812,17 +725,13 @@ document.addEventListener("DOMContentLoaded", async () => {
     const hasCreds = Boolean(credentials?.acc && credentials?.api);
     if (credentials) {
         activeCredentials = { ...credentials };
-        if (!(window.linuxRuntime && window.linuxAuthRequired)) {
+        if (!window.linuxRuntime) {
             populateCredentialInputs(credentials);
         }
     }
 
-    if (hasCreds && !isPiSettingsMode()) {
+    if (hasCreds) {
         startAutoConnect();
-    }
-    if (window.linuxRuntime && isPiSettingsMode()) {
-        const buttonText = document.getElementById('btn-text');
-        if (buttonText) buttonText.textContent = 'SAVE SETTINGS & OPEN DASHBOARD';
     }
     startLinuxWorkerConfigPoll();
 
@@ -958,7 +867,7 @@ async function executeImport() {
 }
 
 async function initDashboard(isAutoRefresh = false, retryCount = 1) {
-    const credentials = window.linuxRuntime && window.linuxAuthRequired
+    const credentials = window.linuxRuntime
         ? activeCredentials
         : getCredentialInputs();
     const acc = credentials?.acc || '';
@@ -1173,7 +1082,7 @@ async function initDashboard(isAutoRefresh = false, retryCount = 1) {
 
         window.dashboardAccountNumber = acc;
         document.getElementById('ui-account-details').innerHTML = `
-            <li>
+            <li class="account-number-row">
                 <span class="label">Account Number</span>
                 <span class="account-secret-control">
                     <span class="val" id="dashboard-account-number">••••••••</span>

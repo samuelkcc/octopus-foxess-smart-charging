@@ -19,9 +19,10 @@ Live WS states. Green indicates healthy, amber indicates a waiting or intentiona
 fallback state, and red indicates a configuration or connection problem.
 
 Choose **Server Configuration…** from the taskbar menu to view the LAN listen
-address, reveal or change the LAN access code, and inspect all integration
-states. Choose **Integration Settings…** to enter the Octopus/FoxESS credentials
-or change the optional Live WS connection.
+address, enable or disable LAN access-code protection, enter the Octopus/FoxESS
+credentials, select or test Live WS, and inspect all integration states. This
+native window is the only Pi integration editor; the browser dashboard never
+displays service credentials.
 
 The Pi settings app also provides a FoxESS telemetry selector:
 
@@ -30,7 +31,9 @@ The Pi settings app also provides a FoxESS telemetry selector:
 - **Official REST API only** disables the undocumented stream.
 
 Leaving either Live WS credential empty automatically selects REST fallback.
-The **Test Live Connection** button waits for a fresh telemetry frame. Login,
+While connected, the Pi requests a fresh frame every five seconds so a
+successful connection does not become stale after its initial frame. The
+**Save & Test Live WS** button waits for a fresh telemetry frame. Login,
 self-test, stale-frame, or connection failures also fall back to REST
 automatically. All schedule and inverter-control commands always use the
 official FoxESS REST API.
@@ -38,10 +41,16 @@ official FoxESS REST API.
 The Pi is the central source of truth. Closing the settings window does not stop
 the service. The separate **Octopus FoxESS Dashboard** desktop and
 application-menu launcher opens the LAN client and asks only for its access
-code. Phones, tablets, and other computers on the same network can open the
-listen address directly. Every client reads the Pi's current state and sends
+code when access protection is enabled. For a trusted private LAN, Server
+Configuration can disable access-code protection and the client opens directly.
+Phones, tablets, and other computers on the same network can open the listen
+address directly. Every client reads the Pi's current state and sends
 deliberate changes back to the Pi; it is not a pixel-by-pixel screen mirror.
 Only the loopback worker performs unattended schedule writes.
+
+Adding the dashboard to an iOS or Android home screen uses the supplied
+Octopus/fox/charging app icon. The account-number row is kept on one line in the
+narrow Mobile view.
 
 Install:
 

@@ -56,10 +56,11 @@
         .linux-runtime .linux-access-group { display: none !important; }
         .linux-runtime.linux-auth-required .linux-access-group { display: block !important; }
         .linux-client-only { display: none !important; }
-        .linux-runtime.linux-auth-required .linux-client-only { display: block !important; }
-        .linux-runtime.linux-auth-required .pi-config-only { display: none !important; }
-        .linux-runtime .linux-local-only { display: none !important; }
-        .linux-runtime.linux-local .linux-local-only { display: block !important; }
+        .linux-runtime .linux-client-only { display: block !important; }
+        .linux-runtime .pi-config-only { display: none !important; }
+        .access-open-copy { display: none; }
+        .linux-runtime.linux-password-free .access-protected-copy { display: none; }
+        .linux-runtime.linux-password-free .access-open-copy { display: inline; }
         .runtime-strip { margin: -1rem 0 1.5rem; padding: 0.75rem 0.9rem; border: 1px solid var(--border); border-radius: 10px; background: #f8fafc; text-align: center; }
         .runtime-strip strong, .runtime-strip span { display: block; }
         .runtime-strip strong { color: var(--text-main); font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.08em; }
@@ -178,6 +179,8 @@
         .data-list .label { color: var(--text-muted); flex-shrink: 0; }
         .data-list .val { font-weight: 600; text-align: right; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--text-main); }
         .account-secret-control { display: inline-flex; align-items: center; justify-content: flex-end; gap: 0.55rem; min-width: 0; }
+        .account-number-row .account-secret-control { flex: 1 1 auto; white-space: nowrap; }
+        .account-number-row .account-secret-control .val { max-width: none; white-space: nowrap; overflow: visible; overflow-wrap: normal; text-overflow: clip; }
         .account-secret-control .inline-visibility-button { flex-shrink: 0; }
         
         .error { color: #b91c1c; background: #fef2f2; padding: 1rem; border-radius: 8px; margin-bottom: 1.5rem; display: none; border: 1px solid #fecaca; font-size: 0.9rem; }
@@ -226,6 +229,9 @@
             .card-header { gap: 0.75rem; margin-bottom: 1rem; }
             .data-list li { align-items: flex-start; }
             .data-list .val { max-width: 60%; white-space: normal; overflow-wrap: anywhere; }
+            .data-list .account-number-row { align-items: center; flex-wrap: nowrap; gap: 0.5rem; }
+            .account-number-row .label { font-size: 0.82rem; }
+            .account-number-row .account-secret-control .val { max-width: none; white-space: nowrap; overflow-wrap: normal; }
             .tariff-chart-frame { height: 190px; }
             .automation-block { padding: 1rem; }
             .rule-row { gap: 0.75rem; }

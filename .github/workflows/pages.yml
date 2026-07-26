@@ -29,6 +29,8 @@ jobs:
           mkdir _site
           cp dist/Octopus_IGO_Smart_Charging_Detector.html _site/index.html
           cp linux/octopus-foxess.svg _site/octopus-foxess.svg
+          cp src/site.webmanifest _site/site.webmanifest
+          cp -R src/icons _site/icons
       - uses: actions/upload-pages-artifact@v3
         with:
           path: _site
