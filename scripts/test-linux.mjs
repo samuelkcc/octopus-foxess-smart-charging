@@ -41,6 +41,7 @@ assert.match(appSource, /\/api\/access-key/);
 assert.match(appSource, /SAVE SETTINGS & OPEN DASHBOARD/);
 assert.match(linuxBuildSource, /octopus-foxess\.desktop/);
 assert.match(linuxBuildSource, /octopus-foxess\.svg/);
+assert.match(linuxBuildSource, /packageRoot, 'web', 'octopus-foxess\.svg'/);
 
 await mkdir(stateRoot);
 await writeFile(accessKeyFile, `${accessKey}\n`, { mode: 0o600 });

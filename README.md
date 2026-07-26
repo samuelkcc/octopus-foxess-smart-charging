@@ -96,6 +96,10 @@ application menu. It opens a focused app-style configuration window. Enter the
 Octopus and FoxESS credentials there and set a memorable **iPhone LAN Access
 Key**; no terminal command is needed to retrieve or change it.
 
+Raspberry Pi OS may show its standard **Execute File** question the first time a
+desktop shortcut is opened; choose **Execute**. Opening the same launcher from
+the Raspberry Pi application menu does not require that desktop-file question.
+
 Open the address displayed in that settings window on the iPhone, for example:
 
 ```text

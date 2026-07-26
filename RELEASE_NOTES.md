@@ -1,3 +1,9 @@
+## Desktop integration hotfix v2026.07.26.3
+
+- Uses the bundled Octopus FoxESS icon directly for the Raspberry Pi desktop launcher and local settings window.
+- Publishes the same favicon with the Raspberry Pi package and GitHub Pages.
+- Documents Raspberry Pi OS's standard first-click **Execute File** question and the direct application-menu alternative.
+
 ## Raspberry Pi app experience v2026.07.26.2
 
 - Added an **Octopus FoxESS Settings** icon to the Raspberry Pi desktop and application menu.

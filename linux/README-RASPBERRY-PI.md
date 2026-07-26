@@ -18,6 +18,10 @@ FoxESS Settings** icon that opens a focused local app window. Use it to enter th
 Octopus/FoxESS credentials and view or change the iPhone LAN access key—no
 terminal key command is required.
 
+If Raspberry Pi OS shows its normal **Execute File** question when the desktop
+shortcut is opened for the first time, choose **Execute**. The application-menu
+launcher opens directly.
+
 The Pi is the central source of truth. Closing the settings window does not stop
 the service. An iPhone opens a separate responsive dashboard, reads the Pi's
 current state, and sends deliberate changes back to the Pi; it is not a

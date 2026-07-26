@@ -1,5 +1,11 @@
 # Changelog
 
+## v2026.07.26.3 — 2026-07-26
+
+- Use the bundled Octopus FoxESS artwork directly for the Raspberry Pi desktop launcher and browser window icon.
+- Publish the same favicon with both the Raspberry Pi package and GitHub Pages.
+- Document Raspberry Pi OS's standard first-click desktop launcher question and the direct application-menu alternative.
+
 ## v2026.07.26.2 — 2026-07-26
 
 - Added a Raspberry Pi desktop and application-menu icon that opens the configuration UI in an app-style Chromium window.
