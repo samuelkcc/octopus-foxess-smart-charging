@@ -21,10 +21,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>Smart Charging Detector</title>
-    <link rel="icon" href="./octopus-foxess.svg?v=2026.7.26.8" type="image/svg+xml">
+    <link rel="icon" href="./octopus-foxess.svg?v=2026.7.26.9" type="image/svg+xml">
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.9/dist/chart.umd.min.js" integrity="sha384-b0GXujLkk9eYYSmcSfoyZbfyElGAQnDyY0skCHSG6w3JgTMFnz11ggrTAr7seu9f" crossorigin="anonymous"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js" integrity="sha384-S3wQ/l0OsbJoFeJC81UIr3JOlx/OzNJpRt1bV+yhpWQxPAahfpQtpxBSfn+Isslc" crossorigin="anonymous"></script>
-        <link rel="stylesheet" href="./styles.css?v=2026.7.26.8">
+        <link rel="stylesheet" href="./styles.css?v=2026.7.26.9">
 </head>
 <body>
 
@@ -56,7 +56,7 @@
         <div class="runtime-strip linux-only">
             <strong data-linux-version>Raspberry Pi edition</strong>
             <span>Always-on local worker · no Google Apps Script</span>
-            <span class="runtime-lan-url" data-linux-lan-url>Open on iPhone: detecting local address…</span>
+            <span class="runtime-lan-url" data-linux-lan-url>Mobile / LAN access: detecting local address…</span>
         </div>
         
         <button type="button" class="pi-config-only" onclick="toggleDrawer('why-use-panel')" style="background: transparent; border: 1px solid var(--border); color: var(--text-muted); font-size: 0.85rem; padding: 0.65rem; border-radius: 10px; cursor: pointer; width: 100%; font-weight: 600; margin-bottom: 1.5rem; transition: all 0.2s;" onmouseover="this.style.color='var(--text-main)'; this.style.borderColor='var(--text-muted)';" onmouseout="this.style.color='var(--text-muted)'; this.style.borderColor='var(--border)';">
@@ -66,24 +66,24 @@
         <div id="error" class="error"></div>
 
         <div class="linux-client-only linux-client-note">
-            <strong>iPhone dashboard client</strong><br>
-            Enter only the access key you chose in the Raspberry Pi Settings app.
+            <strong>Mobile / LAN dashboard client</strong><br>
+            Enter only the access code configured in the Raspberry Pi server settings.
             Octopus and FoxESS credentials stay managed by the Pi service.
         </div>
 
         <div class="input-group linux-only linux-access-group">
-            <label>🔐 iPhone Dashboard Access Key</label>
-            <input type="password" id="local-access-key" placeholder="Set in the Pi Settings app" autocomplete="current-password">
-            <small>This is the only setup required on your iPhone. Manage the key from the Raspberry Pi Settings icon.</small>
+            <label>🔐 Dashboard Access Code</label>
+            <input type="password" id="local-access-key" placeholder="Set in the Pi server configuration" autocomplete="current-password">
+            <small>This is the only setup required on a phone, tablet, or computer on the same network.</small>
         </div>
 
         <div class="input-group linux-only linux-local-only">
             <label>
-                🔐 iPhone LAN Access Key
-                <button type="button" class="inline-visibility-button" onclick="toggleManagedAccessKeyVisibility()">Show</button>
+                🔐 LAN Access Code
+                <button type="button" class="inline-visibility-button" id="managed-access-toggle" onclick="toggleManagedAccessKeyVisibility()">Show</button>
             </label>
             <input type="password" id="managed-access-key" placeholder="Use 8–64 characters" autocomplete="new-password">
-            <small>Change this only from the Pi. Your iPhone will ask for the new key on its next connection.</small>
+            <small>Change this only from the Pi. LAN clients will ask for the new code on their next connection.</small>
         </div>
 
         <div class="linux-only linux-local-only linux-service-note">
@@ -92,8 +92,11 @@
         </div>
         
         <div class="input-group pi-config-only">
-            <label>🐙 Octopus Account Number</label>
-            <input type="text" id="acc" placeholder="e.g., A-12345678">
+            <label>
+                🐙 Octopus Account Number
+                <button type="button" class="inline-visibility-button" id="octopus-account-toggle" onclick="toggleOctopusAccountVisibility()">Show</button>
+            </label>
+            <input type="password" id="acc" placeholder="e.g., A-12345678" autocomplete="off">
         </div>
         
         <div class="input-group pi-config-only">
@@ -141,7 +144,7 @@
                 </div>
                 <small class="fox-live-help">
                     These optional web-login fields are used only for the undocumented read-only live stream.
-                    Leave either field empty to use automatic REST fallback. They are never sent to an iPhone client.
+                    Leave either field empty to use automatic REST fallback. They are never sent to a Mobile / LAN client.
                 </small>
             </div>
 
@@ -222,7 +225,7 @@
                     The Pi provides the FoxESS relay and always-on automation worker. Live WebSocket telemetry is the default when optional FoxESS web-login credentials are saved; otherwise the service automatically uses the official REST API.
                 </p>
                 <p style="margin: 0; color: #475569; line-height: 1.4;">
-                    The undocumented stream is read-only. Schedule and inverter-control commands always use the official FoxESS REST API. You can close Safari after setup—the supervised worker continues running.
+                    The undocumented stream is read-only. Schedule and inverter-control commands always use the official FoxESS REST API. You can close the browser after setup—the supervised worker continues running.
                 </p>
             </div>
 
@@ -248,7 +251,7 @@
         <span style="cursor: pointer; font-size: 1.5rem; color: #94a3b8; line-height: 1;" onclick="toggleAppMenu()">&times;</span>
     </h3>
     <div style="display: flex; flex-direction: column; gap: 12px; margin-top: 1.5rem;">
-        <button class="linux-local-only" onclick="openPiSettingsView()" style="width: 100%; padding: 0.85rem; font-size: 0.9rem; background: #f97316; border-radius: 8px; border: none; color: white; cursor: pointer; text-align: left;">🍓 Raspberry Pi Settings</button>
+        <button class="linux-local-only" onclick="openPiSettingsView()" style="width: 100%; padding: 0.85rem; font-size: 0.9rem; background: #f97316; border-radius: 8px; border: none; color: white; cursor: pointer; text-align: left;">🍓 Integration Settings</button>
         <button onclick="document.getElementById('disclaimer-modal').style.display='flex'; toggleAppMenu();" style="width: 100%; padding: 0.85rem; font-size: 0.9rem; background: #3b82f6; border-radius: 8px; border: none; color: white; cursor: pointer; text-align: left; display: flex; align-items: center; gap: 8px;">💾 Save Config</button>
         <button onclick="toggleDarkMode(); toggleAppMenu();" class="theme-toggle-btn" style="width: 100%; padding: 0.85rem; font-size: 0.9rem; background: var(--card-bg); border-radius: 8px; border: 1px solid var(--border); color: var(--text-main); cursor: pointer; text-align: left; display: flex; align-items: center; gap: 8px;">🌗 Dark Mode</button>
         <button onclick="toggleFullScreen(); toggleAppMenu();" style="width: 100%; padding: 0.85rem; font-size: 0.9rem; background: var(--card-bg); border-radius: 8px; border: 1px solid var(--border); color: var(--text-main); cursor: pointer; text-align: left; display: flex; align-items: center; gap: 8px;">⛶ Full Screen</button>
@@ -557,7 +560,7 @@
 
     </div> <div class="app-footer">
         <div style="text-align: left;">Developer Samuel Chen</div>
-        <div style="text-align: right;">&copy; Copyright 2026 samuelchen.hk Build v2026.07.26.8</div>
+        <div style="text-align: right;">&copy; Copyright 2026 samuelchen.hk Build v2026.07.26.9</div>
     </div>
 </div> 
 
@@ -785,7 +788,7 @@
     </div>
 </div>
 
-<script src="./app.js?v=2026.7.26.8"></script>
+<script src="./app.js?v=2026.7.26.9"></script>
 
 <div id="screen-saver-overlay" onclick="toggleScreenSaver()" style="display: none; position: fixed; inset: 0; width: 100%; height: 100%; background: #000; z-index: 100000; cursor: pointer;"></div>
 

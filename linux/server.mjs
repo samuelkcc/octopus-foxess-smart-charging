@@ -23,6 +23,10 @@ const allowedFoxPaths = new Set([
   '/op/v3/device/scheduler/enable',
   '/op/v3/device/scheduler/get'
 ]);
+const integrationStatus = {
+  octopus: { lastSuccessAt: null, lastErrorAt: null, lastError: null },
+  foxRest: { lastSuccessAt: null, lastErrorAt: null, lastError: null }
+};
 let packageContents;
 try {
   packageContents = await readFile(path.join(appRoot, 'package.json'), 'utf8');
@@ -40,6 +44,15 @@ function isLoopback(request) {
   return address === '127.0.0.1' || address === '::1' || address === '::ffff:127.0.0.1';
 }
 
+function isExplicitClientRequest(request) {
+  try {
+    const referer = new URL(String(request.headers.referer || ''));
+    return referer.searchParams.get('client') === '1';
+  } catch {
+    return false;
+  }
+}
+
 function getLanUrls() {
   return Object.values(networkInterfaces())
     .flatMap(addresses => addresses || [])
@@ -55,7 +68,7 @@ async function getAccessKey() {
 async function saveAccessKey(accessKey) {
   const normalized = String(accessKey || '').trim();
   if (normalized.length < 8 || normalized.length > 64 || /[\u0000-\u001f\u007f]/.test(normalized)) {
-    throw Object.assign(new Error('Access key must contain 8 to 64 printable characters'), { statusCode: 400 });
+    throw Object.assign(new Error('Access code must contain 8 to 64 printable characters'), { statusCode: 400 });
   }
   const temporaryPath = `${accessKeyFile}.tmp`;
   await writeFile(temporaryPath, `${normalized}\n`, { mode: 0o600 });
@@ -65,7 +78,7 @@ async function saveAccessKey(accessKey) {
 }
 
 async function isAuthorized(request) {
-  if (isLoopback(request)) return true;
+  if (isLoopback(request) && !isExplicitClientRequest(request)) return true;
   const expected = Buffer.from(await getAccessKey());
   const supplied = Buffer.from(String(request.headers['x-octopus-access-key'] || ''));
   return supplied.length === expected.length && timingSafeEqual(supplied, expected);
@@ -85,6 +98,35 @@ function sendJson(response, statusCode, body) {
 function sendEmpty(response, statusCode = 204) {
   response.writeHead(statusCode, { 'Cache-Control': 'no-store' });
   response.end();
+}
+
+function markIntegrationSuccess(name) {
+  integrationStatus[name] = {
+    ...integrationStatus[name],
+    lastSuccessAt: new Date().toISOString(),
+    lastError: null
+  };
+}
+
+function markIntegrationError(name, error) {
+  integrationStatus[name] = {
+    ...integrationStatus[name],
+    lastErrorAt: new Date().toISOString(),
+    lastError: String(error?.message || error || 'Connection failed').slice(0, 240)
+  };
+}
+
+function publicIntegrationStatus(name, configured) {
+  const current = integrationStatus[name];
+  const hasCurrentError = current.lastErrorAt
+    && (!current.lastSuccessAt || new Date(current.lastErrorAt) > new Date(current.lastSuccessAt));
+  return {
+    configured,
+    state: !configured ? 'not-configured' : (hasCurrentError ? 'error' : (current.lastSuccessAt ? 'ok' : 'waiting')),
+    lastSuccessAt: current.lastSuccessAt,
+    lastErrorAt: current.lastErrorAt,
+    lastError: hasCurrentError ? current.lastError : null
+  };
 }
 
 async function readJsonBody(request) {
@@ -192,6 +234,12 @@ async function proxyFoxRequest(request, response) {
   }
   const state = await loadState();
   const upstream = await requestFoxOpenApi(state, target.pathname, payload.body || {});
+  const upstreamData = await upstream.clone().json().catch(() => null);
+  if (upstream.ok && upstreamData?.errno === 0) {
+    markIntegrationSuccess('foxRest');
+  } else {
+    markIntegrationError('foxRest', `FoxESS REST rejected ${target.pathname} (${upstreamData?.errno ?? upstream.status})`);
+  }
   return relayUpstreamResponse(upstream, response);
 }
 
@@ -224,13 +272,19 @@ async function requestFoxOpenApi(state, pathname, requestedBody = {}) {
 }
 
 async function foxOpenApiJson(state, pathname, body) {
-  const upstream = await requestFoxOpenApi(state, pathname, body);
-  const data = await upstream.json();
-  if (!upstream.ok) throw new Error(`FoxESS Open API returned HTTP ${upstream.status}`);
-  if (data.errno !== 0) {
-    throw new Error(`FoxESS Open API rejected ${pathname} (${data.errno ?? 'unknown'})`);
+  try {
+    const upstream = await requestFoxOpenApi(state, pathname, body);
+    const data = await upstream.json();
+    if (!upstream.ok) throw new Error(`FoxESS Open API returned HTTP ${upstream.status}`);
+    if (data.errno !== 0) {
+      throw new Error(`FoxESS Open API rejected ${pathname} (${data.errno ?? 'unknown'})`);
+    }
+    markIntegrationSuccess('foxRest');
+    return data;
+  } catch (error) {
+    markIntegrationError('foxRest', error);
+    throw error;
   }
-  return data;
 }
 
 async function proxyOctopusRequest(request, response) {
@@ -248,6 +302,7 @@ async function proxyOctopusRequest(request, response) {
   const accountNumber = state.credentials?.acc;
   const apiKey = state.credentials?.api;
   if (!accountNumber || !apiKey) {
+    markIntegrationError('octopus', 'Octopus Energy is not configured');
     return sendJson(response, 409, { error: 'Configure Octopus Energy in the Raspberry Pi Settings app first' });
   }
 
@@ -264,6 +319,7 @@ async function proxyOctopusRequest(request, response) {
     const authData = await authResponse.json();
     const token = authData.data?.obtainKrakenToken?.token;
     if (!authResponse.ok || !token) {
+      markIntegrationError('octopus', authData.errors?.[0]?.message || `Octopus authentication returned HTTP ${authResponse.status}`);
       return sendJson(response, authResponse.ok ? 401 : authResponse.status, authData);
     }
     const body = {
@@ -294,9 +350,16 @@ async function proxyOctopusRequest(request, response) {
       signal: AbortSignal.timeout(20_000)
     });
   } else {
+    markIntegrationError('octopus', 'Unsupported Octopus API request');
     return sendJson(response, 400, { error: 'Unsupported Octopus API request' });
   }
 
+  const upstreamData = await upstream.clone().json().catch(() => null);
+  if (upstream.ok && !upstreamData?.errors) {
+    markIntegrationSuccess('octopus');
+  } else {
+    markIntegrationError('octopus', upstreamData?.errors?.[0]?.message || `Octopus API returned HTTP ${upstream.status}`);
+  }
   return relayUpstreamResponse(upstream, response);
 }
 
@@ -348,24 +411,40 @@ const server = http.createServer(async (request, response) => {
         foxessTelemetry: foxessLive.getPublicStatus()
       });
     }
+    if (request.method === 'GET' && pathname === '/api/service-status') {
+      if (!isLoopback(request)) {
+        return sendJson(response, 403, { error: 'Server status details are only available on the Raspberry Pi' });
+      }
+      const state = await loadState();
+      const credentials = state.credentials || {};
+      return sendJson(response, 200, {
+        status: 'ok',
+        version,
+        lanUrls: getLanUrls(),
+        octopus: publicIntegrationStatus('octopus', Boolean(credentials.acc && credentials.api)),
+        foxRest: publicIntegrationStatus('foxRest', Boolean(credentials.foxSN && credentials.foxToken)),
+        foxLive: foxessLive.getPublicStatus()
+      });
+    }
     if (request.method === 'GET' && pathname === '/api/runtime') {
       const workerRequested = requestUrl.searchParams.get('worker') === '1';
+      const clientRequested = requestUrl.searchParams.get('client') === '1';
       return sendJson(response, 200, {
         mode: 'linux',
         version,
         role: workerRequested && isLoopback(request) ? 'worker' : 'dashboard',
-        authRequired: !isLoopback(request),
+        authRequired: clientRequested || !isLoopback(request),
         lanUrls: getLanUrls()
       });
     }
     if (request.method === 'POST' && pathname === '/api/auth') {
       return (await isAuthorized(request))
         ? sendEmpty(response)
-        : sendJson(response, 401, { error: 'Invalid Raspberry Pi access key' });
+        : sendJson(response, 401, { error: 'Invalid LAN access code' });
     }
     if (pathname === '/api/access-key') {
       if (!isLoopback(request)) {
-        return sendJson(response, 403, { error: 'The access key can only be managed from the Raspberry Pi' });
+        return sendJson(response, 403, { error: 'The access code can only be managed from the Raspberry Pi' });
       }
       if (request.method === 'GET') {
         return sendJson(response, 200, { accessKey: await getAccessKey() });
@@ -379,7 +458,7 @@ const server = http.createServer(async (request, response) => {
     const protectedApi = ['/api/config', '/api/foxess', '/api/octopus'];
     const isProtected = protectedApi.includes(pathname) || pathname.startsWith('/api/foxess/live');
     if (isProtected && !(await isAuthorized(request))) {
-      return sendJson(response, 401, { error: 'Invalid Raspberry Pi access key' });
+      return sendJson(response, 401, { error: 'Invalid LAN access code' });
     }
 
     if (pathname === '/api/config' && request.method === 'GET') {
@@ -410,10 +489,20 @@ const server = http.createServer(async (request, response) => {
       return sendEmpty(response);
     }
     if (pathname === '/api/octopus' && request.method === 'POST') {
-      return await proxyOctopusRequest(request, response);
+      try {
+        return await proxyOctopusRequest(request, response);
+      } catch (error) {
+        markIntegrationError('octopus', error);
+        throw error;
+      }
     }
     if (pathname === '/api/foxess' && request.method === 'POST') {
-      return await proxyFoxRequest(request, response);
+      try {
+        return await proxyFoxRequest(request, response);
+      } catch (error) {
+        markIntegrationError('foxRest', error);
+        throw error;
+      }
     }
     if (pathname === '/api/foxess/live/status' && request.method === 'GET') {
       await foxessLive.reconcile();

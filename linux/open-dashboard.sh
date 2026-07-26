@@ -7,7 +7,7 @@ if [ -r /etc/default/octopus-foxess ]; then
 fi
 
 exec /usr/bin/chromium \
-  --app="http://127.0.0.1:${OCTOPUS_PORT}/?settings=1" \
-  --class=octopus-foxess-settings \
+  --app="http://127.0.0.1:${OCTOPUS_PORT}/?client=1" \
+  --class=octopus-foxess-dashboard \
   --no-first-run \
   --password-store=basic

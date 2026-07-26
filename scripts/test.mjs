@@ -17,7 +17,10 @@ function extractFunction(name) {
 }
 
 const utilities = new Function(`
+  const window = { activeFoxGroups: [] };
   ${extractFunction('isActiveFoxSchedule')}
+  ${extractFunction('isFoxScheduleActiveAt')}
+  ${extractFunction('getActiveFoxScheduleAt')}
   ${extractFunction('scheduleFingerprint')}
   ${extractFunction('prepareFoxSchedulePayload')}
   ${extractFunction('getActiveAgreement')}
@@ -30,7 +33,7 @@ const utilities = new Function(`
   ${extractFunction('getAutoResumeSource')}
   ${extractFunction('getAutoResumeUntil')}
   ${extractFunction('isScheduleMinuteSuppressed')}
-  return { scheduleFingerprint, prepareFoxSchedulePayload, getActiveAgreement, selectActiveElectricityTariffs, getProductCodeFromTariffCode, getRateAtTime, getTariffSlotsForDate, getWeeklyForcedChargePeriods, buildScheduleGroupsFromTimeline, getAutoResumeSource, getAutoResumeUntil, isScheduleMinuteSuppressed };
+  return { window, isFoxScheduleActiveAt, getActiveFoxScheduleAt, scheduleFingerprint, prepareFoxSchedulePayload, getActiveAgreement, selectActiveElectricityTariffs, getProductCodeFromTariffCode, getRateAtTime, getTariffSlotsForDate, getWeeklyForcedChargePeriods, buildScheduleGroupsFromTimeline, getAutoResumeSource, getAutoResumeUntil, isScheduleMinuteSuppressed };
 `)();
 
 const tariffNow = new Date('2026-07-26T12:00:00Z');
@@ -111,6 +114,24 @@ const foxResponsePadding = sparse.paddedGroups.map(group => {
 });
 const preparedFoxResponse = utilities.prepareFoxSchedulePayload(foxResponsePadding);
 assert.equal(preparedFoxResponse.activeGroups.length, 2, '00:00 Self-Use padding without an enable flag must stay disabled');
+
+utilities.window.activeFoxGroups = [
+  { startHour: 10, startMinute: 0, endHour: 10, endMinute: 30, workMode: 'ForceCharge', enable: 1 }
+];
+assert.equal(
+  utilities.getActiveFoxScheduleAt(new Date(2026, 6, 26, 10, 21)).workMode,
+  'ForceCharge',
+  'An active scheduler group must override the base SelfUse setting in the displayed effective mode'
+);
+assert.equal(utilities.getActiveFoxScheduleAt(new Date(2026, 6, 26, 10, 31)), null);
+assert.equal(
+  utilities.isFoxScheduleActiveAt(
+    { startHour: 23, startMinute: 30, endHour: 5, endMinute: 30, workMode: 'ForceCharge', enable: 1 },
+    new Date(2026, 6, 26, 2, 0)
+  ),
+  true,
+  'Effective mode detection must support an overnight scheduler group'
+);
 
 assert.equal(
   utilities.scheduleFingerprint([{ ...sampleGroups[0], extraParam: undefined }]),

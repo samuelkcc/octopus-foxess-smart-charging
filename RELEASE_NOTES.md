@@ -1,4 +1,38 @@
-## Raspberry Pi Live WebSocket telemetry layout hotfix v2026.07.26.8
+## Raspberry Pi native server indicator and Mobile / LAN client v2026.07.26.9
+
+### Fixed
+
+- Shows the effective active FoxESS scheduler mode instead of the base
+  `SelfUse` setting while a Force Charge or Force Discharge block is running.
+- Hides the Octopus account number by default in both setup and dashboard
+  details until **Show** is selected.
+
+### Improved
+
+- Replaces device-specific labels and guidance with **Mobile / LAN** so the same
+  client flow is clear for iOS, Android, tablets, and computers.
+- Adds a native Raspberry Pi taskbar indicator with green, amber, and red
+  server-health icons plus individual Octopus API, FoxESS REST, and FoxESS Live
+  WS states.
+- Adds a compact native server configuration window for the listen address and
+  LAN access code.
+- Changes the desktop/application-menu shortcut into a separate
+  access-code-only **Octopus FoxESS Dashboard** client.
+
+### Deployment
+
+- Installs the GTK/Ayatana taskbar indicator through Raspberry Pi OS packages
+  and starts it for the current desktop session and future logins.
+- Keeps the three supervised `systemd` services, encrypted Pi configuration,
+  automatic REST fallback, and standalone GitHub Pages edition.
+
+### Validation
+
+- Covers active and overnight scheduler mode resolution, account-number
+  protection, Mobile / LAN copy, native tray packaging, service health status,
+  one-code client separation, standalone build, and Raspberry Pi archive.
+
+## Previous Raspberry Pi Live WebSocket telemetry layout hotfix v2026.07.26.8
 
 ### Fixed
 
@@ -7,7 +41,7 @@
 
 ### Validation
 
-- Rechecked the Pi-local Settings window, iPhone-sized one-key LAN client,
+- Rechecked the Pi-local Settings window, phone-sized one-code LAN client,
   WebSocket/REST fallback tests, release bundle, and GitHub Pages build.
 
 ## Previous Raspberry Pi Live WebSocket telemetry v2026.07.26.7
@@ -23,7 +57,7 @@
 
 - Automatically falls back to quota-aware cached REST telemetry when Live WS credentials are empty, login or self-test fails, the connection closes, or fresh frames stop arriving.
 - Keeps all scheduler and inverter-control commands on the official FoxESS REST API.
-- Keeps FoxESS web-login credentials encrypted on the Pi and redacted from iPhone configuration responses.
+- Keeps FoxESS web-login credentials encrypted on the Pi and redacted from LAN-client configuration responses.
 
 ### Deployment
 
@@ -38,19 +72,19 @@
 
 ### Fixed
 
-- Versioned Pi-served CSS and JavaScript URLs so an iPhone cannot reuse an older login layout after the app is updated.
+- Versioned Pi-served CSS and JavaScript URLs so a mobile browser cannot reuse an older login layout after the app is updated.
 - Changed installed static assets to revalidate on refresh.
 
 ### Validation
 
 - Confirmed a newly refreshed LAN client receives the current one-key login instead of cached Pi-local controls.
 
-## Previous iPhone client display hotfix v2026.07.26.5
+## Previous Mobile client display hotfix v2026.07.26.5
 
 ### Fixed
 
 - Corrected a CSS specificity conflict that left Pi-local access-key and background-service controls visible on a remote LAN client.
-- The remote login now renders only the single iPhone Dashboard Access Key field.
+- The remote login now renders only the single Dashboard Access Code field.
 
 ### Validation
 
@@ -60,7 +94,7 @@
 
 ### Fixed
 
-- The iPhone LAN login now asks only for the access key configured in the Raspberry Pi Settings app.
+- The Mobile / LAN login now asks only for the access code configured in the Raspberry Pi Settings app.
 - Removed Octopus account/API-key, FoxESS serial/token, config import, wipe, and setup controls from remote clients.
 
 ### Improved
@@ -76,7 +110,7 @@
 
 ### Validation
 
-- Covers the one-key iPhone login, redacted client state, server-side API authentication, remote mutation restrictions, standalone web build, and Raspberry Pi package.
+- Covers the one-code LAN login, redacted client state, server-side API authentication, remote mutation restrictions, standalone web build, and Raspberry Pi package.
 
 ## Previous desktop integration hotfix v2026.07.26.3
 
@@ -88,15 +122,15 @@
 
 - Added an **Octopus FoxESS Settings** icon to the Raspberry Pi desktop and application menu.
 - The icon opens a focused app-style settings window without requiring the user to type a local browser address.
-- Added a Pi-only configuration control for viewing and changing the iPhone LAN access key.
+- Added a Pi-only configuration control for viewing and changing the LAN access code.
 - Kept Octopus credentials, FoxESS credentials, automation settings, and the LAN key centrally on the Pi.
-- Confirmed the supervised worker continues after the settings window or iPhone browser is closed and starts automatically after reboot.
-- Clarified that an iPhone is a separate live dashboard client using the Pi's shared state, not a screen mirror.
+- Confirmed the supervised worker continues after the settings window or LAN browser is closed and starts automatically after reboot.
+- Clarified that a LAN browser is a separate live dashboard client using the Pi's shared state, not a screen mirror.
 
 ## Previous hotfix v2026.07.26.1
 
 - Fixed Raspberry Pi installation permissions that could leave the installer waiting while the local server repeatedly restarted.
-- Kept the generated access key private while ensuring the installed application is readable by its dedicated service account.
+- Kept the generated access code private while ensuring the installed application is readable by its dedicated service account.
 - Moved sleep inhibition into a separate root-owned service so Raspberry Pi OS can acquire the inhibitor while the app and Chromium remain unprivileged.
 - Restarted all three services after installation so running Pis switch to the newly downloaded release immediately.
 
@@ -110,13 +144,13 @@
 
 - Added separate import and SEG export live cards and tariff charts.
 - Reworked the login screen and setup guidance so the selected Web or Raspberry Pi runtime is explicit.
-- Optimised the local dashboard for iPhone safe areas, touch targets, form zoom prevention, single-column cards, and responsive charts.
+- Optimised the Mobile dashboard for safe areas, touch targets, form zoom prevention, single-column cards, and responsive charts.
 
 ## Deployment
 
 - Added a Raspberry Pi OS edition that replaces Google Apps Script with a restricted local FoxESS relay.
-- Added encrypted shared Pi configuration, a generated LAN access key, and separate dashboard/automation-worker roles.
-- Added the detected Raspberry Pi LAN URL directly to the login screen for easy iPhone access.
+- Added encrypted shared Pi configuration, a generated LAN access code, and separate dashboard/automation-worker roles.
+- Added the detected Raspberry Pi LAN URL directly to the client login screen.
 - Added `systemd` server and headless Chromium worker services with automatic restart, reboot startup, and sleep inhibition.
 - Added one-command `curl` install, update, and uninstall flows.
 - Kept the standalone GitHub Pages edition and its existing Google Apps Script option.

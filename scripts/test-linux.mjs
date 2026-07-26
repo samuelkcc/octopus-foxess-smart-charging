@@ -10,13 +10,15 @@ const stateRoot = path.join(temporaryRoot, 'state');
 const accessKeyFile = path.join(temporaryRoot, 'access.key');
 const port = 18_000 + Math.floor(Math.random() * 10_000);
 const accessKey = 'test-access-key';
-const [installerSource, uninstallerSource, stylesSource, markupSource, appSource, linuxBuildSource, pagesWorkflow, releaseWorkflow] = await Promise.all([
+const [installerSource, uninstallerSource, stylesSource, markupSource, appSource, linuxBuildSource, traySource, dashboardLauncherSource, pagesWorkflow, releaseWorkflow] = await Promise.all([
   readFile(path.join(root, 'linux', 'install.sh'), 'utf8'),
   readFile(path.join(root, 'linux', 'uninstall.sh'), 'utf8'),
   readFile(path.join(root, 'src', 'styles.css'), 'utf8'),
   readFile(path.join(root, 'src', 'index.html'), 'utf8'),
   readFile(path.join(root, 'src', 'app.js'), 'utf8'),
   readFile(path.join(root, 'scripts', 'build-linux.mjs'), 'utf8'),
+  readFile(path.join(root, 'linux', 'tray.py'), 'utf8'),
+  readFile(path.join(root, 'linux', 'open-dashboard.sh'), 'utf8'),
   readFile(path.join(root, '.github', 'workflows', 'pages.yml'), 'utf8'),
   readFile(path.join(root, '.github', 'workflows', 'release.yml'), 'utf8')
 ]);
@@ -30,25 +32,31 @@ assert.match(installerSource, /releases\/latest\/download/);
 assert.match(installerSource, /\(umask 077 && printf/);
 assert.match(installerSource, /chmod -R u=rwX,go=rX "\$RELEASE_ROOT"/);
 assert.match(installerSource, /octopus-foxess-settings/);
-assert.match(installerSource, /Octopus FoxESS Settings\.desktop/);
+assert.match(installerSource, /octopus-foxess-dashboard/);
+assert.match(installerSource, /octopus-foxess-tray/);
+assert.match(installerSource, /gir1\.2-ayatanaappindicator3-0\.1/);
+assert.match(installerSource, /Octopus FoxESS Dashboard\.desktop/);
 assert.match(installerSource, /OCTOPUS_ACCESS_KEY_FILE=\$ACCESS_KEY_FILE/);
 assert.match(uninstallerSource, /systemctl disable --now octopus-foxess-inhibit\.service octopus-foxess-worker\.service octopus-foxess\.service/);
 assert.match(uninstallerSource, /usr\/share\/applications\/octopus-foxess\.desktop/);
+assert.match(uninstallerSource, /etc\/xdg\/autostart\/octopus-foxess-tray\.desktop/);
 assert.match(stylesSource, /@media \(max-width: 600px\)/);
 assert.match(stylesSource, /font-size: 16px/);
 assert.match(stylesSource, /\.fox-live-settings-heading > div \{ flex: 1 1 12rem/);
 assert.match(stylesSource, /\.fox-live-source-row \.badge/);
 assert.match(markupSource, /no Google Apps Script/);
-assert.match(markupSource, /iPhone LAN Access Key/);
-assert.match(markupSource, /iPhone Dashboard Access Key/);
+assert.match(markupSource, /LAN Access Code/);
+assert.match(markupSource, /Dashboard Access Code/);
+assert.match(markupSource, /Mobile \/ LAN dashboard client/);
 assert.match(markupSource, /Octopus and FoxESS credentials stay managed by the Pi service/);
 assert.match(markupSource, /Live WebSocket \(default, REST fallback\)/);
 assert.match(markupSource, /id="fox-web-username"/);
 assert.match(markupSource, /id="fox-web-password"/);
 assert.match(markupSource, /Test Live Connection/);
 assert.match(markupSource, /class="input-group pi-config-only"/);
-assert.match(markupSource, /styles\.css\?v=2026\.7\.26\.8/);
-assert.match(markupSource, /app\.js\?v=2026\.7\.26\.8/);
+assert.match(markupSource, /id="octopus-account-toggle"/);
+assert.match(markupSource, /styles\.css\?v=2026\.7\.26\.9/);
+assert.match(markupSource, /app\.js\?v=2026\.7\.26\.9/);
 assert.match(stylesSource, /\.linux-runtime\.linux-auth-required \.pi-config-only \{ display: none !important; \}/);
 assert.match(stylesSource, /\.linux-runtime \.linux-local-only \{ display: none !important; \}/);
 assert.match(appSource, /\/api\/access-key/);
@@ -65,12 +73,23 @@ assert.match(await readFile(path.join(root, 'linux', 'server.mjs'), 'utf8'), /as
 assert.match(await readFile(path.join(root, 'linux', 'server.mjs'), 'utf8'), /createHash\('md5'\)/);
 assert.match(await readFile(path.join(root, 'linux', 'server.mjs'), 'utf8'), /FoxessLiveTelemetry/);
 assert.match(await readFile(path.join(root, 'linux', 'server.mjs'), 'utf8'), /\/api\/foxess\/live\/test/);
+assert.match(await readFile(path.join(root, 'linux', 'server.mjs'), 'utf8'), /\/api\/service-status/);
 assert.match(await readFile(path.join(root, 'linux', 'server.mjs'), 'utf8'), /'Cache-Control': 'no-cache'/);
 assert.match(linuxBuildSource, /octopus-foxess\.desktop/);
+assert.match(linuxBuildSource, /octopus-foxess-tray\.desktop/);
+assert.match(linuxBuildSource, /open-dashboard\.sh/);
+assert.match(linuxBuildSource, /tray\.py/);
 assert.match(linuxBuildSource, /octopus-foxess\.svg/);
 assert.match(linuxBuildSource, /packageRoot, 'web', 'octopus-foxess\.svg'/);
 assert.match(linuxBuildSource, /foxess-signature\.wasm/);
 assert.match(linuxBuildSource, /node_modules', 'ws'/);
+assert.match(traySource, /AyatanaAppIndicator3/);
+assert.match(traySource, /Octopus API/);
+assert.match(traySource, /FoxESS REST/);
+assert.match(traySource, /FoxESS Live WS/);
+assert.match(traySource, /LAN access code/);
+assert.match(dashboardLauncherSource, /\?client=1/);
+assert.match(dashboardLauncherSource, /octopus-foxess-dashboard/);
 assert.match(pagesWorkflow, /npm ci[\s\S]*npm run check/);
 assert.match(releaseWorkflow, /npm ci[\s\S]*npm run check/);
 
@@ -112,9 +131,26 @@ try {
   assert.equal(runtime.authRequired, false);
   assert.ok(Array.isArray(runtime.lanUrls));
 
+  const clientRuntime = await fetch(`http://127.0.0.1:${port}/api/runtime?client=1`).then(response => response.json());
+  assert.equal(clientRuntime.role, 'dashboard');
+  assert.equal(clientRuntime.authRequired, true);
+  const rejectedLocalClient = await fetch(`http://127.0.0.1:${port}/api/auth`, {
+    method: 'POST',
+    headers: { Referer: `http://127.0.0.1:${port}/?client=1` }
+  });
+  assert.equal(rejectedLocalClient.status, 401);
+  const acceptedLocalClient = await fetch(`http://127.0.0.1:${port}/api/auth`, {
+    method: 'POST',
+    headers: {
+      Referer: `http://127.0.0.1:${port}/?client=1`,
+      'X-Octopus-Access-Key': accessKey
+    }
+  });
+  assert.equal(acceptedLocalClient.status, 204);
+
   const currentAccessKey = await fetch(`http://127.0.0.1:${port}/api/access-key`).then(response => response.json());
   assert.equal(currentAccessKey.accessKey, accessKey);
-  const changedAccessKey = 'new-iphone-access-key';
+  const changedAccessKey = 'new-lan-access-code';
   const accessKeyResponse = await fetch(`http://127.0.0.1:${port}/api/access-key`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
@@ -159,6 +195,13 @@ try {
   assert.equal(liveStatus.source, 'rest-fallback');
   assert.equal(liveStatus.reason, 'live-credentials-empty');
 
+  const serviceStatus = await fetch(`http://127.0.0.1:${port}/api/service-status`).then(response => response.json());
+  assert.equal(serviceStatus.status, 'ok');
+  assert.equal(serviceStatus.octopus.configured, true);
+  assert.equal(serviceStatus.foxRest.configured, true);
+  assert.equal(serviceStatus.foxLive.reason, 'live-credentials-empty');
+  assert.ok(Array.isArray(serviceStatus.lanUrls));
+
   const rejectedProxy = await fetch(`http://127.0.0.1:${port}/api/foxess`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -168,9 +211,9 @@ try {
 
   const page = await fetch(`http://127.0.0.1:${port}/`).then(response => response.text());
   assert.match(page, /Smart Charging Detector/);
-  assert.match(page, /Open on iPhone: detecting local address/);
+  assert.match(page, /Mobile \/ LAN access: detecting local address/);
 
-  console.log('Linux server, local access-key settings, encrypted state, launcher, proxy restriction, and static GUI checks passed.');
+  console.log('Linux server, LAN access-code settings, native tray, encrypted state, launchers, proxy restriction, and static GUI checks passed.');
 } finally {
   child.kill('SIGTERM');
 }

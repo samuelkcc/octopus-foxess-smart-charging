@@ -13,10 +13,15 @@ services:
 All three services restart automatically after failure or reboot.
 
 The server binds to port `8787` on the local network. Configuration is encrypted
-at rest on the Pi. The Pi desktop and application menu contain an **Octopus
-FoxESS Settings** icon that opens a focused local app window. Use it to enter the
-Octopus/FoxESS credentials and view or change the iPhone LAN access key—no
-terminal key command is required.
+at rest on the Pi. A native **Octopus FoxESS Server** taskbar icon starts with
+the desktop session and shows the server, Octopus API, FoxESS REST, and FoxESS
+Live WS states. Green indicates healthy, amber indicates a waiting or intentional
+fallback state, and red indicates a configuration or connection problem.
+
+Choose **Server Configuration…** from the taskbar menu to view the LAN listen
+address, reveal or change the LAN access code, and inspect all integration
+states. Choose **Integration Settings…** to enter the Octopus/FoxESS credentials
+or change the optional Live WS connection.
 
 The Pi settings app also provides a FoxESS telemetry selector:
 
@@ -30,15 +35,13 @@ self-test, stale-frame, or connection failures also fall back to REST
 automatically. All schedule and inverter-control commands always use the
 official FoxESS REST API.
 
-If Raspberry Pi OS shows its normal **Execute File** question when the desktop
-shortcut is opened for the first time, choose **Execute**. The application-menu
-launcher opens directly.
-
 The Pi is the central source of truth. Closing the settings window does not stop
-the service. An iPhone opens a separate responsive dashboard, reads the Pi's
-current state, and sends deliberate changes back to the Pi; it is not a
-pixel-by-pixel screen mirror. Only the loopback worker performs unattended
-schedule writes.
+the service. The separate **Octopus FoxESS Dashboard** desktop and
+application-menu launcher opens the LAN client and asks only for its access
+code. Phones, tablets, and other computers on the same network can open the
+listen address directly. Every client reads the Pi's current state and sends
+deliberate changes back to the Pi; it is not a pixel-by-pixel screen mirror.
+Only the loopback worker performs unattended schedule writes.
 
 Install:
 
@@ -61,5 +64,6 @@ sudo systemctl restart octopus-foxess octopus-foxess-worker octopus-foxess-inhib
 ```
 
 Re-run the install command to update. The encrypted configuration and selected
-access key are preserved. The uninstall command removes the services, launcher,
-desktop icon, encrypted configuration, and access key.
+access code are preserved. The uninstall command removes the services, launcher,
+taskbar autostart entry, desktop client, encrypted configuration, and access
+code.

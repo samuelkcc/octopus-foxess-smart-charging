@@ -100,7 +100,7 @@ function isPiSettingsMode() {
 async function loadManagedAccessKey() {
     if (!window.linuxRuntime || window.linuxRole !== 'dashboard' || window.linuxAuthRequired) return;
     const response = await fetch('/api/access-key', { cache: 'no-store' });
-    if (!response.ok) throw new Error(`Unable to load Raspberry Pi access key (HTTP ${response.status})`);
+    if (!response.ok) throw new Error(`Unable to load LAN access code (HTTP ${response.status})`);
     const result = await response.json();
     const field = document.getElementById('managed-access-key');
     if (field) field.value = result.accessKey || '';
@@ -110,7 +110,7 @@ async function saveManagedAccessKey() {
     if (!window.linuxRuntime || window.linuxRole !== 'dashboard' || window.linuxAuthRequired) return;
     const accessKey = document.getElementById('managed-access-key')?.value.trim() || '';
     if (accessKey.length < 8 || accessKey.length > 64) {
-        throw new Error('The iPhone LAN access key must contain 8 to 64 characters.');
+        throw new Error('The LAN access code must contain 8 to 64 characters.');
     }
     const response = await fetch('/api/access-key', {
         method: 'PUT',
@@ -119,7 +119,7 @@ async function saveManagedAccessKey() {
     });
     if (!response.ok) {
         const result = await response.json().catch(() => ({}));
-        throw new Error(result.error || `Unable to save Raspberry Pi access key (HTTP ${response.status})`);
+        throw new Error(result.error || `Unable to save LAN access code (HTTP ${response.status})`);
     }
 }
 
@@ -127,8 +127,16 @@ function toggleManagedAccessKeyVisibility() {
     const field = document.getElementById('managed-access-key');
     if (!field) return;
     field.type = field.type === 'password' ? 'text' : 'password';
-    const button = document.querySelector('.inline-visibility-button');
+    const button = document.getElementById('managed-access-toggle');
     if (button) button.textContent = field.type === 'password' ? 'Show' : 'Hide';
+}
+
+function toggleOctopusAccountVisibility() {
+    const field = document.getElementById('acc');
+    const button = document.getElementById('octopus-account-toggle');
+    if (!field || !button) return;
+    field.type = field.type === 'password' ? 'text' : 'password';
+    button.textContent = field.type === 'password' ? 'Show' : 'Hide';
 }
 
 async function openPiSettingsView() {
@@ -163,8 +171,11 @@ async function loadFoxLiveStatus() {
 
 async function detectLinuxRuntime() {
     try {
-        const worker = new URLSearchParams(window.location.search).get('worker') === '1';
-        const response = await fetch(`/api/runtime${worker ? '?worker=1' : ''}`, { cache: 'no-store' });
+        const runtimeParameters = new URLSearchParams(window.location.search);
+        const worker = runtimeParameters.get('worker') === '1';
+        const client = runtimeParameters.get('client') === '1';
+        const runtimeQuery = worker ? '?worker=1' : (client ? '?client=1' : '');
+        const response = await fetch(`/api/runtime${runtimeQuery}`, { cache: 'no-store' });
         if (!response.ok) return;
         const runtime = await response.json();
         if (runtime.mode !== 'linux') return;
@@ -183,8 +194,8 @@ async function detectLinuxRuntime() {
             element.textContent = `Raspberry Pi v${runtime.version}`;
         });
         document.querySelectorAll('[data-linux-lan-url]').forEach(element => {
-            const iPhoneUrl = runtime.lanUrls?.[0] || window.location.origin;
-            element.textContent = `Open on iPhone: ${iPhoneUrl}`;
+            const clientUrl = runtime.lanUrls?.[0] || window.location.origin;
+            element.textContent = `Mobile / LAN access: ${clientUrl}`;
         });
         const gasUrl = document.getElementById('gas-url');
         if (gasUrl) gasUrl.value = '/api/foxess';
@@ -201,7 +212,7 @@ async function ensureLinuxAccess() {
         || sessionStorage.getItem('linuxAccessKey')
         || '';
     if (!key) {
-        showError('Enter the access key shown in the Raspberry Pi Settings app.');
+        showError('Enter the access code configured in the Raspberry Pi server settings.');
         return false;
     }
     const response = await fetch('/api/auth', {
@@ -209,7 +220,7 @@ async function ensureLinuxAccess() {
         headers: { 'X-Octopus-Access-Key': key }
     });
     if (!response.ok) {
-        showError('The Raspberry Pi access key is incorrect.');
+        showError('The LAN access code is incorrect.');
         return false;
     }
     sessionStorage.setItem('linuxAccessKey', key);
@@ -222,7 +233,7 @@ async function loadLinuxState() {
         headers: { 'X-Octopus-Access-Key': getLinuxAccessKey() },
         cache: 'no-store'
     });
-    if (response.status === 401) throw new Error('Raspberry Pi access key required');
+    if (response.status === 401) throw new Error('LAN access code required');
     if (!response.ok) throw new Error(`Unable to load Raspberry Pi configuration (HTTP ${response.status})`);
     const state = await response.json();
     window.linuxRevision = state.revision || null;
@@ -571,7 +582,7 @@ async function handleConnectClick() {
                     ? { ...state.credentials, gasUrl: '/api/foxess' }
                     : null;
                 if (!activeCredentials?.acc || !activeCredentials?.api) {
-                    throw new Error('Complete the Octopus and FoxESS setup in the Raspberry Pi Settings app first.');
+                    throw new Error('Complete the Octopus and FoxESS setup from the Pi taskbar Integration Settings first.');
                 }
             } else if (window.linuxRuntime && !document.getElementById('acc').value.trim()) {
                 const state = await loadLinuxState();
@@ -984,7 +995,7 @@ async function initDashboard(isAutoRefresh = false, retryCount = 1) {
 
         // 1–2. Authenticate and fetch Octopus dashboard data. On Raspberry Pi,
         // the service performs authentication so API credentials never enter a
-        // remote iPhone browser.
+        // remote mobile or LAN browser.
         let gqlData;
         if (window.linuxRuntime) {
             gqlData = await fetchOctopusJson(GRAPHQL_URL, {
@@ -1150,8 +1161,15 @@ async function initDashboard(isAutoRefresh = false, retryCount = 1) {
             </div>
         `;
 
+        window.dashboardAccountNumber = acc;
         document.getElementById('ui-account-details').innerHTML = `
-            <li><span class="label">Account Number</span> <span class="val">${escapeHtml(acc)}</span></li>
+            <li>
+                <span class="label">Account Number</span>
+                <span class="account-secret-control">
+                    <span class="val" id="dashboard-account-number">••••••••</span>
+                    <button type="button" class="inline-visibility-button" id="dashboard-account-toggle" onclick="toggleDashboardAccountVisibility()">Show</button>
+                </span>
+            </li>
             <li><span class="label">Linked Device</span> <span class="val" style="color: var(--accent);">${escapeHtml(device?.provider ? device.provider.toUpperCase() : 'NONE DETECTED')}</span></li>
             <li><span class="label">Import Tariff Code</span> <span class="val" style="font-size: 0.8rem; font-family: monospace;">${escapeHtml(importTariffCode)}</span></li>
             <li><span class="label">Export Tariff Code</span> <span class="val" style="font-size: 0.8rem; font-family: monospace;">${escapeHtml(exportTariffCode)}</span></li>
@@ -1405,20 +1423,13 @@ async function fetchCurrentWorkMode(forceModeUpdate = false) {
         
         if (data.errno === 0 && data.result) {
             localWorkModeState = data.result.value || "Unknown";
-            
-            // Check if we are currently inside an active scheduled time block (Only override if API returned a blank/generic state)
-            if (localWorkModeState === "Unknown" || !localWorkModeState) {
-                const now = new Date();
-                const currentMins = now.getHours() * 60 + now.getMinutes();
-                if (window.activeFoxGroups && window.activeFoxGroups.length > 0) {
-                    const activeSch = window.activeFoxGroups.find(g => {
-                        const startMins = g.startHour * 60 + g.startMinute;
-                        const endMins = g.endHour * 60 + g.endMinute;
-                        return currentMins >= startMins && currentMins < endMins;
-                    });
-                    if (activeSch) localWorkModeState = activeSch.workMode;
-                }
-            }
+
+            // The FoxESS setting endpoint returns the inverter's base WorkMode,
+            // usually SelfUse, even while a scheduler group is actively forcing
+            // charge or discharge. Display the effective scheduled mode whenever
+            // a live group covers the current local time.
+            const activeSchedule = getActiveFoxScheduleAt(new Date());
+            if (activeSchedule) localWorkModeState = activeSchedule.workMode;
             
             updateModeBadge(localWorkModeState, batterySoc);
             const fbBadge = document.getElementById('fox-api-badge');
@@ -1448,6 +1459,39 @@ function updateModeBadge(mode, soc = null) {
 window.activeFoxGroups = [];
 
 const wait = (milliseconds) => new Promise(resolve => setTimeout(resolve, milliseconds));
+
+function isFoxScheduleActiveAt(group, now = new Date()) {
+    if (!isActiveFoxSchedule(group)) return false;
+    const currentMinutes = now.getHours() * 60 + now.getMinutes();
+    const startMinutes = Number(group.startHour) * 60 + Number(group.startMinute);
+    let endMinutes = Number(group.endHour) * 60 + Number(group.endMinute);
+    if (endMinutes === 0 && startMinutes > 0) endMinutes = 1440;
+    if (endMinutes === 1439) endMinutes = 1440;
+    if (endMinutes > startMinutes) {
+        return currentMinutes >= startMinutes && currentMinutes < endMinutes;
+    }
+    if (endMinutes < startMinutes) {
+        return currentMinutes >= startMinutes || currentMinutes < endMinutes;
+    }
+    return false;
+}
+
+function getActiveFoxScheduleAt(now = new Date()) {
+    const active = (window.activeFoxGroups || []).filter(group => isFoxScheduleActiveAt(group, now));
+    return active.find(group => group.workMode === 'ForceCharge')
+        || active.find(group => group.workMode === 'ForceDischarge')
+        || active[0]
+        || null;
+}
+
+function toggleDashboardAccountVisibility() {
+    const value = document.getElementById('dashboard-account-number');
+    const button = document.getElementById('dashboard-account-toggle');
+    if (!value || !button) return;
+    const isHidden = button.textContent === 'Show';
+    value.textContent = isHidden ? (window.dashboardAccountNumber || '') : '••••••••';
+    button.textContent = isHidden ? 'Hide' : 'Show';
+}
 
 function isActiveFoxSchedule(group) {
     if (!group || group.enable === 0 || group.enable === false) return false;

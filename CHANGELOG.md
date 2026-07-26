@@ -1,10 +1,22 @@
 # Changelog
 
+## v2026.07.26.9 — 2026-07-26
+
+- Renamed the device-specific client experience to Mobile / LAN across the UI,
+  documentation, and release guidance.
+- Hid the Octopus account number by default behind explicit Show controls.
+- Fixed effective FoxESS mode reporting so an active scheduler Force Charge or
+  Force Discharge block overrides the REST API's base `SelfUse` value.
+- Added a native Raspberry Pi taskbar server indicator with individual Octopus
+  API, FoxESS REST, and FoxESS Live WS health states.
+- Added a compact native server configuration screen for the listen address and
+  LAN access code, plus a separate access-code-only desktop dashboard client.
+
 ## v2026.07.26.8 — 2026-07-26
 
 - Fixed the Pi Settings app's narrow-window layout so the long Live WS/fallback
   status badge wraps below the FoxESS telemetry heading instead of squeezing it.
-- Revalidated the iPhone one-key client layout and all release checks.
+- Revalidated the phone-sized one-code client layout and all release checks.
 
 ## v2026.07.26.7 — 2026-07-26
 
@@ -22,13 +34,13 @@
 ## v2026.07.26.5 — 2026-07-26
 
 - Fixed Pi-local access-key and background-service controls remaining visible on remote LAN clients because of a CSS specificity conflict.
-- Confirmed the remote login renders only the single iPhone Dashboard Access Key field.
+- Confirmed the remote login renders only the single Dashboard Access Code field.
 
 ## v2026.07.26.4 — 2026-07-26
 
-- Reduced the iPhone LAN login to one dashboard access-key field and removed all service credential, import, wipe, and setup controls from remote clients.
+- Reduced the Mobile / LAN login to one dashboard access-code field and removed all service credential, import, wipe, and setup controls from remote clients.
 - Kept Octopus API keys, FoxESS tokens, and inverter serial numbers inside the Pi service; remote configuration responses now contain only non-secret managed-state markers.
-- Moved Octopus authentication and FoxESS request signing into the Pi server so service credentials do not enter the iPhone browser.
+- Moved Octopus authentication and FoxESS request signing into the Pi server so service credentials do not enter a LAN browser.
 - Restricted credential changes and full configuration wipes to the Pi-local Settings app.
 - Clarified the service/client model in the Raspberry Pi guide.
 
@@ -41,9 +53,9 @@
 ## v2026.07.26.2 — 2026-07-26
 
 - Added a Raspberry Pi desktop and application-menu icon that opens the configuration UI in an app-style Chromium window.
-- Added a Pi-local configuration screen for changing the iPhone LAN access key alongside the Octopus and FoxESS credentials.
-- Moved the live access key into the service-owned encrypted-state area while retaining the legacy `/etc` compatibility path.
-- Clarified that the Pi is the central source of truth, the background worker continues without an open window, and iPhone browsers are separate live dashboard clients.
+- Added a Pi-local configuration screen for changing the LAN access code alongside the Octopus and FoxESS credentials.
+- Moved the live access code into the service-owned encrypted-state area while retaining the legacy `/etc` compatibility path.
+- Clarified that the Pi is the central source of truth, the background worker continues without an open window, and LAN browsers are separate live dashboard clients.
 - Added launcher, access-key, package, update, and uninstall regression coverage.
 
 ## v2026.07.26.1 — 2026-07-26
@@ -63,8 +75,8 @@
 - Fixed fixed-rate tariffs with `valid_to: null` being treated as expired, which could hide the export rate and prevent its chart from rendering.
 - Added a Raspberry Pi OS edition with a restricted local FoxESS relay, encrypted shared configuration, and no Google Apps Script dependency.
 - Added supervised `systemd` server and headless automation-worker services with automatic restart, reboot startup, and sleep inhibition.
-- Added a local-network dashboard protected by a generated access key and an iPhone-optimised responsive interface.
-- The Raspberry Pi login now displays its detected LAN URL for iPhone access.
+- Added a local-network dashboard protected by a generated access code and a mobile-optimised responsive interface.
+- The Raspberry Pi login now displays its detected LAN URL for Mobile / LAN access.
 - Added one-command `curl` installation, update, and complete uninstall procedures.
 - Rewrote the login screen, setup guidance, security notes, and README to distinguish the GitHub Pages and Raspberry Pi editions.
 

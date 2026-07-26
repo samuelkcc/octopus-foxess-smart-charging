@@ -1,0 +1,11 @@
+[Desktop Entry]
+Type=Application
+Version=1.0
+Name=Octopus FoxESS Server Status
+Comment=Show Octopus FoxESS server and API status in the taskbar
+Exec=/usr/local/bin/octopus-foxess-tray
+Icon=octopus-foxess
+Terminal=false
+Categories=Utility;Network;
+X-GNOME-Autostart-enabled=true
+NoDisplay=true

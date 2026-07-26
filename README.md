@@ -11,11 +11,11 @@ Intelligent Octopus Go EV charging slots.
 
 | | Web edition | Raspberry Pi OS edition |
 |---|---|---|
-| Launch | [Open the live app](https://samuelkcc.github.io/octopus-foxess-smart-charging/) | Click the Pi desktop/app-menu icon |
+| Launch | [Open the live app](https://samuelkcc.github.io/octopus-foxess-smart-charging/) | Background server taskbar icon and LAN dashboard client |
 | Google Apps Script | Required for the FoxESS browser relay | Not required |
 | Always-on automation | Browser must remain open and awake | Supervised background worker |
 | Start after reboot | No | Yes, through `systemd` |
-| Local network GUI | No | Yes, optimised for iPhone |
+| Local network GUI | No | Yes, responsive on phones, tablets, and computers |
 | Best for | Quick use and existing browser setups | Reliable 24/7 operation |
 
 Both editions use the same dashboard and automation logic. The GitHub Pages
@@ -47,8 +47,8 @@ Features include:
 ## Credentials required during initial setup
 
 The web edition asks for these details in its browser login. For the Raspberry
-Pi edition, enter them once in the **Octopus FoxESS Settings** app on the Pi.
-The iPhone client never asks for them.
+Pi edition, enter them once through **Integration Settings** from the Pi
+taskbar icon. Mobile / LAN clients never ask for them.
 
 ### Octopus Energy
 
@@ -72,10 +72,11 @@ The token cannot currently be generated from the V2 website or mobile app.
 - Raspberry Pi 4 or 5
 - current 32-bit or 64-bit Raspberry Pi OS with `systemd`
 - internet access for Octopus and FoxESS Cloud APIs
-- Pi and iPhone connected to the same trusted home network
+- Pi and client device connected to the same trusted home network
 
 Raspberry Pi OS Bookworm or newer is recommended. The installer adds Node.js,
-Chromium, `curl`, CA certificates, and the Noto colour emoji font through `apt`.
+Chromium, Python GTK/AppIndicator support, `curl`, CA certificates, and the Noto
+colour emoji font through `apt`.
 
 ### Install
 
@@ -91,19 +92,27 @@ The installer:
 2. creates a restricted `octopus-foxess` service account;
 3. installs a LAN server on port `8787`;
 4. installs an always-on Chromium automation worker;
-5. enables both services at startup;
+5. enables the services at startup;
 6. blocks system sleep while the worker is active; and
-7. adds an **Octopus FoxESS Settings** desktop and application-menu icon; and
-8. prints the local URL and a generated Raspberry Pi access key.
+7. adds a native **Octopus FoxESS Server** taskbar status icon;
+8. adds a separate **Octopus FoxESS Dashboard** desktop/application-menu client; and
+9. prints the local URL and generated LAN access code.
 
-Click **Octopus FoxESS Settings** on the Pi desktop or in the Raspberry Pi
-application menu. It opens a focused app-style configuration window. Enter the
-Octopus and FoxESS credentials there and set a memorable **iPhone LAN Access
-Key**; no terminal command is needed to retrieve or change it.
+The taskbar icon starts automatically at desktop login. Green means the server
+and configured API connections are healthy, amber means a connection is waiting
+or using an intentional fallback, and red indicates a configuration or
+connection problem. Its menu shows individual **Octopus API**, **FoxESS REST**,
+and **FoxESS Live WS** states.
+
+Select **Server Configuration…** from the taskbar icon to open the native
+Raspberry Pi configuration window. It displays the listen address, lets you set
+or reveal the LAN access code, and shows the same integration health states.
+Select **Integration Settings…** only when you need to enter or change Octopus,
+FoxESS REST, or optional Live WS credentials.
 
 ### FoxESS telemetry connection
 
-The Raspberry Pi settings screen offers:
+The Pi-local Integration Settings screen offers:
 
 - **Live WebSocket (default, REST fallback)** — optionally enter the same
   FoxESS Cloud web-login email/username and password used at
@@ -124,37 +133,34 @@ change without notice. It is used only for read-only telemetry. Scheduler
 reads/writes, work-mode controls, and every deliberate inverter change continue
 to use the official FoxESS REST API.
 
-Raspberry Pi OS may show its standard **Execute File** question the first time a
-desktop shortcut is opened; choose **Execute**. Opening the same launcher from
-the Raspberry Pi application menu does not require that desktop-file question.
-
-Open the address displayed in that settings window on the iPhone, for example:
+Open the address displayed in **Server Configuration** on any phone, tablet, or
+computer connected to the same LAN, for example:
 
 ```text
 http://192.168.1.42:8787
 ```
 
-Enter the iPhone LAN access key. There is no Google Apps Script field in this
-edition, and the iPhone does not show Octopus or FoxESS credential fields,
+Enter the LAN access code. There is no Google Apps Script field in this edition,
+and the client does not show Octopus or FoxESS credential fields,
 configuration import, or wipe controls. After the one-key check, the Pi service
 authenticates with Octopus and signs FoxESS requests on the client's behalf.
 After the first successful Pi setup, the supervised worker reads the centrally
 stored encrypted configuration and keeps running even after the Pi settings
-window and iPhone Safari are closed.
+window and every LAN browser are closed.
 
-The iPhone is not a pixel-by-pixel screen mirror. It is a responsive client of
+The Mobile / LAN view is not a pixel-by-pixel screen mirror. It is a responsive client of
 the Pi service: it reads the same live dashboard state and sends deliberate
 automation changes back to the Pi. Octopus and FoxESS service credentials can
 only be viewed, changed, imported, or wiped from the Pi-local Settings app. The
 Pi remains the source of truth and the only unattended automation worker.
 
-The Raspberry Pi login screen also displays **Open on iPhone** followed by the
-detected LAN URL, so the address remains visible after installation.
+The Raspberry Pi client login displays **Mobile / LAN access** followed by the
+detected local URL, and the native taskbar configuration window shows it too.
 
 If the IP address changes, try `http://raspberrypi.local:8787` or run
-`hostname -I` on the Pi. The iPhone interface uses safe-area spacing, 16 px form
-controls to prevent Safari zoom, large touch targets, single-column cards, and
-responsive charts.
+`hostname -I` on the Pi. The Mobile view uses safe-area spacing, 16 px form
+controls to prevent browser zoom, large touch targets, single-column cards, and
+responsive charts on iOS and Android.
 
 ### Service commands
 
@@ -172,7 +178,7 @@ automatically starts all three services again.
 ### Update
 
 Run the install command again. It downloads the latest release and preserves the
-encrypted configuration and access key.
+encrypted configuration and access code.
 
 ### Uninstall
 
@@ -181,7 +187,7 @@ curl -fsSL https://raw.githubusercontent.com/samuelkcc/octopus-foxess-smart-char
 ```
 
 Uninstalling stops and removes both services, the application, the generated
-access key, and the encrypted configuration. This is intentionally a complete
+access code, and the encrypted configuration. This is intentionally a complete
 removal.
 
 ## Web edition on GitHub Pages
@@ -235,25 +241,25 @@ run the web edition's timers; use the Raspberry Pi edition for unattended use.
 - Authenticated LAN clients receive only managed-configuration status; Octopus
   API keys, FoxESS tokens, and inverter serial numbers are not returned.
 - Optional FoxESS web-login credentials for Live WS are also encrypted on the
-  Pi and are never returned to an iPhone client.
+  Pi and are never returned to a LAN client.
 - The Pi authenticates Octopus requests and signs FoxESS requests server-side.
-- The LAN access key is stored with service-only permissions in
+- The LAN access code is stored with service-only permissions in
   `/var/lib/octopus-foxess/access.key` and can only be viewed or changed through
   the settings screen opened locally on the Pi.
 - The Pi relay accepts only HTTPS requests to `www.foxesscloud.com/op/...`.
 - The optional read-only live stream connects from the Pi to the undocumented
   `wss://www.foxesscloud.com/dew/v0/wsmaitian` endpoint. It never carries
   scheduler or inverter-control commands.
-- LAN API access requires the generated access key; loopback access is reserved
+- LAN API access requires the configured access code; loopback access is reserved
   for the supervised worker.
 - Port `8787` uses HTTP on the trusted home LAN. Do not expose it through router
   port forwarding, a public IP, or an untrusted Wi-Fi network.
 - Use **Wipe Data** in the Pi-local Settings app to clear saved configuration.
-  Remote iPhone clients cannot wipe or replace service credentials.
+  Remote LAN clients cannot wipe or replace service credentials.
 
 FoxESS enforces API limits. The Pi worker owns unattended automation; connected
-iPhones do not perform duplicate automatic schedule writes. Deliberate manual
-controls from the iPhone remain available.
+clients do not perform duplicate automatic schedule writes. Deliberate manual
+controls from a Mobile / LAN dashboard remain available.
 
 ## Development and release builds
 
@@ -269,7 +275,8 @@ prototype/           Original single-file reference
 dist/                Generated release output
 ```
 
-Node.js 18 or newer is required. There are no third-party npm dependencies.
+Node.js 18 or newer is required. The Raspberry Pi package vendors the pinned
+`ws` WebSocket client; the standalone GitHub Pages build has no npm runtime.
 
 ```bash
 npm run check

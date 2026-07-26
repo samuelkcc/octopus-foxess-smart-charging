@@ -10,20 +10,26 @@ systemctl disable --now octopus-foxess-inhibit.service octopus-foxess-worker.ser
 rm -f /etc/systemd/system/octopus-foxess-inhibit.service /etc/systemd/system/octopus-foxess-worker.service /etc/systemd/system/octopus-foxess.service
 systemctl daemon-reload
 systemctl reset-failed
+pkill -f '^/usr/bin/python3 /usr/local/bin/octopus-foxess-tray$' 2>/dev/null || true
 
 if [ -s /etc/octopus-foxess/desktop-shortcut.path ]; then
   DESKTOP_SHORTCUT="$(cat /etc/octopus-foxess/desktop-shortcut.path)"
   case "$DESKTOP_SHORTCUT" in
-    */Desktop/Octopus\ FoxESS\ Settings.desktop) rm -f "$DESKTOP_SHORTCUT" ;;
+    */Desktop/Octopus\ FoxESS\ Settings.desktop|*/Desktop/Octopus\ FoxESS\ Dashboard.desktop) rm -f "$DESKTOP_SHORTCUT" ;;
   esac
 fi
-rm -f /usr/local/bin/octopus-foxess-settings
+rm -f /usr/local/bin/octopus-foxess-settings /usr/local/bin/octopus-foxess-dashboard /usr/local/bin/octopus-foxess-tray
 rm -f /usr/share/applications/octopus-foxess.desktop
-rm -f /usr/share/icons/hicolor/scalable/apps/octopus-foxess.svg
+rm -f /etc/xdg/autostart/octopus-foxess-tray.desktop
+rm -f \
+  /usr/share/icons/hicolor/scalable/apps/octopus-foxess.svg \
+  /usr/share/icons/hicolor/scalable/apps/octopus-foxess-status-green.svg \
+  /usr/share/icons/hicolor/scalable/apps/octopus-foxess-status-amber.svg \
+  /usr/share/icons/hicolor/scalable/apps/octopus-foxess-status-red.svg
 rm -f /etc/default/octopus-foxess
 rm -rf /opt/octopus-foxess /var/lib/octopus-foxess /etc/octopus-foxess
 if id octopus-foxess >/dev/null 2>&1; then
   userdel octopus-foxess
 fi
 
-echo "Octopus FoxESS Linux services, application files, access key, and encrypted configuration were removed."
+echo "Octopus FoxESS Linux services, taskbar icon, application files, access code, and encrypted configuration were removed."

@@ -177,6 +177,8 @@
         .data-list li:last-child { border-bottom: none; }
         .data-list .label { color: var(--text-muted); flex-shrink: 0; }
         .data-list .val { font-weight: 600; text-align: right; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--text-main); }
+        .account-secret-control { display: inline-flex; align-items: center; justify-content: flex-end; gap: 0.55rem; min-width: 0; }
+        .account-secret-control .inline-visibility-button { flex-shrink: 0; }
         
         .error { color: #b91c1c; background: #fef2f2; padding: 1rem; border-radius: 8px; margin-bottom: 1.5rem; display: none; border: 1px solid #fecaca; font-size: 0.9rem; }
         .success { color: #047857; background: #ecfdf5; padding: 1rem; border-radius: 8px; margin-bottom: 1.5rem; display: none; border: 1px solid #a7f3d0; font-size: 0.9rem; }

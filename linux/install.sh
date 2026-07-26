@@ -22,7 +22,9 @@ fi
 
 echo "Installing system packages..."
 apt-get update
-DEBIAN_FRONTEND=noninteractive apt-get install -y ca-certificates curl nodejs chromium fonts-noto-color-emoji
+DEBIAN_FRONTEND=noninteractive apt-get install -y \
+  ca-certificates curl nodejs chromium fonts-noto-color-emoji \
+  python3 python3-gi gir1.2-ayatanaappindicator3-0.1
 
 NODE_MAJOR="$(node -p "Number(process.versions.node.split('.')[0])")"
 if [ "$NODE_MAJOR" -lt 18 ]; then
@@ -72,9 +74,16 @@ chmod -R u=rwX,go=rX "$RELEASE_ROOT"
 ln -sfn "$RELEASE_ROOT" "$APP_ROOT/current"
 
 install -m 0755 "$RELEASE_ROOT/open-settings.sh" /usr/local/bin/octopus-foxess-settings
+install -m 0755 "$RELEASE_ROOT/open-dashboard.sh" /usr/local/bin/octopus-foxess-dashboard
+install -m 0755 "$RELEASE_ROOT/tray.py" /usr/local/bin/octopus-foxess-tray
 install -m 0644 "$RELEASE_ROOT/octopus-foxess.desktop" /usr/share/applications/octopus-foxess.desktop
+install -d -m 0755 /etc/xdg/autostart
+install -m 0644 "$RELEASE_ROOT/octopus-foxess-tray.desktop" /etc/xdg/autostart/octopus-foxess-tray.desktop
 install -d -m 0755 /usr/share/icons/hicolor/scalable/apps
 install -m 0644 "$RELEASE_ROOT/octopus-foxess.svg" /usr/share/icons/hicolor/scalable/apps/octopus-foxess.svg
+install -m 0644 "$RELEASE_ROOT/octopus-foxess-status-green.svg" /usr/share/icons/hicolor/scalable/apps/octopus-foxess-status-green.svg
+install -m 0644 "$RELEASE_ROOT/octopus-foxess-status-amber.svg" /usr/share/icons/hicolor/scalable/apps/octopus-foxess-status-amber.svg
+install -m 0644 "$RELEASE_ROOT/octopus-foxess-status-red.svg" /usr/share/icons/hicolor/scalable/apps/octopus-foxess-status-red.svg
 printf 'OCTOPUS_PORT=%s\n' "$PORT" > /etc/default/octopus-foxess
 chmod 0644 /etc/default/octopus-foxess
 
@@ -83,7 +92,8 @@ if [ -n "$DESKTOP_USER" ] && [ "$DESKTOP_USER" != "root" ] && id "$DESKTOP_USER"
   DESKTOP_HOME="$(getent passwd "$DESKTOP_USER" | cut -d: -f6)"
   DESKTOP_GROUP="$(id -gn "$DESKTOP_USER")"
   if [ -n "$DESKTOP_HOME" ] && [ -d "$DESKTOP_HOME/Desktop" ]; then
-    DESKTOP_SHORTCUT="$DESKTOP_HOME/Desktop/Octopus FoxESS Settings.desktop"
+    rm -f "$DESKTOP_HOME/Desktop/Octopus FoxESS Settings.desktop"
+    DESKTOP_SHORTCUT="$DESKTOP_HOME/Desktop/Octopus FoxESS Dashboard.desktop"
     install -o "$DESKTOP_USER" -g "$DESKTOP_GROUP" -m 0755 "$RELEASE_ROOT/octopus-foxess.desktop" "$DESKTOP_SHORTCUT"
     printf '%s\n' "$DESKTOP_SHORTCUT" > "$CONFIG_ROOT/desktop-shortcut.path"
   fi
@@ -161,13 +171,34 @@ systemctl daemon-reload
 systemctl enable octopus-foxess.service octopus-foxess-worker.service octopus-foxess-inhibit.service
 systemctl restart octopus-foxess.service octopus-foxess-worker.service octopus-foxess-inhibit.service
 
+if [ -n "$DESKTOP_USER" ] && [ "$DESKTOP_USER" != "root" ]; then
+  DESKTOP_UID="$(id -u "$DESKTOP_USER")"
+  DESKTOP_RUNTIME="/run/user/$DESKTOP_UID"
+  if [ -d "$DESKTOP_RUNTIME" ]; then
+    if [ -S "$DESKTOP_RUNTIME/wayland-0" ]; then
+      runuser -u "$DESKTOP_USER" -- env \
+        XDG_RUNTIME_DIR="$DESKTOP_RUNTIME" \
+        DBUS_SESSION_BUS_ADDRESS="unix:path=$DESKTOP_RUNTIME/bus" \
+        WAYLAND_DISPLAY=wayland-0 \
+        /usr/local/bin/octopus-foxess-tray >/dev/null 2>&1 &
+    else
+      runuser -u "$DESKTOP_USER" -- env \
+        XDG_RUNTIME_DIR="$DESKTOP_RUNTIME" \
+        DBUS_SESSION_BUS_ADDRESS="unix:path=$DESKTOP_RUNTIME/bus" \
+        DISPLAY="${DISPLAY:-:0}" \
+        /usr/local/bin/octopus-foxess-tray >/dev/null 2>&1 &
+    fi
+  fi
+fi
+
 ACCESS_KEY="$(cat "$ACCESS_KEY_FILE")"
 LAN_IP="$(hostname -I 2>/dev/null | awk '{print $1}')"
 echo
 echo "Octopus FoxESS v$VERSION is installed and running."
-echo "Open 'Octopus FoxESS Settings' from the Raspberry Pi desktop or application menu."
-echo "Open http://${LAN_IP:-raspberrypi.local}:$PORT on your iPhone."
-echo "Raspberry Pi access key: $ACCESS_KEY"
+echo "The taskbar status icon starts automatically at the next desktop login."
+echo "Open 'Octopus FoxESS Dashboard' from the desktop or application menu."
+echo "Mobile / LAN access: http://${LAN_IP:-raspberrypi.local}:$PORT"
+echo "LAN access code: $ACCESS_KEY"
 echo
 echo "Status: sudo systemctl status octopus-foxess octopus-foxess-worker octopus-foxess-inhibit"
 echo "Logs:   sudo journalctl -u octopus-foxess -u octopus-foxess-worker -u octopus-foxess-inhibit -f"
