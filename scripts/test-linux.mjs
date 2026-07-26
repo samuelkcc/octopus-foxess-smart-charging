@@ -62,6 +62,7 @@ try {
   assert.equal(runtime.mode, 'linux');
   assert.equal(runtime.role, 'worker');
   assert.equal(runtime.authRequired, false);
+  assert.ok(Array.isArray(runtime.lanUrls));
 
   const credentials = {
     acc: 'A-TEST',
@@ -94,6 +95,7 @@ try {
 
   const page = await fetch(`http://127.0.0.1:${port}/`).then(response => response.text());
   assert.match(page, /Smart Charging Detector/);
+  assert.match(page, /Open on iPhone: detecting local address/);
 
   console.log('Linux server, encrypted state, proxy restriction, and static GUI checks passed.');
 } finally {

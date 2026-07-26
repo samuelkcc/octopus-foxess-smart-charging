@@ -11,6 +11,7 @@
 - Added a Raspberry Pi OS edition with a restricted local FoxESS relay, encrypted shared configuration, and no Google Apps Script dependency.
 - Added supervised `systemd` server and headless automation-worker services with automatic restart, reboot startup, and sleep inhibition.
 - Added a local-network dashboard protected by a generated access key and an iPhone-optimised responsive interface.
+- The Raspberry Pi login now displays its detected LAN URL for iPhone access.
 - Added one-command `curl` installation, update, and complete uninstall procedures.
 - Rewrote the login screen, setup guidance, security notes, and README to distinguish the GitHub Pages and Raspberry Pi editions.
 

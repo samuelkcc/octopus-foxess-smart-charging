@@ -101,6 +101,9 @@ credentials. There is no Google Apps Script field in this edition. After the
 first successful connection, the Pi worker receives the encrypted shared
 configuration and keeps running even after Safari is closed.
 
+The Raspberry Pi login screen also displays **Open on iPhone** followed by the
+detected LAN URL, so the address remains visible after installation.
+
 If the IP address changes, try `http://raspberrypi.local:8787` or run
 `hostname -I` on the Pi. The iPhone interface uses safe-area spacing, 16 px form
 controls to prevent Safari zoom, large touch targets, single-column cards, and

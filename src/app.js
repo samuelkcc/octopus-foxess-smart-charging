@@ -85,6 +85,10 @@ async function detectLinuxRuntime() {
         document.querySelectorAll('[data-linux-version]').forEach(element => {
             element.textContent = `Raspberry Pi v${runtime.version}`;
         });
+        document.querySelectorAll('[data-linux-lan-url]').forEach(element => {
+            const iPhoneUrl = runtime.lanUrls?.[0] || window.location.origin;
+            element.textContent = `Open on iPhone: ${iPhoneUrl}`;
+        });
         const gasUrl = document.getElementById('gas-url');
         if (gasUrl) gasUrl.value = '/api/foxess';
     } catch {

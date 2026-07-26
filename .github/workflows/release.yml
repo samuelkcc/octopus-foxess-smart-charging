@@ -4,9 +4,19 @@ on:
   push:
     tags:
       - "v*"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Release tag
+        required: true
+        default: v2026.07.26
 
 permissions:
   contents: write
+
+concurrency:
+  group: release-${{ inputs.tag || github.ref_name }}
+  cancel-in-progress: true
 
 jobs:
   release:
@@ -16,19 +26,41 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
+      - name: Resolve release tag
+        run: echo "RELEASE_TAG=${{ inputs.tag || github.ref_name }}" >> "$GITHUB_ENV"
+      - name: Create tag for a manual release
+        if: github.event_name == 'workflow_dispatch'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          git tag "$RELEASE_TAG" "$GITHUB_SHA"
+          git push origin "$RELEASE_TAG"
       - run: npm run check
       - name: Verify tag matches package version
         run: |
-          test "$GITHUB_REF_NAME" = "v$(node -p "require('./package.json').version.split('.').map((part, index) => index === 0 ? part : part.padStart(2, '0')).join('.')")"
+          test "$RELEASE_TAG" = "v$(node -p "require('./package.json').version.split('.').map((part, index) => index === 0 ? part : part.padStart(2, '0')).join('.')")"
       - name: Create release and upload both editions
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release create "$GITHUB_REF_NAME" \
-            dist/Octopus_IGO_Smart_Charging_Detector.html \
-            dist/Octopus_FoxESS_Raspberry_Pi.tar.gz \
-            dist/install.sh \
-            dist/uninstall.sh \
-            --title "$GITHUB_REF_NAME" \
-            --notes-file RELEASE_NOTES.md \
-            --latest
+          if gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
+            gh release edit "$RELEASE_TAG" \
+              --title "$RELEASE_TAG" \
+              --notes-file RELEASE_NOTES.md \
+              --latest
+            gh release upload "$RELEASE_TAG" \
+              dist/Octopus_IGO_Smart_Charging_Detector.html \
+              dist/Octopus_FoxESS_Raspberry_Pi.tar.gz \
+              dist/install.sh \
+              dist/uninstall.sh \
+              --clobber
+          else
+            gh release create "$RELEASE_TAG" \
+              dist/Octopus_IGO_Smart_Charging_Detector.html \
+              dist/Octopus_FoxESS_Raspberry_Pi.tar.gz \
+              dist/install.sh \
+              dist/uninstall.sh \
+              --title "$RELEASE_TAG" \
+              --notes-file RELEASE_NOTES.md \
+              --latest
+          fi

@@ -59,6 +59,7 @@
         .runtime-strip strong, .runtime-strip span { display: block; }
         .runtime-strip strong { color: var(--text-main); font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.08em; }
         .runtime-strip span { margin-top: 0.2rem; color: var(--text-muted); font-size: 0.74rem; }
+        .runtime-strip .runtime-lan-url { margin-top: 0.55rem; padding-top: 0.5rem; border-top: 1px dashed var(--border); color: #047857; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.72rem; font-weight: 700; overflow-wrap: anywhere; }
         .linux-runtime .runtime-strip { background: #f0fdf4; border-color: #86efac; }
         [data-theme="dark"] .runtime-strip, [data-theme="dark"].linux-runtime .runtime-strip { background: rgba(34, 197, 94, 0.1); border-color: var(--border); }
         .linux-access-group small { display: block; margin-top: 0.4rem; color: var(--text-muted); font-size: 0.72rem; line-height: 1.35; }

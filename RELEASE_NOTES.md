@@ -14,6 +14,7 @@
 
 - Added a Raspberry Pi OS edition that replaces Google Apps Script with a restricted local FoxESS relay.
 - Added encrypted shared Pi configuration, a generated LAN access key, and separate dashboard/automation-worker roles.
+- Added the detected Raspberry Pi LAN URL directly to the login screen for easy iPhone access.
 - Added `systemd` server and headless Chromium worker services with automatic restart, reboot startup, and sleep inhibition.
 - Added one-command `curl` install, update, and uninstall flows.
 - Kept the standalone GitHub Pages edition and its existing Google Apps Script option.

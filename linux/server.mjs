@@ -2,6 +2,7 @@ import { createCipheriv, createDecipheriv, randomBytes, timingSafeEqual } from '
 import { createReadStream } from 'node:fs';
 import { chmod, mkdir, readFile, rename, stat, writeFile } from 'node:fs/promises';
 import http from 'node:http';
+import { networkInterfaces } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -28,6 +29,14 @@ await mkdir(stateRoot, { recursive: true });
 function isLoopback(request) {
   const address = request.socket.remoteAddress || '';
   return address === '127.0.0.1' || address === '::1' || address === '::ffff:127.0.0.1';
+}
+
+function getLanUrls() {
+  return Object.values(networkInterfaces())
+    .flatMap(addresses => addresses || [])
+    .filter(address => address.family === 'IPv4' && !address.internal)
+    .map(address => `http://${address.address}:${port}`)
+    .sort();
 }
 
 async function getAccessKey() {
@@ -192,7 +201,8 @@ const server = http.createServer(async (request, response) => {
         mode: 'linux',
         version,
         role: workerRequested && isLoopback(request) ? 'worker' : 'dashboard',
-        authRequired: !isLoopback(request)
+        authRequired: !isLoopback(request),
+        lanUrls: getLanUrls()
       });
     }
     if (request.method === 'POST' && pathname === '/api/auth') {
