@@ -33,8 +33,12 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          git tag "$RELEASE_TAG" "$GITHUB_SHA"
-          git push origin "$RELEASE_TAG"
+          if git ls-remote --exit-code --tags origin "refs/tags/$RELEASE_TAG" >/dev/null 2>&1; then
+            echo "Reusing existing tag $RELEASE_TAG"
+          else
+            git tag "$RELEASE_TAG" "$GITHUB_SHA"
+            git push origin "$RELEASE_TAG"
+          fi
       - run: npm run check
       - name: Verify tag matches package version
         run: |
