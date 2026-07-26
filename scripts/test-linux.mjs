@@ -17,10 +17,14 @@ const [installerSource, uninstallerSource, stylesSource, markupSource] = await P
   readFile(path.join(root, 'src', 'index.html'), 'utf8')
 ]);
 
-assert.match(installerSource, /systemctl enable --now octopus-foxess\.service octopus-foxess-worker\.service/);
-assert.match(installerSource, /systemd-inhibit --what=sleep:idle/);
+assert.match(installerSource, /systemctl enable --now octopus-foxess\.service octopus-foxess-worker\.service octopus-foxess-inhibit\.service/);
+assert.match(installerSource, /octopus-foxess-inhibit\.service/);
+assert.match(installerSource, /ExecStart=\/usr\/bin\/systemd-inhibit --what=sleep:idle/);
+assert.match(installerSource, /ExecStart=\/usr\/bin\/chromium --headless=new/);
 assert.match(installerSource, /releases\/latest\/download/);
-assert.match(uninstallerSource, /systemctl disable --now octopus-foxess-worker\.service octopus-foxess\.service/);
+assert.match(installerSource, /\(umask 027 && printf/);
+assert.match(installerSource, /chmod -R u=rwX,go=rX "\$RELEASE_ROOT"/);
+assert.match(uninstallerSource, /systemctl disable --now octopus-foxess-inhibit\.service octopus-foxess-worker\.service octopus-foxess\.service/);
 assert.match(stylesSource, /@media \(max-width: 600px\)/);
 assert.match(stylesSource, /font-size: 16px/);
 assert.match(markupSource, /no Google Apps Script/);

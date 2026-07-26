@@ -1,3 +1,9 @@
+## Hotfix v2026.07.26.1
+
+- Fixed Raspberry Pi installation permissions that could leave the installer waiting while the local server repeatedly restarted.
+- Kept the generated access key private while ensuring the installed application is readable by its dedicated service account.
+- Moved sleep inhibition into a separate root-owned service so Raspberry Pi OS can acquire the inhibitor while the app and Chromium remain unprivileged.
+
 ## Fixed
 
 - Corrected SEG accounts that could select an export meter point as the primary import tariff.

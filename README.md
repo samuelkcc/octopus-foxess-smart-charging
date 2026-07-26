@@ -112,15 +112,16 @@ responsive charts.
 ### Service commands
 
 ```bash
-sudo systemctl status octopus-foxess octopus-foxess-worker
-sudo journalctl -u octopus-foxess -u octopus-foxess-worker -f
-sudo systemctl restart octopus-foxess octopus-foxess-worker
+sudo systemctl status octopus-foxess octopus-foxess-worker octopus-foxess-inhibit
+sudo journalctl -u octopus-foxess -u octopus-foxess-worker -u octopus-foxess-inhibit -f
+sudo systemctl restart octopus-foxess octopus-foxess-worker octopus-foxess-inhibit
 sudo cat /etc/octopus-foxess/access.key
 ```
 
-Both services use `Restart=always`. The worker is wrapped by
-`systemd-inhibit`, so sleep and idle suspend remain blocked while automation is
-running. Rebooting the Pi automatically starts the server and worker again.
+All three services use `Restart=always`. A separate root-owned
+`octopus-foxess-inhibit` service holds the sleep and idle inhibitor without
+granting elevated privileges to the server or Chromium worker. Rebooting the Pi
+automatically starts all three services again.
 
 ### Update
 

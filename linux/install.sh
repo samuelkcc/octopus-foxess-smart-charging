@@ -38,9 +38,8 @@ install -d -o root -g "$APP_USER" -m 0750 "$CONFIG_ROOT"
 install -d -o root -g root -m 0755 "$APP_ROOT/releases"
 
 if [ ! -s "$CONFIG_ROOT/access.key" ]; then
-  umask 027
   ACCESS_KEY="$(od -An -N12 -tx1 /dev/urandom | tr -d ' \n')"
-  printf '%s\n' "$ACCESS_KEY" > "$CONFIG_ROOT/access.key"
+  (umask 027 && printf '%s\n' "$ACCESS_KEY" > "$CONFIG_ROOT/access.key")
 fi
 chown root:"$APP_USER" "$CONFIG_ROOT/access.key"
 chmod 0640 "$CONFIG_ROOT/access.key"
@@ -63,6 +62,7 @@ RELEASE_ROOT="$APP_ROOT/releases/$VERSION"
 rm -rf "$RELEASE_ROOT"
 install -d -o root -g root -m 0755 "$RELEASE_ROOT"
 cp -R "$TEMP_DIR/octopus-foxess/." "$RELEASE_ROOT/"
+chmod -R u=rwX,go=rX "$RELEASE_ROOT"
 ln -sfn "$RELEASE_ROOT" "$APP_ROOT/current"
 
 cat > /etc/systemd/system/octopus-foxess.service <<EOF
@@ -104,7 +104,7 @@ Type=simple
 User=$APP_USER
 Group=$APP_USER
 ExecStartPre=/bin/sh -c 'until curl -fsS http://127.0.0.1:$PORT/api/health >/dev/null; do sleep 1; done'
-ExecStart=/usr/bin/systemd-inhibit --what=sleep:idle --who=Octopus-FoxESS --why=Always-on-automation --mode=block /usr/bin/chromium --headless=new --disable-gpu --disable-dev-shm-usage --no-first-run --password-store=basic --user-data-dir=$STATE_ROOT/chromium http://127.0.0.1:$PORT/?worker=1
+ExecStart=/usr/bin/chromium --headless=new --disable-gpu --disable-dev-shm-usage --no-first-run --password-store=basic --user-data-dir=$STATE_ROOT/chromium http://127.0.0.1:$PORT/?worker=1
 Restart=always
 RestartSec=5
 NoNewPrivileges=true
@@ -117,8 +117,24 @@ ReadWritePaths=$STATE_ROOT
 WantedBy=multi-user.target
 EOF
 
+cat > /etc/systemd/system/octopus-foxess-inhibit.service <<EOF
+[Unit]
+Description=Octopus FoxESS sleep inhibitor
+After=systemd-logind.service
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/systemd-inhibit --what=sleep:idle --who=Octopus-FoxESS --why=Always-on-automation --mode=block /usr/bin/sleep infinity
+Restart=always
+RestartSec=5
+NoNewPrivileges=true
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
 systemctl daemon-reload
-systemctl enable --now octopus-foxess.service octopus-foxess-worker.service
+systemctl enable --now octopus-foxess.service octopus-foxess-worker.service octopus-foxess-inhibit.service
 
 ACCESS_KEY="$(cat "$CONFIG_ROOT/access.key")"
 LAN_IP="$(hostname -I 2>/dev/null | awk '{print $1}')"
@@ -127,5 +143,5 @@ echo "Octopus FoxESS v$VERSION is installed and running."
 echo "Open http://${LAN_IP:-raspberrypi.local}:$PORT on your iPhone."
 echo "Raspberry Pi access key: $ACCESS_KEY"
 echo
-echo "Status: sudo systemctl status octopus-foxess octopus-foxess-worker"
-echo "Logs:   sudo journalctl -u octopus-foxess -u octopus-foxess-worker -f"
+echo "Status: sudo systemctl status octopus-foxess octopus-foxess-worker octopus-foxess-inhibit"
+echo "Logs:   sudo journalctl -u octopus-foxess -u octopus-foxess-worker -u octopus-foxess-inhibit -f"
