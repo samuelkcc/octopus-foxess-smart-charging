@@ -59,16 +59,22 @@
             <span class="runtime-lan-url" data-linux-lan-url>Open on iPhone: detecting local address…</span>
         </div>
         
-        <button type="button" onclick="toggleDrawer('why-use-panel')" style="background: transparent; border: 1px solid var(--border); color: var(--text-muted); font-size: 0.85rem; padding: 0.65rem; border-radius: 10px; cursor: pointer; width: 100%; font-weight: 600; margin-bottom: 1.5rem; transition: all 0.2s;" onmouseover="this.style.color='var(--text-main)'; this.style.borderColor='var(--text-muted)';" onmouseout="this.style.color='var(--text-muted)'; this.style.borderColor='var(--border)';">
+        <button type="button" class="pi-config-only" onclick="toggleDrawer('why-use-panel')" style="background: transparent; border: 1px solid var(--border); color: var(--text-muted); font-size: 0.85rem; padding: 0.65rem; border-radius: 10px; cursor: pointer; width: 100%; font-weight: 600; margin-bottom: 1.5rem; transition: all 0.2s;" onmouseover="this.style.color='var(--text-main)'; this.style.borderColor='var(--text-muted)';" onmouseout="this.style.color='var(--text-muted)'; this.style.borderColor='var(--border)';">
             ℹ️ App Overview & Purpose
         </button>
 
         <div id="error" class="error"></div>
 
+        <div class="linux-client-only linux-client-note">
+            <strong>iPhone dashboard client</strong><br>
+            Enter only the access key you chose in the Raspberry Pi Settings app.
+            Octopus and FoxESS credentials stay managed by the Pi service.
+        </div>
+
         <div class="input-group linux-only linux-access-group">
-            <label>🔐 Raspberry Pi Access Key</label>
+            <label>🔐 iPhone Dashboard Access Key</label>
             <input type="password" id="local-access-key" placeholder="Set in the Pi Settings app" autocomplete="current-password">
-            <small>Required only from another device on your home network. Manage it from the Raspberry Pi Settings icon.</small>
+            <small>This is the only setup required on your iPhone. Manage the key from the Raspberry Pi Settings icon.</small>
         </div>
 
         <div class="input-group linux-only linux-local-only">
@@ -85,24 +91,24 @@
             Save the settings once, then close this app window. The supervised Pi worker keeps running after logout, browser closure, and reboot.
         </div>
         
-        <div class="input-group">
+        <div class="input-group pi-config-only">
             <label>🐙 Octopus Account Number</label>
             <input type="text" id="acc" placeholder="e.g., A-12345678">
         </div>
         
-        <div class="input-group">
+        <div class="input-group pi-config-only">
             <label>🐙 Octopus API Key</label>
             <input type="password" id="api" placeholder="sk_live_...">
         </div>
 
-        <div class="auth-divider">FoxESS Integration</div>
+        <div class="auth-divider pi-config-only">FoxESS Integration</div>
 
-        <div class="input-group">
+        <div class="input-group pi-config-only">
             <label>🦊 FoxESS Inverter Serial Number</label>
             <input type="text" id="fox-sn" placeholder="e.g., 60B21000000000">
         </div>
         
-        <div class="input-group">
+        <div class="input-group pi-config-only">
             <label>🦊 FoxESS API Token</label>
             <input type="password" id="fox-token" placeholder="Generated from FoxCloud">
         </div>
@@ -121,14 +127,14 @@
             </div>
         </button>
         
-        <div style="display: flex; gap: 0.75rem; margin-top: 1rem;">
+        <div class="pi-config-only" style="display: flex; gap: 0.75rem; margin-top: 1rem;">
             <button onclick="document.getElementById('import-file').click()" class="btn-clear" style="background-color: #3b82f6; font-size: 0.85rem; padding: 0.6rem; border-radius: 8px;">Load Config</button>
             <button onclick="document.getElementById('wipe-modal').style.display='flex'" id="btn-clear" style="background-color: #ffffff; color: #3b82f6; border: 2px dotted #3b82f6; font-size: 0.85rem; padding: 0.6rem; border-radius: 8px; font-weight: 600; cursor: pointer; transition: all 0.2s;" onmouseover="this.style.backgroundColor='#f8fafc'" onmouseout="this.style.backgroundColor='#ffffff'">Wipe Data</button>
         </div>
         <input type="file" id="import-file" style="display: none;" accept=".enc,.txt" onchange="handleImportFile(event)">
 
         <div style="text-align: center; margin-top: 1.5rem; display: flex; gap: 0.75rem; flex-direction: column; align-items: center;">
-            <button type="button" onclick="toggleDrawer('setup-guide-panel')" style="background: #f1f5f9; border: 1px solid #cbd5e1; color: #475569; font-size: 0.85rem; padding: 0.6rem 1.2rem; border-radius: 8px; cursor: pointer; width: 100%; font-weight: 600; transition: background 0.2s;">
+            <button type="button" class="pi-config-only" onclick="toggleDrawer('setup-guide-panel')" style="background: #f1f5f9; border: 1px solid #cbd5e1; color: #475569; font-size: 0.85rem; padding: 0.6rem 1.2rem; border-radius: 8px; cursor: pointer; width: 100%; font-weight: 600; transition: background 0.2s;">
                 Open Setup Guide
             </button>
             <span onclick="openLicenseModal(false)" style="color: #64748b; font-size: 0.8rem; text-decoration: underline; cursor: pointer; transition: color 0.2s;" onmouseover="this.style.color='var(--text-main)'" onmouseout="this.style.color='#64748b'">⚖️ View Legal & Disclaimer</span>
@@ -509,7 +515,7 @@
 
     </div> <div class="app-footer">
         <div style="text-align: left;">Developer Samuel Chen</div>
-        <div style="text-align: right;">&copy; Copyright 2026 samuelchen.hk Build v2026.07.26.3</div>
+        <div style="text-align: right;">&copy; Copyright 2026 samuelchen.hk Build v2026.07.26.4</div>
     </div>
 </div> 
 

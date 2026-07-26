@@ -11,11 +11,13 @@ let foxRefreshInterval = 600;
 let foxCountdown = 600;
 let refreshTimerId = null;
 let linuxConfigPollId = null;
+let activeCredentials = null;
 
 const CREDENTIAL_STORAGE_KEY = 'encryptedCredentialsV1';
 const CREDENTIAL_DB_NAME = 'octopusFoxessSecureStorage';
 const REQUEST_TIMEOUT_MS = 15000;
 const LINUX_CONFIG_ENDPOINT = '/api/config';
+const LINUX_OCTOPUS_ENDPOINT = '/api/octopus';
 
 window.linuxRuntime = false;
 window.linuxRole = 'web';
@@ -61,6 +63,24 @@ async function fetchJson(url, options = {}, timeoutMs = REQUEST_TIMEOUT_MS) {
     } finally {
         clearTimeout(timeoutId);
     }
+}
+
+async function fetchOctopusJson(url, options = {}, authMode = 'none') {
+    if (!window.linuxRuntime) return fetchJson(url, options);
+    let body = options.body || null;
+    if (typeof body === 'string') {
+        body = JSON.parse(body);
+    }
+    return fetchJson(LINUX_OCTOPUS_ENDPOINT, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            url,
+            method: options.method || 'GET',
+            body,
+            authMode
+        })
+    });
 }
 
 function getLinuxAccessKey() {
@@ -147,6 +167,8 @@ async function detectLinuxRuntime() {
         });
         const gasUrl = document.getElementById('gas-url');
         if (gasUrl) gasUrl.value = '/api/foxess';
+        const buttonText = document.getElementById('btn-text');
+        if (buttonText && runtime.authRequired) buttonText.textContent = 'OPEN DASHBOARD';
     } catch {
         // Static GitHub Pages and downloaded HTML intentionally have no runtime endpoint.
     }
@@ -331,10 +353,14 @@ async function getCredentialKey() {
 }
 
 async function saveCredentials(credentials) {
+    activeCredentials = { ...credentials };
     if (window.linuxRuntime) {
         const linuxCredentials = { ...credentials, gasUrl: '/api/foxess' };
-        sessionStorage.setItem('sessionCredentials', JSON.stringify(linuxCredentials));
-        await updateLinuxState({ credentials: linuxCredentials });
+        activeCredentials = linuxCredentials;
+        if (!window.linuxAuthRequired) {
+            sessionStorage.setItem('sessionCredentials', JSON.stringify(linuxCredentials));
+            await updateLinuxState({ credentials: linuxCredentials });
+        }
         return;
     }
     try {
@@ -356,8 +382,11 @@ async function loadCredentials() {
     if (window.linuxRuntime) {
         const state = await loadLinuxState();
         if (state.credentials) {
-            sessionStorage.setItem('sessionCredentials', JSON.stringify(state.credentials));
-            return state.credentials;
+            activeCredentials = { ...state.credentials, gasUrl: '/api/foxess' };
+            if (!window.linuxAuthRequired) {
+                sessionStorage.setItem('sessionCredentials', JSON.stringify(activeCredentials));
+            }
+            return activeCredentials;
         }
         return null;
     }
@@ -425,7 +454,15 @@ async function handleConnectClick() {
     } else {
         try {
             if (!(await ensureLinuxAccess())) return;
-            if (window.linuxRuntime && !document.getElementById('acc').value.trim()) {
+            if (window.linuxRuntime && window.linuxAuthRequired) {
+                const state = await loadLinuxState();
+                activeCredentials = state.credentials
+                    ? { ...state.credentials, gasUrl: '/api/foxess' }
+                    : null;
+                if (!activeCredentials?.acc || !activeCredentials?.api) {
+                    throw new Error('Complete the Octopus and FoxESS setup in the Raspberry Pi Settings app first.');
+                }
+            } else if (window.linuxRuntime && !document.getElementById('acc').value.trim()) {
                 const state = await loadLinuxState();
                 if (state.credentials) populateCredentialInputs(state.credentials);
             }
@@ -623,7 +660,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     const counterSpan = document.getElementById('fox-api-counter');
     if(counterSpan) counterSpan.textContent = apiData.count;
 
-    const legacyCredentials = localStorage.getItem('octoApi') ? {
+    const legacyCredentials = (!window.linuxRuntime || !window.linuxAuthRequired) && localStorage.getItem('octoApi') ? {
         acc: localStorage.getItem('octoAcc') || '',
         api: localStorage.getItem('octoApi') || '',
         foxSN: localStorage.getItem('foxSn') || '',
@@ -642,7 +679,10 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
     const hasCreds = Boolean(credentials?.acc && credentials?.api);
     if (credentials) {
-        populateCredentialInputs(credentials);
+        activeCredentials = { ...credentials };
+        if (!(window.linuxRuntime && window.linuxAuthRequired)) {
+            populateCredentialInputs(credentials);
+        }
     }
 
     if (hasCreds && !isPiSettingsMode()) {
@@ -786,11 +826,20 @@ async function executeImport() {
 }
 
 async function initDashboard(isAutoRefresh = false, retryCount = 1) {
-    const acc = document.getElementById('acc').value.trim();
-    const api = document.getElementById('api').value.trim();
-    globalFoxSN = document.getElementById('fox-sn').value.trim();
-    globalFoxToken = document.getElementById('fox-token').value.trim();
-    globalGasUrl = document.getElementById('gas-url').value.trim();
+    const credentials = window.linuxRuntime && window.linuxAuthRequired
+        ? activeCredentials
+        : {
+            acc: document.getElementById('acc').value.trim(),
+            api: document.getElementById('api').value.trim(),
+            foxSN: document.getElementById('fox-sn').value.trim(),
+            foxToken: document.getElementById('fox-token').value.trim(),
+            gasUrl: document.getElementById('gas-url').value.trim()
+        };
+    const acc = credentials?.acc || '';
+    const api = credentials?.api || '';
+    globalFoxSN = credentials?.foxSN || '';
+    globalFoxToken = credentials?.foxToken || '';
+    globalGasUrl = window.linuxRuntime ? '/api/foxess' : (credentials?.gasUrl || '');
     
     const btn = document.getElementById('btn');
     const errorDiv = document.getElementById('error');
@@ -819,30 +868,41 @@ async function initDashboard(isAutoRefresh = false, retryCount = 1) {
         const GRAPHQL_URL = 'https://api.octopus.energy/v1/graphql/';
 
         // 1. Octopus Auth (with automatic retry for API cold-starts)
-        let authData;
-        for (let attempt = 1; attempt <= 2; attempt++) {
-            authData = await fetchJson(GRAPHQL_URL, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ query: `mutation { obtainKrakenToken(input: { APIKey: ${JSON.stringify(api)} }) { token } }` })
-            });
-            if(!authData.errors) break; 
-            if(attempt === 2) throw new Error("Invalid Octopus API Key or API offline");
-        }
+        const dashboardQuery = {
+            query: `query getGoData($acc: String!) {
+                registeredKrakenflexDevice(accountNumber: $acc) { provider vehicleMake vehicleModel chargePointMake chargePointModel status }
+                vehicleChargingPreferences(accountNumber: $acc) { weekdayTargetTime weekdayTargetSoc }
+                plannedDispatches(accountNumber: $acc) { startDt endDt }
+            }`,
+            variables: { acc }
+        };
 
-        // 2. Fetch GraphQL Data
-        const gqlData = await fetchJson(GRAPHQL_URL, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'Authorization': authData.data.obtainKrakenToken.token },
-            body: JSON.stringify({ 
-                query: `query getGoData($acc: String!) { 
-                    registeredKrakenflexDevice(accountNumber: $acc) { provider vehicleMake vehicleModel chargePointMake chargePointModel status }
-                    vehicleChargingPreferences(accountNumber: $acc) { weekdayTargetTime weekdayTargetSoc }
-                    plannedDispatches(accountNumber: $acc) { startDt endDt }
-                }`,
-                variables: { acc: acc }
-            })
-        });
+        // 1–2. Authenticate and fetch Octopus dashboard data. On Raspberry Pi,
+        // the service performs authentication so API credentials never enter a
+        // remote iPhone browser.
+        let gqlData;
+        if (window.linuxRuntime) {
+            gqlData = await fetchOctopusJson(GRAPHQL_URL, {
+                method: 'POST',
+                body: JSON.stringify(dashboardQuery)
+            }, 'graphql');
+        } else {
+            let authData;
+            for (let attempt = 1; attempt <= 2; attempt++) {
+                authData = await fetchJson(GRAPHQL_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ query: `mutation { obtainKrakenToken(input: { APIKey: ${JSON.stringify(api)} }) { token } }` })
+                });
+                if(!authData.errors) break;
+                if(attempt === 2) throw new Error("Invalid Octopus API Key or API offline");
+            }
+            gqlData = await fetchJson(GRAPHQL_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Authorization': authData.data.obtainKrakenToken.token },
+                body: JSON.stringify(dashboardQuery)
+            });
+        }
         const device = gqlData.data?.registeredKrakenflexDevice;
         const prefs = gqlData.data?.vehicleChargingPreferences;
         const dispatches = gqlData.data?.plannedDispatches || [];
@@ -862,9 +922,9 @@ async function initDashboard(isAutoRefresh = false, retryCount = 1) {
         let exportRates = [];
 
         try {
-            const accData = await fetchJson(`https://api.octopus.energy/v1/accounts/${encodeURIComponent(acc)}/`, {
+            const accData = await fetchOctopusJson(`https://api.octopus.energy/v1/accounts/${encodeURIComponent(acc)}/`, {
                 headers: { 'Authorization': 'Basic ' + btoa(api + ':') }
-            });
+            }, 'basic');
             const { importTariff, exportTariff } = selectActiveElectricityTariffs(accData);
             importTariffCode = importTariff?.agreement?.tariff_code || importTariffCode;
             exportTariffCode = exportTariff?.agreement?.tariff_code || exportTariffCode;

@@ -43,7 +43,11 @@ Features include:
 - encrypted configuration and password-protected manual backups
 - responsive phone, tablet, desktop, dark-mode, full-screen, and Mini HUD views
 
-## Credentials required by both editions
+## Credentials required during initial setup
+
+The web edition asks for these details in its browser login. For the Raspberry
+Pi edition, enter them once in the **Octopus FoxESS Settings** app on the Pi.
+The iPhone client never asks for them.
 
 ### Octopus Energy
 
@@ -107,14 +111,18 @@ http://192.168.1.42:8787
 ```
 
 Enter the iPhone LAN access key. There is no Google Apps Script field in this
-edition. After the first successful Pi setup, the supervised worker reads the
-centrally stored encrypted configuration and keeps running even after the Pi
-settings window and iPhone Safari are closed.
+edition, and the iPhone does not show Octopus or FoxESS credential fields,
+configuration import, or wipe controls. After the one-key check, the Pi service
+authenticates with Octopus and signs FoxESS requests on the client's behalf.
+After the first successful Pi setup, the supervised worker reads the centrally
+stored encrypted configuration and keeps running even after the Pi settings
+window and iPhone Safari are closed.
 
-The iPhone is not a pixel-by-pixel screen mirror. It opens its own responsive
-dashboard, reads the current data and configuration from the Pi, and sends
-deliberate setting changes back to the same Pi. The Pi remains the source of
-truth and the only unattended automation worker.
+The iPhone is not a pixel-by-pixel screen mirror. It is a responsive client of
+the Pi service: it reads the same live dashboard state and sends deliberate
+automation changes back to the Pi. Octopus and FoxESS service credentials can
+only be viewed, changed, imported, or wiped from the Pi-local Settings app. The
+Pi remains the source of truth and the only unattended automation worker.
 
 The Raspberry Pi login screen also displays **Open on iPhone** followed by the
 detected LAN URL, so the address remains visible after installation.
@@ -200,6 +208,9 @@ run the web edition's timers; use the Raspberry Pi edition for unattended use.
   browser storage is available.
 - Raspberry Pi credentials and automation settings are encrypted with AES-256-GCM
   in `/var/lib/octopus-foxess`.
+- Authenticated LAN clients receive only managed-configuration status; Octopus
+  API keys, FoxESS tokens, and inverter serial numbers are not returned.
+- The Pi authenticates Octopus requests and signs FoxESS requests server-side.
 - The LAN access key is stored with service-only permissions in
   `/var/lib/octopus-foxess/access.key` and can only be viewed or changed through
   the settings screen opened locally on the Pi.
@@ -208,8 +219,8 @@ run the web edition's timers; use the Raspberry Pi edition for unattended use.
   for the supervised worker.
 - Port `8787` uses HTTP on the trusted home LAN. Do not expose it through router
   port forwarding, a public IP, or an untrusted Wi-Fi network.
-- Use **Wipe Data** to clear saved configuration. In the Pi edition this also
-  clears the shared encrypted server configuration.
+- Use **Wipe Data** in the Pi-local Settings app to clear saved configuration.
+  Remote iPhone clients cannot wipe or replace service credentials.
 
 FoxESS enforces API limits. The Pi worker owns unattended automation; connected
 iPhones do not perform duplicate automatic schedule writes. Deliberate manual

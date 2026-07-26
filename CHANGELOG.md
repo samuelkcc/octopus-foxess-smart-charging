@@ -1,5 +1,13 @@
 # Changelog
 
+## v2026.07.26.4 — 2026-07-26
+
+- Reduced the iPhone LAN login to one dashboard access-key field and removed all service credential, import, wipe, and setup controls from remote clients.
+- Kept Octopus API keys, FoxESS tokens, and inverter serial numbers inside the Pi service; remote configuration responses now contain only non-secret managed-state markers.
+- Moved Octopus authentication and FoxESS request signing into the Pi server so service credentials do not enter the iPhone browser.
+- Restricted credential changes and full configuration wipes to the Pi-local Settings app.
+- Clarified the service/client model in the Raspberry Pi guide.
+
 ## v2026.07.26.3 — 2026-07-26
 
 - Use the bundled Octopus FoxESS artwork directly for the Raspberry Pi desktop launcher and browser window icon.

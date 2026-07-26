@@ -1,4 +1,26 @@
-## Desktop integration hotfix v2026.07.26.3
+## Raspberry Pi service/client separation v2026.07.26.4
+
+### Fixed
+
+- The iPhone LAN login now asks only for the access key configured in the Raspberry Pi Settings app.
+- Removed Octopus account/API-key, FoxESS serial/token, config import, wipe, and setup controls from remote clients.
+
+### Improved
+
+- Octopus authentication and FoxESS request signing now happen inside the Pi service.
+- Remote configuration responses expose managed-state markers instead of stored service secrets.
+- Credential changes and full configuration wipes are restricted to the Pi-local Settings app.
+
+### Deployment
+
+- Keeps the existing GitHub Pages web edition and Raspberry Pi `systemd` services.
+- Updates the one-command installer package without changing the port or LAN URL.
+
+### Validation
+
+- Covers the one-key iPhone login, redacted client state, server-side API authentication, remote mutation restrictions, standalone web build, and Raspberry Pi package.
+
+## Previous desktop integration hotfix v2026.07.26.3
 
 - Uses the bundled Octopus FoxESS icon directly for the Raspberry Pi desktop launcher and local settings window.
 - Publishes the same favicon with the Raspberry Pi package and GitHub Pages.

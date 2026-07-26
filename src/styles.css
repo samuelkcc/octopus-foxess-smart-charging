@@ -55,6 +55,9 @@
         .linux-runtime .web-runtime-only { display: none !important; }
         .linux-runtime .linux-access-group { display: none !important; }
         .linux-runtime.linux-auth-required .linux-access-group { display: block !important; }
+        .linux-client-only { display: none !important; }
+        .linux-runtime.linux-auth-required .linux-client-only { display: block !important; }
+        .linux-runtime.linux-auth-required .pi-config-only { display: none !important; }
         .linux-local-only { display: none !important; }
         .linux-runtime.linux-local .linux-local-only { display: block !important; }
         .runtime-strip { margin: -1rem 0 1.5rem; padding: 0.75rem 0.9rem; border: 1px solid var(--border); border-radius: 10px; background: #f8fafc; text-align: center; }
@@ -67,6 +70,8 @@
         .linux-access-group small { display: block; margin-top: 0.4rem; color: var(--text-muted); font-size: 0.72rem; line-height: 1.35; }
         .linux-service-note { margin: 0 0 1.25rem; padding: 0.8rem; border: 1px solid #86efac; border-radius: 10px; background: #f0fdf4; color: #475569; font-size: 0.78rem; line-height: 1.45; }
         [data-theme="dark"] .linux-service-note { background: rgba(34, 197, 94, 0.1); border-color: var(--border); color: var(--text-muted); }
+        .linux-client-note { margin: 0 0 1.25rem; padding: 0.9rem; border: 1px solid #93c5fd; border-radius: 10px; background: #eff6ff; color: #475569; font-size: 0.8rem; line-height: 1.5; }
+        [data-theme="dark"] .linux-client-note { background: rgba(59, 130, 246, 0.1); border-color: var(--border); color: var(--text-muted); }
         .inline-visibility-button { width: auto; padding: 0; background: transparent; color: #3b82f6; border: 0; font-size: 0.75rem; }
         .inline-visibility-button:hover { background: transparent; color: #1d4ed8; }
         .slide-panel { position: absolute; top: 50%; height: fit-content; max-height: 90%; width: 380px; background: var(--card-bg); padding: 2.25rem 2rem; border-radius: 16px; box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05); border: 1px solid var(--border); display: flex; flex-direction: column; box-sizing: border-box; transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.3s ease, z-index 0s linear; opacity: 0; z-index: 5; pointer-events: none; overflow-y: auto; }
