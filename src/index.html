@@ -19,7 +19,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>Smart Charging Detector</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.9/dist/chart.umd.min.js" integrity="sha384-b0GXujLkk9eYYSmcSfoyZbfyElGAQnDyY0skCHSG6w3JgTMFnz11ggrTAr7seu9f" crossorigin="anonymous"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js" integrity="sha384-S3wQ/l0OsbJoFeJC81UIr3JOlx/OzNJpRt1bV+yhpWQxPAahfpQtpxBSfn+Isslc" crossorigin="anonymous"></script>
@@ -48,12 +48,26 @@
     <div class="auth-card" id="login-card">
         <h2>⚡ Smart Charging Detector</h2>
         <div class="auth-subtitle">Intelligent Octopus Go & FoxESS</div>
+        <div class="runtime-strip web-runtime-only">
+            <strong>Web edition</strong>
+            <span>Runs in this browser · Google relay required for FoxESS</span>
+        </div>
+        <div class="runtime-strip linux-only">
+            <strong data-linux-version>Raspberry Pi edition</strong>
+            <span>Always-on local worker · no Google Apps Script</span>
+        </div>
         
         <button type="button" onclick="toggleDrawer('why-use-panel')" style="background: transparent; border: 1px solid var(--border); color: var(--text-muted); font-size: 0.85rem; padding: 0.65rem; border-radius: 10px; cursor: pointer; width: 100%; font-weight: 600; margin-bottom: 1.5rem; transition: all 0.2s;" onmouseover="this.style.color='var(--text-main)'; this.style.borderColor='var(--text-muted)';" onmouseout="this.style.color='var(--text-muted)'; this.style.borderColor='var(--border)';">
             ℹ️ App Overview & Purpose
         </button>
 
         <div id="error" class="error"></div>
+
+        <div class="input-group linux-only linux-access-group">
+            <label>🔐 Raspberry Pi Access Key</label>
+            <input type="password" id="local-access-key" placeholder="Printed after installation" autocomplete="current-password">
+            <small>Required only when connecting from another device on your home network.</small>
+        </div>
         
         <div class="input-group">
             <label>🐙 Octopus Account Number</label>
@@ -77,10 +91,11 @@
             <input type="password" id="fox-token" placeholder="Generated from FoxCloud">
         </div>
 
-        <div class="input-group" style="margin-bottom: 1.5rem;">
+        <div class="input-group web-runtime-only" style="margin-bottom: 1.5rem;">
             <label>📜 Google Apps Script Relay URL</label>
             <input type="text" id="gas-url" placeholder="https://script.google.com/macros/s/.../exec">
         </div>
+        <input class="linux-only" type="hidden" id="linux-relay-url" value="/api/foxess">
         
         <button onclick="handleConnectClick()" id="btn" style="height: 58px; padding: 0 1rem; box-sizing: border-box; font-size: 1.05rem; border-radius: 10px; box-shadow: 0 4px 10px -2px rgba(225, 29, 72, 0.3); margin-top: 0.5rem; display: flex; align-items: center; justify-content: center; gap: 10px; transition: background-color 0.3s;">
             <span id="btn-text">CONNECT</span>
@@ -98,7 +113,7 @@
 
         <div style="text-align: center; margin-top: 1.5rem; display: flex; gap: 0.75rem; flex-direction: column; align-items: center;">
             <button type="button" onclick="toggleDrawer('setup-guide-panel')" style="background: #f1f5f9; border: 1px solid #cbd5e1; color: #475569; font-size: 0.85rem; padding: 0.6rem 1.2rem; border-radius: 8px; cursor: pointer; width: 100%; font-weight: 600; transition: background 0.2s;">
-                Toggle Setup Guide
+                Open Setup Guide
             </button>
             <span onclick="openLicenseModal(false)" style="color: #64748b; font-size: 0.8rem; text-decoration: underline; cursor: pointer; transition: color 0.2s;" onmouseover="this.style.color='var(--text-main)'" onmouseout="this.style.color='#64748b'">⚖️ View Legal & Disclaimer</span>
             <button type="button" class="theme-toggle-btn" onclick="toggleDarkMode()" style="background: transparent; border: 1px solid var(--border); color: var(--text-main); font-size: 0.85rem; padding: 0.6rem 1.2rem; border-radius: 8px; cursor: pointer; width: 100%; transition: background 0.2s; margin-top: 0.5rem;">🌗 Dark Mode</button>
@@ -133,7 +148,7 @@
                 </ul>
             </div>
             
-            <div style="background: #f8fafc; padding: 1rem; border-radius: 10px; border: 1px solid #e2e8f0;">
+            <div class="web-runtime-only" style="background: #f8fafc; padding: 1rem; border-radius: 10px; border: 1px solid #e2e8f0;">
                 <strong style="color: #10b981;">📜 Google Apps Script Relay</strong>
                 <p style="margin: 0.5rem 0; color: #475569; line-height: 1.4;">
                     Your browser explicitly blocks direct background connections to FoxESS for security (CORS restriction). A free Google Script acts as a safe, private server relay to bypass this.
@@ -141,10 +156,21 @@
                 <button type="button" onclick="closeAllDrawers(); document.getElementById('proxy-modal').style.display='flex'" style="background: #f43f5e; color: white; border: none; padding: 0.5rem 0.8rem; border-radius: 6px; cursor: pointer; font-size: 0.8rem; width: 100%; font-weight: 600;">View Setup Instructions</button>
             </div>
 
+            <div class="linux-only" style="background: #f0fdf4; padding: 1rem; border-radius: 10px; border: 1px solid #86efac;">
+                <strong style="color: #047857;">🍓 Raspberry Pi Local Service</strong>
+                <p style="margin: 0.5rem 0; color: #475569; line-height: 1.4;">
+                    The Pi provides the FoxESS relay and always-on automation worker. Enter the access key printed by the installer; no Google account or Apps Script URL is needed.
+                </p>
+                <p style="margin: 0; color: #475569; line-height: 1.4;">
+                    Keep the Pi connected to your home network. You can close Safari after setup—the supervised worker continues running.
+                </p>
+            </div>
+
             <div style="background: #f8fafc; padding: 1rem; border-radius: 10px; border: 1px solid #e2e8f0;">
-                <strong style="color: #6366f1;">🖥️ Kiosk / Device Tips</strong>
+                <strong style="color: #6366f1;">🖥️ Device Tips</strong>
                 <ul style="margin: 0.5rem 0 0; padding-left: 1.25rem; color: #475569; font-size: 0.8rem;">
-                    <li style="margin-bottom: 0.5rem;"><strong>Raspberry Pi OS:</strong> Emojis may show as empty boxes. To fix this, open the terminal and install the emoji pack:<br><code style="background: #e2e8f0; padding: 2px 4px; border-radius: 4px; display: inline-block; margin-top: 4px; color: #0f172a;">sudo apt install fonts-noto-color-emoji</code></li>
+                    <li class="web-runtime-only" style="margin-bottom: 0.5rem;"><strong>Raspberry Pi browser:</strong> The dedicated Linux installer is recommended for reliable always-on use.</li>
+                    <li class="linux-only" style="margin-bottom: 0.5rem;"><strong>Service status:</strong> Run <code>sudo systemctl status octopus-foxess octopus-foxess-worker</code> on the Pi.</li>
                     <li><strong>Android Tablets:</strong> To run continuously as a dashboard, ensure you disable the automatic screen lock/sleep timeout in your tablet's <strong>Settings ➔ Display</strong>.</li>
                 </ul>
             </div>
@@ -200,9 +226,35 @@
             <div class="summary-grid">
                 <div class="price-display" style="padding-bottom: 1rem;">
                     <div id="ui-pricing"></div>
-                    
-                    <div style="height: 160px; margin-top: 1.5rem; position: relative; width: 100%;">
-                        <canvas id="priceChart"></canvas>
+
+                    <div class="tariff-chart-stack">
+                        <section class="tariff-chart-panel tariff-chart-import" aria-labelledby="import-chart-title">
+                            <div class="tariff-chart-heading">
+                                <div>
+                                    <div class="tariff-chart-kicker">GRID PURCHASE</div>
+                                    <h4 id="import-chart-title">⬇ Import tariff today</h4>
+                                </div>
+                                <span class="tariff-chart-source">Target-price source</span>
+                            </div>
+                            <div class="tariff-chart-frame">
+                                <canvas id="importPriceChart" role="img" aria-label="Today's import electricity tariff chart"></canvas>
+                                <div id="import-chart-empty" class="tariff-chart-empty">Waiting for import tariff data…</div>
+                            </div>
+                        </section>
+
+                        <section class="tariff-chart-panel tariff-chart-export" aria-labelledby="export-chart-title">
+                            <div class="tariff-chart-heading">
+                                <div>
+                                    <div class="tariff-chart-kicker">GRID PAYMENT</div>
+                                    <h4 id="export-chart-title">⬆ SEG export tariff today</h4>
+                                </div>
+                                <span class="tariff-chart-source">Discharge-price source</span>
+                            </div>
+                            <div class="tariff-chart-frame">
+                                <canvas id="exportPriceChart" role="img" aria-label="Today's SEG export electricity tariff chart"></canvas>
+                                <div id="export-chart-empty" class="tariff-chart-empty">No active export tariff rate available.</div>
+                            </div>
+                        </section>
                     </div>
                 </div>
 
@@ -440,7 +492,7 @@
 
     </div> <div class="app-footer">
         <div style="text-align: left;">Developer Samuel Chen</div>
-        <div style="text-align: right;">&copy; Copyright 2026 samuelchen.hk Build v2026.07.22</div>
+        <div style="text-align: right;">&copy; Copyright 2026 samuelchen.hk Build v2026.07.26</div>
     </div>
 </div> 
 
@@ -529,7 +581,8 @@
 <div id="wipe-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; align-items: center; justify-content: center;">
     <div style="background: var(--card-bg); border: 1px solid var(--border); padding: 2rem; border-radius: 12px; max-width: 400px; width: 90%; text-align: center; box-shadow: 0 4px 20px rgba(0,0,0,0.15);">
         <h3 style="margin-top: 0; color: #ef4444;">⚠️ Wipe Local Data?</h3>
-        <p style="color: #64748b; margin-bottom: 1.5rem; font-size: 0.9rem;">Are you absolutely sure? This will permanently delete your stored API keys, account numbers, and preferences from this browser. This action cannot be undone.</p>
+        <p class="web-runtime-only" style="color: #64748b; margin-bottom: 1.5rem; font-size: 0.9rem;">Are you absolutely sure? This will permanently delete your stored API keys, account numbers, and preferences from this browser. This action cannot be undone.</p>
+        <p class="linux-only" style="color: #64748b; margin-bottom: 1.5rem; font-size: 0.9rem;">Are you absolutely sure? This will permanently delete the encrypted shared credentials and automation preferences from the Raspberry Pi and this browser. The always-on worker will stop connecting until setup is completed again.</p>
         <div style="display: flex; gap: 1rem; justify-content: center;">
             <button onclick="document.getElementById('wipe-modal').style.display='none'" class="btn-clear" style="width: auto;">Cancel</button>
             <button onclick="clearCredentials()" style="background: #ef4444; width: auto;">Yes, Wipe Data</button>
@@ -546,7 +599,8 @@
         <ul style="color: #334155; font-size: 0.85rem; background: #f8fafc; padding: 1rem 1rem 1rem 2rem; border-radius: 8px; border: 1px solid #cbd5e1; margin-bottom: 1.5rem;">
             <li><strong>Octopus Energy:</strong> Account Number & API Key</li>
             <li><strong>FoxESS:</strong> Inverter Serial Number & Cloud API Token</li>
-            <li><strong>Google App Script:</strong> Web URL</li>
+            <li class="web-runtime-only"><strong>Google Apps Script:</strong> Relay URL</li>
+            <li class="linux-only"><strong>Raspberry Pi:</strong> Configuration is encrypted on the local Pi</li>
         </ul>
         <p style="color: #ef4444; font-size: 0.85rem; font-weight: 600; text-align: center; margin-bottom: 1.5rem;">
             Keep this file secure and never share it publicly!

@@ -1,5 +1,19 @@
 # Changelog
 
+## v2026.07.26 — 2026-07-26
+
+- Fixed SEG accounts selecting an export meter point as the primary tariff.
+- Import and export agreements and rates are now detected separately across all account properties.
+- The main price display, chart, and target-price forced-charge rule always use import rates.
+- The price-based discharge rule uses export rates when an active export tariff is available.
+- Replaced the combined tariff graph with separate import and SEG export charts, live-rate cards, and explicit missing-data states.
+- Fixed fixed-rate tariffs with `valid_to: null` being treated as expired, which could hide the export rate and prevent its chart from rendering.
+- Added a Raspberry Pi OS edition with a restricted local FoxESS relay, encrypted shared configuration, and no Google Apps Script dependency.
+- Added supervised `systemd` server and headless automation-worker services with automatic restart, reboot startup, and sleep inhibition.
+- Added a local-network dashboard protected by a generated access key and an iPhone-optimised responsive interface.
+- Added one-command `curl` installation, update, and complete uninstall procedures.
+- Rewrote the login screen, setup guidance, security notes, and README to distinguish the GitHub Pages and Raspberry Pi editions.
+
 ## v2026.07.22 — 2026-07-22
 
 - Added a configurable weekly Forced Charge schedule with selectable Monday–Sunday operation.

@@ -40,16 +40,28 @@
     [data-theme="dark"] .current-price { color: var(--text-main) !important; }
     [data-theme="dark"] #price-target-times, [data-theme="dark"] div[style*="color: #166534"] { color: var(--off-peak) !important; }
 
-        body { font-family: system-ui, -apple-system, sans-serif; margin: 0; padding: 1.5rem; color: var(--text-main); background: #e2e8f0; line-height: 1.5; min-height: 100vh; display: grid; place-items: center; box-sizing: border-box; }
+        body { font-family: system-ui, -apple-system, sans-serif; margin: 0; padding: max(1.5rem, env(safe-area-inset-top)) max(1.5rem, env(safe-area-inset-right)) max(1.5rem, env(safe-area-inset-bottom)) max(1.5rem, env(safe-area-inset-left)); color: var(--text-main); background: #e2e8f0; line-height: 1.5; min-height: 100vh; min-height: 100dvh; display: grid; place-items: center; box-sizing: border-box; -webkit-text-size-adjust: 100%; }
         
         .app-wrapper { background: var(--bg); border: 2px solid #cbd5e1; border-radius: 16px; box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05); width: 100%; max-width: 1600px; min-height: calc(100vh - 3rem); padding: 2rem 2.5rem; display: flex; flex-direction: column; box-sizing: border-box; }
         .app-content { flex-grow: 1; display: flex; flex-direction: column; }
         .app-footer { margin-top: auto; border-top: 1px solid var(--border); padding-top: 1rem; display: flex; justify-content: space-between; font-size: 0.8rem; color: var(--text-muted); font-weight: 500; }
 
         .auth-layout { display: flex; position: relative; width: 100%; max-width: 450px; margin: auto; align-items: stretch; justify-content: center; }
-        .auth-card { background: var(--card-bg); padding: 2.5rem; border-radius: 16px; box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.05); width: 100%; border: 1px solid var(--border); z-index: 10; position: relative; }
+        .auth-card { background: var(--card-bg); padding: 2.5rem; border-radius: 16px; box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.05); width: 100%; border: 1px solid var(--border); z-index: 10; position: relative; box-sizing: border-box; }
         .auth-card h2 { margin-top: 0; text-align: center; margin-bottom: 0.25rem; color: var(--text-main); font-size: 1.5rem; }
         .auth-subtitle { text-align: center; color: var(--text-muted); font-size: 0.9rem; margin-bottom: 2rem; line-height: 1.5; }
+        .linux-only { display: none !important; }
+        .linux-runtime .linux-only { display: block !important; }
+        .linux-runtime .web-runtime-only { display: none !important; }
+        .linux-runtime .linux-access-group { display: none !important; }
+        .linux-runtime.linux-auth-required .linux-access-group { display: block !important; }
+        .runtime-strip { margin: -1rem 0 1.5rem; padding: 0.75rem 0.9rem; border: 1px solid var(--border); border-radius: 10px; background: #f8fafc; text-align: center; }
+        .runtime-strip strong, .runtime-strip span { display: block; }
+        .runtime-strip strong { color: var(--text-main); font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.08em; }
+        .runtime-strip span { margin-top: 0.2rem; color: var(--text-muted); font-size: 0.74rem; }
+        .linux-runtime .runtime-strip { background: #f0fdf4; border-color: #86efac; }
+        [data-theme="dark"] .runtime-strip, [data-theme="dark"].linux-runtime .runtime-strip { background: rgba(34, 197, 94, 0.1); border-color: var(--border); }
+        .linux-access-group small { display: block; margin-top: 0.4rem; color: var(--text-muted); font-size: 0.72rem; line-height: 1.35; }
         .slide-panel { position: absolute; top: 50%; height: fit-content; max-height: 90%; width: 380px; background: var(--card-bg); padding: 2.25rem 2rem; border-radius: 16px; box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05); border: 1px solid var(--border); display: flex; flex-direction: column; box-sizing: border-box; transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.3s ease, z-index 0s linear; opacity: 0; z-index: 5; pointer-events: none; overflow-y: auto; }
         .slide-panel.left-drawer { right: calc(100% + 1.5rem); transform: translate(30px, -50%); }
         .slide-panel.right-drawer { left: calc(100% + 1.5rem); transform: translate(-30px, -50%); }
@@ -78,7 +90,7 @@
         }
         input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px rgba(225, 29, 72, 0.1); }
         
-        button { background-color: var(--accent); color: white; border: none; padding: 0.75rem 1.5rem; border-radius: 8px; cursor: pointer; font-weight: 600; width: 100%; font-size: 1rem; transition: background 0.2s; }
+        button { background-color: var(--accent); color: white; border: none; padding: 0.75rem 1.5rem; border-radius: 8px; cursor: pointer; font-weight: 600; width: 100%; font-size: 1rem; transition: background 0.2s; touch-action: manipulation; }
         button:hover { background-color: var(--accent-hover); }
         button:disabled { opacity: 0.5; cursor: not-allowed; }
         .button-group { display: flex; gap: 1rem; }
@@ -92,8 +104,31 @@
         .card-header { font-size: 1.1rem; font-weight: 700; margin-bottom: 1.5rem; border-bottom: 1px solid var(--border); padding-bottom: 1rem; display: flex; justify-content: space-between; align-items: center; color: var(--text-main); }
         
         .summary-grid { display: flex; flex-direction: column; gap: 1.5rem; align-items: stretch; }
-        .price-display { text-align: center; padding: 2rem 1rem; background: #f8fafc; border-radius: 12px; border: 1px solid var(--border); }
+        .price-display { padding: 1rem; background: #f8fafc; border-radius: 12px; border: 1px solid var(--border); }
         .current-price { font-size: 4rem; font-weight: 900; line-height: 1; margin: 1rem 0; color: var(--text-main); letter-spacing: -1px; }
+
+        .tariff-live-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.85rem; margin-bottom: 1rem; text-align: left; }
+        .tariff-live-card { position: relative; overflow: hidden; padding: 1rem; border: 1px solid var(--border); border-radius: 12px; background: var(--card-bg); }
+        .tariff-live-card::before { content: ''; position: absolute; inset: 0 auto 0 0; width: 4px; }
+        .tariff-live-import::before { background: #10b981; }
+        .tariff-live-export::before { background: #3b82f6; }
+        .tariff-live-heading { display: flex; justify-content: space-between; align-items: center; gap: 0.5rem; color: var(--text-main); font-size: 0.82rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.04em; }
+        .tariff-live-heading .badge { font-size: 0.62rem; padding: 0.2rem 0.45rem; }
+        .tariff-direction-badge { padding: 0.2rem 0.5rem; border: 1px solid rgba(59, 130, 246, 0.55); border-radius: 999px; color: #3b82f6; font-size: 0.65rem; letter-spacing: 0.08em; }
+        .tariff-live-price { margin-top: 0.65rem; color: var(--text-main); font-size: 2.25rem; font-weight: 900; line-height: 1; letter-spacing: -0.04em; }
+        .tariff-live-unit { margin-top: 0.4rem; color: var(--text-muted); font-size: 0.72rem; }
+        .tariff-live-note { margin-top: 0.65rem; color: var(--text-muted); font-size: 0.72rem; }
+
+        .tariff-chart-stack { display: grid; gap: 0.9rem; }
+        .tariff-chart-panel { padding: 1rem; border: 1px solid var(--border); border-radius: 12px; background: var(--card-bg); }
+        .tariff-chart-import { border-top: 3px solid #10b981; }
+        .tariff-chart-export { border-top: 3px solid #3b82f6; }
+        .tariff-chart-heading { display: flex; justify-content: space-between; align-items: center; gap: 1rem; margin-bottom: 0.65rem; text-align: left; }
+        .tariff-chart-heading h4 { margin: 0.1rem 0 0; color: var(--text-main); font-size: 0.92rem; }
+        .tariff-chart-kicker { color: var(--text-muted); font-size: 0.62rem; font-weight: 800; letter-spacing: 0.12em; }
+        .tariff-chart-source { flex-shrink: 0; padding: 0.25rem 0.5rem; border-radius: 999px; background: rgba(148, 163, 184, 0.12); color: var(--text-muted); font-size: 0.62rem; font-weight: 700; }
+        .tariff-chart-frame { position: relative; width: 100%; height: 155px; }
+        .tariff-chart-empty { position: absolute; inset: 0; display: none; place-items: center; padding: 1rem; color: var(--text-muted); font-size: 0.78rem; text-align: center; border: 1px dashed var(--border); border-radius: 8px; }
         
         .badge { display: inline-flex; align-items: center; padding: 0.35rem 0.8rem; border-radius: 999px; font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; white-space: nowrap; }
         .badge.peak { background: var(--peak-bg); color: var(--peak); border: 1px solid #fca5a5; }
@@ -127,6 +162,30 @@
         @media (max-width: 768px) {
             .dashboard { grid-template-columns: 1fr; }
             .button-group { flex-direction: column; }
+            .tariff-live-grid { grid-template-columns: 1fr; }
+            .tariff-chart-heading { align-items: flex-start; }
+            .tariff-chart-source { white-space: normal; text-align: right; }
+        }
+
+        @media (max-width: 600px) {
+            body { display: block; padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left); background: var(--bg); }
+            .app-wrapper { min-height: 100dvh; padding: 0.85rem; border: 0; border-radius: 0; box-shadow: none; }
+            .auth-layout { margin: 0 auto; }
+            .auth-card { padding: 1.25rem; border-radius: 14px; box-shadow: none; }
+            .auth-card h2 { font-size: 1.3rem; }
+            .auth-subtitle { margin-bottom: 1.5rem; }
+            input[type="text"], input[type="password"], input[type="number"], input[type="time"] { min-height: 48px; padding: 0.75rem; font-size: 16px; }
+            button { min-height: 44px; }
+            .card { padding: 1rem; border-radius: 12px; }
+            .card-header { gap: 0.75rem; margin-bottom: 1rem; }
+            .data-list li { align-items: flex-start; }
+            .data-list .val { max-width: 60%; white-space: normal; overflow-wrap: anywhere; }
+            .tariff-chart-frame { height: 190px; }
+            .automation-block { padding: 1rem; }
+            .rule-row { gap: 0.75rem; }
+            .app-footer { flex-direction: column; gap: 0.25rem; text-align: center; padding-bottom: max(0.25rem, env(safe-area-inset-bottom)); }
+            .app-footer > div { text-align: center !important; }
+            #app-toast-notification { left: max(12px, env(safe-area-inset-left)); right: max(12px, env(safe-area-inset-right)); bottom: max(12px, env(safe-area-inset-bottom)); max-width: none !important; }
         }
 
         /* Smooth Progress Properties */

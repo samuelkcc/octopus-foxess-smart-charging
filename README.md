@@ -1,165 +1,242 @@
 # 🐙🦊 Intelligent Octopus Go & FoxESS Smart Charging Detector
 
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
-[![Hosted on GitHub Pages](https://img.shields.io/badge/Hosted-GitHub%20Pages-success.svg)](https://samuelkcc.github.io/octopus-foxess-smart-charging/)
-[![Zero Install](https://img.shields.io/badge/Setup-Zero%20Install-orange.svg)]()
+[![Hosted on GitHub Pages](https://img.shields.io/badge/Web-GitHub%20Pages-success.svg)](https://samuelkcc.github.io/octopus-foxess-smart-charging/)
+[![Raspberry Pi OS](https://img.shields.io/badge/Linux-Raspberry%20Pi%20OS-c51a4a.svg)](#raspberry-pi-os-edition-recommended-for-always-on-use)
 
-A lightweight, zero-install automation bridge that prevents your FoxESS home battery from draining during Intelligent Octopus Go EV charging slots. 
+An always-on automation bridge that protects a FoxESS home battery during
+Intelligent Octopus Go EV charging slots.
 
-### 🚀 [Launch the Live App Here](https://samuelkcc.github.io/octopus-foxess-smart-charging/)
+## Choose an edition
+
+| | Web edition | Raspberry Pi OS edition |
+|---|---|---|
+| Launch | [Open the live app](https://samuelkcc.github.io/octopus-foxess-smart-charging/) | Open the Pi's local address in Safari |
+| Google Apps Script | Required for the FoxESS browser relay | Not required |
+| Always-on automation | Browser must remain open and awake | Supervised background worker |
+| Start after reboot | No | Yes, through `systemd` |
+| Local network GUI | No | Yes, optimised for iPhone |
+| Best for | Quick use and existing browser setups | Reliable 24/7 operation |
+
+Both editions use the same dashboard and automation logic. The GitHub Pages
+edition remains available; installing the Raspberry Pi edition does not replace
+or disable it.
 
 ![Smart Charging Detector Dashboard](Dashboard.png)
 
----
+## What it does
 
-## 📖 The Problem & Solution
-When **Intelligent Octopus Go** dynamically opens a cheap slot to charge your electric vehicle, your FoxESS solar battery assumes your home is experiencing a massive energy spike. If left in standard "Self-Use" mode, your inverter will aggressively dump all your stored home battery power straight into your EV. 
+When Intelligent Octopus Go opens a cheap EV charging slot, a FoxESS inverter in
+Self-Use mode may treat the EV load as normal household demand and discharge the
+home battery. This app reads Octopus dispatches and tariff rates, then maintains
+FoxESS V3 schedules that can Force Charge or protect the battery during those
+periods.
 
-This wastes captured solar energy, degrades your battery cells, and misses the opportunity to soak up cheap grid rates. This dashboard pulls your upcoming smart dispatch intervals and acts as a bridge, instructing your FoxESS system to insulate your home battery exactly when the car starts charging.
+Features include:
 
----
+- Intelligent Octopus Go dispatch synchronisation
+- separate import and SEG export tariff detection and charts
+- target-price charging and price-based export rules
+- weekly forced-charge windows, including overnight periods
+- target SOC, minimum SOC, charge/discharge power, and Auto-Resume controls
+- FoxESS API quota tracking and request throttling
+- encrypted configuration and password-protected manual backups
+- responsive phone, tablet, desktop, dark-mode, full-screen, and Mini HUD views
 
-## ⚡ The Home Assistant (HA) Alternative
-For many, optimizing smart charging means diving into a full home automation ecosystem. While Home Assistant is incredibly powerful, it comes with a steep learning curve for beginners—requiring you to understand complex concepts like entity IDs, YAML configurations, state triggers, and custom HACS integrations just to get a basic sync working.
+## Credentials required by both editions
 
-**This tool offers a streamlined, instant alternative:**
-* **Instant Deployment:** Works out of the box in under 30 minutes without any complex configuration setups.
-* **Leverage Existing Hardware:** There is no need to set up a dedicated home automation server or manage Docker containers. You can run this dashboard directly on an old Android tablet, an existing Raspberry Pi 4/5, or any browser-enabled device you already own.
-* **Zero Configuration Hassle:** Skip the steep learning curve of automation logic and entity mapping. Just paste your credentials, and the bridge safely handles the rest.
+### Octopus Energy
 
----
+1. Sign in to the [Octopus dashboard](https://octopus.energy/dashboard/).
+2. Copy the account number beginning with `A-`.
+3. Open [API Access](https://octopus.energy/dashboard/new/accounts/personal-details/api-access)
+   and generate the `sk_live_...` API key.
 
-## ✨ Key Features & What's New
-* **Zero Installation:** Runs entirely inside your web browser via GitHub Pages or as a downloaded local file.
-* **Privacy First:** Client-side architecture. No third-party servers, no telemetry, and local credential encryption.
-* **Automated Protection:** Automatically syncs Intelligent Octopus Go smart dispatch intervals with your FoxESS V3 Mode Scheduler.
-* **Tablet Optimized (New!):** Built-in **Full Screen Mode** and an automated **Screen Saver (Blank Screen)** utility—perfect for dedicated Android wall tablets and low-power displays. 
-* **Hardware-Level Safety:** Pushes native V3 Hardware Limits (Target SOC, Max Charge Power, Min SOC) directly to the inverter, ensuring failsafe battery protection.
-* **Smart API Quota Management:** Built-in caching system throttles requests to ensure you never breach the strict FoxESS 1,440 daily API call limit.
-* **Live Telemetry:** Real-time, expandable dashboard showing live PV Power, Home Load, Battery Temperature, and Ambient Temperature.
-* **Auto-Resume:** Automatically ends grid-charging schedules early and reverts to Self-Use mode once your custom Target SOC is reached.
-* **Weekly Forced Charge:** Create a fixed Force Charge window (including overnight schedules such as 23:30–05:30) and select the weekdays when it runs.
+### FoxESS Cloud
 
----
+1. Copy the inverter serial number from the device label or FoxCloud app.
+2. Sign in to the [FoxCloud V1 website](https://www.foxesscloud.com/login).
+3. Open **User Profile → API Management** and generate an API token.
 
-## 🛠️ Getting Started 
+The token cannot currently be generated from the V2 website or mobile app.
 
-Follow these steps to get your dashboard up and running. 
+## Raspberry Pi OS edition (recommended for always-on use)
 
-### Step 1: Gather Your API Credentials
-You need API keys from both providers before starting the app.
+### Requirements
 
-#### Octopus Energy
-1. Log into your standard [Octopus Energy dashboard](https://octopus.energy/dashboard/). Find your **Account Number** at the top (`A-XXXXXXXX`).
-2. Go to **Personal Details** ➔ **API Access** (or [click here](https://octopus.energy/dashboard/new/accounts/personal-details/api-access)). Generate your **API Key** (`sk_live_...`).
+- Raspberry Pi 4 or 5
+- current 32-bit or 64-bit Raspberry Pi OS with `systemd`
+- internet access for Octopus and FoxESS Cloud APIs
+- Pi and iPhone connected to the same trusted home network
 
-#### FoxESS Cloud
-1. Find your **Inverter Serial Number (SN)** on the physical unit sticker or beneath the inverter image in your FoxCloud Mobile App (`60B...`).
-2. Log into the [FoxCloud Web Dashboard V1](https://www.foxesscloud.com/login). 
-   > ⚠️ **Important:** The API token *cannot* be obtained from the V2 website or mobile app. If redirected to V2, click your user profile, scroll to the bottom, and switch back to V1.
-3. Navigate to **User Profile** ➔ **API Management** to generate and copy your **API Token**.
+Raspberry Pi OS Bookworm or newer is recommended. The installer adds Node.js,
+Chromium, `curl`, CA certificates, and the Noto colour emoji font through `apt`.
 
----
+### Install
 
-### Step 2: Deploy the Proxy Bridge (Google Apps Script)
-Because FoxESS blocks direct browser connections (CORS), we use a free Google Apps Script to securely route your requests.
+On the Raspberry Pi, run:
 
-#### A. Create the Script
-1. Go to [script.google.com](https://script.google.com/) and sign in with your Google account.
-2. Click **New Project** (top left).
-3. Delete any placeholder code and paste the exact snippet below:
+```bash
+curl -fsSL https://raw.githubusercontent.com/samuelkcc/octopus-foxess-smart-charging/main/linux/install.sh | sudo sh
+```
+
+The installer:
+
+1. downloads the latest Raspberry Pi release package;
+2. creates a restricted `octopus-foxess` service account;
+3. installs a LAN server on port `8787`;
+4. installs an always-on Chromium automation worker;
+5. enables both services at startup;
+6. blocks system sleep while the worker is active; and
+7. prints the local URL and a generated Raspberry Pi access key.
+
+After installation, open the printed address on the iPhone, for example:
+
+```text
+http://192.168.1.42:8787
+```
+
+Enter the printed Raspberry Pi access key, then the Octopus and FoxESS
+credentials. There is no Google Apps Script field in this edition. After the
+first successful connection, the Pi worker receives the encrypted shared
+configuration and keeps running even after Safari is closed.
+
+If the IP address changes, try `http://raspberrypi.local:8787` or run
+`hostname -I` on the Pi. The iPhone interface uses safe-area spacing, 16 px form
+controls to prevent Safari zoom, large touch targets, single-column cards, and
+responsive charts.
+
+### Service commands
+
+```bash
+sudo systemctl status octopus-foxess octopus-foxess-worker
+sudo journalctl -u octopus-foxess -u octopus-foxess-worker -f
+sudo systemctl restart octopus-foxess octopus-foxess-worker
+sudo cat /etc/octopus-foxess/access.key
+```
+
+Both services use `Restart=always`. The worker is wrapped by
+`systemd-inhibit`, so sleep and idle suspend remain blocked while automation is
+running. Rebooting the Pi automatically starts the server and worker again.
+
+### Update
+
+Run the install command again. It downloads the latest release and preserves the
+encrypted configuration and access key.
+
+### Uninstall
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/samuelkcc/octopus-foxess-smart-charging/main/linux/uninstall.sh | sudo sh
+```
+
+Uninstalling stops and removes both services, the application, the generated
+access key, and the encrypted configuration. This is intentionally a complete
+removal.
+
+## Web edition on GitHub Pages
+
+Open the [live GitHub Pages app](https://samuelkcc.github.io/octopus-foxess-smart-charging/).
+Because a static browser page cannot call FoxESS Cloud directly due to browser
+CORS restrictions, this edition uses a personal Google Apps Script relay.
+
+### Create the relay
+
+1. Open [Google Apps Script](https://script.google.com/) and create a project.
+2. Replace its contents with:
 
 ```javascript
 function doPost(e) {
   try {
     var requestData = JSON.parse(e.postData.contents);
     var options = {
-      'method': 'post',
-      'contentType': 'application/json',
-      'headers': requestData.headers,
-      'payload': JSON.stringify(requestData.body),
-      'muteHttpExceptions': true
+      method: 'post',
+      contentType: 'application/json',
+      headers: requestData.headers,
+      payload: JSON.stringify(requestData.body),
+      muteHttpExceptions: true
     };
     var response = UrlFetchApp.fetch(requestData.url, options);
     return ContentService.createTextOutput(response.getContentText())
-                                 .setMimeType(ContentService.MimeType.JSON);
+      .setMimeType(ContentService.MimeType.JSON);
   } catch (err) {
-    return ContentService.createTextOutput(JSON.stringify({ errno: 999, msg: err.toString() }))
-                                 .setMimeType(ContentService.MimeType.JSON);
+    return ContentService.createTextOutput(JSON.stringify({
+      errno: 999,
+      msg: err.toString()
+    })).setMimeType(ContentService.MimeType.JSON);
   }
 }
 ```
 
-#### B. Deploy as a Web App
-1. Click the blue **Deploy** button in the top right corner, then select **New deployment**.
-2. Click the **Gear icon** next to "Select type" and choose **Web app**.
-3. Set **Execute as** to **Me**.
-4. Set **Who has access** to **Anyone** *(This is crucial for the connection to work)*.
-5. Click **Deploy** and copy the generated **Web app URL** to your clipboard.
+3. Select **Deploy → New deployment → Web app**.
+4. Set **Execute as** to **Me** and **Who has access** to **Anyone**.
+5. Deploy and paste the Web App URL into the dashboard login screen.
 
-### Step 3: Open the Dashboard
-Navigate to the live application: **[Intelligent Octopus Go & FoxESS Smart Charging Detector](https://samuelkcc.github.io/octopus-foxess-smart-charging/)**
+Keep one active automation dashboard only. A sleeping or closed browser cannot
+run the web edition's timers; use the Raspberry Pi edition for unattended use.
 
-*(If you prefer to run it locally rather than hosting it on GitHub Pages, you can download `index.html` from this repository and double-click it to open it natively in your browser. Please note that an active internet connection is still required to communicate with the APIs).*
+## Security and network guidance
 
-### Step 4: Launch the App
-Paste your Octopus credentials, FoxESS credentials, and your new Google Apps Script Web App URL directly into the dashboard configuration fields and click **Connect**. 
+- The project has no telemetry or third-party application server.
+- Web-edition credentials use a non-exportable browser AES-GCM key when secure
+  browser storage is available.
+- Raspberry Pi credentials and automation settings are encrypted with AES-256-GCM
+  in `/var/lib/octopus-foxess`.
+- The Pi relay accepts only HTTPS requests to `www.foxesscloud.com/op/...`.
+- LAN API access requires the generated access key; loopback access is reserved
+  for the supervised worker.
+- Port `8787` uses HTTP on the trusted home LAN. Do not expose it through router
+  port forwarding, a public IP, or an untrusted Wi-Fi network.
+- Use **Wipe Data** to clear saved configuration. In the Pi edition this also
+  clears the shared encrypted server configuration.
 
-> ⚠️ **CRITICAL: Single Device Operation**
-> **Do not run this dashboard on multiple devices simultaneously.** The FoxESS API enforces strict connection limits. Having the app actively running on more than one device at the same time will cause API communication errors, trigger rate-limiting, and ultimately break the automated mode selection updates for your battery.
+FoxESS enforces API limits. The Pi worker owns unattended automation; connected
+iPhones do not perform duplicate automatic schedule writes. Deliberate manual
+controls from the iPhone remain available.
 
-> 💡 **Pro-Tip: Always-On Dashboard Setup**
-> A popular use case is to open the app on a single dedicated device, such as a wall-mounted Android tablet, whenever you plug your EV in. If you do this, **ensure you disable your device's screen timeout/auto-lock**. The browser tab must remain active to continuously monitor and sync the charging slots.
-
----
-
-## 🔒 Security, Privacy & Data Management
-Your security is maintained by design:
-* **Zero Third-Party Logging:** This application is a static page. All logic and network requests occur strictly between your browser, your private Google script, and the energy APIs.
-* **Encrypted Browser Storage:** After a successful connection, credentials are encrypted with a non-exportable AES-GCM device key before persistent browser storage. If secure persistent storage is unavailable, credentials are retained for the current browser session only.
-* **Wipe Data Feature:** If you are using a shared device or simply want to clean up, you can use the built-in "Wipe Data" button. This will instantly and permanently erase all saved credentials, API keys, and Web App URLs from your browser's local storage.
-* **Manual Backups:** For safe manual backups, you can download a locally encrypted backup data file.
-* **Password-Protected Backups:** Exported configuration files use the password entered during export and must be kept private.
-
----
-
-## 🧑‍💻 Development and Builds
+## Development and release builds
 
 The maintainable source is split by responsibility:
 
 ```text
-src/
-  index.html     App markup
-  styles.css     App styles
-  app.js         App behaviour and API integrations
-scripts/
-  build.mjs      Creates the standalone SPA
-prototype/       Original single-file app retained as a reference
-dist/            Generated build output (not committed)
+src/                 Shared dashboard markup, styles, and behaviour
+linux/               Raspberry Pi server, installer, and uninstaller
+scripts/build.mjs    Standalone web build
+scripts/build-linux.mjs
+                     Raspberry Pi release package build
+prototype/           Original single-file reference
+dist/                Generated release output
 ```
 
-Node.js 18 or newer is required. There are currently no third-party npm packages to install.
+Node.js 18 or newer is required. There are no third-party npm dependencies.
 
 ```bash
 npm run check
-npm run build
 ```
 
-The build creates `dist/Octopus_IGO_Smart_Charging_Detector.html`. Edit the files in `src/`, not the generated file in `dist/`.
+The check produces:
 
-Pushes to `main` are checked and deployed by the GitHub Pages workflow. In **Settings → Pages**, select **GitHub Actions** as the source.
+- `dist/Octopus_IGO_Smart_Charging_Detector.html`
+- `dist/Octopus_FoxESS_Raspberry_Pi.tar.gz`
+- `dist/install.sh`
+- `dist/uninstall.sh`
 
----
+Pushes to `main` test and deploy the standalone HTML as the root GitHub Pages
+app. Tags matching `v*` create a GitHub release with both editions and the
+install/uninstall scripts.
 
-## ⚖️ Legal Disclaimer
-This software is an unofficial, community-driven utility. It is entirely independent and has no official affiliation, endorsement, or operational relationship with Octopus Energy Ltd or FoxESS Co., Ltd. Product names, trademarks, and branding belong exclusively to their respective corporate holders. 
+## Legal disclaimer
 
-Controlling physical battery infrastructure and working with third-party web services introduces natural hardware degradation and rate-limiting risks. By executing this script, you accept full individual liability for system stability, unexpected inverter behaviors, or billing discrepancies. Monitor system logs consistently.
+This unofficial community utility is independent of Octopus Energy Ltd and
+FoxESS Co., Ltd. Product names, trademarks, and branding belong to their
+respective owners.
 
----
+Controlling battery infrastructure and using third-party services creates risks,
+including unexpected inverter behaviour, hardware degradation, API
+rate-limiting, and billing differences. You are responsible for checking
+schedules, limits, logs, and inverter behaviour.
 
-## ☕ Support the Project
+## Support the project
 
-If this bridge has saved you money, kept your house battery healthy, or simply made your home automation setup easier, consider buying me a coffee to support continued features and updates!
-
-[![Buy Me A Coffee](https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png)](https://buymeacoffee.com/samuelchen)
+If the project has been useful, you can
+[buy Samuel a coffee](https://buymeacoffee.com/samuelchen).

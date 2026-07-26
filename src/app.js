@@ -1,4 +1,5 @@
-let priceChartInst = null;
+let importPriceChartInst = null;
+let exportPriceChartInst = null;
 let globalFoxSN = "";
 let lastDispatchesStr = "[]";
 let scheduleToDelete = -1;
@@ -9,10 +10,17 @@ let octoCountdown = 60;
 let foxRefreshInterval = 600;
 let foxCountdown = 600;
 let refreshTimerId = null;
+let linuxConfigPollId = null;
 
 const CREDENTIAL_STORAGE_KEY = 'encryptedCredentialsV1';
 const CREDENTIAL_DB_NAME = 'octopusFoxessSecureStorage';
 const REQUEST_TIMEOUT_MS = 15000;
+const LINUX_CONFIG_ENDPOINT = '/api/config';
+
+window.linuxRuntime = false;
+window.linuxRole = 'web';
+window.linuxAuthRequired = false;
+window.linuxRevision = null;
 
 function escapeHtml(value) {
     return String(value ?? '')
@@ -37,8 +45,15 @@ async function fetchJson(url, options = {}, timeoutMs = REQUEST_TIMEOUT_MS) {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
     try {
-        const response = await fetch(url, { ...options, signal: controller.signal });
-        if (!response.ok) throw new Error(`HTTP ${response.status} from ${new URL(url).hostname}`);
+        const linuxHeaders = window.linuxRuntime && String(url).startsWith('/api/')
+            ? { 'X-Octopus-Access-Key': getLinuxAccessKey() }
+            : {};
+        const response = await fetch(url, {
+            ...options,
+            headers: { ...linuxHeaders, ...(options.headers || {}) },
+            signal: controller.signal
+        });
+        if (!response.ok) throw new Error(`HTTP ${response.status} from ${new URL(url, window.location.href).hostname}`);
         return await response.json();
     } catch (error) {
         if (error.name === 'AbortError') throw new Error(`Request timed out after ${Math.round(timeoutMs / 1000)} seconds`);
@@ -46,6 +61,182 @@ async function fetchJson(url, options = {}, timeoutMs = REQUEST_TIMEOUT_MS) {
     } finally {
         clearTimeout(timeoutId);
     }
+}
+
+function getLinuxAccessKey() {
+    return sessionStorage.getItem('linuxAccessKey')
+        || document.getElementById('local-access-key')?.value.trim()
+        || '';
+}
+
+async function detectLinuxRuntime() {
+    try {
+        const worker = new URLSearchParams(window.location.search).get('worker') === '1';
+        const response = await fetch(`/api/runtime${worker ? '?worker=1' : ''}`, { cache: 'no-store' });
+        if (!response.ok) return;
+        const runtime = await response.json();
+        if (runtime.mode !== 'linux') return;
+
+        window.linuxRuntime = true;
+        window.linuxRole = runtime.role;
+        window.linuxAuthRequired = runtime.authRequired;
+        document.body.classList.add('linux-runtime', `linux-role-${runtime.role}`);
+        if (runtime.authRequired) document.body.classList.add('linux-auth-required');
+        document.querySelectorAll('[data-linux-version]').forEach(element => {
+            element.textContent = `Raspberry Pi v${runtime.version}`;
+        });
+        const gasUrl = document.getElementById('gas-url');
+        if (gasUrl) gasUrl.value = '/api/foxess';
+    } catch {
+        // Static GitHub Pages and downloaded HTML intentionally have no runtime endpoint.
+    }
+}
+
+async function ensureLinuxAccess() {
+    if (!window.linuxRuntime || !window.linuxAuthRequired) return true;
+    const key = document.getElementById('local-access-key')?.value.trim()
+        || sessionStorage.getItem('linuxAccessKey')
+        || '';
+    if (!key) {
+        showError('Enter the Raspberry Pi access key printed by the installer.');
+        return false;
+    }
+    const response = await fetch('/api/auth', {
+        method: 'POST',
+        headers: { 'X-Octopus-Access-Key': key }
+    });
+    if (!response.ok) {
+        showError('The Raspberry Pi access key is incorrect.');
+        return false;
+    }
+    sessionStorage.setItem('linuxAccessKey', key);
+    return true;
+}
+
+async function loadLinuxState() {
+    if (!window.linuxRuntime) return {};
+    const response = await fetch(LINUX_CONFIG_ENDPOINT, {
+        headers: { 'X-Octopus-Access-Key': getLinuxAccessKey() },
+        cache: 'no-store'
+    });
+    if (response.status === 401) throw new Error('Raspberry Pi access key required');
+    if (!response.ok) throw new Error(`Unable to load Raspberry Pi configuration (HTTP ${response.status})`);
+    const state = await response.json();
+    window.linuxRevision = state.revision || null;
+    if (state.automations) {
+        localStorage.setItem('foxAutomations', JSON.stringify(state.automations));
+    }
+    return state;
+}
+
+async function updateLinuxState(update) {
+    if (!window.linuxRuntime || window.linuxRole === 'worker') return;
+    const response = await fetch(LINUX_CONFIG_ENDPOINT, {
+        method: 'PUT',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-Octopus-Access-Key': getLinuxAccessKey()
+        },
+        body: JSON.stringify(update)
+    });
+    if (!response.ok) throw new Error(`Unable to save Raspberry Pi configuration (HTTP ${response.status})`);
+    const result = await response.json();
+    window.linuxRevision = result.revision;
+}
+
+function startLinuxWorkerConfigPoll() {
+    if (!window.linuxRuntime || window.linuxRole !== 'worker' || linuxConfigPollId !== null) return;
+    linuxConfigPollId = setInterval(async () => {
+        try {
+            const previousRevision = window.linuxRevision;
+            const state = await loadLinuxState();
+            if (state.credentials && state.revision !== previousRevision) {
+                window.location.reload();
+            }
+        } catch (error) {
+            console.warn('Raspberry Pi configuration poll failed.', error);
+        }
+    }, 15000);
+}
+
+function canRunAutomaticActions() {
+    return !window.linuxRuntime || window.linuxRole === 'worker';
+}
+
+function populateCredentialInputs(credentials) {
+    document.getElementById('acc').value = credentials?.acc || '';
+    document.getElementById('api').value = credentials?.api || '';
+    document.getElementById('fox-sn').value = credentials?.foxSN || '';
+    document.getElementById('fox-token').value = credentials?.foxToken || '';
+    document.getElementById('gas-url').value = window.linuxRuntime
+        ? '/api/foxess'
+        : (credentials?.gasUrl || '');
+}
+
+function getActiveAgreement(meterPoint, now = new Date()) {
+    const nowTime = now.getTime();
+    return (meterPoint?.agreements || [])
+        .filter(agreement => {
+            const validFrom = agreement.valid_from ? new Date(agreement.valid_from).getTime() : -Infinity;
+            const validTo = agreement.valid_to ? new Date(agreement.valid_to).getTime() : Infinity;
+            return validFrom <= nowTime && nowTime < validTo;
+        })
+        .sort((a, b) => new Date(b.valid_from || 0) - new Date(a.valid_from || 0))[0] || null;
+}
+
+function selectActiveElectricityTariffs(accountData, now = new Date()) {
+    const meterPoints = (accountData?.properties || [])
+        .flatMap(property => property?.electricity_meter_points || []);
+
+    const selectByDirection = isExport => meterPoints
+        .filter(meterPoint => isExport ? meterPoint?.is_export === true : meterPoint?.is_export !== true)
+        .map(meterPoint => ({ meterPoint, agreement: getActiveAgreement(meterPoint, now) }))
+        .filter(selection => selection.agreement)
+        .sort((a, b) => new Date(b.agreement.valid_from || 0) - new Date(a.agreement.valid_from || 0))[0] || null;
+
+    return {
+        importTariff: selectByDirection(false),
+        exportTariff: selectByDirection(true)
+    };
+}
+
+function getProductCodeFromTariffCode(tariffCode) {
+    return String(tariffCode || '').split('-').slice(2, -1).join('-');
+}
+
+function getRateAtTime(rates, time) {
+    const timeValue = time instanceof Date ? time.getTime() : new Date(time).getTime();
+    return (rates || []).find(rate => {
+        const validFrom = rate.valid_from ? new Date(rate.valid_from).getTime() : -Infinity;
+        const validTo = rate.valid_to ? new Date(rate.valid_to).getTime() : Infinity;
+        return validFrom <= timeValue && timeValue < validTo;
+    }) || null;
+}
+
+function getTariffSlotsForDate(rates, date = new Date()) {
+    const slots = [];
+    for (let minute = 0; minute < 24 * 60; minute += 30) {
+        const start = new Date(date.getFullYear(), date.getMonth(), date.getDate(), 0, minute, 0);
+        const end = new Date(start.getTime() + 30 * 60 * 1000);
+        const rate = getRateAtTime(rates, start);
+        if (!rate) continue;
+        slots.push({
+            ...rate,
+            valid_from: start.toISOString(),
+            valid_to: end.toISOString()
+        });
+    }
+    return slots;
+}
+
+async function fetchTariffRates(tariffCode) {
+    if (!tariffCode) return [];
+    const productCode = getProductCodeFromTariffCode(tariffCode);
+    if (!productCode) throw new Error(`Unable to identify product from tariff ${tariffCode}`);
+    const ratesData = await fetchJson(
+        `https://api.octopus.energy/v1/products/${encodeURIComponent(productCode)}/electricity-tariffs/${encodeURIComponent(tariffCode)}/standard-unit-rates/`
+    );
+    return Array.isArray(ratesData?.results) ? ratesData.results : [];
 }
 
 function openCredentialDatabase() {
@@ -80,6 +271,12 @@ async function getCredentialKey() {
 }
 
 async function saveCredentials(credentials) {
+    if (window.linuxRuntime) {
+        const linuxCredentials = { ...credentials, gasUrl: '/api/foxess' };
+        sessionStorage.setItem('sessionCredentials', JSON.stringify(linuxCredentials));
+        await updateLinuxState({ credentials: linuxCredentials });
+        return;
+    }
     try {
         const key = await getCredentialKey();
         const iv = crypto.getRandomValues(new Uint8Array(12));
@@ -96,6 +293,14 @@ async function saveCredentials(credentials) {
 }
 
 async function loadCredentials() {
+    if (window.linuxRuntime) {
+        const state = await loadLinuxState();
+        if (state.credentials) {
+            sessionStorage.setItem('sessionCredentials', JSON.stringify(state.credentials));
+            return state.credentials;
+        }
+        return null;
+    }
     const sessionCredentials = sessionStorage.getItem('sessionCredentials');
     if (sessionCredentials) return JSON.parse(sessionCredentials);
     const stored = localStorage.getItem(CREDENTIAL_STORAGE_KEY);
@@ -146,7 +351,7 @@ function startAutoConnect() {
     }, 1000);
 }
 
-function handleConnectClick() {
+async function handleConnectClick() {
     if (autoConnectTimer) {
         clearInterval(autoConnectTimer);
         autoConnectTimer = null;
@@ -158,7 +363,12 @@ function handleConnectClick() {
         btn.style.backgroundColor = ""; 
         timerUI.style.display = "none";
     } else {
-        initDashboard();
+        if (!(await ensureLinuxAccess())) return;
+        if (window.linuxRuntime && !document.getElementById('acc').value.trim()) {
+            const state = await loadLinuxState();
+            if (state.credentials) populateCredentialInputs(state.credentials);
+        }
+        await initDashboard();
     }
 }
 
@@ -329,12 +539,13 @@ function toggleDarkMode() {
     // Force Chart to immediately redraw to reflect new theme colors
     window.lastChartState = null;
     if (window.dailyMaxPrice !== undefined && window.dailyMinPrice !== undefined) {
-        drawPriceChart(window.dailyMaxPrice, window.dailyMinPrice, window.currentDispatches || []);
+        drawPriceCharts(window.dailyMaxPrice, window.dailyMinPrice, window.currentDispatches || []);
     }
 }
 
 // On Load init
 document.addEventListener("DOMContentLoaded", async () => {
+    await detectLinuxRuntime();
     const savedTheme = localStorage.getItem('theme') || 'light';
     document.documentElement.setAttribute('data-theme', savedTheme);
     updateThemeButtons(savedTheme);
@@ -356,19 +567,23 @@ document.addEventListener("DOMContentLoaded", async () => {
     } : null;
     if (legacyCredentials) await saveCredentials(legacyCredentials);
 
-    const credentials = legacyCredentials || await loadCredentials();
+    let credentials = legacyCredentials;
+    if (!credentials && (!window.linuxRuntime || !window.linuxAuthRequired || getLinuxAccessKey())) {
+        try {
+            credentials = await loadCredentials();
+        } catch (error) {
+            console.warn('Saved Raspberry Pi configuration is locked.', error);
+        }
+    }
     const hasCreds = Boolean(credentials?.acc && credentials?.api);
     if (credentials) {
-        document.getElementById('acc').value = credentials.acc || '';
-        document.getElementById('api').value = credentials.api || '';
-        document.getElementById('fox-sn').value = credentials.foxSN || '';
-        document.getElementById('fox-token').value = credentials.foxToken || '';
-        document.getElementById('gas-url').value = credentials.gasUrl || '';
+        populateCredentialInputs(credentials);
     }
 
     if (hasCreds) {
         startAutoConnect();
     }
+    startLinuxWorkerConfigPoll();
 
     // Master Clock Ticker - Drives real-time evaluation
     setInterval(() => {
@@ -397,6 +612,16 @@ document.addEventListener("DOMContentLoaded", async () => {
 });
 
 async function clearCredentials() {
+    if (window.linuxRuntime) {
+        const response = await fetch(LINUX_CONFIG_ENDPOINT, {
+            method: 'DELETE',
+            headers: { 'X-Octopus-Access-Key': getLinuxAccessKey() }
+        });
+        if (!response.ok) {
+            showToast(`Raspberry Pi configuration could not be wiped (HTTP ${response.status}).`);
+            return;
+        }
+    }
     localStorage.clear();
     sessionStorage.clear();
     await new Promise(resolve => {
@@ -479,11 +704,7 @@ async function executeImport() {
         const config = JSON.parse(decrypted);
         
         // Populate Inputs
-        document.getElementById('acc').value = config.acc || '';
-        document.getElementById('api').value = config.api || '';
-        document.getElementById('fox-sn').value = config.foxSN || '';
-        document.getElementById('fox-token').value = config.foxToken || '';
-        document.getElementById('gas-url').value = config.gasUrl || '';
+        populateCredentialInputs(config);
         
         await saveCredentials(config);
 
@@ -564,31 +785,49 @@ async function initDashboard(isAutoRefresh = false, retryCount = 1) {
         }
 
         // 3. Fetch exact rates from REST API
-        let tariffCode = 'Data unavailable'; 
+        let importTariffCode = 'Data unavailable';
+        let exportTariffCode = 'Not available';
         let minRate = 0;
         let maxRate = 0;
+        let importRates = [];
+        let exportRates = [];
 
         try {
             const accData = await fetchJson(`https://api.octopus.energy/v1/accounts/${encodeURIComponent(acc)}/`, {
                 headers: { 'Authorization': 'Basic ' + btoa(api + ':') }
             });
-            const meterPoint = accData.properties?.[0]?.electricity_meter_points?.[0];
-            const agreement = meterPoint?.agreements?.find(a => !a.valid_to || new Date(a.valid_to) > new Date());
-            
-            if (agreement) {
-                tariffCode = agreement.tariff_code;
-                const productCode = tariffCode.split('-').slice(2, -1).join('-'); 
-                const ratesData = await fetchJson(`https://api.octopus.energy/v1/products/${encodeURIComponent(productCode)}/electricity-tariffs/${encodeURIComponent(tariffCode)}/standard-unit-rates/`);
-                
-                if (ratesData?.results?.length > 0) {
-                    window.todayRates = ratesData.results;
-                    const sorted = [...ratesData.results].sort((a,b) => a.value_inc_vat - b.value_inc_vat);
-                    minRate = parseFloat(sorted[0].value_inc_vat.toFixed(2));
-                    maxRate = parseFloat(sorted[sorted.length-1].value_inc_vat.toFixed(2));
-                }
+            const { importTariff, exportTariff } = selectActiveElectricityTariffs(accData);
+            importTariffCode = importTariff?.agreement?.tariff_code || importTariffCode;
+            exportTariffCode = exportTariff?.agreement?.tariff_code || exportTariffCode;
+
+            const [importResult, exportResult] = await Promise.allSettled([
+                fetchTariffRates(importTariff?.agreement?.tariff_code),
+                fetchTariffRates(exportTariff?.agreement?.tariff_code)
+            ]);
+
+            if (importResult.status === 'fulfilled') {
+                importRates = importResult.value;
+            } else {
+                console.warn('Failed import tariff rate fetch', importResult.reason);
+            }
+            if (exportResult.status === 'fulfilled') {
+                exportRates = exportResult.value;
+            } else {
+                console.warn('Failed export tariff rate fetch', exportResult.reason);
+            }
+
+            if (importRates.length > 0) {
+                const sorted = [...importRates].sort((a,b) => a.value_inc_vat - b.value_inc_vat);
+                minRate = parseFloat(sorted[0].value_inc_vat.toFixed(2));
+                maxRate = parseFloat(sorted[sorted.length-1].value_inc_vat.toFixed(2));
             }
         } catch (err) { console.warn("Failed exact rate fetch", err); }
 
+        // Import is always the primary/default tariff. Keep todayRates as a
+        // compatibility alias for existing chart and target-price behaviour.
+        window.importRates = importRates;
+        window.exportRates = exportRates;
+        window.todayRates = window.importRates;
         window.dailyMinPrice = minRate;
         window.dailyMaxPrice = maxRate;
 
@@ -599,12 +838,8 @@ async function initDashboard(isAutoRefresh = false, retryCount = 1) {
         let isOffPeak = false;
         let activeDispatch = false;
 
-        if (window.todayRates) {
-            const currentBlock = window.todayRates.find(r => {
-                const start = new Date(r.valid_from).getTime();
-                const end = new Date(r.valid_to).getTime();
-                return nowTime >= start && nowTime < end;
-            });
+        if (window.importRates.length > 0) {
+            const currentBlock = getRateAtTime(window.importRates, nowTime);
             if (currentBlock) {
                 livePrice = parseFloat(currentBlock.value_inc_vat.toFixed(2));
                 // Determine 'off-peak' status using robust timestamp comparisons
@@ -623,6 +858,10 @@ async function initDashboard(isAutoRefresh = false, retryCount = 1) {
             }
         }
         window.currentLivePrice = livePrice;
+        const currentExportBlock = getRateAtTime(window.exportRates, nowTime);
+        const liveExportPrice = currentExportBlock
+            ? parseFloat(currentExportBlock.value_inc_vat.toFixed(2))
+            : null;
 
         // --- UI RENDERING ---
         if (!isAutoRefresh) {
@@ -648,18 +887,33 @@ async function initDashboard(isAutoRefresh = false, retryCount = 1) {
         const displayPrice = livePrice !== null ? livePrice + 'p' : '--p';
 
         document.getElementById('ui-pricing').innerHTML = `
-            <div class="badge ${badgeClass}" style="margin-bottom: 0.5rem;">${priceLabel}</div>
-            <div class="current-price">${displayPrice}</div>
-            <div style="font-size: 0.9rem; color: var(--text-muted); margin-bottom: 0.5rem;">Per kWh (Live Import Rate)</div>
-            <div style="display: inline-block; padding: 0.25rem 0.75rem; background: var(--off-peak-bg); color: #059669; border-radius: 6px; font-size: 0.85rem; font-weight: 700; border: 1px solid #6ee7b7;">
-                Lowest Daily Off-Peak: ${minRate}p
+            <div class="tariff-live-grid">
+                <div class="tariff-live-card tariff-live-import">
+                    <div class="tariff-live-heading">
+                        <span>⬇ Import tariff</span>
+                        <span class="badge ${badgeClass}">${priceLabel}</span>
+                    </div>
+                    <div class="tariff-live-price">${displayPrice}</div>
+                    <div class="tariff-live-unit">Live grid purchase rate · p/kWh</div>
+                    <div class="tariff-live-note">Lowest daily import: <strong>${minRate}p</strong></div>
+                </div>
+                <div class="tariff-live-card tariff-live-export">
+                    <div class="tariff-live-heading">
+                        <span>⬆ Export tariff</span>
+                        <span class="tariff-direction-badge">SEG</span>
+                    </div>
+                    <div class="tariff-live-price">${liveExportPrice !== null ? liveExportPrice + 'p' : '--p'}</div>
+                    <div class="tariff-live-unit">Live grid payment rate · p/kWh</div>
+                    <div class="tariff-live-note">${liveExportPrice !== null ? 'Paid for electricity sent to the grid' : 'Waiting for active export rate data'}</div>
+                </div>
             </div>
         `;
 
         document.getElementById('ui-account-details').innerHTML = `
             <li><span class="label">Account Number</span> <span class="val">${escapeHtml(acc)}</span></li>
             <li><span class="label">Linked Device</span> <span class="val" style="color: var(--accent);">${escapeHtml(device?.provider ? device.provider.toUpperCase() : 'NONE DETECTED')}</span></li>
-            <li><span class="label">Active Tariff Code</span> <span class="val" style="font-size: 0.8rem; font-family: monospace;">${escapeHtml(tariffCode)}</span></li>
+            <li><span class="label">Import Tariff Code</span> <span class="val" style="font-size: 0.8rem; font-family: monospace;">${escapeHtml(importTariffCode)}</span></li>
+            <li><span class="label">Export Tariff Code</span> <span class="val" style="font-size: 0.8rem; font-family: monospace;">${escapeHtml(exportTariffCode)}</span></li>
         `;
 
         if (device) {
@@ -673,7 +927,7 @@ async function initDashboard(isAutoRefresh = false, retryCount = 1) {
             `;
         }
 
-        drawPriceChart(maxRate, minRate, dispatches);
+        drawPriceCharts(maxRate, minRate, dispatches);
         
         const dispatchHtml = dispatches.length ? 
             dispatches.map(d => `<div style="padding: 0.5rem 0.75rem; background: #e0f2fe; border: 1px solid #7dd3fc; border-radius: 8px; margin-bottom: 0.5rem; color: #0369a1; font-size: 0.9rem; font-weight: 600;">⚡ ${new Date(d.startDt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})} - ${new Date(d.endDt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</div>`).join('') 
@@ -819,7 +1073,7 @@ async function fetchCurrentWorkMode(forceModeUpdate = false) {
             
             // Auto-Resume Logic
             const autoResumeEnabled = document.getElementById('toggle-auto-resume')?.checked;
-            if (autoResumeEnabled && batterySoc !== '--') {
+            if (autoResumeEnabled && canRunAutomaticActions() && batterySoc !== '--') {
                 if (window.activeFoxGroups && window.activeFoxGroups.length > 0) {
                     const resumeNow = new Date();
                     const nowMins = resumeNow.getHours() * 60 + resumeNow.getMinutes();
@@ -1295,6 +1549,7 @@ function hasEnabledLocalAutomation() {
 // RUNS TO PUSH SCHEDULES VIA V3 API INSTEAD OF V0 LIVE-TOGGLE
 async function evaluateLocalAutomations(btn = null, isStartup = false) {
     if (!globalFoxSN || !globalGasUrl || isCurrentlyUpdatingMode) return;
+    if (!btn && !canRunAutomaticActions()) return false;
     
     if (btn) {
         btn.textContent = "Syncing...";
@@ -1322,7 +1577,7 @@ async function evaluateLocalAutomations(btn = null, isStartup = false) {
     }
 
     // Save configuration implicitly on run
-    localStorage.setItem('foxAutomations', JSON.stringify({
+    const automationConfig = {
         priceCheck: isAutoPrice,
         dispatchCheck: isAutoDispatch,
         exportCheck: isAutoExport,
@@ -1339,7 +1594,11 @@ async function evaluateLocalAutomations(btn = null, isStartup = false) {
         weeklyForceDays: weeklyForce.days,
         minSoc: Math.max(11, parseInt(document.getElementById('adv-min-soc')?.value || 11)),
         fdPwr: parseInt(document.getElementById('adv-fd-pwr')?.value || 5000)
-    }));
+    };
+    localStorage.setItem('foxAutomations', JSON.stringify(automationConfig));
+    if (window.linuxRuntime && window.linuxRole !== 'worker') {
+        await updateLinuxState({ automations: automationConfig });
+    }
     
     // Toggle borders when user clicks apply
     const blockUnified = document.getElementById('block-unified-auto');
@@ -1405,13 +1664,13 @@ async function evaluateLocalAutomations(btn = null, isStartup = false) {
     };
 
     // 1. Target Price Check (Lower priority - forms the base off-peak schedule)
-    if (isAutoPrice && window.todayRates) {
+    if (isAutoPrice && window.importRates?.length) {
         const threshold = parseFloat(document.getElementById('price-threshold').value || 0);
         const limitTime = new Date(now.getTime() + 24 * 60 * 60 * 1000); 
         let current = null;
         const soc = applyLimit ? targetSoc : 100;
         
-        [...window.todayRates]
+        getTariffSlotsForDate(window.importRates, now)
             .filter(r => new Date(r.valid_to) > now && new Date(r.valid_from) <= limitTime && new Date(r.valid_from).getDate() === now.getDate())
             .sort((a,b) => new Date(a.valid_from) - new Date(b.valid_from))
             .forEach(r => {
@@ -1449,12 +1708,12 @@ async function evaluateLocalAutomations(btn = null, isStartup = false) {
     }
 
     // 4. Price Export Feature (Highest priority - overwrites any charge blocks)
-    if (isAutoPrice && isAutoExport && window.todayRates) {
+    if (isAutoPrice && isAutoExport && window.exportRates?.length) {
         const expThreshold = parseFloat(document.getElementById('export-threshold').value || 99);
         const limitTime = new Date(now.getTime() + 24 * 60 * 60 * 1000);
         let currentExp = null;
 
-        [...window.todayRates]
+        getTariffSlotsForDate(window.exportRates, now)
             .filter(r => new Date(r.valid_to) > now && new Date(r.valid_from) <= limitTime && new Date(r.valid_from).getDate() === now.getDate())
             .sort((a,b) => new Date(a.valid_from) - new Date(b.valid_from))
             .forEach(r => {
@@ -1575,18 +1834,28 @@ async function setV3Schedule(mode) {
     }
 }
 
-// Chart Builder
-function drawPriceChart(peak, offPeak, dispatches) {
-    const chartState = JSON.stringify({ peak, offPeak, dispatches });
-    if (window.lastChartState === chartState && priceChartInst) return; // Skip if data hasn't changed
+// Tariff Chart Builders
+function drawPriceCharts(peak, offPeak, dispatches) {
+    const chartState = JSON.stringify({
+        peak,
+        offPeak,
+        dispatches,
+        importRates: window.importRates || [],
+        exportRates: window.exportRates || []
+    });
+    const chartsAlreadyRendered = importPriceChartInst
+        && (!window.exportRates?.length || exportPriceChartInst);
+    if (window.lastChartState === chartState && chartsAlreadyRendered) return;
     window.lastChartState = chartState;
     
-    if (priceChartInst) priceChartInst.destroy();
-    if (!peak || !offPeak) { document.getElementById('priceChart').style.display = 'none'; return; }
-    
-    document.getElementById('priceChart').style.display = 'block';
-    const ctx = document.getElementById('priceChart').getContext('2d');
-    const labels = [], dataPoints = [];
+    if (importPriceChartInst) importPriceChartInst.destroy();
+    if (exportPriceChartInst) exportPriceChartInst.destroy();
+    importPriceChartInst = null;
+    exportPriceChartInst = null;
+
+    const labels = [];
+    const importDataPoints = [];
+    const exportDataPoints = [];
     const now = new Date();
     
     for (let h = 0; h <= 24; h++) {
@@ -1594,21 +1863,27 @@ function drawPriceChart(peak, offPeak, dispatches) {
             if (h === 24 && m > 0) break;
             labels.push(h === 24 ? '24:00' : `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`);
             
-            const slotIso = new Date(now.getFullYear(), now.getMonth(), now.getDate(), h===24?0:h, m, 0).toISOString();
+            const slotDate = new Date(now.getFullYear(), now.getMonth(), now.getDate(), h, m, 0);
+            const slotTime = slotDate.getTime();
             
-            // Check exact API array if we have it to plot true history
-            let slotPrice = peak; 
-            if (window.todayRates) {
-                const found = window.todayRates.find(r => slotIso >= r.valid_from && slotIso < r.valid_to);
-                if (found) slotPrice = parseFloat(found.value_inc_vat.toFixed(2));
+            // Import prices are the default series and drive target-price charging.
+            let importSlotPrice = peak;
+            if (window.importRates?.length) {
+                const found = getRateAtTime(window.importRates, slotTime);
+                importSlotPrice = found ? parseFloat(found.value_inc_vat.toFixed(2)) : null;
             } else {
                 // Fallback dummy chart logic
                 let isOffPeak = (h === 23 && m >= 30) || (h < 5) || (h === 5 && m < 30) || (h === 24);
-                slotPrice = isOffPeak ? offPeak : peak;
+                importSlotPrice = isOffPeak ? offPeak : peak;
             }
+
+            // Export prices remain separate so SEG never replaces import pricing.
+            const exportRate = getRateAtTime(window.exportRates, slotTime);
+            const exportSlotPrice = exportRate
+                ? parseFloat(exportRate.value_inc_vat.toFixed(2))
+                : null;
             
-            // OVERRIDE: Apply off-peak rate if the 30-min slot overlaps with an Octopus smart dispatch
-            const slotTime = new Date(now.getFullYear(), now.getMonth(), now.getDate(), h === 24 ? 0 : h, m, 0).getTime();
+            // Smart dispatch affects the import cost only, never the SEG rate.
             const slotEnd = slotTime + 30 * 60 * 1000; // Slot duration is 30 mins
             
             if (dispatches && dispatches.some(d => {
@@ -1616,10 +1891,11 @@ function drawPriceChart(peak, offPeak, dispatches) {
                 const end = new Date(d.endDt).getTime();
                 return (start < slotEnd && end > slotTime); // True overlap condition
             })) {
-                slotPrice = offPeak;
+                importSlotPrice = offPeak;
             }
             
-            dataPoints.push(slotPrice);
+            importDataPoints.push(importSlotPrice);
+            exportDataPoints.push(exportSlotPrice);
         }
     }
 
@@ -1627,27 +1903,92 @@ function drawPriceChart(peak, offPeak, dispatches) {
     const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
     const gridColor = isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)';
     const textColor = isDark ? '#94a3b8' : '#64748b';
-
-    priceChartInst = new Chart(ctx, {
-        type: 'line',
-        data: { 
-            labels: labels, 
-            datasets: [{ 
-                data: dataPoints, 
-                borderColor: '#10b981', backgroundColor: 'rgba(16, 185, 129, 0.15)',
-                stepped: 'after', fill: true, borderWidth: 2, pointRadius: 0 
-            }] 
-        },
-        options: { 
-            animation: false,
-            responsive: true, maintainAspectRatio: false, 
-            plugins: { legend: { display: false }, tooltip: { intersect: false, mode: 'index' } },
-            scales: { 
-                x: { ticks: { maxTicksLimit: 8, color: textColor }, grid: { display: false } },
-                y: { beginAtZero: true, border: { dash: [4, 4] }, ticks: { color: textColor }, grid: { color: gridColor } } 
+    const buildChartOptions = accentColor => ({
+        animation: false,
+        responsive: true,
+        maintainAspectRatio: false,
+        interaction: { intersect: false, mode: 'index' },
+        plugins: {
+            legend: { display: false },
+            tooltip: {
+                displayColors: false,
+                callbacks: {
+                    title: items => items[0]?.label || '',
+                    label: context => `${context.parsed.y.toFixed(2)}p/kWh`
+                }
             }
+        },
+        scales: {
+            x: {
+                ticks: { maxTicksLimit: 7, color: textColor },
+                grid: { display: false }
+            },
+            y: {
+                beginAtZero: true,
+                border: { display: false },
+                title: { display: true, text: 'p/kWh', color: textColor },
+                ticks: { color: textColor, maxTicksLimit: 5 },
+                grid: { color: gridColor }
+            }
+        },
+        elements: {
+            line: { borderColor: accentColor }
         }
     });
+
+    const importCanvas = document.getElementById('importPriceChart');
+    const importEmpty = document.getElementById('import-chart-empty');
+    const hasImportChartData = importDataPoints.some(value => value !== null);
+    importCanvas.style.display = hasImportChartData ? 'block' : 'none';
+    importEmpty.style.display = hasImportChartData ? 'none' : 'grid';
+
+    if (hasImportChartData) {
+        importPriceChartInst = new Chart(importCanvas.getContext('2d'), {
+            type: 'line',
+            data: {
+                labels,
+                datasets: [{
+                    label: 'Import tariff',
+                    data: importDataPoints,
+                    borderColor: '#10b981',
+                    backgroundColor: 'rgba(16, 185, 129, 0.14)',
+                    stepped: 'after',
+                    fill: true,
+                    borderWidth: 2.5,
+                    pointRadius: 0,
+                    spanGaps: false
+                }]
+            },
+            options: buildChartOptions('#10b981')
+        });
+    }
+
+    const exportCanvas = document.getElementById('exportPriceChart');
+    const exportEmpty = document.getElementById('export-chart-empty');
+    const hasExportChartData = exportDataPoints.some(value => value !== null);
+    exportCanvas.style.display = hasExportChartData ? 'block' : 'none';
+    exportEmpty.style.display = hasExportChartData ? 'none' : 'grid';
+
+    if (hasExportChartData) {
+        exportPriceChartInst = new Chart(exportCanvas.getContext('2d'), {
+            type: 'line',
+            data: {
+                labels,
+                datasets: [{
+                    label: 'Export tariff',
+                    data: exportDataPoints,
+                    borderColor: '#3b82f6',
+                    backgroundColor: 'rgba(59, 130, 246, 0.14)',
+                    stepped: 'after',
+                    fill: true,
+                    borderWidth: 2.5,
+                    pointRadius: 0,
+                    spanGaps: false
+                }]
+            },
+            options: buildChartOptions('#3b82f6')
+        });
+    }
 }
 
 function previewScheduleTimes() {
@@ -1656,19 +1997,21 @@ function previewScheduleTimes() {
     const display = document.getElementById('price-target-times');
     
     if (!isEnabled) { display.innerHTML = ''; return; }
-    if (!window.todayRates) { display.innerHTML = 'Waiting for rate data...'; return; }
+    if (!window.importRates?.length) { display.innerHTML = 'Waiting for import rate data...'; return; }
 
     const now = new Date();
     let blocks = [];
     let current = null;
 
-    [...window.todayRates].sort((a,b) => new Date(a.valid_from) - new Date(b.valid_from)).forEach(r => {
-        if (r.value_inc_vat <= threshold) {
-            if (!current) current = { start: new Date(r.valid_from), end: new Date(r.valid_to) };
-            else if (current.end.getTime() === new Date(r.valid_from).getTime()) current.end = new Date(r.valid_to);
-            else { blocks.push(current); current = { start: new Date(r.valid_from), end: new Date(r.valid_to) }; }
-        }
-    });
+    getTariffSlotsForDate(window.importRates, now)
+        .sort((a,b) => new Date(a.valid_from) - new Date(b.valid_from))
+        .forEach(r => {
+            if (r.value_inc_vat <= threshold) {
+                if (!current) current = { start: new Date(r.valid_from), end: new Date(r.valid_to) };
+                else if (current.end.getTime() === new Date(r.valid_from).getTime()) current.end = new Date(r.valid_to);
+                else { blocks.push(current); current = { start: new Date(r.valid_from), end: new Date(r.valid_to) }; }
+            }
+        });
     if (current) blocks.push(current);
 
     blocks = blocks.filter(b => b.end > now).slice(0, 3); 
