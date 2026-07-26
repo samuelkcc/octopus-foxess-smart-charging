@@ -17,7 +17,8 @@ const [installerSource, uninstallerSource, stylesSource, markupSource] = await P
   readFile(path.join(root, 'src', 'index.html'), 'utf8')
 ]);
 
-assert.match(installerSource, /systemctl enable --now octopus-foxess\.service octopus-foxess-worker\.service octopus-foxess-inhibit\.service/);
+assert.match(installerSource, /systemctl enable octopus-foxess\.service octopus-foxess-worker\.service octopus-foxess-inhibit\.service/);
+assert.match(installerSource, /systemctl restart octopus-foxess\.service octopus-foxess-worker\.service octopus-foxess-inhibit\.service/);
 assert.match(installerSource, /octopus-foxess-inhibit\.service/);
 assert.match(installerSource, /ExecStart=\/usr\/bin\/systemd-inhibit --what=sleep:idle/);
 assert.match(installerSource, /ExecStart=\/usr\/bin\/chromium --headless=new/);

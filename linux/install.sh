@@ -134,7 +134,8 @@ WantedBy=multi-user.target
 EOF
 
 systemctl daemon-reload
-systemctl enable --now octopus-foxess.service octopus-foxess-worker.service octopus-foxess-inhibit.service
+systemctl enable octopus-foxess.service octopus-foxess-worker.service octopus-foxess-inhibit.service
+systemctl restart octopus-foxess.service octopus-foxess-worker.service octopus-foxess-inhibit.service
 
 ACCESS_KEY="$(cat "$CONFIG_ROOT/access.key")"
 LAN_IP="$(hostname -I 2>/dev/null | awk '{print $1}')"

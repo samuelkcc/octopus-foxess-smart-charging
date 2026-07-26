@@ -3,6 +3,7 @@
 - Fixed Raspberry Pi installation permissions that could leave the installer waiting while the local server repeatedly restarted.
 - Kept the generated access key private while ensuring the installed application is readable by its dedicated service account.
 - Moved sleep inhibition into a separate root-owned service so Raspberry Pi OS can acquire the inhibitor while the app and Chromium remain unprivileged.
+- Restarted all three services after installation so running Pis switch to the newly downloaded release immediately.
 
 ## Fixed
 

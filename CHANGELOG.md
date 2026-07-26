@@ -5,6 +5,7 @@
 - Fixed Raspberry Pi release permissions so the dedicated service account can read and start the local server.
 - Scoped the access-key umask so it no longer affects application files copied later in the installer.
 - Split sleep inhibition into a root-owned service while keeping the server and Chromium worker unprivileged.
+- Restart all services after an update so the newly installed release becomes active immediately.
 
 ## v2026.07.26 — 2026-07-26
 
