@@ -1,4 +1,15 @@
-## Raspberry Pi tray upgrade restart hotfix v2026.07.26.11
+## Live WS dashboard status hotfix v2026.07.26.12
+
+This hotfix completes the Live WS dashboard behaviour:
+
+- Hides both manual **Fetch Now** controls while Live WS is healthy; they return
+  automatically if the app falls back to REST.
+- Updates Current Device Mode immediately from a refreshed active scheduler,
+  even if the separate REST WorkMode request times out.
+- Keeps the Live WS SOC value in the effective mode badge, so an active
+  scheduler block can display, for example, `FORCED CHARGE | 99%`.
+
+## Previous Raspberry Pi tray upgrade restart hotfix v2026.07.26.11
 
 This hotfix makes Raspberry Pi upgrades take effect immediately:
 

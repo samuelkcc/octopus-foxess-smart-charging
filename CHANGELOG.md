@@ -1,5 +1,12 @@
 # Changelog
 
+## v2026.07.26.12 — 2026-07-26
+
+- Hide both scheduler and telemetry **Fetch Now** controls while FoxESS Live WS
+  is healthy, restoring them automatically during REST fallback.
+- Refresh Current Device Mode immediately from active scheduler data and the
+  latest Live WS SOC, even when the following REST WorkMode request times out.
+
 ## v2026.07.26.11 — 2026-07-26
 
 - Restart the signed-in user's existing Octopus FoxESS taskbar process during

@@ -332,7 +332,9 @@ function renderFoxLiveStatus(status, messageTarget = null) {
     const label = describeFoxLiveStatus(status);
     const sourceBadge = document.getElementById('fox-live-source-badge');
     const setupBadge = document.getElementById('fox-live-setup-status');
+    const scheduleFetchButton = document.getElementById('fox-schedules-fetch-button');
     const telemetryFetchButton = document.getElementById('fox-telemetry-fetch-button');
+    const hideManualFetch = isFoxLiveStatusHealthy(status);
     const badgeClass = status?.source === 'live-ws'
         ? 'badge off-peak'
         : (status?.state === 'connecting' ? 'badge neutral' : 'badge peak');
@@ -344,9 +346,8 @@ function renderFoxLiveStatus(status, messageTarget = null) {
         setupBadge.textContent = label;
         setupBadge.className = badgeClass;
     }
-    if (telemetryFetchButton) {
-        telemetryFetchButton.style.display = isFoxLiveStatusHealthy(status) ? 'none' : '';
-    }
+    if (scheduleFetchButton) scheduleFetchButton.style.display = hideManualFetch ? 'none' : '';
+    if (telemetryFetchButton) telemetryFetchButton.style.display = hideManualFetch ? 'none' : '';
     if (messageTarget) {
         const reason = status?.lastError
             ? ` ${status.lastError}`
@@ -1555,6 +1556,8 @@ async function fetchFoxSchedules({ expectedGroups = null, attempts = 1 } = {}) {
             const container = document.getElementById('fox-active-schedules');
             if (data.errno === 0 && data.result && data.result.groups) {
                 window.activeFoxGroups = data.result.groups.filter(isActiveFoxSchedule);
+                localWorkModeState = getEffectiveFoxWorkMode(window.baseFoxWorkMode || localWorkModeState);
+                updateModeBadge(localWorkModeState, window.lastFoxTelemetry?.SoC ?? null);
             if (window.activeFoxGroups.length === 0) {
                 container.innerHTML = '<div style="text-align: center; padding: 0.5rem 0;">No schedules currently set.</div>';
             } else {
