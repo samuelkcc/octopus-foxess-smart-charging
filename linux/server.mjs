@@ -6,6 +6,8 @@ import { networkInterfaces } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+import { FoxessLiveTelemetry } from './foxess-live.mjs';
+
 const appRoot = path.dirname(fileURLToPath(import.meta.url));
 const webRoot = process.env.OCTOPUS_WEB_ROOT || path.join(appRoot, 'web');
 const stateRoot = process.env.OCTOPUS_STATE_DIR || '/var/lib/octopus-foxess';
@@ -159,6 +161,9 @@ function getClientState(state) {
       api: credentials.api ? 'pi-managed' : '',
       foxSN: credentials.foxSN ? 'pi-managed' : '',
       foxToken: credentials.foxToken ? 'pi-managed' : '',
+      foxLiveMode: credentials.foxLiveMode === 'rest' ? 'rest' : 'live-ws',
+      foxWebUsername: credentials.foxWebUsername ? 'pi-managed' : '',
+      foxWebPassword: credentials.foxWebPassword ? 'pi-managed' : '',
       gasUrl: '/api/foxess'
     }
   };
@@ -186,17 +191,25 @@ async function proxyFoxRequest(request, response) {
     return sendJson(response, 400, { errno: 998, msg: 'Only FoxESS Cloud API requests are allowed' });
   }
   const state = await loadState();
+  const upstream = await requestFoxOpenApi(state, target.pathname, payload.body || {});
+  return relayUpstreamResponse(upstream, response);
+}
+
+async function requestFoxOpenApi(state, pathname, requestedBody = {}) {
   const foxSN = state.credentials?.foxSN;
   const foxToken = state.credentials?.foxToken;
   if (!foxSN || !foxToken) {
-    return sendJson(response, 409, { errno: 997, msg: 'Configure FoxESS in the Raspberry Pi Settings app first' });
+    throw Object.assign(
+      new Error('Configure FoxESS in the Raspberry Pi Settings app first'),
+      { statusCode: 409 }
+    );
   }
   const timestamp = Date.now().toString();
-  const signString = `${target.pathname}\\r\\n${foxToken}\\r\\n${timestamp}`;
-  const body = { ...(payload.body || {}) };
+  const signString = `${pathname}\\r\\n${foxToken}\\r\\n${timestamp}`;
+  const body = { ...requestedBody };
   if (Object.hasOwn(body, 'sn')) body.sn = foxSN;
   if (Object.hasOwn(body, 'deviceSN')) body.deviceSN = foxSN;
-  const upstream = await fetch(target, {
+  return fetch(`https://${allowedFoxHost}${pathname}`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -208,7 +221,16 @@ async function proxyFoxRequest(request, response) {
     body: JSON.stringify(body),
     signal: AbortSignal.timeout(20_000)
   });
-  return relayUpstreamResponse(upstream, response);
+}
+
+async function foxOpenApiJson(state, pathname, body) {
+  const upstream = await requestFoxOpenApi(state, pathname, body);
+  const data = await upstream.json();
+  if (!upstream.ok) throw new Error(`FoxESS Open API returned HTTP ${upstream.status}`);
+  if (data.errno !== 0) {
+    throw new Error(`FoxESS Open API rejected ${pathname} (${data.errno ?? 'unknown'})`);
+  }
+  return data;
 }
 
 async function proxyOctopusRequest(request, response) {
@@ -278,6 +300,11 @@ async function proxyOctopusRequest(request, response) {
   return relayUpstreamResponse(upstream, response);
 }
 
+const foxessLive = new FoxessLiveTelemetry({
+  loadState,
+  foxOpenApiJson
+});
+
 const contentTypes = {
   '.html': 'text/html; charset=utf-8',
   '.css': 'text/css; charset=utf-8',
@@ -315,7 +342,11 @@ const server = http.createServer(async (request, response) => {
     const pathname = requestUrl.pathname;
 
     if (request.method === 'GET' && pathname === '/api/health') {
-      return sendJson(response, 200, { status: 'ok', version });
+      return sendJson(response, 200, {
+        status: 'ok',
+        version,
+        foxessTelemetry: foxessLive.getPublicStatus()
+      });
     }
     if (request.method === 'GET' && pathname === '/api/runtime') {
       const workerRequested = requestUrl.searchParams.get('worker') === '1';
@@ -346,7 +377,8 @@ const server = http.createServer(async (request, response) => {
     }
 
     const protectedApi = ['/api/config', '/api/foxess', '/api/octopus'];
-    if (protectedApi.includes(pathname) && !(await isAuthorized(request))) {
+    const isProtected = protectedApi.includes(pathname) || pathname.startsWith('/api/foxess/live');
+    if (isProtected && !(await isAuthorized(request))) {
       return sendJson(response, 401, { error: 'Invalid Raspberry Pi access key' });
     }
 
@@ -366,6 +398,7 @@ const server = http.createServer(async (request, response) => {
         revision: Date.now()
       };
       await saveState(next);
+      void foxessLive.reconcile({ force: true });
       return sendJson(response, 200, { saved: true, revision: next.revision });
     }
     if (pathname === '/api/config' && request.method === 'DELETE') {
@@ -373,6 +406,7 @@ const server = http.createServer(async (request, response) => {
         return sendJson(response, 403, { error: 'Service configuration can only be wiped from the Raspberry Pi Settings app' });
       }
       await saveState({ revision: Date.now() });
+      void foxessLive.reconcile({ force: true });
       return sendEmpty(response);
     }
     if (pathname === '/api/octopus' && request.method === 'POST') {
@@ -380,6 +414,19 @@ const server = http.createServer(async (request, response) => {
     }
     if (pathname === '/api/foxess' && request.method === 'POST') {
       return await proxyFoxRequest(request, response);
+    }
+    if (pathname === '/api/foxess/live/status' && request.method === 'GET') {
+      await foxessLive.reconcile();
+      return sendJson(response, 200, foxessLive.getPublicStatus());
+    }
+    if (pathname === '/api/foxess/live' && request.method === 'GET') {
+      return sendJson(response, 200, await foxessLive.getTelemetry());
+    }
+    if (pathname === '/api/foxess/live/test' && request.method === 'POST') {
+      if (!isLoopback(request)) {
+        return sendJson(response, 403, { error: 'FoxESS live self-test can only run from the Raspberry Pi Settings app' });
+      }
+      return sendJson(response, 200, await foxessLive.selfTest());
     }
     if (pathname.startsWith('/api/')) {
       return sendJson(response, 404, { error: 'Unknown API endpoint' });
@@ -392,11 +439,21 @@ const server = http.createServer(async (request, response) => {
     console.error(new Date().toISOString(), error);
     const status = error.statusCode || (error instanceof SyntaxError ? 400 : 500);
     return sendJson(response, status, {
-      error: status === 400 ? (error.message || 'Invalid JSON request') : 'Local server error'
+      error: status >= 400 && status < 500
+        ? (error.message || 'Invalid request')
+        : 'Local server error'
     });
   }
 });
 
 server.listen(port, host, () => {
   console.log(`Octopus FoxESS Linux server v${version} listening on ${host}:${port}`);
+  foxessLive.start();
 });
+
+for (const signal of ['SIGINT', 'SIGTERM']) {
+  process.on(signal, () => {
+    foxessLive.stop();
+    server.close(() => process.exit(0));
+  });
+}

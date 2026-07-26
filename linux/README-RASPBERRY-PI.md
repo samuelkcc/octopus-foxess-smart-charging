@@ -18,6 +18,18 @@ FoxESS Settings** icon that opens a focused local app window. Use it to enter th
 Octopus/FoxESS credentials and view or change the iPhone LAN access key—no
 terminal key command is required.
 
+The Pi settings app also provides a FoxESS telemetry selector:
+
+- **Live WebSocket (default, REST fallback)** uses optional FoxESS Cloud
+  web-login credentials for approximately five-second read-only telemetry.
+- **Official REST API only** disables the undocumented stream.
+
+Leaving either Live WS credential empty automatically selects REST fallback.
+The **Test Live Connection** button waits for a fresh telemetry frame. Login,
+self-test, stale-frame, or connection failures also fall back to REST
+automatically. All schedule and inverter-control commands always use the
+official FoxESS REST API.
+
 If Raspberry Pi OS shows its normal **Execute File** question when the desktop
 shortcut is opened for the first time, choose **Execute**. The application-menu
 launcher opens directly.

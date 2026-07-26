@@ -40,6 +40,7 @@ Features include:
 - weekly forced-charge windows, including overnight periods
 - target SOC, minimum SOC, charge/discharge power, and Auto-Resume controls
 - FoxESS API quota tracking and request throttling
+- optional approximately five-second FoxESS Live WebSocket telemetry with automatic REST fallback on Raspberry Pi
 - encrypted configuration and password-protected manual backups
 - responsive phone, tablet, desktop, dark-mode, full-screen, and Mini HUD views
 
@@ -99,6 +100,29 @@ Click **Octopus FoxESS Settings** on the Pi desktop or in the Raspberry Pi
 application menu. It opens a focused app-style configuration window. Enter the
 Octopus and FoxESS credentials there and set a memorable **iPhone LAN Access
 Key**; no terminal command is needed to retrieve or change it.
+
+### FoxESS telemetry connection
+
+The Raspberry Pi settings screen offers:
+
+- **Live WebSocket (default, REST fallback)** — optionally enter the same
+  FoxESS Cloud web-login email/username and password used at
+  `foxesscloud.com`, then select **Test Live Connection**. When a fresh
+  self-test frame is received, supported telemetry updates approximately every
+  five seconds.
+- **Official REST API only** — disables the undocumented live stream and uses
+  the FoxESS Open API.
+
+If either optional web-login field is empty, login fails, the stream closes, or
+no fresh frame arrives within 30 seconds, the Pi automatically changes to
+`REST FALLBACK`. REST telemetry is cached for at least one minute to respect
+FoxESS's daily quota. The dashboard displays `LIVE WS`, `REST FALLBACK`, or
+`OFFICIAL REST` so the active source is visible.
+
+The live connection is an undocumented FoxESS web-portal interface and may
+change without notice. It is used only for read-only telemetry. Scheduler
+reads/writes, work-mode controls, and every deliberate inverter change continue
+to use the official FoxESS REST API.
 
 Raspberry Pi OS may show its standard **Execute File** question the first time a
 desktop shortcut is opened; choose **Execute**. Opening the same launcher from
@@ -210,11 +234,16 @@ run the web edition's timers; use the Raspberry Pi edition for unattended use.
   in `/var/lib/octopus-foxess`.
 - Authenticated LAN clients receive only managed-configuration status; Octopus
   API keys, FoxESS tokens, and inverter serial numbers are not returned.
+- Optional FoxESS web-login credentials for Live WS are also encrypted on the
+  Pi and are never returned to an iPhone client.
 - The Pi authenticates Octopus requests and signs FoxESS requests server-side.
 - The LAN access key is stored with service-only permissions in
   `/var/lib/octopus-foxess/access.key` and can only be viewed or changed through
   the settings screen opened locally on the Pi.
 - The Pi relay accepts only HTTPS requests to `www.foxesscloud.com/op/...`.
+- The optional read-only live stream connects from the Pi to the undocumented
+  `wss://www.foxesscloud.com/dew/v0/wsmaitian` endpoint. It never carries
+  scheduler or inverter-control commands.
 - LAN API access requires the generated access key; loopback access is reserved
   for the supervised worker.
 - Port `8787` uses HTTP on the trusted home LAN. Do not expose it through router
@@ -252,6 +281,10 @@ The check produces:
 - `dist/Octopus_FoxESS_Raspberry_Pi.tar.gz`
 - `dist/install.sh`
 - `dist/uninstall.sh`
+
+The optional FoxESS live implementation is adapted from
+[`nicois/foxess-control`](https://github.com/nicois/foxess-control) under the
+MIT License. See [`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md).
 
 Pushes to `main` test and deploy the standalone HTML as the root GitHub Pages
 app. Tags matching `v*` create a GitHub release with both editions and the

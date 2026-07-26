@@ -11,6 +11,8 @@ let foxRefreshInterval = 600;
 let foxCountdown = 600;
 let refreshTimerId = null;
 let linuxConfigPollId = null;
+let linuxLiveTelemetryPollId = null;
+let linuxLiveTelemetryBusy = false;
 let activeCredentials = null;
 
 const CREDENTIAL_STORAGE_KEY = 'encryptedCredentialsV1';
@@ -18,6 +20,8 @@ const CREDENTIAL_DB_NAME = 'octopusFoxessSecureStorage';
 const REQUEST_TIMEOUT_MS = 15000;
 const LINUX_CONFIG_ENDPOINT = '/api/config';
 const LINUX_OCTOPUS_ENDPOINT = '/api/octopus';
+const LINUX_FOX_LIVE_ENDPOINT = '/api/foxess/live';
+const LINUX_FOX_LIVE_TEST_ENDPOINT = '/api/foxess/live/test';
 
 window.linuxRuntime = false;
 window.linuxRole = 'web';
@@ -136,9 +140,25 @@ async function openPiSettingsView() {
     const credentials = await loadCredentials();
     if (credentials) populateCredentialInputs(credentials);
     await loadManagedAccessKey();
+    await loadFoxLiveStatus();
     const buttonText = document.getElementById('btn-text');
     if (buttonText) buttonText.textContent = 'SAVE SETTINGS & OPEN DASHBOARD';
     window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+async function loadFoxLiveStatus() {
+    if (!window.linuxRuntime || window.linuxAuthRequired) return;
+    try {
+        const status = await fetchJson('/api/foxess/live/status');
+        renderFoxLiveStatus(status);
+    } catch (error) {
+        renderFoxLiveStatus({
+            mode: 'live-ws',
+            source: 'rest-fallback',
+            state: 'fallback',
+            lastError: error.message
+        });
+    }
 }
 
 async function detectLinuxRuntime() {
@@ -157,6 +177,7 @@ async function detectLinuxRuntime() {
         if (!runtime.authRequired && runtime.role === 'dashboard') {
             document.body.classList.add('linux-local');
             await loadManagedAccessKey();
+            await loadFoxLiveStatus();
         }
         document.querySelectorAll('[data-linux-version]').forEach(element => {
             element.textContent = `Raspberry Pi v${runtime.version}`;
@@ -250,9 +271,99 @@ function populateCredentialInputs(credentials) {
     document.getElementById('api').value = credentials?.api || '';
     document.getElementById('fox-sn').value = credentials?.foxSN || '';
     document.getElementById('fox-token').value = credentials?.foxToken || '';
+    const liveMode = document.getElementById('fox-live-mode');
+    const webUsername = document.getElementById('fox-web-username');
+    const webPassword = document.getElementById('fox-web-password');
+    if (liveMode) liveMode.value = credentials?.foxLiveMode === 'rest' ? 'rest' : 'live-ws';
+    if (webUsername) webUsername.value = credentials?.foxWebUsername || '';
+    if (webPassword) webPassword.value = credentials?.foxWebPassword || '';
     document.getElementById('gas-url').value = window.linuxRuntime
         ? '/api/foxess'
         : (credentials?.gasUrl || '');
+    updateFoxLiveSettingsVisibility();
+}
+
+function getCredentialInputs() {
+    return {
+        acc: document.getElementById('acc')?.value.trim() || '',
+        api: document.getElementById('api')?.value.trim() || '',
+        foxSN: document.getElementById('fox-sn')?.value.trim() || '',
+        foxToken: document.getElementById('fox-token')?.value.trim() || '',
+        foxLiveMode: document.getElementById('fox-live-mode')?.value === 'rest' ? 'rest' : 'live-ws',
+        foxWebUsername: document.getElementById('fox-web-username')?.value.trim() || '',
+        foxWebPassword: document.getElementById('fox-web-password')?.value.trim() || '',
+        gasUrl: window.linuxRuntime
+            ? '/api/foxess'
+            : (document.getElementById('gas-url')?.value.trim() || '')
+    };
+}
+
+function updateFoxLiveSettingsVisibility() {
+    const mode = document.getElementById('fox-live-mode')?.value || 'live-ws';
+    const credentials = document.getElementById('fox-live-credentials');
+    if (credentials) credentials.style.display = mode === 'rest' ? 'none' : 'block';
+}
+
+function describeFoxLiveStatus(status) {
+    if (status?.source === 'live-ws' && status?.state === 'live') return 'LIVE WS';
+    if (status?.mode === 'rest') return 'OFFICIAL REST';
+    if (status?.reason === 'live-credentials-empty') return 'REST FALLBACK — LIVE LOGIN EMPTY';
+    if (status?.state === 'connecting') return 'CONNECTING';
+    return 'REST FALLBACK';
+}
+
+function renderFoxLiveStatus(status, messageTarget = null) {
+    const label = describeFoxLiveStatus(status);
+    const sourceBadge = document.getElementById('fox-live-source-badge');
+    const setupBadge = document.getElementById('fox-live-setup-status');
+    const badgeClass = status?.source === 'live-ws'
+        ? 'badge off-peak'
+        : (status?.state === 'connecting' ? 'badge neutral' : 'badge peak');
+    if (sourceBadge) {
+        sourceBadge.textContent = label;
+        sourceBadge.className = badgeClass;
+    }
+    if (setupBadge) {
+        setupBadge.textContent = label;
+        setupBadge.className = badgeClass;
+    }
+    if (messageTarget) {
+        const reason = status?.lastError
+            ? ` ${status.lastError}`
+            : (status?.reason === 'live-credentials-empty'
+                ? ' Enter both optional FoxESS web-login fields to enable Live WS.'
+                : '');
+        messageTarget.textContent = `${label}.${reason}`;
+    }
+}
+
+async function testFoxLiveConnection() {
+    if (!window.linuxRuntime || window.linuxAuthRequired) return;
+    const message = document.getElementById('fox-live-test-message');
+    const button = document.querySelector('.fox-live-test-button');
+    if (message) message.textContent = 'Saving Pi settings and waiting for a fresh FoxESS telemetry frame…';
+    if (button) {
+        button.disabled = true;
+        button.textContent = 'Testing…';
+    }
+    try {
+        await saveCredentials(getCredentialInputs());
+        const response = await fetch(LINUX_FOX_LIVE_TEST_ENDPOINT, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            signal: AbortSignal.timeout(30000)
+        });
+        if (!response.ok) throw new Error(`Live self-test returned HTTP ${response.status}`);
+        renderFoxLiveStatus(await response.json(), message);
+    } catch (error) {
+        if (message) message.textContent = `REST FALLBACK. ${error.message}`;
+        renderFoxLiveStatus({ source: 'rest-fallback', state: 'fallback', mode: 'live-ws' });
+    } finally {
+        if (button) {
+            button.disabled = false;
+            button.textContent = 'Test Live Connection';
+        }
+    }
 }
 
 function getActiveAgreement(meterPoint, now = new Date()) {
@@ -828,13 +939,7 @@ async function executeImport() {
 async function initDashboard(isAutoRefresh = false, retryCount = 1) {
     const credentials = window.linuxRuntime && window.linuxAuthRequired
         ? activeCredentials
-        : {
-            acc: document.getElementById('acc').value.trim(),
-            api: document.getElementById('api').value.trim(),
-            foxSN: document.getElementById('fox-sn').value.trim(),
-            foxToken: document.getElementById('fox-token').value.trim(),
-            gasUrl: document.getElementById('gas-url').value.trim()
-        };
+        : getCredentialInputs();
     const acc = credentials?.acc || '';
     const api = credentials?.api || '';
     globalFoxSN = credentials?.foxSN || '';
@@ -910,7 +1015,14 @@ async function initDashboard(isAutoRefresh = false, retryCount = 1) {
 
         // Save valid credentials
         if (!isAutoRefresh) {
-            await saveCredentials({ acc, api, foxSN: globalFoxSN, foxToken: globalFoxToken, gasUrl: globalGasUrl });
+            await saveCredentials({
+                ...credentials,
+                acc,
+                api,
+                foxSN: globalFoxSN,
+                foxToken: globalFoxToken,
+                gasUrl: globalGasUrl
+            });
         }
 
         // 3. Fetch exact rates from REST API
@@ -1073,6 +1185,10 @@ async function initDashboard(isAutoRefresh = false, retryCount = 1) {
             loadAutomations(minRate, maxRate);
             startAutoRefreshTimer();
             if (globalFoxSN && globalGasUrl) {
+                // Start Pi live telemetry independently of the first REST
+                // schedule/mode request. If REST is temporarily unavailable,
+                // an already healthy Live WS stream can still update the UI.
+                startLinuxLiveTelemetryPoll();
                 await fetchFoxSchedules(); 
                 await fetchCurrentWorkMode(); 
                 
@@ -1161,6 +1277,99 @@ function getFoxHeaders(apiPath) {
     };
 }
 
+function applyFoxTelemetry(values = {}, source = 'rest', updatedAt = null) {
+    window.lastFoxTelemetry = { ...(window.lastFoxTelemetry || {}), ...values };
+    const telemetry = window.lastFoxTelemetry;
+    const findVal = name => telemetry[name] ?? '--';
+    const batterySoc = findVal('SoC');
+    const panel = document.getElementById('live-telemetry-panel');
+    if (panel) {
+        panel.innerHTML = `
+            <div>☀️ <strong>PV Power:</strong> ${escapeHtml(findVal('pvPower'))} kW</div>
+            <div>🏠 <strong>Load:</strong> ${escapeHtml(findVal('loadsPower'))} kW</div>
+            <div>🔋 <strong>Bat Temp:</strong> ${escapeHtml(findVal('batTemperature'))} °C</div>
+            <div>🌡️ <strong>Env Temp:</strong> ${escapeHtml(findVal('ambientTemperation'))} °C</div>
+        `;
+    }
+    if (updatedAt) window.lastFoxTelemetryUpdate = updatedAt;
+
+    const autoResumeEnabled = document.getElementById('toggle-auto-resume')?.checked;
+    if (autoResumeEnabled && canRunAutomaticActions() && batterySoc !== '--') {
+        if (window.activeFoxGroups && window.activeFoxGroups.length > 0) {
+            const resumeNow = new Date();
+            const nowMins = resumeNow.getHours() * 60 + resumeNow.getMinutes();
+            const dispatchActiveNow = (window.currentDispatches || []).some(dispatch => {
+                const start = new Date(dispatch.startDt);
+                const end = new Date(dispatch.endDt);
+                return start <= resumeNow && end > resumeNow;
+            });
+            const activeSch = window.activeFoxGroups.find(group => {
+                let endMins = group.endHour * 60 + group.endMinute;
+                if (endMins === 0 || (group.endHour === 23 && group.endMinute === 59)) endMins = 1440;
+                const sources = getAutomationSourcesForGroup(group, resumeNow);
+                const autoResumeSource = getAutoResumeSource(sources, dispatchActiveNow);
+                group.__autoResumeSource = autoResumeSource;
+                return !dispatchActiveNow
+                    && (group.startHour * 60 + group.startMinute) <= nowMins
+                    && endMins > nowMins
+                    && group.workMode === 'ForceCharge'
+                    && autoResumeSource;
+            });
+
+            if (activeSch && !isCurrentlyUpdatingMode && !window.autoResumeInProgress) {
+                const activeSocLimit = activeSch.extraParam?.fdSoc
+                    || activeSch.fdSoc
+                    || parseInt(document.getElementById('target-soc-limit')?.value || 80);
+                if (parseInt(batterySoc) >= activeSocLimit) {
+                    console.log(`Target SOC (${activeSocLimit}%) reached via ${source}. Auto-resuming Self-Use...`);
+                    const automationSource = activeSch.__autoResumeSource;
+                    const until = getAutoResumeUntil(automationSource, activeSch, resumeNow);
+                    window.fulfilledSchedule = { source: automationSource, until: until.getTime() };
+                    window.autoResumeInProgress = true;
+                    Promise.resolve(evaluateLocalAutomations(null, true))
+                        .catch(error => showToast(`Auto-resume schedule update failed: ${error.message}`))
+                        .finally(() => { window.autoResumeInProgress = false; });
+                }
+            }
+        }
+    }
+    return batterySoc;
+}
+
+async function fetchLinuxLiveTelemetry() {
+    if (!window.linuxRuntime || !globalFoxSN || linuxLiveTelemetryBusy) return;
+    linuxLiveTelemetryBusy = true;
+    try {
+        const telemetry = await fetchJson(LINUX_FOX_LIVE_ENDPOINT, {}, 25000);
+        renderFoxLiveStatus(telemetry);
+        applyFoxTelemetry(telemetry.values || {}, telemetry.source, telemetry.updatedAt);
+        if (!telemetry.cached && telemetry.source !== 'live-ws') incrementFoxApi();
+        const foxText = document.getElementById('fox-api-text');
+        const foxBadge = document.getElementById('fox-api-badge');
+        if (foxText) foxText.textContent = telemetry.source === 'live-ws'
+            ? '🟢 LIVE WS'
+            : (telemetry.source === 'rest' ? '🟢 OFFICIAL REST' : '🟠 REST FALLBACK');
+        if (foxBadge) foxBadge.className = telemetry.source === 'live-ws'
+            ? 'badge off-peak countdown-border'
+            : 'badge peak countdown-border';
+    } catch (error) {
+        renderFoxLiveStatus({
+            mode: 'live-ws',
+            source: 'rest-fallback',
+            state: 'fallback',
+            lastError: error.message
+        });
+    } finally {
+        linuxLiveTelemetryBusy = false;
+    }
+}
+
+function startLinuxLiveTelemetryPoll() {
+    if (!window.linuxRuntime || linuxLiveTelemetryPollId !== null) return;
+    void fetchLinuxLiveTelemetry();
+    linuxLiveTelemetryPollId = setInterval(fetchLinuxLiveTelemetry, 5000);
+}
+
 async function fetchCurrentWorkMode(forceModeUpdate = false) {
     if (!globalGasUrl || !globalFoxSN) return null;
     const path = '/op/v0/device/setting/get';
@@ -1190,52 +1399,8 @@ async function fetchCurrentWorkMode(forceModeUpdate = false) {
         let batterySoc = null;
         if (socData.errno === 0 && socData.result && socData.result[0] && socData.result[0].datas) {
             const d = socData.result[0].datas;
-            const findVal = (name) => d.find(v => v.variable === name)?.value ?? '--';
-            batterySoc = findVal('SoC');
-            
-            document.getElementById('live-telemetry-panel').innerHTML = `
-                <div>☀️ <strong>PV Power:</strong> ${escapeHtml(findVal('pvPower'))} kW</div>
-                <div>🏠 <strong>Load:</strong> ${escapeHtml(findVal('loadsPower'))} kW</div>
-                <div>🔋 <strong>Bat Temp:</strong> ${escapeHtml(findVal('batTemperature'))} °C</div>
-                <div>🌡️ <strong>Env Temp:</strong> ${escapeHtml(findVal('ambientTemperation'))} °C</div>
-            `;
-            
-            // Auto-Resume Logic
-            const autoResumeEnabled = document.getElementById('toggle-auto-resume')?.checked;
-            if (autoResumeEnabled && canRunAutomaticActions() && batterySoc !== '--') {
-                if (window.activeFoxGroups && window.activeFoxGroups.length > 0) {
-                    const resumeNow = new Date();
-                    const nowMins = resumeNow.getHours() * 60 + resumeNow.getMinutes();
-                    const dispatchActiveNow = (window.currentDispatches || []).some(dispatch => {
-                        const start = new Date(dispatch.startDt);
-                        const end = new Date(dispatch.endDt);
-                        return start <= resumeNow && end > resumeNow;
-                    });
-                    const activeSch = window.activeFoxGroups.find(g => {
-                        let eMins = g.endHour * 60 + g.endMinute;
-                        if (eMins === 0 || (g.endHour === 23 && g.endMinute === 59)) eMins = 1440;
-                        const sources = getAutomationSourcesForGroup(g, resumeNow);
-                        const autoResumeSource = getAutoResumeSource(sources, dispatchActiveNow);
-                        g.__autoResumeSource = autoResumeSource;
-                        return !dispatchActiveNow && (g.startHour * 60 + g.startMinute) <= nowMins && eMins > nowMins && g.workMode === 'ForceCharge' && autoResumeSource;
-                    });
-                    
-                    if (activeSch && !isCurrentlyUpdatingMode && !window.autoResumeInProgress) {
-                        // Dynamically read the SOC limit assigned to THIS specific block
-                        const activeSocLimit = activeSch.extraParam?.fdSoc || activeSch.fdSoc || parseInt(document.getElementById('target-soc-limit')?.value || 80);
-                        if (parseInt(batterySoc) >= activeSocLimit) {
-                            console.log(`Target SOC (${activeSocLimit}%) reached. Auto-resuming Self-Use...`);
-                            const source = activeSch.__autoResumeSource;
-                            const until = getAutoResumeUntil(source, activeSch, resumeNow);
-                            window.fulfilledSchedule = { source, until: until.getTime() };
-                            window.autoResumeInProgress = true;
-                            Promise.resolve(evaluateLocalAutomations(null, true))
-                                .catch(error => showToast(`Auto-resume schedule update failed: ${error.message}`))
-                                .finally(() => { window.autoResumeInProgress = false; });
-                        }
-                    }
-                }
-            }
+            const values = Object.fromEntries(d.map(row => [row.variable, row.value]));
+            batterySoc = applyFoxTelemetry(values, 'rest', new Date().toISOString());
         }
         
         if (data.errno === 0 && data.result) {

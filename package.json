@@ -1,12 +1,15 @@
 {
   "name": "octopus-foxess-smart-charging",
-  "version": "2026.7.26.6",
+  "version": "2026.7.26.7",
   "private": true,
   "type": "module",
+  "dependencies": {
+    "ws": "8.21.1"
+  },
   "scripts": {
     "build": "node scripts/build.mjs",
     "build:linux": "node scripts/build-linux.mjs",
-    "test": "node scripts/test.mjs && node scripts/test-linux.mjs",
+    "test": "node scripts/test.mjs && node scripts/test-foxess-live.mjs && node scripts/test-linux.mjs",
     "check": "node --check src/app.js && node --check linux/server.mjs && npm test && npm run build && npm run build:linux"
   },
   "engines": {

@@ -21,10 +21,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>Smart Charging Detector</title>
-    <link rel="icon" href="./octopus-foxess.svg?v=2026.7.26.6" type="image/svg+xml">
+    <link rel="icon" href="./octopus-foxess.svg?v=2026.7.26.7" type="image/svg+xml">
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.9/dist/chart.umd.min.js" integrity="sha384-b0GXujLkk9eYYSmcSfoyZbfyElGAQnDyY0skCHSG6w3JgTMFnz11ggrTAr7seu9f" crossorigin="anonymous"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js" integrity="sha384-S3wQ/l0OsbJoFeJC81UIr3JOlx/OzNJpRt1bV+yhpWQxPAahfpQtpxBSfn+Isslc" crossorigin="anonymous"></script>
-        <link rel="stylesheet" href="./styles.css?v=2026.7.26.6">
+        <link rel="stylesheet" href="./styles.css?v=2026.7.26.7">
 </head>
 <body>
 
@@ -113,6 +113,44 @@
             <input type="password" id="fox-token" placeholder="Generated from FoxCloud">
         </div>
 
+        <section class="linux-only linux-local-only fox-live-settings" aria-labelledby="fox-live-settings-title">
+            <div class="fox-live-settings-heading">
+                <div>
+                    <strong id="fox-live-settings-title">⚡ FoxESS Live Telemetry</strong>
+                    <small>Raspberry Pi only · REST controls remain enabled</small>
+                </div>
+                <span id="fox-live-setup-status" class="badge neutral">NOT TESTED</span>
+            </div>
+
+            <div class="input-group">
+                <label for="fox-live-mode">Telemetry connection</label>
+                <select id="fox-live-mode" onchange="updateFoxLiveSettingsVisibility()">
+                    <option value="live-ws" selected>Live WebSocket (default, REST fallback)</option>
+                    <option value="rest">Official REST API only</option>
+                </select>
+            </div>
+
+            <div id="fox-live-credentials">
+                <div class="input-group">
+                    <label for="fox-web-username">FoxESS Cloud web-login email / username</label>
+                    <input type="text" id="fox-web-username" placeholder="Used to sign in at foxesscloud.com" autocomplete="username">
+                </div>
+                <div class="input-group">
+                    <label for="fox-web-password">FoxESS Cloud web-login password</label>
+                    <input type="password" id="fox-web-password" placeholder="Stored encrypted on this Pi" autocomplete="current-password">
+                </div>
+                <small class="fox-live-help">
+                    These optional web-login fields are used only for the undocumented read-only live stream.
+                    Leave either field empty to use automatic REST fallback. They are never sent to an iPhone client.
+                </small>
+            </div>
+
+            <button type="button" class="fox-live-test-button" onclick="testFoxLiveConnection()">
+                Test Live Connection
+            </button>
+            <div id="fox-live-test-message" class="fox-live-test-message" aria-live="polite"></div>
+        </section>
+
         <div class="input-group web-runtime-only" style="margin-bottom: 1.5rem;">
             <label>📜 Google Apps Script Relay URL</label>
             <input type="text" id="gas-url" placeholder="https://script.google.com/macros/s/.../exec">
@@ -181,10 +219,10 @@
             <div class="linux-only" style="background: #f0fdf4; padding: 1rem; border-radius: 10px; border: 1px solid #86efac;">
                 <strong style="color: #047857;">🍓 Raspberry Pi Local Service</strong>
                 <p style="margin: 0.5rem 0; color: #475569; line-height: 1.4;">
-                    The Pi provides the FoxESS relay and always-on automation worker. Enter the access key printed by the installer; no Google account or Apps Script URL is needed.
+                    The Pi provides the FoxESS relay and always-on automation worker. Live WebSocket telemetry is the default when optional FoxESS web-login credentials are saved; otherwise the service automatically uses the official REST API.
                 </p>
                 <p style="margin: 0; color: #475569; line-height: 1.4;">
-                    Keep the Pi connected to your home network. You can close Safari after setup—the supervised worker continues running.
+                    The undocumented stream is read-only. Schedule and inverter-control commands always use the official FoxESS REST API. You can close Safari after setup—the supervised worker continues running.
                 </p>
             </div>
 
@@ -352,6 +390,10 @@
                             <div id="live-telemetry-panel" style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem;">
                                 <span style="color: var(--text-muted); font-size: 0.85rem; grid-column: 1 / -1; text-align: center;">Waiting for sync...</span>
                             </div>
+                            <div class="linux-only fox-live-source-row">
+                                <span>Telemetry source</span>
+                                <span id="fox-live-source-badge" class="badge neutral">CHECKING</span>
+                            </div>
                         </div>
                     </div>
                 </details>
@@ -515,7 +557,7 @@
 
     </div> <div class="app-footer">
         <div style="text-align: left;">Developer Samuel Chen</div>
-        <div style="text-align: right;">&copy; Copyright 2026 samuelchen.hk Build v2026.07.26.6</div>
+        <div style="text-align: right;">&copy; Copyright 2026 samuelchen.hk Build v2026.07.26.7</div>
     </div>
 </div> 
 
@@ -743,7 +785,7 @@
     </div>
 </div>
 
-<script src="./app.js?v=2026.7.26.6"></script>
+<script src="./app.js?v=2026.7.26.7"></script>
 
 <div id="screen-saver-overlay" onclick="toggleScreenSaver()" style="display: none; position: fixed; inset: 0; width: 100%; height: 100%; background: #000; z-index: 100000; cursor: pointer;"></div>
 

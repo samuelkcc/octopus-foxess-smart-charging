@@ -10,13 +10,15 @@ const stateRoot = path.join(temporaryRoot, 'state');
 const accessKeyFile = path.join(temporaryRoot, 'access.key');
 const port = 18_000 + Math.floor(Math.random() * 10_000);
 const accessKey = 'test-access-key';
-const [installerSource, uninstallerSource, stylesSource, markupSource, appSource, linuxBuildSource] = await Promise.all([
+const [installerSource, uninstallerSource, stylesSource, markupSource, appSource, linuxBuildSource, pagesWorkflow, releaseWorkflow] = await Promise.all([
   readFile(path.join(root, 'linux', 'install.sh'), 'utf8'),
   readFile(path.join(root, 'linux', 'uninstall.sh'), 'utf8'),
   readFile(path.join(root, 'src', 'styles.css'), 'utf8'),
   readFile(path.join(root, 'src', 'index.html'), 'utf8'),
   readFile(path.join(root, 'src', 'app.js'), 'utf8'),
-  readFile(path.join(root, 'scripts', 'build-linux.mjs'), 'utf8')
+  readFile(path.join(root, 'scripts', 'build-linux.mjs'), 'utf8'),
+  readFile(path.join(root, '.github', 'workflows', 'pages.yml'), 'utf8'),
+  readFile(path.join(root, '.github', 'workflows', 'release.yml'), 'utf8')
 ]);
 
 assert.match(installerSource, /systemctl enable octopus-foxess\.service octopus-foxess-worker\.service octopus-foxess-inhibit\.service/);
@@ -34,17 +36,24 @@ assert.match(uninstallerSource, /systemctl disable --now octopus-foxess-inhibit\
 assert.match(uninstallerSource, /usr\/share\/applications\/octopus-foxess\.desktop/);
 assert.match(stylesSource, /@media \(max-width: 600px\)/);
 assert.match(stylesSource, /font-size: 16px/);
+assert.match(stylesSource, /\.fox-live-settings-heading \.badge, \.fox-live-source-row \.badge/);
 assert.match(markupSource, /no Google Apps Script/);
 assert.match(markupSource, /iPhone LAN Access Key/);
 assert.match(markupSource, /iPhone Dashboard Access Key/);
 assert.match(markupSource, /Octopus and FoxESS credentials stay managed by the Pi service/);
+assert.match(markupSource, /Live WebSocket \(default, REST fallback\)/);
+assert.match(markupSource, /id="fox-web-username"/);
+assert.match(markupSource, /id="fox-web-password"/);
+assert.match(markupSource, /Test Live Connection/);
 assert.match(markupSource, /class="input-group pi-config-only"/);
-assert.match(markupSource, /styles\.css\?v=2026\.7\.26\.6/);
-assert.match(markupSource, /app\.js\?v=2026\.7\.26\.6/);
+assert.match(markupSource, /styles\.css\?v=2026\.7\.26\.7/);
+assert.match(markupSource, /app\.js\?v=2026\.7\.26\.7/);
 assert.match(stylesSource, /\.linux-runtime\.linux-auth-required \.pi-config-only \{ display: none !important; \}/);
 assert.match(stylesSource, /\.linux-runtime \.linux-local-only \{ display: none !important; \}/);
 assert.match(appSource, /\/api\/access-key/);
 assert.match(appSource, /LINUX_OCTOPUS_ENDPOINT = '\/api\/octopus'/);
+assert.match(appSource, /LINUX_FOX_LIVE_ENDPOINT = '\/api\/foxess\/live'/);
+assert.match(appSource, /startLinuxLiveTelemetryPoll/);
 assert.match(appSource, /window\.linuxRuntime && window\.linuxAuthRequired\s*\?\s*activeCredentials/);
 assert.match(appSource, /SAVE SETTINGS & OPEN DASHBOARD/);
 assert.match(appSource, /OPEN DASHBOARD/);
@@ -53,10 +62,16 @@ assert.match(await readFile(path.join(root, 'linux', 'server.mjs'), 'utf8'), /ap
 assert.match(await readFile(path.join(root, 'linux', 'server.mjs'), 'utf8'), /Service credentials can only be changed from the Raspberry Pi Settings app/);
 assert.match(await readFile(path.join(root, 'linux', 'server.mjs'), 'utf8'), /async function proxyOctopusRequest/);
 assert.match(await readFile(path.join(root, 'linux', 'server.mjs'), 'utf8'), /createHash\('md5'\)/);
+assert.match(await readFile(path.join(root, 'linux', 'server.mjs'), 'utf8'), /FoxessLiveTelemetry/);
+assert.match(await readFile(path.join(root, 'linux', 'server.mjs'), 'utf8'), /\/api\/foxess\/live\/test/);
 assert.match(await readFile(path.join(root, 'linux', 'server.mjs'), 'utf8'), /'Cache-Control': 'no-cache'/);
 assert.match(linuxBuildSource, /octopus-foxess\.desktop/);
 assert.match(linuxBuildSource, /octopus-foxess\.svg/);
 assert.match(linuxBuildSource, /packageRoot, 'web', 'octopus-foxess\.svg'/);
+assert.match(linuxBuildSource, /foxess-signature\.wasm/);
+assert.match(linuxBuildSource, /node_modules', 'ws'/);
+assert.match(pagesWorkflow, /npm ci[\s\S]*npm run check/);
+assert.match(releaseWorkflow, /npm ci[\s\S]*npm run check/);
 
 await mkdir(stateRoot);
 await writeFile(accessKeyFile, `${accessKey}\n`, { mode: 0o600 });
@@ -118,6 +133,9 @@ try {
     api: 'sk_live_test',
     foxSN: 'SN-TEST',
     foxToken: 'fox-test',
+    foxLiveMode: 'live-ws',
+    foxWebUsername: '',
+    foxWebPassword: '',
     gasUrl: '/api/foxess'
   };
   const saveResponse = await fetch(`http://127.0.0.1:${port}/api/config`, {
@@ -134,6 +152,11 @@ try {
 
   const encryptedFile = await readFile(path.join(stateRoot, 'config.enc'), 'utf8');
   assert.doesNotMatch(encryptedFile, /sk_live_test|fox-test|A-TEST/);
+
+  const liveStatus = await fetch(`http://127.0.0.1:${port}/api/foxess/live/status`).then(response => response.json());
+  assert.equal(liveStatus.mode, 'live-ws');
+  assert.equal(liveStatus.source, 'rest-fallback');
+  assert.equal(liveStatus.reason, 'live-credentials-empty');
 
   const rejectedProxy = await fetch(`http://127.0.0.1:${port}/api/foxess`, {
     method: 'POST',

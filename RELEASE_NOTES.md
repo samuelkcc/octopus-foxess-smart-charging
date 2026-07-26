@@ -1,4 +1,28 @@
-## Raspberry Pi client cache hotfix v2026.07.26.6
+## Raspberry Pi Live WebSocket telemetry v2026.07.26.7
+
+### Improved
+
+- Added a Pi-only telemetry selector with **Live WebSocket** as the default and **Official REST API only** as the alternative.
+- Added optional FoxESS Cloud web-login fields and a live self-test to the Raspberry Pi Settings app.
+- Streams supported FoxESS telemetry approximately every five seconds when the undocumented web-portal WebSocket is healthy.
+- Shows `LIVE WS`, `REST FALLBACK`, or `OFFICIAL REST` in the dashboard and settings UI.
+
+### Fixed
+
+- Automatically falls back to quota-aware cached REST telemetry when Live WS credentials are empty, login or self-test fails, the connection closes, or fresh frames stop arriving.
+- Keeps all scheduler and inverter-control commands on the official FoxESS REST API.
+- Keeps FoxESS web-login credentials encrypted on the Pi and redacted from iPhone configuration responses.
+
+### Deployment
+
+- Bundles the pinned zero-dependency `ws` client and the reviewed MIT-licensed FoxESS web-signature WebAssembly asset in the Raspberry Pi archive.
+- The GitHub Pages edition remains REST/Google-relay based and is otherwise unchanged.
+
+### Validation
+
+- Covers WebSocket message mapping, password hashing, first-frame self-test, REST-only mode, empty-credential fallback, one-minute REST caching, encrypted Pi state, restricted LAN UI, and release packaging.
+
+## Previous Raspberry Pi client cache hotfix v2026.07.26.6
 
 ### Fixed
 

@@ -1,5 +1,13 @@
 # Changelog
 
+## v2026.07.26.7 — 2026-07-26
+
+- Added optional approximately five-second FoxESS telemetry through the undocumented web-portal WebSocket.
+- Made Live WebSocket the Raspberry Pi default, with automatic cached REST fallback and an explicit REST-only selection.
+- Added Pi-only FoxESS web-login fields, live self-test, connection-source badges, stale-frame rejection, and reconnect handling.
+- Kept all FoxESS schedule and inverter-control writes on the official REST API.
+- Bundled the reviewed MIT-licensed signature WebAssembly integration and recorded its attribution.
+
 ## v2026.07.26.6 — 2026-07-26
 
 - Versioned the Pi web assets so Safari and Chrome load the corrected LAN client immediately after an update.
