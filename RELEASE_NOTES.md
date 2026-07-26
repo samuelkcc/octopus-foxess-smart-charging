@@ -1,4 +1,15 @@
-## Raspberry Pi service/client separation v2026.07.26.4
+## iPhone client display hotfix v2026.07.26.5
+
+### Fixed
+
+- Corrected a CSS specificity conflict that left Pi-local access-key and background-service controls visible on a remote LAN client.
+- The remote login now renders only the single iPhone Dashboard Access Key field.
+
+### Validation
+
+- Verified the rendered LAN login against the running Raspberry Pi service after installation.
+
+## Previous Raspberry Pi service/client separation v2026.07.26.4
 
 ### Fixed
 

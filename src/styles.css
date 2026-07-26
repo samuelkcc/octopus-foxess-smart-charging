@@ -58,7 +58,7 @@
         .linux-client-only { display: none !important; }
         .linux-runtime.linux-auth-required .linux-client-only { display: block !important; }
         .linux-runtime.linux-auth-required .pi-config-only { display: none !important; }
-        .linux-local-only { display: none !important; }
+        .linux-runtime .linux-local-only { display: none !important; }
         .linux-runtime.linux-local .linux-local-only { display: block !important; }
         .runtime-strip { margin: -1rem 0 1.5rem; padding: 0.75rem 0.9rem; border: 1px solid var(--border); border-radius: 10px; background: #f8fafc; text-align: center; }
         .runtime-strip strong, .runtime-strip span { display: block; }

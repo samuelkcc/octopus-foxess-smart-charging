@@ -1,5 +1,10 @@
 # Changelog
 
+## v2026.07.26.5 — 2026-07-26
+
+- Fixed Pi-local access-key and background-service controls remaining visible on remote LAN clients because of a CSS specificity conflict.
+- Confirmed the remote login renders only the single iPhone Dashboard Access Key field.
+
 ## v2026.07.26.4 — 2026-07-26
 
 - Reduced the iPhone LAN login to one dashboard access-key field and removed all service credential, import, wipe, and setup controls from remote clients.

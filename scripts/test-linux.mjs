@@ -40,6 +40,7 @@ assert.match(markupSource, /iPhone Dashboard Access Key/);
 assert.match(markupSource, /Octopus and FoxESS credentials stay managed by the Pi service/);
 assert.match(markupSource, /class="input-group pi-config-only"/);
 assert.match(stylesSource, /\.linux-runtime\.linux-auth-required \.pi-config-only \{ display: none !important; \}/);
+assert.match(stylesSource, /\.linux-runtime \.linux-local-only \{ display: none !important; \}/);
 assert.match(appSource, /\/api\/access-key/);
 assert.match(appSource, /LINUX_OCTOPUS_ENDPOINT = '\/api\/octopus'/);
 assert.match(appSource, /window\.linuxRuntime && window\.linuxAuthRequired\s*\?\s*activeCredentials/);
