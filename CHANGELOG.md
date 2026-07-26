@@ -1,5 +1,13 @@
 # Changelog
 
+## v2026.07.26.2 — 2026-07-26
+
+- Added a Raspberry Pi desktop and application-menu icon that opens the configuration UI in an app-style Chromium window.
+- Added a Pi-local configuration screen for changing the iPhone LAN access key alongside the Octopus and FoxESS credentials.
+- Moved the live access key into the service-owned encrypted-state area while retaining the legacy `/etc` compatibility path.
+- Clarified that the Pi is the central source of truth, the background worker continues without an open window, and iPhone browsers are separate live dashboard clients.
+- Added launcher, access-key, package, update, and uninstall regression coverage.
+
 ## v2026.07.26.1 — 2026-07-26
 
 - Fixed Raspberry Pi release permissions so the dedicated service account can read and start the local server.

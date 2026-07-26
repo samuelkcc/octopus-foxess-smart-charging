@@ -1,4 +1,13 @@
-## Hotfix v2026.07.26.1
+## Raspberry Pi app experience v2026.07.26.2
+
+- Added an **Octopus FoxESS Settings** icon to the Raspberry Pi desktop and application menu.
+- The icon opens a focused app-style settings window without requiring the user to type a local browser address.
+- Added a Pi-only configuration control for viewing and changing the iPhone LAN access key.
+- Kept Octopus credentials, FoxESS credentials, automation settings, and the LAN key centrally on the Pi.
+- Confirmed the supervised worker continues after the settings window or iPhone browser is closed and starts automatically after reboot.
+- Clarified that an iPhone is a separate live dashboard client using the Pi's shared state, not a screen mirror.
+
+## Previous hotfix v2026.07.26.1
 
 - Fixed Raspberry Pi installation permissions that could leave the installer waiting while the local server repeatedly restarted.
 - Kept the generated access key private while ensuring the installed application is readable by its dedicated service account.

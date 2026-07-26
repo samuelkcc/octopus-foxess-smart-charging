@@ -8,6 +8,7 @@ APP_ROOT="/opt/octopus-foxess"
 STATE_ROOT="/var/lib/octopus-foxess"
 CONFIG_ROOT="/etc/octopus-foxess"
 PORT="${OCTOPUS_PORT:-8787}"
+ACCESS_KEY_FILE="$STATE_ROOT/access.key"
 
 if [ "$(id -u)" -ne 0 ]; then
   echo "Run this installer with sudo." >&2
@@ -37,12 +38,17 @@ install -d -o "$APP_USER" -g "$APP_USER" -m 0750 "$STATE_ROOT" "$STATE_ROOT/chro
 install -d -o root -g "$APP_USER" -m 0750 "$CONFIG_ROOT"
 install -d -o root -g root -m 0755 "$APP_ROOT/releases"
 
-if [ ! -s "$CONFIG_ROOT/access.key" ]; then
-  ACCESS_KEY="$(od -An -N12 -tx1 /dev/urandom | tr -d ' \n')"
-  (umask 027 && printf '%s\n' "$ACCESS_KEY" > "$CONFIG_ROOT/access.key")
+if [ ! -s "$ACCESS_KEY_FILE" ] && [ -s "$CONFIG_ROOT/access.key" ]; then
+  cp "$CONFIG_ROOT/access.key" "$ACCESS_KEY_FILE"
 fi
-chown root:"$APP_USER" "$CONFIG_ROOT/access.key"
-chmod 0640 "$CONFIG_ROOT/access.key"
+if [ ! -s "$ACCESS_KEY_FILE" ]; then
+  ACCESS_KEY="$(od -An -N12 -tx1 /dev/urandom | tr -d ' \n')"
+  (umask 077 && printf '%s\n' "$ACCESS_KEY" > "$ACCESS_KEY_FILE")
+fi
+chown "$APP_USER":"$APP_USER" "$ACCESS_KEY_FILE"
+chmod 0600 "$ACCESS_KEY_FILE"
+rm -f "$CONFIG_ROOT/access.key"
+ln -s "$ACCESS_KEY_FILE" "$CONFIG_ROOT/access.key"
 
 TEMP_DIR="$(mktemp -d)"
 trap 'rm -rf "$TEMP_DIR"' EXIT INT TERM
@@ -65,6 +71,24 @@ cp -R "$TEMP_DIR/octopus-foxess/." "$RELEASE_ROOT/"
 chmod -R u=rwX,go=rX "$RELEASE_ROOT"
 ln -sfn "$RELEASE_ROOT" "$APP_ROOT/current"
 
+install -m 0755 "$RELEASE_ROOT/open-settings.sh" /usr/local/bin/octopus-foxess-settings
+install -m 0644 "$RELEASE_ROOT/octopus-foxess.desktop" /usr/share/applications/octopus-foxess.desktop
+install -d -m 0755 /usr/share/icons/hicolor/scalable/apps
+install -m 0644 "$RELEASE_ROOT/octopus-foxess.svg" /usr/share/icons/hicolor/scalable/apps/octopus-foxess.svg
+printf 'OCTOPUS_PORT=%s\n' "$PORT" > /etc/default/octopus-foxess
+chmod 0644 /etc/default/octopus-foxess
+
+DESKTOP_USER="${SUDO_USER:-}"
+if [ -n "$DESKTOP_USER" ] && [ "$DESKTOP_USER" != "root" ] && id "$DESKTOP_USER" >/dev/null 2>&1; then
+  DESKTOP_HOME="$(getent passwd "$DESKTOP_USER" | cut -d: -f6)"
+  DESKTOP_GROUP="$(id -gn "$DESKTOP_USER")"
+  if [ -n "$DESKTOP_HOME" ] && [ -d "$DESKTOP_HOME/Desktop" ]; then
+    DESKTOP_SHORTCUT="$DESKTOP_HOME/Desktop/Octopus FoxESS Settings.desktop"
+    install -o "$DESKTOP_USER" -g "$DESKTOP_GROUP" -m 0755 "$RELEASE_ROOT/octopus-foxess.desktop" "$DESKTOP_SHORTCUT"
+    printf '%s\n' "$DESKTOP_SHORTCUT" > "$CONFIG_ROOT/desktop-shortcut.path"
+  fi
+fi
+
 cat > /etc/systemd/system/octopus-foxess.service <<EOF
 [Unit]
 Description=Octopus FoxESS local server
@@ -79,7 +103,7 @@ Environment=NODE_ENV=production
 Environment=OCTOPUS_HOST=0.0.0.0
 Environment=OCTOPUS_PORT=$PORT
 Environment=OCTOPUS_STATE_DIR=$STATE_ROOT
-Environment=OCTOPUS_ACCESS_KEY_FILE=$CONFIG_ROOT/access.key
+Environment=OCTOPUS_ACCESS_KEY_FILE=$ACCESS_KEY_FILE
 ExecStart=/usr/bin/node $APP_ROOT/current/server.mjs
 Restart=always
 RestartSec=5
@@ -137,10 +161,11 @@ systemctl daemon-reload
 systemctl enable octopus-foxess.service octopus-foxess-worker.service octopus-foxess-inhibit.service
 systemctl restart octopus-foxess.service octopus-foxess-worker.service octopus-foxess-inhibit.service
 
-ACCESS_KEY="$(cat "$CONFIG_ROOT/access.key")"
+ACCESS_KEY="$(cat "$ACCESS_KEY_FILE")"
 LAN_IP="$(hostname -I 2>/dev/null | awk '{print $1}')"
 echo
 echo "Octopus FoxESS v$VERSION is installed and running."
+echo "Open 'Octopus FoxESS Settings' from the Raspberry Pi desktop or application menu."
 echo "Open http://${LAN_IP:-raspberrypi.local}:$PORT on your iPhone."
 echo "Raspberry Pi access key: $ACCESS_KEY"
 echo

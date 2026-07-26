@@ -1,0 +1,11 @@
+[Desktop Entry]
+Type=Application
+Version=1.0
+Name=Octopus FoxESS Settings
+Comment=Configure and open the Raspberry Pi smart charging service
+Exec=/usr/local/bin/octopus-foxess-settings
+Icon=octopus-foxess
+Terminal=false
+Categories=Utility;Network;
+StartupNotify=true
+StartupWMClass=octopus-foxess

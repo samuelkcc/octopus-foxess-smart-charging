@@ -66,8 +66,22 @@
 
         <div class="input-group linux-only linux-access-group">
             <label>🔐 Raspberry Pi Access Key</label>
-            <input type="password" id="local-access-key" placeholder="Printed after installation" autocomplete="current-password">
-            <small>Required only when connecting from another device on your home network.</small>
+            <input type="password" id="local-access-key" placeholder="Set in the Pi Settings app" autocomplete="current-password">
+            <small>Required only from another device on your home network. Manage it from the Raspberry Pi Settings icon.</small>
+        </div>
+
+        <div class="input-group linux-only linux-local-only">
+            <label>
+                🔐 iPhone LAN Access Key
+                <button type="button" class="inline-visibility-button" onclick="toggleManagedAccessKeyVisibility()">Show</button>
+            </label>
+            <input type="password" id="managed-access-key" placeholder="Use 8–64 characters" autocomplete="new-password">
+            <small>Change this only from the Pi. Your iPhone will ask for the new key on its next connection.</small>
+        </div>
+
+        <div class="linux-only linux-local-only linux-service-note">
+            <strong>Background service is independent of this window.</strong><br>
+            Save the settings once, then close this app window. The supervised Pi worker keeps running after logout, browser closure, and reboot.
         </div>
         
         <div class="input-group">
@@ -189,6 +203,7 @@
         <span style="cursor: pointer; font-size: 1.5rem; color: #94a3b8; line-height: 1;" onclick="toggleAppMenu()">&times;</span>
     </h3>
     <div style="display: flex; flex-direction: column; gap: 12px; margin-top: 1.5rem;">
+        <button class="linux-local-only" onclick="openPiSettingsView()" style="width: 100%; padding: 0.85rem; font-size: 0.9rem; background: #f97316; border-radius: 8px; border: none; color: white; cursor: pointer; text-align: left;">🍓 Raspberry Pi Settings</button>
         <button onclick="document.getElementById('disclaimer-modal').style.display='flex'; toggleAppMenu();" style="width: 100%; padding: 0.85rem; font-size: 0.9rem; background: #3b82f6; border-radius: 8px; border: none; color: white; cursor: pointer; text-align: left; display: flex; align-items: center; gap: 8px;">💾 Save Config</button>
         <button onclick="toggleDarkMode(); toggleAppMenu();" class="theme-toggle-btn" style="width: 100%; padding: 0.85rem; font-size: 0.9rem; background: var(--card-bg); border-radius: 8px; border: 1px solid var(--border); color: var(--text-main); cursor: pointer; text-align: left; display: flex; align-items: center; gap: 8px;">🌗 Dark Mode</button>
         <button onclick="toggleFullScreen(); toggleAppMenu();" style="width: 100%; padding: 0.85rem; font-size: 0.9rem; background: var(--card-bg); border-radius: 8px; border: 1px solid var(--border); color: var(--text-main); cursor: pointer; text-align: left; display: flex; align-items: center; gap: 8px;">⛶ Full Screen</button>
@@ -493,7 +508,7 @@
 
     </div> <div class="app-footer">
         <div style="text-align: left;">Developer Samuel Chen</div>
-        <div style="text-align: right;">&copy; Copyright 2026 samuelchen.hk Build v2026.07.26.1</div>
+        <div style="text-align: right;">&copy; Copyright 2026 samuelchen.hk Build v2026.07.26.2</div>
     </div>
 </div> 
 

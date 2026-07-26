@@ -9,7 +9,7 @@ import { fileURLToPath } from 'node:url';
 const appRoot = path.dirname(fileURLToPath(import.meta.url));
 const webRoot = process.env.OCTOPUS_WEB_ROOT || path.join(appRoot, 'web');
 const stateRoot = process.env.OCTOPUS_STATE_DIR || '/var/lib/octopus-foxess';
-const accessKeyFile = process.env.OCTOPUS_ACCESS_KEY_FILE || '/etc/octopus-foxess/access.key';
+const accessKeyFile = process.env.OCTOPUS_ACCESS_KEY_FILE || path.join(stateRoot, 'access.key');
 const host = process.env.OCTOPUS_HOST || '0.0.0.0';
 const port = Number(process.env.OCTOPUS_PORT || 8787);
 const maxBodyBytes = 128 * 1024;
@@ -41,6 +41,18 @@ function getLanUrls() {
 
 async function getAccessKey() {
   return (await readFile(accessKeyFile, 'utf8')).trim();
+}
+
+async function saveAccessKey(accessKey) {
+  const normalized = String(accessKey || '').trim();
+  if (normalized.length < 8 || normalized.length > 64 || /[\u0000-\u001f\u007f]/.test(normalized)) {
+    throw Object.assign(new Error('Access key must contain 8 to 64 printable characters'), { statusCode: 400 });
+  }
+  const temporaryPath = `${accessKeyFile}.tmp`;
+  await writeFile(temporaryPath, `${normalized}\n`, { mode: 0o600 });
+  await rename(temporaryPath, accessKeyFile);
+  await chmod(accessKeyFile, 0o600);
+  return normalized;
 }
 
 async function isAuthorized(request) {
@@ -210,6 +222,18 @@ const server = http.createServer(async (request, response) => {
         ? sendEmpty(response)
         : sendJson(response, 401, { error: 'Invalid Raspberry Pi access key' });
     }
+    if (pathname === '/api/access-key') {
+      if (!isLoopback(request)) {
+        return sendJson(response, 403, { error: 'The access key can only be managed from the Raspberry Pi' });
+      }
+      if (request.method === 'GET') {
+        return sendJson(response, 200, { accessKey: await getAccessKey() });
+      }
+      if (request.method === 'PUT') {
+        const body = await readJsonBody(request);
+        return sendJson(response, 200, { saved: true, accessKey: await saveAccessKey(body.accessKey) });
+      }
+    }
 
     const protectedApi = ['/api/config', '/api/foxess'];
     if (protectedApi.includes(pathname) && !(await isAuthorized(request))) {
@@ -246,8 +270,10 @@ const server = http.createServer(async (request, response) => {
     return await serveStatic(request, response, pathname);
   } catch (error) {
     console.error(new Date().toISOString(), error);
-    const status = error instanceof SyntaxError ? 400 : 500;
-    return sendJson(response, status, { error: status === 400 ? 'Invalid JSON request' : 'Local server error' });
+    const status = error.statusCode || (error instanceof SyntaxError ? 400 : 500);
+    return sendJson(response, status, {
+      error: status === 400 ? (error.message || 'Invalid JSON request') : 'Local server error'
+    });
   }
 });
 

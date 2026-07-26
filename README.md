@@ -11,7 +11,7 @@ Intelligent Octopus Go EV charging slots.
 
 | | Web edition | Raspberry Pi OS edition |
 |---|---|---|
-| Launch | [Open the live app](https://samuelkcc.github.io/octopus-foxess-smart-charging/) | Open the Pi's local address in Safari |
+| Launch | [Open the live app](https://samuelkcc.github.io/octopus-foxess-smart-charging/) | Click the Pi desktop/app-menu icon |
 | Google Apps Script | Required for the FoxESS browser relay | Not required |
 | Always-on automation | Browser must remain open and awake | Supervised background worker |
 | Start after reboot | No | Yes, through `systemd` |
@@ -88,18 +88,29 @@ The installer:
 4. installs an always-on Chromium automation worker;
 5. enables both services at startup;
 6. blocks system sleep while the worker is active; and
-7. prints the local URL and a generated Raspberry Pi access key.
+7. adds an **Octopus FoxESS Settings** desktop and application-menu icon; and
+8. prints the local URL and a generated Raspberry Pi access key.
 
-After installation, open the printed address on the iPhone, for example:
+Click **Octopus FoxESS Settings** on the Pi desktop or in the Raspberry Pi
+application menu. It opens a focused app-style configuration window. Enter the
+Octopus and FoxESS credentials there and set a memorable **iPhone LAN Access
+Key**; no terminal command is needed to retrieve or change it.
+
+Open the address displayed in that settings window on the iPhone, for example:
 
 ```text
 http://192.168.1.42:8787
 ```
 
-Enter the printed Raspberry Pi access key, then the Octopus and FoxESS
-credentials. There is no Google Apps Script field in this edition. After the
-first successful connection, the Pi worker receives the encrypted shared
-configuration and keeps running even after Safari is closed.
+Enter the iPhone LAN access key. There is no Google Apps Script field in this
+edition. After the first successful Pi setup, the supervised worker reads the
+centrally stored encrypted configuration and keeps running even after the Pi
+settings window and iPhone Safari are closed.
+
+The iPhone is not a pixel-by-pixel screen mirror. It opens its own responsive
+dashboard, reads the current data and configuration from the Pi, and sends
+deliberate setting changes back to the same Pi. The Pi remains the source of
+truth and the only unattended automation worker.
 
 The Raspberry Pi login screen also displays **Open on iPhone** followed by the
 detected LAN URL, so the address remains visible after installation.
@@ -115,7 +126,6 @@ responsive charts.
 sudo systemctl status octopus-foxess octopus-foxess-worker octopus-foxess-inhibit
 sudo journalctl -u octopus-foxess -u octopus-foxess-worker -u octopus-foxess-inhibit -f
 sudo systemctl restart octopus-foxess octopus-foxess-worker octopus-foxess-inhibit
-sudo cat /etc/octopus-foxess/access.key
 ```
 
 All three services use `Restart=always`. A separate root-owned
@@ -186,6 +196,9 @@ run the web edition's timers; use the Raspberry Pi edition for unattended use.
   browser storage is available.
 - Raspberry Pi credentials and automation settings are encrypted with AES-256-GCM
   in `/var/lib/octopus-foxess`.
+- The LAN access key is stored with service-only permissions in
+  `/var/lib/octopus-foxess/access.key` and can only be viewed or changed through
+  the settings screen opened locally on the Pi.
 - The Pi relay accepts only HTTPS requests to `www.foxesscloud.com/op/...`.
 - LAN API access requires the generated access key; loopback access is reserved
   for the supervised worker.

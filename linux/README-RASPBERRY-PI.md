@@ -13,9 +13,16 @@ services:
 All three services restart automatically after failure or reboot.
 
 The server binds to port `8787` on the local network. Configuration is encrypted
-at rest on the Pi. LAN browsers must use the access key printed by the installer.
-Only the loopback worker performs unattended schedule writes; an iPhone can
-monitor the dashboard and apply deliberate changes.
+at rest on the Pi. The Pi desktop and application menu contain an **Octopus
+FoxESS Settings** icon that opens a focused local app window. Use it to enter the
+Octopus/FoxESS credentials and view or change the iPhone LAN access key—no
+terminal key command is required.
+
+The Pi is the central source of truth. Closing the settings window does not stop
+the service. An iPhone opens a separate responsive dashboard, reads the Pi's
+current state, and sends deliberate changes back to the Pi; it is not a
+pixel-by-pixel screen mirror. Only the loopback worker performs unattended
+schedule writes.
 
 Install:
 
@@ -35,5 +42,8 @@ Useful commands:
 sudo systemctl status octopus-foxess octopus-foxess-worker octopus-foxess-inhibit
 sudo journalctl -u octopus-foxess -u octopus-foxess-worker -u octopus-foxess-inhibit -f
 sudo systemctl restart octopus-foxess octopus-foxess-worker octopus-foxess-inhibit
-sudo cat /etc/octopus-foxess/access.key
 ```
+
+Re-run the install command to update. The encrypted configuration and selected
+access key are preserved. The uninstall command removes the services, launcher,
+desktop icon, encrypted configuration, and access key.

@@ -11,6 +11,16 @@ rm -f /etc/systemd/system/octopus-foxess-inhibit.service /etc/systemd/system/oct
 systemctl daemon-reload
 systemctl reset-failed
 
+if [ -s /etc/octopus-foxess/desktop-shortcut.path ]; then
+  DESKTOP_SHORTCUT="$(cat /etc/octopus-foxess/desktop-shortcut.path)"
+  case "$DESKTOP_SHORTCUT" in
+    */Desktop/Octopus\ FoxESS\ Settings.desktop) rm -f "$DESKTOP_SHORTCUT" ;;
+  esac
+fi
+rm -f /usr/local/bin/octopus-foxess-settings
+rm -f /usr/share/applications/octopus-foxess.desktop
+rm -f /usr/share/icons/hicolor/scalable/apps/octopus-foxess.svg
+rm -f /etc/default/octopus-foxess
 rm -rf /opt/octopus-foxess /var/lib/octopus-foxess /etc/octopus-foxess
 if id octopus-foxess >/dev/null 2>&1; then
   userdel octopus-foxess

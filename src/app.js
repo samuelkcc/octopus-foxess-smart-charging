@@ -69,6 +69,58 @@ function getLinuxAccessKey() {
         || '';
 }
 
+function isPiSettingsMode() {
+    return new URLSearchParams(window.location.search).get('settings') === '1';
+}
+
+async function loadManagedAccessKey() {
+    if (!window.linuxRuntime || window.linuxRole !== 'dashboard' || window.linuxAuthRequired) return;
+    const response = await fetch('/api/access-key', { cache: 'no-store' });
+    if (!response.ok) throw new Error(`Unable to load Raspberry Pi access key (HTTP ${response.status})`);
+    const result = await response.json();
+    const field = document.getElementById('managed-access-key');
+    if (field) field.value = result.accessKey || '';
+}
+
+async function saveManagedAccessKey() {
+    if (!window.linuxRuntime || window.linuxRole !== 'dashboard' || window.linuxAuthRequired) return;
+    const accessKey = document.getElementById('managed-access-key')?.value.trim() || '';
+    if (accessKey.length < 8 || accessKey.length > 64) {
+        throw new Error('The iPhone LAN access key must contain 8 to 64 characters.');
+    }
+    const response = await fetch('/api/access-key', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ accessKey })
+    });
+    if (!response.ok) {
+        const result = await response.json().catch(() => ({}));
+        throw new Error(result.error || `Unable to save Raspberry Pi access key (HTTP ${response.status})`);
+    }
+}
+
+function toggleManagedAccessKeyVisibility() {
+    const field = document.getElementById('managed-access-key');
+    if (!field) return;
+    field.type = field.type === 'password' ? 'text' : 'password';
+    const button = document.querySelector('.inline-visibility-button');
+    if (button) button.textContent = field.type === 'password' ? 'Show' : 'Hide';
+}
+
+async function openPiSettingsView() {
+    closeAllDrawers();
+    document.getElementById('dashboard')?.classList.remove('visible');
+    const login = document.getElementById('login-layout');
+    if (login) login.style.display = 'flex';
+    window.history.replaceState({}, '', `${window.location.pathname}?settings=1`);
+    const credentials = await loadCredentials();
+    if (credentials) populateCredentialInputs(credentials);
+    await loadManagedAccessKey();
+    const buttonText = document.getElementById('btn-text');
+    if (buttonText) buttonText.textContent = 'SAVE SETTINGS & OPEN DASHBOARD';
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
 async function detectLinuxRuntime() {
     try {
         const worker = new URLSearchParams(window.location.search).get('worker') === '1';
@@ -82,6 +134,10 @@ async function detectLinuxRuntime() {
         window.linuxAuthRequired = runtime.authRequired;
         document.body.classList.add('linux-runtime', `linux-role-${runtime.role}`);
         if (runtime.authRequired) document.body.classList.add('linux-auth-required');
+        if (!runtime.authRequired && runtime.role === 'dashboard') {
+            document.body.classList.add('linux-local');
+            await loadManagedAccessKey();
+        }
         document.querySelectorAll('[data-linux-version]').forEach(element => {
             element.textContent = `Raspberry Pi v${runtime.version}`;
         });
@@ -102,7 +158,7 @@ async function ensureLinuxAccess() {
         || sessionStorage.getItem('linuxAccessKey')
         || '';
     if (!key) {
-        showError('Enter the Raspberry Pi access key printed by the installer.');
+        showError('Enter the access key shown in the Raspberry Pi Settings app.');
         return false;
     }
     const response = await fetch('/api/auth', {
@@ -367,12 +423,17 @@ async function handleConnectClick() {
         btn.style.backgroundColor = ""; 
         timerUI.style.display = "none";
     } else {
-        if (!(await ensureLinuxAccess())) return;
-        if (window.linuxRuntime && !document.getElementById('acc').value.trim()) {
-            const state = await loadLinuxState();
-            if (state.credentials) populateCredentialInputs(state.credentials);
+        try {
+            if (!(await ensureLinuxAccess())) return;
+            if (window.linuxRuntime && !document.getElementById('acc').value.trim()) {
+                const state = await loadLinuxState();
+                if (state.credentials) populateCredentialInputs(state.credentials);
+            }
+            await saveManagedAccessKey();
+            await initDashboard();
+        } catch (error) {
+            showError(error.message);
         }
-        await initDashboard();
     }
 }
 
@@ -584,8 +645,12 @@ document.addEventListener("DOMContentLoaded", async () => {
         populateCredentialInputs(credentials);
     }
 
-    if (hasCreds) {
+    if (hasCreds && !isPiSettingsMode()) {
         startAutoConnect();
+    }
+    if (window.linuxRuntime && isPiSettingsMode()) {
+        const buttonText = document.getElementById('btn-text');
+        if (buttonText) buttonText.textContent = 'SAVE SETTINGS & OPEN DASHBOARD';
     }
     startLinuxWorkerConfigPoll();
 

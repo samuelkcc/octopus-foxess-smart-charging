@@ -16,6 +16,9 @@ await mkdir(path.join(packageRoot, 'web'), { recursive: true });
 await Promise.all([
   cp(path.join(root, 'linux', 'server.mjs'), path.join(packageRoot, 'server.mjs')),
   cp(path.join(root, 'linux', 'README-RASPBERRY-PI.md'), path.join(packageRoot, 'README-RASPBERRY-PI.md')),
+  cp(path.join(root, 'linux', 'open-settings.sh'), path.join(packageRoot, 'open-settings.sh')),
+  cp(path.join(root, 'linux', 'octopus-foxess.desktop'), path.join(packageRoot, 'octopus-foxess.desktop')),
+  cp(path.join(root, 'linux', 'octopus-foxess.svg'), path.join(packageRoot, 'octopus-foxess.svg')),
   cp(path.join(root, 'LICENSE'), path.join(packageRoot, 'LICENSE')),
   cp(
     path.join(dist, 'Octopus_IGO_Smart_Charging_Detector.html'),

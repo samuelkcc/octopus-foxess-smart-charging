@@ -10,11 +10,13 @@ const stateRoot = path.join(temporaryRoot, 'state');
 const accessKeyFile = path.join(temporaryRoot, 'access.key');
 const port = 18_000 + Math.floor(Math.random() * 10_000);
 const accessKey = 'test-access-key';
-const [installerSource, uninstallerSource, stylesSource, markupSource] = await Promise.all([
+const [installerSource, uninstallerSource, stylesSource, markupSource, appSource, linuxBuildSource] = await Promise.all([
   readFile(path.join(root, 'linux', 'install.sh'), 'utf8'),
   readFile(path.join(root, 'linux', 'uninstall.sh'), 'utf8'),
   readFile(path.join(root, 'src', 'styles.css'), 'utf8'),
-  readFile(path.join(root, 'src', 'index.html'), 'utf8')
+  readFile(path.join(root, 'src', 'index.html'), 'utf8'),
+  readFile(path.join(root, 'src', 'app.js'), 'utf8'),
+  readFile(path.join(root, 'scripts', 'build-linux.mjs'), 'utf8')
 ]);
 
 assert.match(installerSource, /systemctl enable octopus-foxess\.service octopus-foxess-worker\.service octopus-foxess-inhibit\.service/);
@@ -23,13 +25,22 @@ assert.match(installerSource, /octopus-foxess-inhibit\.service/);
 assert.match(installerSource, /ExecStart=\/usr\/bin\/systemd-inhibit --what=sleep:idle/);
 assert.match(installerSource, /ExecStart=\/usr\/bin\/chromium --headless=new/);
 assert.match(installerSource, /releases\/latest\/download/);
-assert.match(installerSource, /\(umask 027 && printf/);
+assert.match(installerSource, /\(umask 077 && printf/);
 assert.match(installerSource, /chmod -R u=rwX,go=rX "\$RELEASE_ROOT"/);
+assert.match(installerSource, /octopus-foxess-settings/);
+assert.match(installerSource, /Octopus FoxESS Settings\.desktop/);
+assert.match(installerSource, /OCTOPUS_ACCESS_KEY_FILE=\$ACCESS_KEY_FILE/);
 assert.match(uninstallerSource, /systemctl disable --now octopus-foxess-inhibit\.service octopus-foxess-worker\.service octopus-foxess\.service/);
+assert.match(uninstallerSource, /usr\/share\/applications\/octopus-foxess\.desktop/);
 assert.match(stylesSource, /@media \(max-width: 600px\)/);
 assert.match(stylesSource, /font-size: 16px/);
 assert.match(markupSource, /no Google Apps Script/);
 assert.match(markupSource, /Raspberry Pi Access Key/);
+assert.match(markupSource, /iPhone LAN Access Key/);
+assert.match(appSource, /\/api\/access-key/);
+assert.match(appSource, /SAVE SETTINGS & OPEN DASHBOARD/);
+assert.match(linuxBuildSource, /octopus-foxess\.desktop/);
+assert.match(linuxBuildSource, /octopus-foxess\.svg/);
 
 await mkdir(stateRoot);
 await writeFile(accessKeyFile, `${accessKey}\n`, { mode: 0o600 });
@@ -69,6 +80,23 @@ try {
   assert.equal(runtime.authRequired, false);
   assert.ok(Array.isArray(runtime.lanUrls));
 
+  const currentAccessKey = await fetch(`http://127.0.0.1:${port}/api/access-key`).then(response => response.json());
+  assert.equal(currentAccessKey.accessKey, accessKey);
+  const changedAccessKey = 'new-iphone-access-key';
+  const accessKeyResponse = await fetch(`http://127.0.0.1:${port}/api/access-key`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ accessKey: changedAccessKey })
+  });
+  assert.equal(accessKeyResponse.status, 200);
+  assert.equal((await readFile(accessKeyFile, 'utf8')).trim(), changedAccessKey);
+  const invalidAccessKeyResponse = await fetch(`http://127.0.0.1:${port}/api/access-key`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ accessKey: 'short' })
+  });
+  assert.equal(invalidAccessKeyResponse.status, 400);
+
   const credentials = {
     acc: 'A-TEST',
     api: 'sk_live_test',
@@ -102,7 +130,7 @@ try {
   assert.match(page, /Smart Charging Detector/);
   assert.match(page, /Open on iPhone: detecting local address/);
 
-  console.log('Linux server, encrypted state, proxy restriction, and static GUI checks passed.');
+  console.log('Linux server, local access-key settings, encrypted state, launcher, proxy restriction, and static GUI checks passed.');
 } finally {
   child.kill('SIGTERM');
 }
