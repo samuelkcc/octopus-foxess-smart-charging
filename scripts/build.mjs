@@ -12,8 +12,8 @@ const [html, css, js] = await Promise.all([
 ]);
 
 const output = html
-  .replace(/\s*<link rel="stylesheet" href="\.\/styles\.css">/, `\n    <style>\n${css}\n    </style>`)
-  .replace('<script src="./app.js"></script>', `<script>\n${js}\n</script>`);
+  .replace(/\s*<link rel="stylesheet" href="\.\/styles\.css(?:\?[^"]*)?">/, `\n    <style>\n${css}\n    </style>`)
+  .replace(/<script src="\.\/app\.js(?:\?[^"]*)?"><\/script>/, `<script>\n${js}\n</script>`);
 
 await rm(dist, { recursive: true, force: true });
 await mkdir(dist, { recursive: true });

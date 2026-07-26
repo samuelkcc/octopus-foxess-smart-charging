@@ -39,6 +39,8 @@ assert.match(markupSource, /iPhone LAN Access Key/);
 assert.match(markupSource, /iPhone Dashboard Access Key/);
 assert.match(markupSource, /Octopus and FoxESS credentials stay managed by the Pi service/);
 assert.match(markupSource, /class="input-group pi-config-only"/);
+assert.match(markupSource, /styles\.css\?v=2026\.7\.26\.6/);
+assert.match(markupSource, /app\.js\?v=2026\.7\.26\.6/);
 assert.match(stylesSource, /\.linux-runtime\.linux-auth-required \.pi-config-only \{ display: none !important; \}/);
 assert.match(stylesSource, /\.linux-runtime \.linux-local-only \{ display: none !important; \}/);
 assert.match(appSource, /\/api\/access-key/);
@@ -51,6 +53,7 @@ assert.match(await readFile(path.join(root, 'linux', 'server.mjs'), 'utf8'), /ap
 assert.match(await readFile(path.join(root, 'linux', 'server.mjs'), 'utf8'), /Service credentials can only be changed from the Raspberry Pi Settings app/);
 assert.match(await readFile(path.join(root, 'linux', 'server.mjs'), 'utf8'), /async function proxyOctopusRequest/);
 assert.match(await readFile(path.join(root, 'linux', 'server.mjs'), 'utf8'), /createHash\('md5'\)/);
+assert.match(await readFile(path.join(root, 'linux', 'server.mjs'), 'utf8'), /'Cache-Control': 'no-cache'/);
 assert.match(linuxBuildSource, /octopus-foxess\.desktop/);
 assert.match(linuxBuildSource, /octopus-foxess\.svg/);
 assert.match(linuxBuildSource, /packageRoot, 'web', 'octopus-foxess\.svg'/);

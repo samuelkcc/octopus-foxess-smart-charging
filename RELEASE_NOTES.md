@@ -1,4 +1,15 @@
-## iPhone client display hotfix v2026.07.26.5
+## Raspberry Pi client cache hotfix v2026.07.26.6
+
+### Fixed
+
+- Versioned Pi-served CSS and JavaScript URLs so an iPhone cannot reuse an older login layout after the app is updated.
+- Changed installed static assets to revalidate on refresh.
+
+### Validation
+
+- Confirmed a newly refreshed LAN client receives the current one-key login instead of cached Pi-local controls.
+
+## Previous iPhone client display hotfix v2026.07.26.5
 
 ### Fixed
 

@@ -1,5 +1,10 @@
 # Changelog
 
+## v2026.07.26.6 — 2026-07-26
+
+- Versioned the Pi web assets so Safari and Chrome load the corrected LAN client immediately after an update.
+- Disabled long-lived static asset caching on the Pi service to make future installed updates visible on refresh.
+
 ## v2026.07.26.5 — 2026-07-26
 
 - Fixed Pi-local access-key and background-service controls remaining visible on remote LAN clients because of a CSS specificity conflict.

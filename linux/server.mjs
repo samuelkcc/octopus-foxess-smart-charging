@@ -298,7 +298,7 @@ async function serveStatic(request, response, pathname) {
     response.writeHead(200, {
       'Content-Type': contentTypes[path.extname(filePath)] || 'application/octet-stream',
       'Content-Length': details.size,
-      'Cache-Control': path.extname(filePath) === '.html' ? 'no-cache' : 'public, max-age=3600',
+      'Cache-Control': 'no-cache',
       'X-Content-Type-Options': 'nosniff',
       'Referrer-Policy': 'no-referrer'
     });
