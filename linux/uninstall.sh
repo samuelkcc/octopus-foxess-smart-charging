@@ -10,7 +10,7 @@ systemctl disable --now octopus-foxess-inhibit.service octopus-foxess-worker.ser
 rm -f /etc/systemd/system/octopus-foxess-inhibit.service /etc/systemd/system/octopus-foxess-worker.service /etc/systemd/system/octopus-foxess.service
 systemctl daemon-reload
 systemctl reset-failed
-pkill -f '^/usr/bin/python3 /usr/local/bin/octopus-foxess-tray$' 2>/dev/null || true
+pkill -f 'octopus-foxess-tray' 2>/dev/null || true
 
 if [ -s /etc/octopus-foxess/desktop-shortcut.path ]; then
   DESKTOP_SHORTCUT="$(cat /etc/octopus-foxess/desktop-shortcut.path)"

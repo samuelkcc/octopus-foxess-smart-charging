@@ -175,7 +175,7 @@ systemctl restart octopus-foxess.service octopus-foxess-worker.service octopus-f
 if [ -n "$DESKTOP_USER" ] && [ "$DESKTOP_USER" != "root" ]; then
   DESKTOP_UID="$(id -u "$DESKTOP_USER")"
   DESKTOP_RUNTIME="/run/user/$DESKTOP_UID"
-  pkill -u "$DESKTOP_UID" -f '^/usr/bin/python3 /usr/local/bin/octopus-foxess-tray$' 2>/dev/null || true
+  pkill -u "$DESKTOP_UID" -f 'octopus-foxess-tray' 2>/dev/null || true
   if [ -d "$DESKTOP_RUNTIME" ]; then
     if [ -S "$DESKTOP_RUNTIME/wayland-0" ]; then
       runuser -u "$DESKTOP_USER" -- env \

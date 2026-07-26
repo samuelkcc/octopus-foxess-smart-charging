@@ -1,4 +1,11 @@
-## Native Pi configuration and Mobile home-screen polish v2026.07.26.13
+## Pi tray upgrade restart and native configuration v2026.07.26.14
+
+This hotfix broadens the running tray-process match used during an upgrade.
+Raspberry Pi OS can launch the Python indicator with different command-line
+forms, so the installer now reliably stops the old process before starting the
+new native Server Configuration UI.
+
+## Previous native Pi configuration and Mobile home-screen polish v2026.07.26.13
 
 This release completes the server/client separation:
 

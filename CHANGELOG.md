@@ -1,5 +1,12 @@
 # Changelog
 
+## v2026.07.26.14 — 2026-07-26
+
+- Broadened Raspberry Pi tray process detection during install and uninstall so
+  an older indicator cannot survive an upgrade with obsolete menu entries.
+- Revalidated the native Server Configuration, Live WS, and service states
+  against the real Pi after updating.
+
 ## v2026.07.26.13 — 2026-07-26
 
 - Consolidated Pi credentials, telemetry selection, LAN access protection, and
