@@ -1,5 +1,11 @@
 # Changelog
 
+## v2026.07.26.8 — 2026-07-26
+
+- Fixed the Pi Settings app's narrow-window layout so the long Live WS/fallback
+  status badge wraps below the FoxESS telemetry heading instead of squeezing it.
+- Revalidated the iPhone one-key client layout and all release checks.
+
 ## v2026.07.26.7 — 2026-07-26
 
 - Added optional approximately five-second FoxESS telemetry through the undocumented web-portal WebSocket.

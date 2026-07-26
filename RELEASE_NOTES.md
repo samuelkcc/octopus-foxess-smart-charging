@@ -1,4 +1,16 @@
-## Raspberry Pi Live WebSocket telemetry v2026.07.26.7
+## Raspberry Pi Live WebSocket telemetry layout hotfix v2026.07.26.8
+
+### Fixed
+
+- Keeps the Live WS/fallback status badge readable in the Raspberry Pi Settings
+  app without squeezing the FoxESS telemetry heading in its narrow app window.
+
+### Validation
+
+- Rechecked the Pi-local Settings window, iPhone-sized one-key LAN client,
+  WebSocket/REST fallback tests, release bundle, and GitHub Pages build.
+
+## Previous Raspberry Pi Live WebSocket telemetry v2026.07.26.7
 
 ### Improved
 
