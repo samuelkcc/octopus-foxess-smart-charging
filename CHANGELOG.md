@@ -1,5 +1,13 @@
 # Changelog
 
+## v2026.07.26.11 — 2026-07-26
+
+- Restart the signed-in user's existing Octopus FoxESS taskbar process during
+  an upgrade so the newly installed indicator and native configuration logic
+  takes effect immediately without a logout or reboot.
+- Carry forward the Live WS-aware **Fetch Now** visibility and effective
+  Current Device Mode/SOC refresh corrections from v2026.07.26.10.
+
 ## v2026.07.26.10 — 2026-07-26
 
 - Fixed the Raspberry Pi OS Wayland taskbar indicator so its green, amber, and

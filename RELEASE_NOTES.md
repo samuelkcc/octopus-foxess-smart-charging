@@ -1,4 +1,17 @@
-## Raspberry Pi taskbar indicator compatibility hotfix v2026.07.26.10
+## Raspberry Pi tray upgrade restart hotfix v2026.07.26.11
+
+This hotfix makes Raspberry Pi upgrades take effect immediately:
+
+- Restarts an already-running Octopus FoxESS taskbar process after replacing
+  its files, so the new indicator and native configuration logic is active
+  without logging out or rebooting.
+- Retains the v2026.07.26.10 Live WS dashboard improvements: Live Telemetry
+  **Fetch Now** stays hidden while Live WS is healthy and returns during REST
+  fallback.
+- Retains the corrected Current Device Mode and SOC refresh, including active
+  FoxESS scheduler groups overriding the base `SelfUse` mode.
+
+## Previous Raspberry Pi taskbar indicator compatibility hotfix v2026.07.26.10
 
 This hotfix completes the native Raspberry Pi server experience introduced in
 v2026.07.26.9:
