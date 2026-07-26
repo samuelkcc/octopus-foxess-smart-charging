@@ -21,6 +21,7 @@ const utilities = new Function(`
   ${extractFunction('isActiveFoxSchedule')}
   ${extractFunction('isFoxScheduleActiveAt')}
   ${extractFunction('getActiveFoxScheduleAt')}
+  ${extractFunction('getEffectiveFoxWorkMode')}
   ${extractFunction('scheduleFingerprint')}
   ${extractFunction('prepareFoxSchedulePayload')}
   ${extractFunction('getActiveAgreement')}
@@ -33,7 +34,7 @@ const utilities = new Function(`
   ${extractFunction('getAutoResumeSource')}
   ${extractFunction('getAutoResumeUntil')}
   ${extractFunction('isScheduleMinuteSuppressed')}
-  return { window, isFoxScheduleActiveAt, getActiveFoxScheduleAt, scheduleFingerprint, prepareFoxSchedulePayload, getActiveAgreement, selectActiveElectricityTariffs, getProductCodeFromTariffCode, getRateAtTime, getTariffSlotsForDate, getWeeklyForcedChargePeriods, buildScheduleGroupsFromTimeline, getAutoResumeSource, getAutoResumeUntil, isScheduleMinuteSuppressed };
+  return { window, isFoxScheduleActiveAt, getActiveFoxScheduleAt, getEffectiveFoxWorkMode, scheduleFingerprint, prepareFoxSchedulePayload, getActiveAgreement, selectActiveElectricityTariffs, getProductCodeFromTariffCode, getRateAtTime, getTariffSlotsForDate, getWeeklyForcedChargePeriods, buildScheduleGroupsFromTimeline, getAutoResumeSource, getAutoResumeUntil, isScheduleMinuteSuppressed };
 `)();
 
 const tariffNow = new Date('2026-07-26T12:00:00Z');
@@ -123,7 +124,25 @@ assert.equal(
   'ForceCharge',
   'An active scheduler group must override the base SelfUse setting in the displayed effective mode'
 );
+assert.equal(
+  utilities.getEffectiveFoxWorkMode('SelfUse', new Date(2026, 6, 26, 10, 21)),
+  'ForceCharge',
+  'The Current Device Mode card must show the effective scheduled mode'
+);
 assert.equal(utilities.getActiveFoxScheduleAt(new Date(2026, 6, 26, 10, 31)), null);
+assert.equal(
+  utilities.getEffectiveFoxWorkMode('SelfUse', new Date(2026, 6, 26, 10, 31)),
+  'SelfUse',
+  'The base mode must return when no scheduler group is active'
+);
+assert.equal(
+  utilities.isFoxScheduleActiveAt(
+    { startHour: '10', startMinute: '0', endHour: '10', endMinute: '30', workMode: 'ForceCharge', enable: '0' },
+    new Date(2026, 6, 26, 10, 21)
+  ),
+  false,
+  'String-valued disabled scheduler groups must never override the device mode'
+);
 assert.equal(
   utilities.isFoxScheduleActiveAt(
     { startHour: 23, startMinute: 30, endHour: 5, endMinute: 30, workMode: 'ForceCharge', enable: 1 },
@@ -202,6 +221,8 @@ assert.match(source, /getElementById\('exportPriceChart'\)/, 'The export tariff 
 assert.match(source, /window\.linuxRole === 'worker'/, 'Only the Raspberry Pi worker may run unattended actions');
 assert.match(source, /if \(!btn && !canRunAutomaticActions\(\)\) return false/, 'LAN dashboards must not duplicate unattended schedule writes');
 assert.match(source, /gasUrl: '\/api\/foxess'/, 'Raspberry Pi credentials must use the local FoxESS relay');
+assert.match(source, /telemetryFetchButton\.style\.display = isFoxLiveStatusHealthy\(status\) \? 'none' : ''/, 'Live WS must hide the redundant telemetry Fetch Now button');
+assert.match(source, /getEffectiveFoxWorkMode\(window\.baseFoxWorkMode \|\| localWorkModeState\)/, 'Live WS SOC updates must refresh the Current Device Mode card');
 
 const capturedChartConfigs = [];
 const chartElements = {

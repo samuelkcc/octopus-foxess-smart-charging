@@ -1,5 +1,19 @@
 # Changelog
 
+## v2026.07.26.10 — 2026-07-26
+
+- Fixed the Raspberry Pi OS Wayland taskbar indicator so its green, amber, and
+  red icons resolve through the standard system icon theme.
+- Refresh the system icon cache during Linux installation for immediate taskbar
+  visibility.
+- Fixed the native configuration window so a healthy FoxESS Live WS `live`
+  state is displayed as connected.
+- Hide the redundant Live Telemetry **Fetch Now** control while Live WS is
+  healthy; it returns automatically if the app falls back to REST.
+- Refresh Current Device Mode and battery SOC from each Live WS frame, while
+  using an active FoxESS scheduler group as the effective mode instead of the
+  base `SelfUse` setting.
+
 ## v2026.07.26.9 — 2026-07-26
 
 - Renamed the device-specific client experience to Mobile / LAN across the UI,

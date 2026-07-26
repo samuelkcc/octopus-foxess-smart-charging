@@ -323,10 +323,16 @@ function describeFoxLiveStatus(status) {
     return 'REST FALLBACK';
 }
 
+function isFoxLiveStatusHealthy(status) {
+    return status?.source === 'live-ws'
+        && (status?.connected === true || status?.state === 'live');
+}
+
 function renderFoxLiveStatus(status, messageTarget = null) {
     const label = describeFoxLiveStatus(status);
     const sourceBadge = document.getElementById('fox-live-source-badge');
     const setupBadge = document.getElementById('fox-live-setup-status');
+    const telemetryFetchButton = document.getElementById('fox-telemetry-fetch-button');
     const badgeClass = status?.source === 'live-ws'
         ? 'badge off-peak'
         : (status?.state === 'connecting' ? 'badge neutral' : 'badge peak');
@@ -337,6 +343,9 @@ function renderFoxLiveStatus(status, messageTarget = null) {
     if (setupBadge) {
         setupBadge.textContent = label;
         setupBadge.className = badgeClass;
+    }
+    if (telemetryFetchButton) {
+        telemetryFetchButton.style.display = isFoxLiveStatusHealthy(status) ? 'none' : '';
     }
     if (messageTarget) {
         const reason = status?.lastError
@@ -1310,6 +1319,10 @@ function applyFoxTelemetry(values = {}, source = 'rest', updatedAt = null) {
         `;
     }
     if (updatedAt) window.lastFoxTelemetryUpdate = updatedAt;
+    if (batterySoc !== '--') {
+        localWorkModeState = getEffectiveFoxWorkMode(window.baseFoxWorkMode || localWorkModeState);
+        updateModeBadge(localWorkModeState, batterySoc);
+    }
 
     const autoResumeEnabled = document.getElementById('toggle-auto-resume')?.checked;
     if (autoResumeEnabled && canRunAutomaticActions() && batterySoc !== '--') {
@@ -1422,14 +1435,8 @@ async function fetchCurrentWorkMode(forceModeUpdate = false) {
         }
         
         if (data.errno === 0 && data.result) {
-            localWorkModeState = data.result.value || "Unknown";
-
-            // The FoxESS setting endpoint returns the inverter's base WorkMode,
-            // usually SelfUse, even while a scheduler group is actively forcing
-            // charge or discharge. Display the effective scheduled mode whenever
-            // a live group covers the current local time.
-            const activeSchedule = getActiveFoxScheduleAt(new Date());
-            if (activeSchedule) localWorkModeState = activeSchedule.workMode;
+            window.baseFoxWorkMode = data.result.value || "Unknown";
+            localWorkModeState = getEffectiveFoxWorkMode(window.baseFoxWorkMode);
             
             updateModeBadge(localWorkModeState, batterySoc);
             const fbBadge = document.getElementById('fox-api-badge');
@@ -1444,6 +1451,7 @@ async function fetchCurrentWorkMode(forceModeUpdate = false) {
 
 function updateModeBadge(mode, soc = null) {
     const modeBadge = document.getElementById('current-work-mode');
+    if (!modeBadge) return;
     let text = mode;
     if (mode === 'SelfUse') text = 'SELF-USE';
     else if (mode === 'ForceCharge') text = 'FORCED CHARGE';
@@ -1484,6 +1492,13 @@ function getActiveFoxScheduleAt(now = new Date()) {
         || null;
 }
 
+function getEffectiveFoxWorkMode(baseMode = "Unknown", now = new Date()) {
+    // FoxESS reports the inverter's base WorkMode (often SelfUse) even while
+    // the scheduler is actively forcing charge or discharge. The scheduler is
+    // therefore the authoritative source for the effective mode at this time.
+    return getActiveFoxScheduleAt(now)?.workMode || baseMode || "Unknown";
+}
+
 function toggleDashboardAccountVisibility() {
     const value = document.getElementById('dashboard-account-number');
     const button = document.getElementById('dashboard-account-toggle');
@@ -1494,11 +1509,17 @@ function toggleDashboardAccountVisibility() {
 }
 
 function isActiveFoxSchedule(group) {
-    if (!group || group.enable === 0 || group.enable === false) return false;
+    if (
+        !group ||
+        group.enable === 0 ||
+        group.enable === false ||
+        group.enable === "0" ||
+        group.enable === "false"
+    ) return false;
     const isDisabledPadding =
         group.workMode === 'SelfUse' &&
-        group.startHour === 0 && group.startMinute === 0 &&
-        group.endHour === 0 && group.endMinute === 0;
+        Number(group.startHour) === 0 && Number(group.startMinute) === 0 &&
+        Number(group.endHour) === 0 && Number(group.endMinute) === 0;
     return !isDisabledPadding;
 }
 

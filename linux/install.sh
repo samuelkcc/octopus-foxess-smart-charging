@@ -84,6 +84,7 @@ install -m 0644 "$RELEASE_ROOT/octopus-foxess.svg" /usr/share/icons/hicolor/scal
 install -m 0644 "$RELEASE_ROOT/octopus-foxess-status-green.svg" /usr/share/icons/hicolor/scalable/apps/octopus-foxess-status-green.svg
 install -m 0644 "$RELEASE_ROOT/octopus-foxess-status-amber.svg" /usr/share/icons/hicolor/scalable/apps/octopus-foxess-status-amber.svg
 install -m 0644 "$RELEASE_ROOT/octopus-foxess-status-red.svg" /usr/share/icons/hicolor/scalable/apps/octopus-foxess-status-red.svg
+gtk-update-icon-cache -f -t /usr/share/icons/hicolor >/dev/null 2>&1 || true
 printf 'OCTOPUS_PORT=%s\n' "$PORT" > /etc/default/octopus-foxess
 chmod 0644 /etc/default/octopus-foxess
 

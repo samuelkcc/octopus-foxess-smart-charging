@@ -1,4 +1,23 @@
-## Raspberry Pi native server indicator and Mobile / LAN client v2026.07.26.9
+## Raspberry Pi taskbar indicator compatibility hotfix v2026.07.26.10
+
+This hotfix completes the native Raspberry Pi server experience introduced in
+v2026.07.26.9:
+
+- Corrected Raspberry Pi OS Wayland taskbar icon discovery by publishing the
+  green, amber, and red indicators through the standard system icon theme.
+- Refreshes the icon theme cache during installation so the server indicator is
+  visible immediately, without waiting for a reboot.
+- Corrected the native configuration window to recognise FoxESS Live WS
+  `live` telemetry as connected instead of showing an incorrect REST fallback.
+- Hides the unnecessary Live Telemetry **Fetch Now** button while Live WS is
+  healthy and restores it automatically during REST fallback.
+- Corrects Current Device Mode by combining the FoxESS base mode with the
+  currently active scheduler group, and refreshes its SOC from Live WS.
+- Verified on Raspberry Pi OS Trixie with the taskbar icon, status menu, native
+  Server Configuration window, listen address, masked LAN access code, and all
+  API health indicators.
+
+## Previous Raspberry Pi native server indicator and Mobile / LAN client v2026.07.26.9
 
 ### Fixed
 

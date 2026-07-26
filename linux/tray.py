@@ -36,11 +36,11 @@ except (FileNotFoundError, ValueError):
     pass
 
 BASE_URL = f"http://127.0.0.1:{PORT}"
-ICON_ROOT = "/usr/share/icons/hicolor/scalable/apps"
+ICON_ROOT = "/usr/share/icons/hicolor"
 ICONS = {
-    "green": f"{ICON_ROOT}/octopus-foxess-status-green.svg",
-    "amber": f"{ICON_ROOT}/octopus-foxess-status-amber.svg",
-    "red": f"{ICON_ROOT}/octopus-foxess-status-red.svg",
+    "green": "octopus-foxess-status-green",
+    "amber": "octopus-foxess-status-amber",
+    "red": "octopus-foxess-status-red",
 }
 
 
@@ -188,7 +188,9 @@ class ServerConfigurationWindow(Gtk.Window):
         self.status_values["foxRest"].set_text(state_text(status.get("foxRest", {})))
 
         live = status.get("foxLive", {})
-        if live.get("source") == "live-ws" and live.get("state") == "connected":
+        if live.get("source") == "live-ws" and (
+            live.get("connected") is True or live.get("state") in ("connected", "live")
+        ):
             live_text = "✅ Live WebSocket connected"
         elif live.get("mode") == "rest":
             live_text = "✅ Official REST selected"
@@ -234,6 +236,7 @@ class TrayController:
             ICONS["amber"],
             AyatanaAppIndicator3.IndicatorCategory.SYSTEM_SERVICES,
         )
+        self.indicator.set_icon_theme_path(ICON_ROOT)
         self.indicator.set_status(AyatanaAppIndicator3.IndicatorStatus.ACTIVE)
         self.indicator.set_title("Octopus FoxESS Server")
 
