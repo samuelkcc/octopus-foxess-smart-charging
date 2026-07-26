@@ -42,7 +42,7 @@ jobs:
       - run: npm run check
       - name: Verify tag matches package version
         run: |
-          test "$RELEASE_TAG" = "v$(node -p "require('./package.json').version.split('.').map((part, index) => index === 0 ? part : part.padStart(2, '0')).join('.')")"
+          test "$RELEASE_TAG" = "v$(node -p "const [year, month, day, ...rest] = require('./package.json').version.split('.'); [year, month.padStart(2, '0'), day.padStart(2, '0'), ...rest].join('.')")"
       - name: Create release and upload both editions
         env:
           GH_TOKEN: ${{ github.token }}
