@@ -25,12 +25,12 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <meta name="apple-mobile-web-app-title" content="Octopus FoxESS">
     <title>Smart Charging Detector</title>
-    <link rel="icon" href="./octopus-foxess.svg?v=2026.7.26.14" type="image/svg+xml">
-    <link rel="apple-touch-icon" sizes="180x180" href="./icons/apple-touch-icon.png?v=2026.7.26.14">
-    <link rel="manifest" href="./site.webmanifest?v=2026.7.26.14">
+    <link rel="icon" href="./octopus-foxess.svg?v=2026.7.29.1" type="image/svg+xml">
+    <link rel="apple-touch-icon" sizes="180x180" href="./icons/apple-touch-icon.png?v=2026.7.29.1">
+    <link rel="manifest" href="./site.webmanifest?v=2026.7.29.1">
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.9/dist/chart.umd.min.js" integrity="sha384-b0GXujLkk9eYYSmcSfoyZbfyElGAQnDyY0skCHSG6w3JgTMFnz11ggrTAr7seu9f" crossorigin="anonymous"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js" integrity="sha384-S3wQ/l0OsbJoFeJC81UIr3JOlx/OzNJpRt1bV+yhpWQxPAahfpQtpxBSfn+Isslc" crossorigin="anonymous"></script>
-        <link rel="stylesheet" href="./styles.css?v=2026.7.26.14">
+        <link rel="stylesheet" href="./styles.css?v=2026.7.29.1">
 </head>
 <body>
 
@@ -207,17 +207,60 @@
     </h3>
     <div style="display: flex; flex-direction: column; gap: 12px; margin-top: 1.5rem;">
         <button class="web-runtime-only" onclick="document.getElementById('disclaimer-modal').style.display='flex'; toggleAppMenu();" style="width: 100%; padding: 0.85rem; font-size: 0.9rem; background: #3b82f6; border-radius: 8px; border: none; color: white; cursor: pointer; text-align: left; display: flex; align-items: center; gap: 8px;">💾 Save Config</button>
+        <div class="linux-client-only menu-setting-row">
+            <div>
+                <strong>Live WS on demand</strong>
+                <small id="live-on-demand-state">Waiting for Pi status…</small>
+            </div>
+            <label class="switch" aria-label="Use Live WS only during a dynamic Octopus charge">
+                <input type="checkbox" id="toggle-live-on-demand" onchange="setLiveWsOnDemand(this.checked)">
+                <span class="slider"></span>
+            </label>
+        </div>
         <button onclick="toggleDarkMode(); toggleAppMenu();" class="theme-toggle-btn" style="width: 100%; padding: 0.85rem; font-size: 0.9rem; background: var(--card-bg); border-radius: 8px; border: 1px solid var(--border); color: var(--text-main); cursor: pointer; text-align: left; display: flex; align-items: center; gap: 8px;">🌗 Dark Mode</button>
         <button onclick="toggleFullScreen(); toggleAppMenu();" style="width: 100%; padding: 0.85rem; font-size: 0.9rem; background: var(--card-bg); border-radius: 8px; border: 1px solid var(--border); color: var(--text-main); cursor: pointer; text-align: left; display: flex; align-items: center; gap: 8px;">⛶ Full Screen</button>
         <button onclick="toggleScreenSaver(); toggleAppMenu();" style="width: 100%; padding: 0.85rem; font-size: 0.9rem; background: var(--card-bg); border-radius: 8px; border: 1px solid var(--border); color: var(--text-main); cursor: pointer; text-align: left; display: flex; align-items: center; gap: 8px;">🌙 Screen Saver</button>
         <button onclick="toggleMiniViewer(); toggleAppMenu();" style="width: 100%; padding: 0.85rem; font-size: 0.9rem; background: #10b981; border-radius: 8px; border: none; color: white; cursor: pointer; text-align: left; box-shadow: 0 2px 4px rgba(16, 185, 129, 0.3); display: flex; align-items: center; gap: 8px;">📱 Mini HUD</button>
         <div style="border-top: 1px dashed var(--border); margin: 0.5rem 0;"></div>
+        <button class="linux-client-only remove-access-button" onclick="removeSavedAccessCode()" type="button">🔐 Remove Access Code</button>
         <button class="web-runtime-only" onclick="document.getElementById('wipe-modal').style.display='flex'; toggleAppMenu();" style="width: 100%; padding: 0.85rem; font-size: 0.9rem; background: transparent; border-radius: 8px; border: 1px dashed #ef4444; color: #ef4444; cursor: pointer; text-align: left; display: flex; align-items: center; gap: 8px;">🗑️ Wipe Local Data</button>
     </div>
 </div>
 
 <div class="dashboard" id="dashboard">
-    <div style="display: flex; flex-direction: column; gap: 1.5rem;">
+    <div class="card energy-overview-card">
+        <div class="overview-header">
+            <div>
+                <div class="overview-kicker">OCTOPUS × FOXESS</div>
+                <h2>Home Energy Protection</h2>
+                <p id="protection-message">Checking the dynamic charge and FoxESS scheduler…</p>
+            </div>
+            <div class="overview-header-actions">
+                <span id="protection-state" class="badge neutral">CHECKING</span>
+                <button type="button" class="overview-menu-button" onclick="toggleAppMenu()">☰ Menu</button>
+            </div>
+        </div>
+
+        <div class="energy-flow-grid" aria-label="Live FoxESS energy flow">
+            <div class="energy-node solar"><span>☀️</span><small>Solar</small><strong id="overview-solar-power">--</strong></div>
+            <div class="energy-node home"><span>🏠</span><small>Home</small><strong id="overview-home-load">--</strong></div>
+            <div class="energy-node grid"><span>⚡</span><small>Grid</small><strong id="overview-grid-power">--</strong></div>
+            <div class="energy-node battery"><span>🔋</span><small>Battery <b id="overview-battery-soc">--</b></small><strong id="overview-battery-power">--</strong></div>
+        </div>
+
+        <div class="schedule-overview-grid">
+            <section class="schedule-overview-panel">
+                <div class="schedule-overview-title"><span>🐙 Dynamic Charge Schedule</span><span>Octopus</span></div>
+                <div id="overview-dynamic-schedules"><div class="overview-empty">Waiting for Octopus…</div></div>
+            </section>
+            <section class="schedule-overview-panel">
+                <div class="schedule-overview-title"><span>🦊 Mode Scheduler</span><span>FoxESS</span></div>
+                <div id="overview-fox-schedules"><div class="overview-empty">Waiting for FoxESS…</div></div>
+            </section>
+        </div>
+    </div>
+
+    <div class="dashboard-column dashboard-column-secondary">
         
         <div class="card">
             <div class="card-header" style="align-items: flex-start;">
@@ -296,7 +339,7 @@
 
     </div>
 
-    <div style="display: flex; flex-direction: column; gap: 1.5rem;">
+    <div class="dashboard-column dashboard-column-primary">
         
         <div class="card">
             <div class="card-header" style="align-items: flex-start;">
@@ -514,7 +557,7 @@
 
     </div> <div class="app-footer">
         <div style="text-align: left;">Developer Samuel Chen</div>
-        <div style="text-align: right;">&copy; Copyright 2026 samuelchen.hk Build v2026.07.26.14</div>
+        <div style="text-align: right;">&copy; Copyright 2026 samuelchen.hk Build v2026.07.29.1</div>
     </div>
 </div> 
 
@@ -742,7 +785,7 @@
     </div>
 </div>
 
-<script src="./app.js?v=2026.7.26.14"></script>
+<script src="./app.js?v=2026.7.29.1"></script>
 
 <div id="screen-saver-overlay" onclick="toggleScreenSaver()" style="display: none; position: fixed; inset: 0; width: 100%; height: 100%; background: #000; z-index: 100000; cursor: pointer;"></div>
 

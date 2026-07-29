@@ -24,24 +24,27 @@ credentials, select or test Live WS, and inspect all integration states. This
 native window is the only Pi integration editor; the browser dashboard never
 displays service credentials.
 
-The Pi settings app also provides a FoxESS telemetry selector:
+The Pi settings app provides the FoxESS credentials and REST/live capability.
+The dashboard menu then controls **Live WS on demand**:
 
-- **Live WebSocket (default, REST fallback)** uses optional FoxESS Cloud
-  web-login credentials for approximately five-second read-only telemetry.
-- **Official REST API only** disables the undocumented stream.
+- **On** opens the WebSocket only while an Octopus dynamic charge is active,
+  then disconnects it when that charge ends.
+- **Off** keeps telemetry on the official REST API.
 
-Leaving either Live WS credential empty automatically selects REST fallback.
-While connected, the Pi requests a fresh frame every five seconds so a
-successful connection does not become stale after its initial frame. The
-**Save & Test Live WS** button waits for a fresh telemetry frame. Login,
-self-test, stale-frame, or connection failures also fall back to REST
-automatically. All schedule and inverter-control commands always use the
-official FoxESS REST API.
+Leaving either Live WS credential empty automatically uses REST. While an
+active dynamic charge keeps Live WS connected, the Pi requests a fresh frame
+every five seconds so a successful connection does not become stale after its
+initial frame. The **Save & Test Live WS** button can still test a fresh frame
+outside a charge window. Login, self-test, stale-frame, or connection failures
+also fall back to REST automatically. All schedule and inverter-control
+commands always use the official FoxESS REST API.
 
 The Pi is the central source of truth. Closing the settings window does not stop
 the service. The separate **Octopus FoxESS Dashboard** desktop and
 application-menu launcher opens the LAN client and asks only for its access
-code when access protection is enabled. For a trusted private LAN, Server
+code when access protection is enabled. A valid code is remembered on that
+client so later visits open the dashboard directly; **Menu → Remove Access
+Code** forgets it and returns to login. For a trusted private LAN, Server
 Configuration can disable access-code protection and the client opens directly.
 Phones, tablets, and other computers on the same network can open the listen
 address directly. Every client reads the Pi's current state and sends
@@ -49,8 +52,9 @@ deliberate changes back to the Pi; it is not a pixel-by-pixel screen mirror.
 Only the loopback worker performs unattended schedule writes.
 
 Adding the dashboard to an iOS or Android home screen uses the supplied
-Octopus/fox/charging app icon. The account-number row is kept on one line in the
-narrow Mobile view.
+Octopus/fox/charging app icon. The narrow Mobile view fits the viewport without
+zooming out and presents the Octopus dynamic charge schedule, FoxESS mode
+scheduler, and Home Energy Protection status before tariff and account detail.
 
 Install:
 

@@ -40,6 +40,7 @@
     [data-theme="dark"] .current-price { color: var(--text-main) !important; }
     [data-theme="dark"] #price-target-times, [data-theme="dark"] div[style*="color: #166534"] { color: var(--off-peak) !important; }
 
+        html, body { max-width: 100%; overflow-x: hidden; }
         body { font-family: system-ui, -apple-system, sans-serif; margin: 0; padding: max(1.5rem, env(safe-area-inset-top)) max(1.5rem, env(safe-area-inset-right)) max(1.5rem, env(safe-area-inset-bottom)) max(1.5rem, env(safe-area-inset-left)); color: var(--text-main); background: #e2e8f0; line-height: 1.5; min-height: 100vh; min-height: 100dvh; display: grid; place-items: center; box-sizing: border-box; -webkit-text-size-adjust: 100%; }
         
         .app-wrapper { background: var(--bg); border: 2px solid #cbd5e1; border-radius: 16px; box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05); width: 100%; max-width: 1600px; min-height: calc(100vh - 3rem); padding: 2rem 2.5rem; display: flex; flex-direction: column; box-sizing: border-box; }
@@ -57,6 +58,7 @@
         .linux-runtime.linux-auth-required .linux-access-group { display: block !important; }
         .linux-client-only { display: none !important; }
         .linux-runtime .linux-client-only { display: block !important; }
+        .linux-runtime .menu-setting-row { display: flex !important; }
         .linux-runtime .pi-config-only { display: none !important; }
         .access-open-copy { display: none; }
         .linux-runtime.linux-password-free .access-protected-copy { display: none; }
@@ -134,8 +136,48 @@
         .btn-clear { background-color: #94a3b8; }
         .btn-clear:hover { background-color: #64748b; }
 
-        .dashboard { display: grid; grid-template-columns: repeat(auto-fit, minmax(420px, 1fr)); gap: 1.5rem; display: none; align-items: start; }
+        .dashboard { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1.5rem; display: none; align-items: start; }
         .dashboard.visible { display: grid; }
+        .dashboard > *, .dashboard-column, .card, .card-header > * { min-width: 0; }
+        .dashboard-column { display: flex; flex-direction: column; gap: 1.5rem; }
+
+        .energy-overview-card { grid-column: 1 / -1; padding: 1.25rem 1.5rem 1.5rem; background: linear-gradient(135deg, var(--card-bg), color-mix(in srgb, var(--card-bg) 88%, #8b5cf6 12%)); }
+        .overview-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 1.25rem; padding-bottom: 1.1rem; border-bottom: 1px solid var(--border); }
+        .overview-header h2 { margin: 0.2rem 0 0; color: var(--text-main); font-size: clamp(1.3rem, 2vw, 1.85rem); line-height: 1.15; }
+        .overview-header p { max-width: 780px; margin: 0.55rem 0 0; color: var(--text-muted); font-size: 0.86rem; line-height: 1.45; }
+        .overview-kicker { color: #8b5cf6; font-size: 0.66rem; font-weight: 900; letter-spacing: 0.14em; }
+        .overview-header-actions { display: flex; align-items: center; justify-content: flex-end; gap: 0.65rem; flex-wrap: wrap; }
+        .overview-menu-button { width: auto; min-height: 38px; padding: 0.45rem 0.8rem; border: 1px solid var(--border); background: var(--card-bg); color: var(--text-main); font-size: 0.82rem; }
+        .energy-flow-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0.75rem; margin-top: 1rem; }
+        .energy-node { position: relative; display: grid; grid-template-columns: auto 1fr; gap: 0.1rem 0.55rem; align-items: center; padding: 0.8rem; border: 1px solid var(--border); border-radius: 12px; background: var(--card-bg); overflow: hidden; }
+        .energy-node::before { content: ''; position: absolute; inset: 0 auto 0 0; width: 4px; background: #8b5cf6; }
+        .energy-node.solar::before { background: #f59e0b; }
+        .energy-node.home::before { background: #06b6d4; }
+        .energy-node.grid::before { background: #3b82f6; }
+        .energy-node.battery::before { background: #22c55e; }
+        .energy-node > span { grid-row: 1 / 3; font-size: 1.45rem; }
+        .energy-node small { color: var(--text-muted); font-size: 0.68rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; }
+        .energy-node small b { color: var(--text-main); }
+        .energy-node strong { color: var(--text-main); font-size: 0.86rem; overflow-wrap: anywhere; }
+        .schedule-overview-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.85rem; margin-top: 0.85rem; }
+        .schedule-overview-panel { padding: 0.9rem; border: 1px solid var(--border); border-radius: 12px; background: var(--card-bg); }
+        .schedule-overview-title { display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; margin-bottom: 0.55rem; color: var(--text-main); font-size: 0.82rem; font-weight: 800; }
+        .schedule-overview-title > span:last-child { color: var(--text-muted); font-size: 0.62rem; letter-spacing: 0.08em; text-transform: uppercase; }
+        .overview-schedule-row { display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; padding: 0.55rem 0; border-top: 1px solid var(--border); }
+        .overview-schedule-row:first-child { border-top: 0; }
+        .overview-schedule-row > span:first-child { display: flex; flex-direction: column; min-width: 0; }
+        .overview-schedule-row strong { color: var(--text-main); font-size: 0.78rem; }
+        .overview-schedule-row small { color: var(--text-muted); font-size: 0.72rem; }
+        .overview-schedule-row.active { margin: 0 -0.45rem; padding: 0.55rem 0.45rem; border-radius: 8px; background: var(--off-peak-bg); }
+        .overview-schedule-tag { flex-shrink: 0; color: #0284c7; font-size: 0.61rem; font-weight: 900; letter-spacing: 0.06em; }
+        .overview-schedule-row.active .overview-schedule-tag { color: #059669; }
+        .overview-empty { padding: 0.7rem 0; color: var(--text-muted); font-size: 0.76rem; text-align: center; }
+        .menu-setting-row { align-items: center; justify-content: space-between; gap: 1rem; padding: 0.85rem; border: 1px solid var(--border); border-radius: 8px; background: var(--card-bg); }
+        .menu-setting-row > div { min-width: 0; }
+        .menu-setting-row strong, .menu-setting-row small { display: block; }
+        .menu-setting-row strong { color: var(--text-main); font-size: 0.86rem; }
+        .menu-setting-row small { margin-top: 0.2rem; color: var(--text-muted); font-size: 0.68rem; line-height: 1.35; }
+        .remove-access-button { padding: 0.85rem; border: 1px dashed #ef4444; background: transparent; color: #ef4444; font-size: 0.88rem; text-align: left; }
         
         .card { background: var(--card-bg); padding: 1.5rem; border-radius: 16px; box-shadow: var(--card-shadow); border: 1px solid var(--border); display: flex; flex-direction: column; }
         .card-header { font-size: 1.1rem; font-weight: 700; margin-bottom: 1.5rem; border-bottom: 1px solid var(--border); padding-bottom: 1rem; display: flex; justify-content: space-between; align-items: center; color: var(--text-main); }
@@ -202,6 +244,11 @@
 
         @media (max-width: 768px) {
             .dashboard { grid-template-columns: 1fr; }
+            .energy-overview-card { grid-column: auto; order: -2; }
+            .dashboard-column-primary { order: -1; }
+            .dashboard-column-secondary { order: 1; }
+            .energy-flow-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+            .schedule-overview-grid { grid-template-columns: 1fr; }
             .button-group { flex-direction: column; }
             .tariff-live-grid { grid-template-columns: 1fr; }
             .tariff-chart-heading { align-items: flex-start; }
@@ -209,8 +256,8 @@
         }
 
         @media (max-width: 600px) {
-            body { display: block; padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left); background: var(--bg); }
-            .app-wrapper { min-height: 100dvh; padding: 0.85rem; border: 0; border-radius: 0; box-shadow: none; }
+            body { display: block; width: 100%; padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left); background: var(--bg); }
+            .app-wrapper { width: 100%; min-height: 100dvh; padding: 0.65rem; border: 0; border-radius: 0; box-shadow: none; overflow: hidden; }
             .auth-layout { margin: 0 auto; }
             .auth-card { padding: 1.25rem; border-radius: 14px; box-shadow: none; }
             .auth-card h2 { font-size: 1.3rem; }
@@ -225,8 +272,21 @@
             }
             input[type="text"], input[type="password"], input[type="number"], input[type="time"] { min-height: 48px; padding: 0.75rem; font-size: 16px; }
             button { min-height: 44px; }
-            .card { padding: 1rem; border-radius: 12px; }
-            .card-header { gap: 0.75rem; margin-bottom: 1rem; }
+            .dashboard, .dashboard-column { gap: 0.75rem; }
+            .card { width: 100%; padding: 0.85rem; border-radius: 12px; box-sizing: border-box; overflow: hidden; }
+            .card-header { gap: 0.75rem; margin-bottom: 1rem; flex-wrap: wrap; }
+            .overview-header { flex-direction: column; gap: 0.75rem; }
+            .overview-header-actions { width: 100%; justify-content: space-between; }
+            .overview-menu-button { min-height: 40px; }
+            .energy-flow-grid { gap: 0.5rem; }
+            .energy-node { padding: 0.65rem 0.55rem; gap: 0.05rem 0.4rem; }
+            .energy-node > span { font-size: 1.2rem; }
+            .energy-node strong { font-size: 0.76rem; }
+            .overview-schedule-row { align-items: flex-start; }
+            #fox-active-schedules > div { flex-direction: column !important; align-items: flex-start !important; gap: 0.5rem; }
+            #fox-active-schedules > div button { width: auto !important; align-self: flex-end; }
+            .rule-row { align-items: flex-start; }
+            .slide-panel { width: calc(100% - 1rem); padding: 1.25rem 1rem; }
             .data-list li { align-items: flex-start; }
             .data-list .val { max-width: 60%; white-space: normal; overflow-wrap: anywhere; }
             .data-list .account-number-row { align-items: center; flex-wrap: nowrap; gap: 0.5rem; }

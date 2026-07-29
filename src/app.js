@@ -21,6 +21,7 @@ const REQUEST_TIMEOUT_MS = 15000;
 const LINUX_CONFIG_ENDPOINT = '/api/config';
 const LINUX_OCTOPUS_ENDPOINT = '/api/octopus';
 const LINUX_FOX_LIVE_ENDPOINT = '/api/foxess/live';
+const LINUX_ACCESS_STORAGE_KEY = 'octopusFoxessDashboardAccessCode';
 
 window.linuxRuntime = false;
 window.linuxRole = 'web';
@@ -89,9 +90,17 @@ async function fetchOctopusJson(url, options = {}, authMode = 'none') {
 }
 
 function getLinuxAccessKey() {
-    return sessionStorage.getItem('linuxAccessKey')
+    return localStorage.getItem(LINUX_ACCESS_STORAGE_KEY)
+        || sessionStorage.getItem('linuxAccessKey')
         || document.getElementById('local-access-key')?.value.trim()
         || '';
+}
+
+function clearLinuxAccessKey() {
+    localStorage.removeItem(LINUX_ACCESS_STORAGE_KEY);
+    sessionStorage.removeItem('linuxAccessKey');
+    const field = document.getElementById('local-access-key');
+    if (field) field.value = '';
 }
 
 function toggleOctopusAccountVisibility() {
@@ -171,9 +180,11 @@ async function ensureLinuxAccess() {
         headers: { 'X-Octopus-Access-Key': key }
     });
     if (!response.ok) {
+        clearLinuxAccessKey();
         showError('The LAN access code is incorrect.');
         return false;
     }
+    localStorage.setItem(LINUX_ACCESS_STORAGE_KEY, key);
     sessionStorage.setItem('linuxAccessKey', key);
     return true;
 }
@@ -191,6 +202,7 @@ async function loadLinuxState() {
     if (state.automations) {
         localStorage.setItem('foxAutomations', JSON.stringify(state.automations));
     }
+    renderLiveWsMenuState(state);
     return state;
 }
 
@@ -207,6 +219,96 @@ async function updateLinuxState(update) {
     if (!response.ok) throw new Error(`Unable to save Raspberry Pi configuration (HTTP ${response.status})`);
     const result = await response.json();
     window.linuxRevision = result.revision;
+}
+
+async function updateLinuxLiveDemand(dispatches = []) {
+    if (!window.linuxRuntime || window.linuxRole !== 'worker') return;
+    const now = new Date();
+    const active = dispatches
+        .map(dispatch => ({
+            start: new Date(dispatch.startDt),
+            end: new Date(dispatch.endDt)
+        }))
+        .filter(window => window.start <= now && window.end > now)
+        .sort((a, b) => a.start - b.start);
+    const demand = {
+        active: active.length > 0,
+        startsAt: active[0]?.start.toISOString() || null,
+        endsAt: active.length
+            ? active.reduce((latest, window) => window.end > latest ? window.end : latest, active[0].end).toISOString()
+            : null
+    };
+    const fingerprint = JSON.stringify(demand);
+    if (fingerprint === window.lastLiveDemandFingerprint) return;
+    window.lastLiveDemandFingerprint = fingerprint;
+    try {
+        await fetchJson('/api/live-demand', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(demand)
+        });
+    } catch (error) {
+        window.lastLiveDemandFingerprint = null;
+        console.warn('Unable to update on-demand Live WS state.', error);
+    }
+}
+
+function renderLiveWsMenuState(state = {}, status = null) {
+    const toggle = document.getElementById('toggle-live-on-demand');
+    const label = document.getElementById('live-on-demand-state');
+    const enabled = state.liveWsOnDemand !== false && status?.mode !== 'rest';
+    if (toggle) toggle.checked = enabled;
+    if (!label) return;
+    if (!enabled) {
+        label.textContent = 'Off · official REST only';
+    } else if (status?.source === 'live-ws' && status?.state === 'live') {
+        label.textContent = 'On-demand · active during dynamic charging';
+    } else {
+        label.textContent = 'On-demand · waiting for a dynamic charge';
+    }
+}
+
+async function setLiveWsOnDemand(enabled) {
+    const toggle = document.getElementById('toggle-live-on-demand');
+    if (toggle) toggle.disabled = true;
+    try {
+        await updateLinuxState({ liveWsOnDemand: enabled });
+        const state = await loadLinuxState();
+        const status = await fetchJson('/api/foxess/live/status');
+        renderLiveWsMenuState(state, status);
+        renderFoxLiveStatus(status);
+        renderProtectionOverview();
+        showToast(enabled && status.mode === 'rest'
+            ? 'The Pi Server Configuration is set to official REST. Select Live WS there before enabling on-demand use.'
+            : (enabled
+                ? 'Live WS will connect only while a dynamic Octopus charge is active.'
+                : 'Live WS is off. FoxESS telemetry will use the official REST API.'));
+    } catch (error) {
+        if (toggle) toggle.checked = !enabled;
+        showToast(`Unable to change Live WS mode: ${error.message}`);
+    } finally {
+        if (toggle) toggle.disabled = false;
+    }
+}
+
+function removeSavedAccessCode() {
+    clearLinuxAccessKey();
+    activeCredentials = null;
+    sessionStorage.removeItem('sessionCredentials');
+    if (refreshTimerId !== null) clearInterval(refreshTimerId);
+    refreshTimerId = null;
+    if (linuxLiveTelemetryPollId !== null) clearInterval(linuxLiveTelemetryPollId);
+    linuxLiveTelemetryPollId = null;
+    document.getElementById('dashboard')?.classList.remove('visible');
+    const login = document.getElementById('login-layout');
+    if (login) login.style.display = 'flex';
+    closeAllDrawers();
+    const error = document.getElementById('error');
+    if (error) {
+        error.textContent = 'Access code removed from this device. Enter it again to reconnect.';
+        error.style.display = 'block';
+    }
+    document.getElementById('local-access-key')?.focus();
 }
 
 function startLinuxWorkerConfigPoll() {
@@ -267,7 +369,9 @@ function updateFoxLiveSettingsVisibility() {
 }
 
 function describeFoxLiveStatus(status) {
-    if (status?.source === 'live-ws' && status?.state === 'live') return 'LIVE WS';
+    if (status?.source === 'live-ws' && status?.state === 'live') return 'LIVE WS · DYNAMIC CHARGE';
+    if (status?.reason === 'waiting-for-dynamic-schedule') return 'ON-DEMAND STANDBY · REST';
+    if (status?.reason === 'client-disabled') return 'LIVE WS OFF · REST';
     if (status?.mode === 'rest') return 'OFFICIAL REST';
     if (status?.reason === 'live-credentials-empty') return 'REST FALLBACK — LIVE LOGIN EMPTY';
     if (status?.state === 'connecting') return 'CONNECTING';
@@ -299,6 +403,7 @@ function renderFoxLiveStatus(status, messageTarget = null) {
     }
     if (scheduleFetchButton) scheduleFetchButton.style.display = hideManualFetch ? 'none' : '';
     if (telemetryFetchButton) telemetryFetchButton.style.display = hideManualFetch ? 'none' : '';
+    renderLiveWsMenuState({ liveWsOnDemand: status?.onDemandEnabled !== false }, status);
     if (messageTarget) {
         const reason = status?.lastError
             ? ` ${status.lastError}`
@@ -715,6 +820,15 @@ document.addEventListener("DOMContentLoaded", async () => {
     if (legacyCredentials) await saveCredentials(legacyCredentials);
 
     let credentials = legacyCredentials;
+    const savedLinuxAccessKey = window.linuxRuntime ? getLinuxAccessKey() : '';
+    if (savedLinuxAccessKey) {
+        const field = document.getElementById('local-access-key');
+        if (field) field.value = savedLinuxAccessKey;
+    }
+    if (window.linuxRuntime && window.linuxAuthRequired && savedLinuxAccessKey) {
+        const accessValid = await ensureLinuxAccess();
+        if (!accessValid) credentials = null;
+    }
     if (!credentials && (!window.linuxRuntime || !window.linuxAuthRequired || getLinuxAccessKey())) {
         try {
             credentials = await loadCredentials();
@@ -730,7 +844,13 @@ document.addEventListener("DOMContentLoaded", async () => {
         }
     }
 
-    if (hasCreds) {
+    if (hasCreds && window.linuxRuntime) {
+        try {
+            await initDashboard();
+        } catch (error) {
+            console.warn('Automatic Raspberry Pi dashboard connection failed.', error);
+        }
+    } else if (hasCreds) {
         startAutoConnect();
     }
     startLinuxWorkerConfigPoll();
@@ -747,6 +867,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         if (clockEl) {
             clockEl.textContent = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
         }
+        if (now.getSeconds() === 0) renderProtectionOverview(now);
         
         // If we are exactly 30 seconds past a scheduled boundary, force refresh device status
         if (window.activeFoxGroups && window.activeFoxGroups.length > 0 && now.getSeconds() === 30) {
@@ -942,6 +1063,8 @@ async function initDashboard(isAutoRefresh = false, retryCount = 1) {
         const prefs = gqlData.data?.vehicleChargingPreferences;
         const dispatches = gqlData.data?.plannedDispatches || [];
         window.currentDispatches = dispatches;
+        await updateLinuxLiveDemand(dispatches);
+        renderProtectionOverview();
 
         // Save valid credentials
         if (!isAutoRefresh) {
@@ -1117,6 +1240,7 @@ async function initDashboard(isAutoRefresh = false, retryCount = 1) {
             </div>
             ${dispatchHtml}
         `;
+        renderProtectionOverview();
 
         if (!isAutoRefresh) {
             loadAutomations(minRate, maxRate);
@@ -1233,6 +1357,7 @@ function applyFoxTelemetry(values = {}, source = 'rest', updatedAt = null) {
         localWorkModeState = getEffectiveFoxWorkMode(window.baseFoxWorkMode || localWorkModeState);
         updateModeBadge(localWorkModeState, batterySoc);
     }
+    renderProtectionOverview();
 
     const autoResumeEnabled = document.getElementById('toggle-auto-resume')?.checked;
     if (autoResumeEnabled && canRunAutomaticActions() && batterySoc !== '--') {
@@ -1372,9 +1497,86 @@ function updateModeBadge(mode, soc = null) {
     if (mode === 'ForceCharge') modeBadge.className = 'badge live';
     else if (mode === 'SelfUse') modeBadge.className = 'badge peak';
     else modeBadge.className = 'badge neutral';
+    renderProtectionOverview();
 }
 
 window.activeFoxGroups = [];
+
+function formatDashboardTime(value) {
+    return new Date(value).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+}
+
+function renderProtectionOverview(now = new Date()) {
+    const stateBadge = document.getElementById('protection-state');
+    const stateMessage = document.getElementById('protection-message');
+    const dynamicList = document.getElementById('overview-dynamic-schedules');
+    const foxList = document.getElementById('overview-fox-schedules');
+    if (!stateBadge || !stateMessage || !dynamicList || !foxList) return;
+
+    const dispatches = (window.currentDispatches || [])
+        .filter(dispatch => new Date(dispatch.endDt) > now)
+        .sort((a, b) => new Date(a.startDt) - new Date(b.startDt));
+    const activeDispatch = dispatches.find(dispatch => new Date(dispatch.startDt) <= now && new Date(dispatch.endDt) > now);
+    const effectiveMode = getEffectiveFoxWorkMode(window.baseFoxWorkMode || localWorkModeState, now);
+    const forceChargeActive = effectiveMode === 'ForceCharge';
+
+    if (activeDispatch && forceChargeActive) {
+        stateBadge.textContent = 'PROTECTED';
+        stateBadge.className = 'badge off-peak';
+        stateMessage.textContent = 'EV charging is active and FoxESS is in Forced Charge, so the solar battery is protected from the EV load.';
+    } else if (activeDispatch) {
+        stateBadge.textContent = 'CHECK FOXESS';
+        stateBadge.className = 'badge peak';
+        stateMessage.textContent = `EV charging is active but the effective FoxESS mode is ${effectiveMode || 'unknown'}. Forced Charge should be active now.`;
+    } else if (dispatches.length > 0) {
+        stateBadge.textContent = 'SCHEDULED';
+        stateBadge.className = 'badge live';
+        stateMessage.textContent = 'The next Octopus dynamic charge is scheduled. Confirm the FoxESS Forced Charge period below covers the same time.';
+    } else {
+        stateBadge.textContent = 'STANDBY';
+        stateBadge.className = 'badge neutral';
+        stateMessage.textContent = 'No upcoming Octopus dynamic charge is currently reported. FoxESS can remain in its normal scheduled mode.';
+    }
+
+    dynamicList.innerHTML = dispatches.length
+        ? dispatches.map(dispatch => {
+            const active = new Date(dispatch.startDt) <= now && new Date(dispatch.endDt) > now;
+            return `<div class="overview-schedule-row ${active ? 'active' : ''}">
+                <span><strong>${active ? 'Charging now' : 'Dynamic charge'}</strong><small>${formatDashboardTime(dispatch.startDt)} – ${formatDashboardTime(dispatch.endDt)}</small></span>
+                <span class="overview-schedule-tag">${active ? 'ACTIVE' : 'UPCOMING'}</span>
+            </div>`;
+        }).join('')
+        : '<div class="overview-empty">No dynamic charge schedule.</div>';
+
+    const groups = (window.activeFoxGroups || []).filter(isActiveFoxSchedule);
+    foxList.innerHTML = groups.length
+        ? groups.map(group => {
+            const active = isFoxScheduleActiveAt(group, now);
+            const mode = group.workMode === 'ForceCharge'
+                ? 'Forced Charge'
+                : (group.workMode === 'ForceDischarge' ? 'Force Discharge' : 'Self-Use');
+            return `<div class="overview-schedule-row ${active ? 'active' : ''}">
+                <span><strong>${escapeHtml(mode)}</strong><small>${String(group.startHour).padStart(2, '0')}:${String(group.startMinute).padStart(2, '0')} – ${String(group.endHour).padStart(2, '0')}:${String(group.endMinute).padStart(2, '0')}</small></span>
+                <span class="overview-schedule-tag">${active ? 'NOW' : 'SET'}</span>
+            </div>`;
+        }).join('')
+        : '<div class="overview-empty">No active FoxESS mode schedules.</div>';
+
+    const telemetry = window.lastFoxTelemetry || {};
+    const setMetric = (id, value, suffix = '') => {
+        const element = document.getElementById(id);
+        if (element) element.textContent = value === undefined || value === null ? '--' : `${value}${suffix}`;
+    };
+    setMetric('overview-solar-power', telemetry.pvPower, ' kW');
+    setMetric('overview-home-load', telemetry.loadsPower, ' kW');
+    const gridImport = Number(telemetry.gridConsumptionPower || 0);
+    const gridExport = Number(telemetry.feedinPower || 0);
+    setMetric('overview-grid-power', gridImport > 0 ? `${gridImport} kW import` : (gridExport > 0 ? `${gridExport} kW export` : '--'));
+    const batteryCharge = Number(telemetry.batChargePower || 0);
+    const batteryDischarge = Number(telemetry.batDischargePower || 0);
+    setMetric('overview-battery-power', batteryCharge > 0 ? `${batteryCharge} kW charge` : (batteryDischarge > 0 ? `${batteryDischarge} kW discharge` : '--'));
+    setMetric('overview-battery-soc', telemetry.SoC, '%');
+}
 
 const wait = (milliseconds) => new Promise(resolve => setTimeout(resolve, milliseconds));
 
@@ -1467,6 +1669,7 @@ async function fetchFoxSchedules({ expectedGroups = null, attempts = 1 } = {}) {
                 window.activeFoxGroups = data.result.groups.filter(isActiveFoxSchedule);
                 localWorkModeState = getEffectiveFoxWorkMode(window.baseFoxWorkMode || localWorkModeState);
                 updateModeBadge(localWorkModeState, window.lastFoxTelemetry?.SoC ?? null);
+                renderProtectionOverview();
             if (window.activeFoxGroups.length === 0) {
                 container.innerHTML = '<div style="text-align: center; padding: 0.5rem 0;">No schedules currently set.</div>';
             } else {

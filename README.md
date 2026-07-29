@@ -123,12 +123,17 @@ The native Server Configuration screen offers:
 - **Official REST API only** — disables the undocumented live stream and uses
   the FoxESS Open API.
 
-The Pi requests a fresh Live WS frame every five seconds. If either optional
-web-login field is empty, login fails, the stream closes, or no fresh frame
-arrives within 30 seconds, the Pi automatically changes to
-`REST FALLBACK`. REST telemetry is cached for at least one minute to respect
-FoxESS's daily quota. The dashboard displays `LIVE WS`, `REST FALLBACK`, or
-`OFFICIAL REST` so the active source is visible.
+The dashboard menu controls **Live WS on demand**. When enabled, the Pi opens
+the FoxESS web connection only while an Octopus dynamic charge is active,
+requests a fresh frame every five seconds during that window, and disconnects
+afterwards. This reduces FoxESS web-login conflicts while retaining live
+telemetry during EV charging. When the switch is off, telemetry uses only the
+official REST API. If either optional web-login field is empty, login fails,
+the stream closes, or no fresh frame arrives within 30 seconds, the Pi also
+uses REST. REST telemetry is cached for at least one minute to respect
+FoxESS's daily quota. The dashboard displays `LIVE WS · DYNAMIC CHARGE`,
+`ON-DEMAND STANDBY · REST`, or `LIVE WS OFF · REST` so the active source is
+visible.
 
 The live connection is an undocumented FoxESS web-portal interface and may
 change without notice. It is used only for read-only telemetry. Scheduler
@@ -142,9 +147,12 @@ computer connected to the same LAN, for example:
 http://192.168.1.42:8787
 ```
 
-Enter the LAN access code if protection is enabled in Server Configuration. You
-may turn protection off for a trusted private LAN; in that mode the client opens
-without a password and anyone on that LAN can view and control the dashboard.
+Enter the LAN access code if protection is enabled in Server Configuration.
+After a successful check, that client device remembers the code and opens the
+dashboard directly on later visits. Use **Menu → Remove Access Code** to forget
+it and return to the login screen. You may turn protection off for a trusted
+private LAN; in that mode the client opens without a password and anyone on
+that LAN can view and control the dashboard.
 There is no Google Apps Script field in this edition,
 and the client does not show Octopus or FoxESS credential fields,
 configuration import, or wipe controls. After the one-key check, the Pi service
@@ -153,11 +161,14 @@ After the first successful Pi setup, the supervised worker reads the centrally
 stored encrypted configuration and keeps running even after the Pi settings
 window and every LAN browser are closed.
 
-The Mobile / LAN view is not a pixel-by-pixel screen mirror. It is a responsive client of
-the Pi service: it reads the same live dashboard state and sends deliberate
-automation changes back to the Pi. Octopus and FoxESS service credentials can
-only be viewed or changed in native Server Configuration on the Pi. The Pi
-remains the source of truth and the only unattended automation worker.
+The Mobile / LAN view is not a pixel-by-pixel screen mirror. It is a responsive
+client of the Pi service and starts with the Home Energy Protection overview:
+Octopus Dynamic Charge Schedule, FoxESS Mode Scheduler, protection status,
+battery SOC, and available solar/home/grid/battery power data. It sends
+deliberate automation changes back to the Pi. Octopus and FoxESS service
+credentials can only be viewed or changed in native Server Configuration on
+the Pi. The Pi remains the source of truth and the only unattended automation
+worker.
 
 The Raspberry Pi client login displays **Mobile / LAN access** followed by the
 detected local URL, and the native taskbar configuration window shows it too.

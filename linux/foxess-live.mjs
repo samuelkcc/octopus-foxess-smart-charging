@@ -43,6 +43,16 @@ function normalizeMode(credentials = {}) {
   return credentials.foxLiveMode === FOX_REST_MODE ? FOX_REST_MODE : FOX_LIVE_MODE;
 }
 
+function isLiveDemandActive(state = {}, now = Date.now()) {
+  if (state.liveWsDemandActive !== true) return false;
+  const startsAt = new Date(state.liveWsDemandStartsAt || 0).getTime();
+  const endsAt = new Date(state.liveWsDemandEndsAt || 0).getTime();
+  return Number.isFinite(startsAt)
+    && Number.isFinite(endsAt)
+    && startsAt <= now
+    && now < endsAt;
+}
+
 function normalizeError(error) {
   const message = String(error?.message || error || 'Unknown connection error')
     .replaceAll(/token=[^&\s]+/gi, 'token=[redacted]')
@@ -151,6 +161,8 @@ export class FoxessLiveTelemetry {
       reason: 'startup',
       connected: false,
       configured: false,
+      onDemandEnabled: true,
+      demandActive: false,
       updatedAt: null,
       lastError: null
     };
@@ -200,12 +212,12 @@ export class FoxessLiveTelemetry {
     this.liveRequestTimer.unref?.();
   }
 
-  setFallback(mode, reason, error = null) {
+  setFallback(mode, reason, error = null, { officialRest = false, state = null } = {}) {
     this.status = {
       ...this.status,
       mode,
-      source: mode === FOX_REST_MODE ? 'rest' : 'rest-fallback',
-      state: mode === FOX_REST_MODE ? 'rest-only' : 'fallback',
+      source: officialRest || mode === FOX_REST_MODE ? 'rest' : 'rest-fallback',
+      state: state || (mode === FOX_REST_MODE ? 'rest-only' : 'fallback'),
       reason,
       connected: false,
       updatedAt: this.latestAt ? new Date(this.latestAt).toISOString() : null,
@@ -361,10 +373,12 @@ export class FoxessLiveTelemetry {
     });
   }
 
-  async reconcile({ force = false, waitForLive = false } = {}) {
+  async reconcile({ force = false, waitForLive = false, bypassDemand = false } = {}) {
     const state = await this.loadState();
     const credentials = state.credentials || {};
     const mode = normalizeMode(credentials);
+    const onDemandEnabled = state.liveWsOnDemand !== false;
+    const demandActive = isLiveDemandActive(state, this.now());
     const configured = Boolean(
       credentials.foxSN &&
       credentials.foxToken &&
@@ -373,6 +387,8 @@ export class FoxessLiveTelemetry {
     );
     this.status.mode = mode;
     this.status.configured = configured;
+    this.status.onDemandEnabled = onDemandEnabled;
+    this.status.demandActive = demandActive;
 
     if (mode === FOX_REST_MODE) {
       this.connectionGeneration += 1;
@@ -381,11 +397,25 @@ export class FoxessLiveTelemetry {
       this.setFallback(mode, 'rest-selected');
       return this.getPublicStatus();
     }
+    if (!onDemandEnabled) {
+      this.connectionGeneration += 1;
+      this.closeSocket();
+      this.fingerprint = getCredentialFingerprint(credentials);
+      this.setFallback(mode, 'client-disabled', null, { officialRest: true, state: 'rest-only' });
+      return this.getPublicStatus();
+    }
     if (!configured) {
       this.connectionGeneration += 1;
       this.closeSocket();
       this.fingerprint = getCredentialFingerprint(credentials);
       this.setFallback(mode, 'live-credentials-empty');
+      return this.getPublicStatus();
+    }
+    if (!demandActive && !bypassDemand) {
+      this.connectionGeneration += 1;
+      this.closeSocket();
+      this.fingerprint = getCredentialFingerprint(credentials);
+      this.setFallback(mode, 'waiting-for-dynamic-schedule', null, { officialRest: true, state: 'standby' });
       return this.getPublicStatus();
     }
 
@@ -443,11 +473,14 @@ export class FoxessLiveTelemetry {
     const state = await this.loadState();
     const credentials = state.credentials || {};
     const mode = normalizeMode(credentials);
+    const officialRest = mode === FOX_REST_MODE
+      || state.liveWsOnDemand === false
+      || !isLiveDemandActive(state, this.now());
     const cacheFresh = this.restCache && (this.now() - this.restCache.updatedAt) < REST_CACHE_MS;
     if (cacheFresh) {
       return {
         ...this.getPublicStatus(),
-        source: mode === FOX_REST_MODE ? 'rest' : 'rest-fallback',
+        source: officialRest ? 'rest' : 'rest-fallback',
         values: { ...this.restCache.values },
         updatedAt: new Date(this.restCache.updatedAt).toISOString(),
         cached: true
@@ -465,12 +498,20 @@ export class FoxessLiveTelemetry {
     this.latestValues = { ...values, ...this.latestValues };
     this.setFallback(
       mode,
-      mode === FOX_REST_MODE ? 'rest-selected' : this.status.reason || 'live-unavailable',
-      this.status.lastError
+      mode === FOX_REST_MODE
+        ? 'rest-selected'
+        : (state.liveWsOnDemand === false ? 'client-disabled' : (this.status.reason || 'live-unavailable')),
+      this.status.lastError,
+      {
+        officialRest,
+        state: officialRest
+          ? (mode === FOX_REST_MODE || state.liveWsOnDemand === false ? 'rest-only' : 'standby')
+          : 'fallback'
+      }
     );
     return {
       ...this.getPublicStatus(),
-      source: mode === FOX_REST_MODE ? 'rest' : 'rest-fallback',
+      source: officialRest ? 'rest' : 'rest-fallback',
       values,
       updatedAt: new Date(updatedAt).toISOString(),
       cached: false
@@ -479,7 +520,7 @@ export class FoxessLiveTelemetry {
 
   async selfTest() {
     try {
-      await this.reconcile({ force: true, waitForLive: true });
+      await this.reconcile({ force: true, waitForLive: true, bypassDemand: true });
     } catch {
       // The public status contains a redacted diagnostic and REST fallback state.
     }

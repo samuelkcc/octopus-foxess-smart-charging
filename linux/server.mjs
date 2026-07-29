@@ -53,6 +53,15 @@ function isExplicitClientRequest(request) {
   }
 }
 
+function isExplicitWorkerRequest(request) {
+  try {
+    const referer = new URL(String(request.headers.referer || ''));
+    return referer.searchParams.get('worker') === '1';
+  } catch {
+    return false;
+  }
+}
+
 function getLanUrls() {
   return Object.values(networkInterfaces())
     .flatMap(addresses => addresses || [])
@@ -521,6 +530,38 @@ const server = http.createServer(async (request, response) => {
           accessRequired
         });
       }
+    }
+    if (pathname === '/api/live-demand' && request.method === 'POST') {
+      if (!isLoopback(request) || !isExplicitWorkerRequest(request)) {
+        return sendJson(response, 403, { error: 'Live WS demand can only be updated by the Raspberry Pi worker' });
+      }
+      const update = await readJsonBody(request);
+      const current = await loadState();
+      const active = update.active === true;
+      const startsAt = active && update.startsAt ? new Date(update.startsAt) : null;
+      const endsAt = active && update.endsAt ? new Date(update.endsAt) : null;
+      if (active && (
+        !Number.isFinite(startsAt?.getTime())
+        || !Number.isFinite(endsAt?.getTime())
+        || endsAt <= startsAt
+      )) {
+        return sendJson(response, 400, { error: 'Invalid dynamic charge window' });
+      }
+      const next = {
+        ...current,
+        liveWsDemandActive: active,
+        liveWsDemandStartsAt: startsAt?.toISOString() || null,
+        liveWsDemandEndsAt: endsAt?.toISOString() || null,
+        revision: Date.now()
+      };
+      await saveState(next);
+      void foxessLive.reconcile({ force: true });
+      return sendJson(response, 200, {
+        saved: true,
+        active,
+        startsAt: next.liveWsDemandStartsAt,
+        endsAt: next.liveWsDemandEndsAt
+      });
     }
 
     const protectedApi = ['/api/config', '/api/foxess', '/api/octopus'];

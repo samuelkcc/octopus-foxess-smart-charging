@@ -45,21 +45,32 @@ assert.match(stylesSource, /@media \(max-width: 600px\)/);
 assert.match(stylesSource, /font-size: 16px/);
 assert.match(stylesSource, /\.fox-live-settings-heading > div \{ flex: 1 1 12rem/);
 assert.match(stylesSource, /\.fox-live-source-row \.badge/);
+assert.match(stylesSource, /\.energy-flow-grid/);
+assert.match(stylesSource, /\.dashboard-column-primary \{ order: -1; \}/);
 assert.match(markupSource, /no Google Apps Script/);
 assert.match(markupSource, /Dashboard Access Code/);
 assert.match(markupSource, /Mobile \/ LAN dashboard client/);
+assert.match(markupSource, /Home Energy Protection/);
+assert.match(markupSource, /Dynamic Charge Schedule/);
+assert.match(markupSource, /Remove Access Code/);
+assert.match(markupSource, /toggle-live-on-demand/);
 assert.match(markupSource, /Octopus and FoxESS credentials stay managed by the Pi service/);
 assert.match(markupSource, /class="input-group pi-config-only"/);
 assert.match(markupSource, /id="octopus-account-toggle"/);
 assert.match(markupSource, /rel="apple-touch-icon"/);
 assert.match(markupSource, /rel="manifest"/);
-assert.match(markupSource, /styles\.css\?v=2026\.7\.26\.14/);
-assert.match(markupSource, /app\.js\?v=2026\.7\.26\.14/);
+assert.match(markupSource, /styles\.css\?v=2026\.7\.29\.1/);
+assert.match(markupSource, /app\.js\?v=2026\.7\.29\.1/);
 assert.match(stylesSource, /\.linux-runtime \.pi-config-only \{ display: none !important; \}/);
 assert.match(stylesSource, /\.account-number-row \.account-secret-control \.val \{ max-width: none; white-space: nowrap/);
 assert.match(appSource, /LINUX_OCTOPUS_ENDPOINT = '\/api\/octopus'/);
 assert.match(appSource, /LINUX_FOX_LIVE_ENDPOINT = '\/api\/foxess\/live'/);
 assert.match(appSource, /startLinuxLiveTelemetryPoll/);
+assert.match(appSource, /octopusFoxessDashboardAccessCode/);
+assert.match(appSource, /localStorage\.setItem\(LINUX_ACCESS_STORAGE_KEY, key\)/);
+assert.match(appSource, /function removeSavedAccessCode/);
+assert.match(appSource, /function renderProtectionOverview/);
+assert.match(appSource, /async function updateLinuxLiveDemand/);
 assert.match(appSource, /const credentials = window\.linuxRuntime\s*\?\s*activeCredentials/);
 assert.match(appSource, /OPEN DASHBOARD/);
 assert.match(await readFile(path.join(root, 'linux', 'server.mjs'), 'utf8'), /function getClientState\(state\)/);
@@ -71,6 +82,7 @@ assert.match(await readFile(path.join(root, 'linux', 'server.mjs'), 'utf8'), /Fo
 assert.match(await readFile(path.join(root, 'linux', 'server.mjs'), 'utf8'), /\/api\/foxess\/live\/test/);
 assert.match(await readFile(path.join(root, 'linux', 'server.mjs'), 'utf8'), /\/api\/service-status/);
 assert.match(await readFile(path.join(root, 'linux', 'server.mjs'), 'utf8'), /\/api\/native-config/);
+assert.match(await readFile(path.join(root, 'linux', 'server.mjs'), 'utf8'), /\/api\/live-demand/);
 assert.match(await readFile(path.join(root, 'linux', 'server.mjs'), 'utf8'), /lanAccessRequired/);
 assert.match(await readFile(path.join(root, 'linux', 'server.mjs'), 'utf8'), /'Cache-Control': 'no-cache'/);
 assert.match(linuxBuildSource, /octopus-foxess\.desktop/);
@@ -206,6 +218,22 @@ try {
   });
   assert.equal(nativeSaveResponse.status, 200);
 
+  const rejectedLiveDemand = await fetch(`http://127.0.0.1:${port}/api/live-demand`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ active: true, startsAt: '2026-07-29T11:00:00.000Z', endsAt: '2026-07-29T12:00:00.000Z' })
+  });
+  assert.equal(rejectedLiveDemand.status, 403);
+  const acceptedLiveDemand = await fetch(`http://127.0.0.1:${port}/api/live-demand`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Referer: `http://127.0.0.1:${port}/?worker=1`
+    },
+    body: JSON.stringify({ active: true, startsAt: '2026-07-29T11:00:00.000Z', endsAt: '2026-07-29T12:00:00.000Z' })
+  });
+  assert.equal(acceptedLiveDemand.status, 200);
+
   const nativeConfig = await fetch(`http://127.0.0.1:${port}/api/native-config`).then(response => response.json());
   assert.equal(nativeConfig.accessRequired, true);
   assert.equal(nativeConfig.accessKey, changedAccessKey);
@@ -217,6 +245,7 @@ try {
   assert.equal(workerState.credentials.api, 'pi-managed');
   assert.equal(workerState.credentials.foxToken, 'pi-managed');
   assert.equal(workerState.automations.dispatchCheck, true);
+  assert.equal(workerState.liveWsDemandActive, true);
   assert.equal(typeof workerState.revision, 'number');
 
   const clientState = await fetch(`http://127.0.0.1:${port}/api/config`, {

@@ -1,3 +1,39 @@
+## Mobile / LAN protection dashboard v2026.07.29.1
+
+### Fixed
+
+- Saves a successfully verified Dashboard Access Code on the client device and
+  opens the dashboard directly on later visits instead of showing the home
+  screen or a ten-second countdown.
+- Adds **Remove Access Code** to the dashboard menu so a client can return to
+  the access-code screen at any time.
+- Removes narrow-screen overflow that previously required iPhone users to zoom
+  out before the dashboard fitted the viewport.
+
+### Improved
+
+- Puts Octopus Dynamic Charge Schedule, FoxESS Mode Scheduler, current
+  protection state, and the available FoxESS power-flow telemetry at the top of
+  the mobile and desktop dashboard.
+- Shows **PROTECTED** only when an active Octopus EV charge is covered by an
+  effective FoxESS Forced Charge period; otherwise the dashboard calls out the
+  mismatch directly.
+- Adds a client-menu **Live WS on demand** switch. When enabled, the Pi opens
+  the FoxESS web WebSocket only during an active Octopus dynamic charge and
+  disconnects afterwards; when disabled, telemetry uses official REST only.
+
+### Deployment
+
+- Keeps GitHub Pages and the Raspberry Pi edition as separate products.
+- Keeps all automatic schedule writes on the loopback Pi worker and all
+  inverter commands on the official FoxESS REST API.
+
+### Validation
+
+- Covers remembered access-code contracts, worker-only Live WS demand updates,
+  on-demand standby, active WebSocket telemetry, official REST fallback,
+  responsive schedule-first markup, and Linux server authorization.
+
 ## Pi tray upgrade restart and native configuration v2026.07.26.14
 
 This hotfix broadens the running tray-process match used during an upgrade.

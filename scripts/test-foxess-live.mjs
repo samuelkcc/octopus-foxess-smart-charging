@@ -55,7 +55,7 @@ const fallbackService = new FoxessLiveTelemetry({
   logger: { warn() {} }
 });
 const fallbackTelemetry = await fallbackService.getTelemetry();
-assert.equal(fallbackTelemetry.source, 'rest-fallback');
+assert.equal(fallbackTelemetry.source, 'rest');
 assert.equal(fallbackTelemetry.reason, 'live-credentials-empty');
 assert.equal(fallbackTelemetry.values.SoC, 61);
 assert.equal(fallbackTelemetry.cached, false);
@@ -111,6 +111,10 @@ let liveOpenApiCalls = 0;
 let loginBody;
 const liveService = new FoxessLiveTelemetry({
   loadState: async () => ({
+    liveWsOnDemand: true,
+    liveWsDemandActive: true,
+    liveWsDemandStartsAt: '2000-01-01T00:00:00.000Z',
+    liveWsDemandEndsAt: '2100-01-01T00:00:00.000Z',
     credentials: {
       foxSN: 'SN-LIVE',
       foxToken: 'TOKEN-LIVE',
@@ -152,6 +156,36 @@ assert.ok(liveFramesRequested >= 3, 'Live WS should request fresh telemetry repe
 assert.equal(liveService.getPublicStatus().source, 'live-ws');
 liveService.stop();
 
+let standbyLoginCalls = 0;
+const standbyService = new FoxessLiveTelemetry({
+  loadState: async () => ({
+    liveWsOnDemand: true,
+    liveWsDemandActive: false,
+    credentials: {
+      foxSN: 'SN-STANDBY',
+      foxToken: 'TOKEN-STANDBY',
+      foxLiveMode: FOX_LIVE_MODE,
+      foxWebUsername: 'user@example.test',
+      foxWebPassword: 'secret-password'
+    }
+  }),
+  foxOpenApiJson: async (_state, path) => {
+    assert.equal(path, '/op/v0/device/real/query');
+    return { errno: 0, result: [{ datas: [{ variable: 'SoC', value: 64 }] }] };
+  },
+  fetchImpl: async () => {
+    standbyLoginCalls += 1;
+    throw new Error('Standby must not log in');
+  },
+  logger: { warn() {} }
+});
+const standbyTelemetry = await standbyService.getTelemetry();
+assert.equal(standbyTelemetry.source, 'rest');
+assert.equal(standbyTelemetry.state, 'standby');
+assert.equal(standbyTelemetry.reason, 'waiting-for-dynamic-schedule');
+assert.equal(standbyLoginCalls, 0);
+standbyService.stop();
+
 const restOnlyService = new FoxessLiveTelemetry({
   loadState: async () => ({
     credentials: {
@@ -172,4 +206,4 @@ assert.equal(restOnlyTelemetry.state, 'rest-only');
 assert.equal(restOnlyTelemetry.values.SoC, 55);
 restOnlyService.stop();
 
-console.log('FoxESS Live WebSocket mapping, self-test, REST-only mode, caching, and fallback checks passed.');
+console.log('FoxESS Live WebSocket mapping, dynamic-charge on-demand mode, self-test, REST-only mode, caching, and fallback checks passed.');

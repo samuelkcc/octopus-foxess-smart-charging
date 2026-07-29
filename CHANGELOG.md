@@ -1,5 +1,19 @@
 # Changelog
 
+## v2026.07.29.1 — 2026-07-29
+
+- Remember a valid Dashboard Access Code on each client and reconnect directly
+  on later visits; add a menu action that removes it and returns to login.
+- Add a schedule-first Home Energy Protection overview with Octopus dynamic
+  charge windows, FoxESS mode periods, effective protection state, battery SOC,
+  and available power-flow telemetry.
+- Reorder the mobile client around dynamic charging and FoxESS scheduling and
+  remove horizontal overflow on narrow iPhone viewports.
+- Replace persistent FoxESS Live WS use with a dashboard-controlled on-demand
+  policy that connects only during an active Octopus dynamic charge.
+- Preserve worker-only unattended schedule writes and official-REST-only
+  inverter control.
+
 ## v2026.07.26.14 — 2026-07-26
 
 - Broadened Raspberry Pi tray process detection during install and uninstall so
