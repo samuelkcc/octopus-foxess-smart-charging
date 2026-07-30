@@ -2,11 +2,25 @@ import assert from 'node:assert/strict';
 import { EventEmitter } from 'node:events';
 
 import {
+  FOX_LIVE_POLICY_ALWAYS,
+  FOX_LIVE_POLICY_ON_DEMAND,
+  FOX_LIVE_POLICY_REST,
   FOX_LIVE_MODE,
   FOX_REST_MODE,
   FoxessLiveTelemetry,
-  mapFoxWebSocketTelemetry
+  mapFoxWebSocketTelemetry,
+  normalizeLivePolicy
 } from '../linux/foxess-live.mjs';
+
+assert.equal(normalizeLivePolicy({ credentials: { foxLiveMode: FOX_LIVE_MODE } }), FOX_LIVE_POLICY_ON_DEMAND);
+assert.equal(normalizeLivePolicy({
+  liveWsPolicy: FOX_LIVE_POLICY_ALWAYS,
+  credentials: { foxLiveMode: FOX_LIVE_MODE }
+}), FOX_LIVE_POLICY_ALWAYS);
+assert.equal(normalizeLivePolicy({
+  liveWsPolicy: FOX_LIVE_POLICY_REST,
+  credentials: { foxLiveMode: FOX_LIVE_MODE }
+}), FOX_LIVE_POLICY_REST);
 
 const mapped = mapFoxWebSocketTelemetry({
   result: {
@@ -64,6 +78,7 @@ assert.equal(restCalls, 1);
 fallbackService.stop();
 
 let liveFramesRequested = 0;
+let liveHeartbeats = 0;
 class FakeWebSocket extends EventEmitter {
   static OPEN = 1;
   static CLOSED = 3;
@@ -95,6 +110,10 @@ class FakeWebSocket extends EventEmitter {
         }
       })));
     });
+  }
+
+  ping() {
+    liveHeartbeats += 1;
   }
 
   close() {
@@ -137,7 +156,7 @@ const liveService = new FoxessLiveTelemetry({
     };
   },
   WebSocketImpl: FakeWebSocket,
-  liveRequestIntervalMs: 10,
+  liveHeartbeatIntervalMs: 10,
   logger: { warn() {} }
 });
 const liveStatus = await liveService.selfTest();
@@ -152,9 +171,38 @@ assert.equal(liveTelemetry.values.SoC, 82);
 assert.equal(liveTelemetry.values.batDischargePower, 1.2);
 assert.equal(liveOpenApiCalls, 1);
 await new Promise(resolve => setTimeout(resolve, 35));
-assert.ok(liveFramesRequested >= 3, 'Live WS should request fresh telemetry repeatedly');
+assert.equal(liveFramesRequested, 1, 'Live WS should subscribe to the telemetry stream once');
+assert.ok(liveHeartbeats >= 3, 'Live WS should keep the transport alive with protocol heartbeats');
 assert.equal(liveService.getPublicStatus().source, 'live-ws');
 liveService.stop();
+
+let cachedTokenLoginCalls = 0;
+const cachedTokenService = new FoxessLiveTelemetry({
+  loadState: async () => ({}),
+  foxOpenApiJson: async () => ({}),
+  fetchImpl: async () => {
+    cachedTokenLoginCalls += 1;
+    return {
+      ok: true,
+      status: 200,
+      json: async () => ({ errno: 0, result: { token: `WEB-TOKEN-${cachedTokenLoginCalls}` } })
+    };
+  },
+  logger: { warn() {} }
+});
+const cachedCredentials = {
+  foxWebUsername: 'user@example.test',
+  foxWebPassword: 'secret-password'
+};
+assert.equal(await cachedTokenService.loginToPortal(cachedCredentials), 'WEB-TOKEN-1');
+assert.equal(await cachedTokenService.loginToPortal(cachedCredentials), 'WEB-TOKEN-1');
+assert.equal(cachedTokenLoginCalls, 1, 'A reconnect should reuse the current web token');
+assert.equal(
+  await cachedTokenService.loginToPortal(cachedCredentials, { force: true }),
+  'WEB-TOKEN-2'
+);
+assert.equal(cachedTokenLoginCalls, 2, 'An explicit forced test may request a fresh login');
+cachedTokenService.stop();
 
 let standbyLoginCalls = 0;
 const standbyService = new FoxessLiveTelemetry({
@@ -186,6 +234,98 @@ assert.equal(standbyTelemetry.reason, 'waiting-for-dynamic-schedule');
 assert.equal(standbyLoginCalls, 0);
 standbyService.stop();
 
+class DelayedFakeWebSocket extends FakeWebSocket {
+  send(message) {
+    assert.equal(message, 'getdata');
+    setTimeout(() => {
+      if (this.readyState !== DelayedFakeWebSocket.OPEN) return;
+      this.emit('message', Buffer.from(JSON.stringify({
+        errno: 0,
+        result: {
+          timeDiff: 1,
+          node: { bat: { soc: '70' } }
+        }
+      })));
+    }, 15);
+  }
+}
+
+let temporaryTestLoginCalls = 0;
+const temporaryTestService = new FoxessLiveTelemetry({
+  loadState: async () => ({
+    liveWsPolicy: FOX_LIVE_POLICY_ON_DEMAND,
+    liveWsDemandActive: false,
+    credentials: {
+      foxSN: 'SN-TEMPORARY',
+      foxToken: 'TOKEN-TEMPORARY',
+      foxLiveMode: FOX_LIVE_MODE,
+      foxWebUsername: 'user@example.test',
+      foxWebPassword: 'secret-password'
+    }
+  }),
+  foxOpenApiJson: async (_state, path) => {
+    if (path === '/op/v0/plant/list') {
+      return { errno: 0, result: { data: [{ stationID: 'PLANT-TEMPORARY' }] } };
+    }
+    assert.equal(path, '/op/v0/device/real/query');
+    return { errno: 0, result: [{ datas: [{ variable: 'SoC', value: 69 }] }] };
+  },
+  fetchImpl: async () => {
+    temporaryTestLoginCalls += 1;
+    return {
+      ok: true,
+      status: 200,
+      json: async () => ({ errno: 0, result: { token: 'WEB-TOKEN' } })
+    };
+  },
+  WebSocketImpl: DelayedFakeWebSocket,
+  logger: { warn() {} }
+});
+const temporarySelfTest = temporaryTestService.selfTest();
+await new Promise(resolve => setTimeout(resolve, 1));
+const concurrentRestTelemetry = temporaryTestService.getTelemetry();
+const [temporaryTestStatus, concurrentTelemetry] = await Promise.all([
+  temporarySelfTest,
+  concurrentRestTelemetry
+]);
+assert.equal(temporaryTestStatus.source, 'live-ws');
+assert.equal(temporaryTestStatus.state, 'live');
+assert.equal(concurrentTelemetry.source, 'rest');
+assert.equal(temporaryTestLoginCalls, 1);
+assert.equal(temporaryTestService.getPublicStatus().state, 'standby');
+assert.equal(temporaryTestService.getPublicStatus().reason, 'waiting-for-dynamic-schedule');
+temporaryTestService.stop();
+
+const alwaysService = new FoxessLiveTelemetry({
+  loadState: async () => ({
+    liveWsPolicy: FOX_LIVE_POLICY_ALWAYS,
+    liveWsDemandActive: false,
+    credentials: {
+      foxSN: 'SN-ALWAYS',
+      foxToken: 'TOKEN-ALWAYS',
+      foxLiveMode: FOX_LIVE_MODE,
+      foxWebUsername: 'user@example.test',
+      foxWebPassword: 'secret-password'
+    }
+  }),
+  foxOpenApiJson: async (_state, path) => {
+    assert.equal(path, '/op/v0/plant/list');
+    return { errno: 0, result: { data: [{ stationID: 'PLANT-ALWAYS' }] } };
+  },
+  fetchImpl: async () => ({
+    ok: true,
+    status: 200,
+    json: async () => ({ errno: 0, result: { token: 'WEB-TOKEN' } })
+  }),
+  WebSocketImpl: FakeWebSocket,
+  logger: { warn() {} }
+});
+const alwaysStatus = await alwaysService.reconcile({ waitForLive: true });
+assert.equal(alwaysStatus.policy, FOX_LIVE_POLICY_ALWAYS);
+assert.equal(alwaysStatus.source, 'live-ws');
+assert.equal(alwaysStatus.demandActive, false);
+alwaysService.stop();
+
 const restOnlyService = new FoxessLiveTelemetry({
   loadState: async () => ({
     credentials: {
@@ -206,4 +346,4 @@ assert.equal(restOnlyTelemetry.state, 'rest-only');
 assert.equal(restOnlyTelemetry.values.SoC, 55);
 restOnlyService.stop();
 
-console.log('FoxESS Live WebSocket mapping, dynamic-charge on-demand mode, self-test, REST-only mode, caching, and fallback checks passed.');
+console.log('FoxESS Live WebSocket mapping, one-shot subscription, heartbeat, token reuse, race-free temporary self-test, on-demand, always-live, REST-only, caching, and fallback checks passed.');

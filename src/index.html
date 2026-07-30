@@ -25,12 +25,12 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <meta name="apple-mobile-web-app-title" content="Octopus FoxESS">
     <title>Smart Charging Detector</title>
-    <link rel="icon" href="./octopus-foxess.svg?v=2026.7.29.1" type="image/svg+xml">
-    <link rel="apple-touch-icon" sizes="180x180" href="./icons/apple-touch-icon.png?v=2026.7.29.1">
-    <link rel="manifest" href="./site.webmanifest?v=2026.7.29.1">
+    <link rel="icon" href="./octopus-foxess.svg?v=2026.7.30.1" type="image/svg+xml">
+    <link rel="apple-touch-icon" sizes="180x180" href="./icons/apple-touch-icon.png?v=2026.7.30.1">
+    <link rel="manifest" href="./site.webmanifest?v=2026.7.30.1">
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.9/dist/chart.umd.min.js" integrity="sha384-b0GXujLkk9eYYSmcSfoyZbfyElGAQnDyY0skCHSG6w3JgTMFnz11ggrTAr7seu9f" crossorigin="anonymous"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js" integrity="sha384-S3wQ/l0OsbJoFeJC81UIr3JOlx/OzNJpRt1bV+yhpWQxPAahfpQtpxBSfn+Isslc" crossorigin="anonymous"></script>
-        <link rel="stylesheet" href="./styles.css?v=2026.7.29.1">
+        <link rel="stylesheet" href="./styles.css?v=2026.7.30.1">
 </head>
 <body>
 
@@ -177,7 +177,7 @@
             <div class="linux-only" style="background: #f0fdf4; padding: 1rem; border-radius: 10px; border: 1px solid #86efac;">
                 <strong style="color: #047857;">🍓 Raspberry Pi Local Service</strong>
                 <p style="margin: 0.5rem 0; color: #475569; line-height: 1.4;">
-                    The Pi provides the FoxESS relay and always-on automation worker. Live WebSocket telemetry is the default when optional FoxESS web-login credentials are saved; otherwise the service automatically uses the official REST API.
+                    The Pi provides the FoxESS relay and always-on automation worker. FoxESS telemetry uses official REST normally and can open Live WS on demand during a dynamic charge; native Server Configuration also retains an Always Live WS choice.
                 </p>
                 <p style="margin: 0; color: #475569; line-height: 1.4;">
                     The undocumented stream is read-only. Schedule and inverter-control commands always use the official FoxESS REST API. You can close the browser after setup—the supervised worker continues running.
@@ -557,7 +557,7 @@
 
     </div> <div class="app-footer">
         <div style="text-align: left;">Developer Samuel Chen</div>
-        <div style="text-align: right;">&copy; Copyright 2026 samuelchen.hk Build v2026.07.29.1</div>
+        <div style="text-align: right;">&copy; Copyright 2026 samuelchen.hk Build v2026.07.30.1</div>
     </div>
 </div> 
 
@@ -785,7 +785,7 @@
     </div>
 </div>
 
-<script src="./app.js?v=2026.7.29.1"></script>
+<script src="./app.js?v=2026.7.30.1"></script>
 
 <div id="screen-saver-overlay" onclick="toggleScreenSaver()" style="display: none; position: fixed; inset: 0; width: 100%; height: 100%; background: #000; z-index: 100000; cursor: pointer;"></div>
 

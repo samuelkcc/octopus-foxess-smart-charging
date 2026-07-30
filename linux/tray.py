@@ -5,6 +5,7 @@ import json
 import fcntl
 import os
 import subprocess
+import threading
 import urllib.error
 import urllib.request
 
@@ -79,11 +80,49 @@ def state_text(integration, good="Connected"):
     return f"❌ {integration.get('lastError') or 'Connection problem'}"
 
 
+def live_status_text(live):
+    policy = live.get("policy") or ("rest" if live.get("mode") == "rest" else "on-demand")
+    connected = live.get("source") == "live-ws" and (
+        live.get("connected") is True or live.get("state") in ("connected", "live")
+    )
+    if connected:
+        return "✅ Live WebSocket connected" + (" · always" if policy == "always" else " · dynamic charge")
+    if policy == "rest" or live.get("mode") == "rest":
+        return "✅ Official REST selected"
+    if live.get("state") == "standby" or live.get("reason") == "waiting-for-dynamic-schedule":
+        return "✅ On-demand standby · official REST active"
+    if live.get("state") == "connecting":
+        return "⚠️ Live WebSocket connecting…"
+    if live.get("reason") == "live-credentials-empty":
+        return "⚠️ Official REST active · optional Live login is empty"
+    detail = live.get("lastError") or live.get("reason") or "Live WS unavailable"
+    return f"⚠️ Official REST fallback active · {detail}"
+
+
+def live_status_severity(live):
+    text = live_status_text(live)
+    return "green" if text.startswith("✅") else "amber"
+
+
+def run_in_background(work, on_success, on_error):
+    def runner():
+        try:
+            result = work()
+        except Exception as error:  # Network failures are reported in the GTK UI.
+            GLib.idle_add(on_error, error)
+        else:
+            GLib.idle_add(on_success, result)
+
+    threading.Thread(target=runner, daemon=True).start()
+
+
 class ServerConfigurationWindow(Gtk.Window):
     def __init__(self, controller):
         super().__init__(title="Octopus FoxESS Server Configuration")
         self.controller = controller
         self.config_loaded = False
+        self.config_refresh_in_progress = False
+        self.operation_in_progress = False
         self.set_default_size(680, 760)
         self.set_border_width(12)
         self.connect("delete-event", self.hide_on_close)
@@ -172,9 +211,10 @@ class ServerConfigurationWindow(Gtk.Window):
 
         integration_grid.attach(Gtk.Label(label="Telemetry source", xalign=0), 0, 4, 1, 1)
         self.live_mode = Gtk.ComboBoxText()
-        self.live_mode.append("live-ws", "Live WebSocket (REST fallback)")
+        self.live_mode.append("on-demand", "Live WS on demand (REST normally)")
+        self.live_mode.append("always", "Always Live WebSocket (REST fallback)")
         self.live_mode.append("rest", "Official REST API only")
-        self.live_mode.set_active_id("live-ws")
+        self.live_mode.set_active_id("on-demand")
         self.live_mode.connect("changed", self.update_live_sensitivity)
         integration_grid.attach(self.live_mode, 1, 4, 2, 1)
 
@@ -186,7 +226,9 @@ class ServerConfigurationWindow(Gtk.Window):
         integration_grid.attach(self.show_secrets, 1, 7, 2, 1)
 
         live_note = Gtk.Label(
-            label="Live WS is read-only and undocumented. All commands continue through official REST."
+            label="On-demand mode uses official REST until a dynamic charge starts. "
+            "Live WS is read-only and undocumented; testing it now creates a FoxESS "
+            "web login and may sign the mobile app out. All commands continue through official REST."
         )
         live_note.set_xalign(0)
         live_note.set_line_wrap(True)
@@ -225,18 +267,18 @@ class ServerConfigurationWindow(Gtk.Window):
         dashboard.connect("clicked", lambda _button: run_detached(["/usr/local/bin/octopus-foxess-dashboard"]))
         buttons.add(dashboard)
 
-        refresh = Gtk.Button(label="Refresh")
-        refresh.connect("clicked", self.refresh_all)
-        buttons.add(refresh)
+        self.refresh_button = Gtk.Button(label="Refresh")
+        self.refresh_button.connect("clicked", self.refresh_all)
+        buttons.add(self.refresh_button)
 
-        live_test = Gtk.Button(label="Save & Test Live WS")
-        live_test.connect("clicked", self.test_live_connection)
-        buttons.add(live_test)
+        self.live_test_button = Gtk.Button(label="Save & Test Live WS now")
+        self.live_test_button.connect("clicked", self.test_live_connection)
+        buttons.add(self.live_test_button)
 
-        save = Gtk.Button(label="Save Configuration")
-        save.get_style_context().add_class("suggested-action")
-        save.connect("clicked", self.save_configuration)
-        buttons.add(save)
+        self.save_button = Gtk.Button(label="Save Configuration")
+        self.save_button.get_style_context().add_class("suggested-action")
+        self.save_button.connect("clicked", self.save_configuration)
+        buttons.add(self.save_button)
 
     def hide_on_close(self, *_args):
         self.hide()
@@ -254,6 +296,8 @@ class ServerConfigurationWindow(Gtk.Window):
         enabled = self.live_mode.get_active_id() != "rest"
         self.fields["foxWebUsername"].set_sensitive(enabled)
         self.fields["foxWebPassword"].set_sensitive(enabled)
+        if hasattr(self, "live_test_button"):
+            self.live_test_button.set_sensitive(enabled and not self.operation_in_progress)
 
     def update_secret_visibility(self, button):
         visible = button.get_active()
@@ -265,25 +309,48 @@ class ServerConfigurationWindow(Gtk.Window):
         self.controller.refresh()
 
     def load_configuration(self):
-        try:
-            config = api_json("/api/native-config")
-            credentials = config.get("credentials") or {}
-            self.access_required.set_active(config.get("accessRequired") is not False)
-            self.access_code.set_text(config.get("accessKey", ""))
-            for key, entry in self.fields.items():
-                entry.set_text(str(credentials.get(key, "")))
-            self.live_mode.set_active_id(
-                "rest" if credentials.get("foxLiveMode") == "rest" else "live-ws"
-            )
-            self.config_loaded = True
-            self.update_access_sensitivity()
-            self.update_live_sensitivity()
-            self.message.set_text("")
-        except (OSError, ValueError, urllib.error.URLError) as error:
-            self.message.set_markup(
-                f"<span foreground='#b91c1c'>Could not load configuration: "
-                f"{GLib.markup_escape_text(str(error))}</span>"
-            )
+        if self.config_refresh_in_progress or self.operation_in_progress:
+            return
+        self.config_refresh_in_progress = True
+        self.refresh_button.set_sensitive(False)
+        self.save_button.set_sensitive(False)
+        self.live_test_button.set_sensitive(False)
+        self.message.set_text("Loading server configuration…")
+        run_in_background(
+            lambda: api_json("/api/native-config"),
+            self.configuration_loaded,
+            self.configuration_load_failed,
+        )
+
+    def configuration_loaded(self, config):
+        credentials = config.get("credentials") or {}
+        self.access_required.set_active(config.get("accessRequired") is not False)
+        self.access_code.set_text(config.get("accessKey", ""))
+        for key, entry in self.fields.items():
+            entry.set_text(str(credentials.get(key, "")))
+        policy = config.get("liveWsPolicy")
+        if policy not in ("on-demand", "always", "rest"):
+            policy = "rest" if credentials.get("foxLiveMode") == "rest" else "on-demand"
+        self.live_mode.set_active_id(policy)
+        self.config_loaded = True
+        self.config_refresh_in_progress = False
+        self.refresh_button.set_sensitive(True)
+        self.save_button.set_sensitive(True)
+        self.update_access_sensitivity()
+        self.update_live_sensitivity()
+        self.message.set_text("")
+        return False
+
+    def configuration_load_failed(self, error):
+        self.config_refresh_in_progress = False
+        self.refresh_button.set_sensitive(True)
+        self.save_button.set_sensitive(True)
+        self.update_live_sensitivity()
+        self.message.set_markup(
+            f"<span foreground='#b91c1c'>Could not load configuration: "
+            f"{GLib.markup_escape_text(str(error))}</span>"
+        )
+        return False
 
     def update_status(self, status):
         urls = status.get("lanUrls") or []
@@ -292,18 +359,7 @@ class ServerConfigurationWindow(Gtk.Window):
         self.status_values["octopus"].set_text(state_text(status.get("octopus", {})))
         self.status_values["foxRest"].set_text(state_text(status.get("foxRest", {})))
 
-        live = status.get("foxLive", {})
-        if live.get("source") == "live-ws" and (
-            live.get("connected") is True or live.get("state") in ("connected", "live")
-        ):
-            live_text = "✅ Live WebSocket connected"
-        elif live.get("mode") == "rest":
-            live_text = "✅ Official REST selected"
-        elif live.get("reason") == "live-credentials-empty":
-            live_text = "⚠️ REST fallback · optional Live login is empty"
-        else:
-            live_text = f"❌ REST fallback · {live.get('lastError') or live.get('reason') or 'Live WS problem'}"
-        self.status_values["foxLive"].set_text(live_text)
+        self.status_values["foxLive"].set_text(live_status_text(status.get("foxLive", {})))
 
     def show_offline(self, message):
         self.address.set_text(f"http://raspberrypi.local:{PORT}")
@@ -316,56 +372,95 @@ class ServerConfigurationWindow(Gtk.Window):
         return {
             "accessRequired": self.access_required.get_active(),
             "accessKey": self.access_code.get_text().strip(),
+            "liveWsPolicy": self.live_mode.get_active_id() or "on-demand",
             "credentials": {
                 "acc": self.fields["acc"].get_text().strip(),
                 "api": self.fields["api"].get_text().strip(),
                 "foxSN": self.fields["foxSN"].get_text().strip(),
                 "foxToken": self.fields["foxToken"].get_text().strip(),
-                "foxLiveMode": self.live_mode.get_active_id() or "live-ws",
+                "foxLiveMode": "rest" if self.live_mode.get_active_id() == "rest" else "live-ws",
                 "foxWebUsername": self.fields["foxWebUsername"].get_text().strip(),
                 "foxWebPassword": self.fields["foxWebPassword"].get_text(),
                 "gasUrl": "/api/foxess",
             },
         }
 
-    def save_configuration(self, _button=None, quiet=False):
+    def set_operation_busy(self, busy):
+        self.operation_in_progress = busy
+        self.save_button.set_sensitive(not busy)
+        self.refresh_button.set_sensitive(not busy and not self.config_refresh_in_progress)
+        self.update_live_sensitivity()
+
+    def save_configuration(self, _button=None, quiet=False, after_save=None):
         access_code = self.access_code.get_text().strip()
         if self.access_required.get_active() and not 8 <= len(access_code) <= 64:
             self.message.set_markup("<span foreground='#b91c1c'>Use 8–64 printable characters.</span>")
             return False
-        try:
-            api_json("/api/native-config", "PUT", self.configuration_payload())
+        if self.operation_in_progress:
+            return False
+        payload = self.configuration_payload()
+        self.set_operation_busy(True)
+        self.message.set_text("Saving server configuration…")
+
+        def saved(_result):
             if not quiet:
                 self.message.set_markup(
                     "<span foreground='#047857'>Server configuration saved. "
                     "The background worker will reload it automatically.</span>"
                 )
             self.controller.refresh()
-            return True
-        except (OSError, ValueError, urllib.error.URLError) as error:
+            if after_save:
+                after_save()
+            else:
+                self.set_operation_busy(False)
+            return False
+
+        def failed(error):
+            self.set_operation_busy(False)
             self.message.set_markup(
                 f"<span foreground='#b91c1c'>Could not save: {GLib.markup_escape_text(str(error))}</span>"
             )
             return False
 
+        run_in_background(
+            lambda: api_json("/api/native-config", "PUT", payload),
+            saved,
+            failed,
+        )
+        return True
+
     def test_live_connection(self, _button):
-        if not self.save_configuration(quiet=True):
-            return
-        if self.live_mode.get_active_id() == "rest":
+        policy = self.live_mode.get_active_id() or "on-demand"
+        self.save_configuration(
+            quiet=True,
+            after_save=lambda: self.start_live_connection_test(policy),
+        )
+
+    def start_live_connection_test(self, policy):
+        if policy == "rest":
+            self.set_operation_busy(False)
             self.message.set_markup(
                 "<span foreground='#047857'>Configuration saved. Official REST is selected, "
                 "so no Live WS test is needed.</span>"
             )
             return
-        self.message.set_text("Waiting for a fresh FoxESS Live WS telemetry frame…")
-        while Gtk.events_pending():
-            Gtk.main_iteration()
-        try:
-            status = api_json("/api/foxess/live/test", "POST", {}, timeout=35)
+
+        self.message.set_text(
+            "Testing one fresh FoxESS Live WS frame now… "
+            "The window remains usable while the check runs."
+        )
+
+        def tested(status):
+            self.set_operation_busy(False)
             if status.get("source") == "live-ws" and status.get("state") == "live":
-                self.message.set_markup(
-                    "<span foreground='#047857'>Live WS test successful and live updates are active.</span>"
-                )
+                if policy == "on-demand":
+                    message = (
+                        "Live WS test successful. The temporary test connection is closed; "
+                        "official REST remains active until a dynamic charge starts."
+                    )
+                else:
+                    message = "Live WS test successful and always-live updates are active."
+                self.message.set_markup(f"<span foreground='#047857'>{message}</span>")
             else:
                 detail = status.get("lastError") or status.get("reason") or "connection unavailable"
                 self.message.set_markup(
@@ -373,15 +468,26 @@ class ServerConfigurationWindow(Gtk.Window):
                     f"{GLib.markup_escape_text(str(detail))}</span>"
                 )
             self.controller.refresh()
-        except (OSError, ValueError, urllib.error.URLError) as error:
+            return False
+
+        def test_failed(error):
+            self.set_operation_busy(False)
             self.message.set_markup(
                 f"<span foreground='#b91c1c'>Live WS test failed; REST fallback remains active. "
                 f"{GLib.markup_escape_text(str(error))}</span>"
             )
+            return False
+
+        run_in_background(
+            lambda: api_json("/api/foxess/live/test", "POST", {}, timeout=70),
+            tested,
+            test_failed,
+        )
 
 
 class TrayController:
     def __init__(self):
+        self.refresh_in_progress = False
         self.indicator = AyatanaAppIndicator3.Indicator.new(
             "octopus-foxess-server",
             ICONS["amber"],
@@ -424,44 +530,45 @@ class TrayController:
         return item
 
     def refresh(self):
-        try:
-            status = api_json("/api/service-status")
-            octopus = status.get("octopus", {})
-            fox_rest = status.get("foxRest", {})
-            fox_live = status.get("foxLive", {})
-            definite_problem = octopus.get("state") in ("error", "not-configured") or fox_rest.get("state") in (
-                "error",
-                "not-configured",
-            )
-            waiting = octopus.get("state") == "waiting" or fox_rest.get("state") == "waiting"
-            live_problem = (
-                fox_live.get("mode") == "live-ws"
-                and fox_live.get("source") != "live-ws"
-                and fox_live.get("reason") != "live-credentials-empty"
-            )
-            color = "red" if definite_problem or live_problem else ("amber" if waiting else "green")
-            self.indicator.set_icon_full(ICONS[color], f"Octopus FoxESS server {color}")
-            self.summary_item.set_label(f"Server: ✅ running · v{status.get('version', 'unknown')}")
-            self.octopus_item.set_label(f"Octopus API: {state_text(octopus)}")
-            self.fox_rest_item.set_label(f"FoxESS REST: {state_text(fox_rest)}")
-            if fox_live.get("source") == "live-ws":
-                live_label = "✅ connected"
-            elif fox_live.get("mode") == "rest":
-                live_label = "✅ REST selected"
-            elif fox_live.get("reason") == "live-credentials-empty":
-                live_label = "⚠️ REST fallback (login empty)"
-            else:
-                live_label = "❌ REST fallback (Live problem)"
-            self.fox_live_item.set_label(f"FoxESS Live WS: {live_label}")
-            self.window.update_status(status)
-        except (OSError, ValueError, urllib.error.URLError) as error:
-            self.indicator.set_icon_full(ICONS["red"], "Octopus FoxESS server offline")
-            self.summary_item.set_label("Server: ❌ not responding")
-            self.octopus_item.set_label("Octopus API: ❌ unavailable")
-            self.fox_rest_item.set_label("FoxESS REST: ❌ unavailable")
-            self.fox_live_item.set_label("FoxESS Live WS: ❌ unavailable")
-            self.window.show_offline(str(error))
+        if self.refresh_in_progress:
+            return True
+        self.refresh_in_progress = True
+        run_in_background(
+            lambda: api_json("/api/service-status"),
+            self.apply_status,
+            self.apply_offline,
+        )
         return True
+
+    def apply_status(self, status):
+        self.refresh_in_progress = False
+        octopus = status.get("octopus", {})
+        fox_rest = status.get("foxRest", {})
+        fox_live = status.get("foxLive", {})
+        definite_problem = octopus.get("state") in ("error", "not-configured") or fox_rest.get("state") in (
+            "error",
+            "not-configured",
+        )
+        waiting = octopus.get("state") == "waiting" or fox_rest.get("state") == "waiting"
+        live_warning = live_status_severity(fox_live) == "amber"
+        color = "red" if definite_problem else ("amber" if waiting or live_warning else "green")
+        self.indicator.set_icon_full(ICONS[color], f"Octopus FoxESS server {color}")
+        self.summary_item.set_label(f"Server: ✅ running · v{status.get('version', 'unknown')}")
+        self.octopus_item.set_label(f"Octopus API: {state_text(octopus)}")
+        self.fox_rest_item.set_label(f"FoxESS REST: {state_text(fox_rest)}")
+        self.fox_live_item.set_label(f"FoxESS Live WS: {live_status_text(fox_live)}")
+        self.window.update_status(status)
+        return False
+
+    def apply_offline(self, error):
+        self.refresh_in_progress = False
+        self.indicator.set_icon_full(ICONS["red"], "Octopus FoxESS server offline")
+        self.summary_item.set_label("Server: ❌ not responding")
+        self.octopus_item.set_label("Octopus API: ❌ unavailable")
+        self.fox_rest_item.set_label("FoxESS REST: ❌ unavailable")
+        self.fox_live_item.set_label("FoxESS Live WS: ❌ unavailable")
+        self.window.show_offline(str(error))
+        return False
 
 
 if __name__ == "__main__":

@@ -1,5 +1,19 @@
 # Changelog
 
+## v2026.07.30.1 — 2026-07-30
+
+- Correct on-demand Live WS standby health reporting in the Raspberry Pi tray
+  and native Server Configuration window.
+- Keep GTK responsive during native configuration and Live WS network checks.
+- Prevent normal REST telemetry polling from cancelling an explicit Live WS
+  self-test, then close a temporary on-demand test socket immediately.
+- Match the current FoxESS stream protocol by subscribing once, using a
+  transport heartbeat, and omitting browser-only WebSocket handshake headers.
+- Reuse the FoxESS web-session token for up to 12 hours instead of logging in
+  again on every reconnect.
+- Restore an explicit Always Live WebSocket choice alongside on-demand and
+  official-REST-only policies.
+
 ## v2026.07.29.1 — 2026-07-29
 
 - Remember a valid Dashboard Access Code on each client and reconnect directly

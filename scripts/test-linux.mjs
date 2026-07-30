@@ -59,8 +59,8 @@ assert.match(markupSource, /class="input-group pi-config-only"/);
 assert.match(markupSource, /id="octopus-account-toggle"/);
 assert.match(markupSource, /rel="apple-touch-icon"/);
 assert.match(markupSource, /rel="manifest"/);
-assert.match(markupSource, /styles\.css\?v=2026\.7\.29\.1/);
-assert.match(markupSource, /app\.js\?v=2026\.7\.29\.1/);
+assert.match(markupSource, /styles\.css\?v=2026\.7\.30\.1/);
+assert.match(markupSource, /app\.js\?v=2026\.7\.30\.1/);
 assert.match(stylesSource, /\.linux-runtime \.pi-config-only \{ display: none !important; \}/);
 assert.match(stylesSource, /\.account-number-row \.account-secret-control \.val \{ max-width: none; white-space: nowrap/);
 assert.match(appSource, /LINUX_OCTOPUS_ENDPOINT = '\/api\/octopus'/);
@@ -108,6 +108,10 @@ assert.match(traySource, /Require an access code from Mobile \/ LAN dashboard cl
 assert.match(traySource, /Octopus account/);
 assert.match(traySource, /FoxESS web-login email/);
 assert.match(traySource, /Save & Test Live WS/);
+assert.match(traySource, /Live WS on demand \(REST normally\)/);
+assert.match(traySource, /Always Live WebSocket \(REST fallback\)/);
+assert.match(traySource, /run_in_background/);
+assert.match(traySource, /On-demand standby · official REST active/);
 assert.doesNotMatch(traySource, /Integration Settings/);
 assert.match(dashboardLauncherSource, /\?client=1/);
 assert.match(dashboardLauncherSource, /octopus-foxess-dashboard/);
@@ -213,6 +217,7 @@ try {
     body: JSON.stringify({
       accessRequired: true,
       accessKey: changedAccessKey,
+      liveWsPolicy: 'on-demand',
       credentials
     })
   });
@@ -237,6 +242,7 @@ try {
   const nativeConfig = await fetch(`http://127.0.0.1:${port}/api/native-config`).then(response => response.json());
   assert.equal(nativeConfig.accessRequired, true);
   assert.equal(nativeConfig.accessKey, changedAccessKey);
+  assert.equal(nativeConfig.liveWsPolicy, 'on-demand');
   assert.deepEqual(nativeConfig.credentials, credentials);
 
   const workerState = await fetch(`http://127.0.0.1:${port}/api/config`, {
@@ -246,7 +252,33 @@ try {
   assert.equal(workerState.credentials.foxToken, 'pi-managed');
   assert.equal(workerState.automations.dispatchCheck, true);
   assert.equal(workerState.liveWsDemandActive, true);
+  assert.equal(workerState.liveWsPolicy, 'on-demand');
+  assert.equal(workerState.liveWsOnDemand, true);
   assert.equal(typeof workerState.revision, 'number');
+
+  const alwaysLiveResponse = await fetch(`http://127.0.0.1:${port}/api/config`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ liveWsPolicy: 'always' })
+  });
+  assert.equal(alwaysLiveResponse.status, 200);
+  const alwaysLiveState = await fetch(`http://127.0.0.1:${port}/api/config`, {
+    headers: { Referer: `http://127.0.0.1:${port}/?worker=1` }
+  }).then(response => response.json());
+  assert.equal(alwaysLiveState.liveWsPolicy, 'always');
+  assert.equal(alwaysLiveState.liveWsOnDemand, false);
+  const invalidLivePolicyResponse = await fetch(`http://127.0.0.1:${port}/api/config`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ liveWsPolicy: 'sometimes' })
+  });
+  assert.equal(invalidLivePolicyResponse.status, 400);
+  const legacyOnDemandResponse = await fetch(`http://127.0.0.1:${port}/api/config`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ liveWsOnDemand: true })
+  });
+  assert.equal(legacyOnDemandResponse.status, 200);
 
   const clientState = await fetch(`http://127.0.0.1:${port}/api/config`, {
     headers: {
@@ -256,6 +288,7 @@ try {
   }).then(response => response.json());
   assert.equal(clientState.credentials.api, 'pi-managed');
   assert.equal(clientState.credentials.foxToken, 'pi-managed');
+  assert.equal(clientState.liveWsPolicy, 'on-demand');
 
   const encryptedFile = await readFile(path.join(stateRoot, 'config.enc'), 'utf8');
   assert.doesNotMatch(encryptedFile, /sk_live_test|fox-test|A-TEST/);
