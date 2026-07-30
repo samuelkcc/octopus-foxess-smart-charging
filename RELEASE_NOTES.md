@@ -1,3 +1,25 @@
+## Linux Live WS connection-check fix v2026.07.30.1
+
+### Fixed
+
+- Treats on-demand standby with official REST active as a healthy state instead
+  of reporting FoxESS Live WS as failed in native Server Configuration.
+- Prevents normal five-second REST telemetry polling from cancelling a manual
+  Live WS self-test and causing a false failure.
+- Subscribes to FoxESS live telemetry once per connection, uses a protocol
+  heartbeat, and removes browser-only WebSocket handshake headers.
+- Reuses the current FoxESS web-session token for up to 12 hours so reconnects
+  do not repeatedly sign in and disturb another FoxESS client.
+- Runs native configuration loading, saving, status refreshes, and Live WS
+  diagnostics away from GTK's UI thread so the window remains responsive.
+
+### Improved
+
+- Makes **Live WS on demand**, **Always Live WebSocket**, and **Official REST
+  API only** explicit native configuration choices.
+- Keeps an on-demand diagnostic connection temporary and explains that an
+  explicit web-login test may sign the FoxESS mobile app out.
+
 ## Mobile / LAN protection dashboard v2026.07.29.1
 
 ### Fixed

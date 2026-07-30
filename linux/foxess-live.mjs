@@ -18,13 +18,17 @@ import { generateFoxWebSignature } from './foxess-web-signature.mjs';
 
 export const FOX_LIVE_MODE = 'live-ws';
 export const FOX_REST_MODE = 'rest';
+export const FOX_LIVE_POLICY_ON_DEMAND = 'on-demand';
+export const FOX_LIVE_POLICY_ALWAYS = 'always';
+export const FOX_LIVE_POLICY_REST = 'rest';
 
 const WEB_LOGIN_PATH = '/basic/v0/user/login';
 const WEB_SOCKET_PATH = '/dew/v0/wsmaitian';
 const DEFAULT_WEB_BASE_URL = 'https://www.foxesscloud.com';
 const LIVE_STALE_MS = 30_000;
-const LIVE_REQUEST_INTERVAL_MS = 5_000;
+const LIVE_HEARTBEAT_INTERVAL_MS = 20_000;
 const CONNECT_TIMEOUT_MS = 25_000;
+const WEB_TOKEN_TTL_MS = 12 * 60 * 60 * 1000;
 const REST_CACHE_MS = 60_000;
 const RECONCILE_INTERVAL_MS = 30_000;
 const TELEMETRY_VARIABLES = [
@@ -41,6 +45,16 @@ const TELEMETRY_VARIABLES = [
 
 function normalizeMode(credentials = {}) {
   return credentials.foxLiveMode === FOX_REST_MODE ? FOX_REST_MODE : FOX_LIVE_MODE;
+}
+
+export function normalizeLivePolicy(state = {}, credentials = state.credentials || {}) {
+  if (normalizeMode(credentials) === FOX_REST_MODE) return FOX_LIVE_POLICY_REST;
+  if (state.liveWsPolicy === FOX_LIVE_POLICY_ALWAYS) return FOX_LIVE_POLICY_ALWAYS;
+  if (state.liveWsPolicy === FOX_LIVE_POLICY_ON_DEMAND) return FOX_LIVE_POLICY_ON_DEMAND;
+  if (state.liveWsPolicy === FOX_LIVE_POLICY_REST || state.liveWsOnDemand === false) {
+    return FOX_LIVE_POLICY_REST;
+  }
+  return FOX_LIVE_POLICY_ON_DEMAND;
 }
 
 function isLiveDemandActive(state = {}, now = Date.now()) {
@@ -123,6 +137,13 @@ function getCredentialFingerprint(credentials) {
   })).digest('hex');
 }
 
+function getWebCredentialFingerprint(credentials) {
+  return createHash('sha256').update(JSON.stringify({
+    username: credentials.foxWebUsername || '',
+    password: credentials.foxWebPassword || ''
+  })).digest('hex');
+}
+
 function formatPortalDate(date = new Date()) {
   return date.toISOString().slice(0, 19).replace('T', ' ');
 }
@@ -136,7 +157,7 @@ export class FoxessLiveTelemetry {
     webBaseUrl = process.env.FOXESS_WEB_BASE_URL || DEFAULT_WEB_BASE_URL,
     logger = console,
     now = () => Date.now(),
-    liveRequestIntervalMs = LIVE_REQUEST_INTERVAL_MS
+    liveHeartbeatIntervalMs = LIVE_HEARTBEAT_INTERVAL_MS
   }) {
     this.loadState = loadState;
     this.foxOpenApiJson = foxOpenApiJson;
@@ -145,10 +166,13 @@ export class FoxessLiveTelemetry {
     this.webBaseUrl = webBaseUrl.replace(/\/$/, '');
     this.logger = logger;
     this.now = now;
-    this.liveRequestIntervalMs = liveRequestIntervalMs;
+    this.liveHeartbeatIntervalMs = liveHeartbeatIntervalMs;
     this.socket = null;
-    this.liveRequestTimer = null;
+    this.liveHeartbeatTimer = null;
     this.fingerprint = '';
+    this.portalToken = '';
+    this.portalTokenAt = 0;
+    this.portalTokenFingerprint = '';
     this.connectPromise = null;
     this.connectionGeneration = 0;
     this.latestValues = {};
@@ -161,12 +185,14 @@ export class FoxessLiveTelemetry {
       reason: 'startup',
       connected: false,
       configured: false,
+      policy: FOX_LIVE_POLICY_ON_DEMAND,
       onDemandEnabled: true,
       demandActive: false,
       updatedAt: null,
       lastError: null
     };
     this.reconcileTimer = null;
+    this.manualTestActive = false;
   }
 
   start() {
@@ -186,8 +212,8 @@ export class FoxessLiveTelemetry {
   }
 
   closeSocket() {
-    if (this.liveRequestTimer) clearInterval(this.liveRequestTimer);
-    this.liveRequestTimer = null;
+    if (this.liveHeartbeatTimer) clearInterval(this.liveHeartbeatTimer);
+    this.liveHeartbeatTimer = null;
     const socket = this.socket;
     this.socket = null;
     if (!socket) return;
@@ -196,20 +222,20 @@ export class FoxessLiveTelemetry {
     else if (socket.readyState !== this.WebSocketImpl.CLOSED) socket.terminate?.();
   }
 
-  startLiveRequests(socket, generation) {
-    if (this.liveRequestTimer) clearInterval(this.liveRequestTimer);
-    const requestFrame = () => {
+  startLiveSession(socket, generation) {
+    if (this.liveHeartbeatTimer) clearInterval(this.liveHeartbeatTimer);
+    socket.send('getdata');
+    const heartbeat = () => {
       if (
         generation === this.connectionGeneration
         && this.socket === socket
         && socket.readyState === this.WebSocketImpl.OPEN
       ) {
-        socket.send('getdata');
+        socket.ping?.();
       }
     };
-    requestFrame();
-    this.liveRequestTimer = setInterval(requestFrame, this.liveRequestIntervalMs);
-    this.liveRequestTimer.unref?.();
+    this.liveHeartbeatTimer = setInterval(heartbeat, this.liveHeartbeatIntervalMs);
+    this.liveHeartbeatTimer.unref?.();
   }
 
   setFallback(mode, reason, error = null, { officialRest = false, state = null } = {}) {
@@ -247,25 +273,45 @@ export class FoxessLiveTelemetry {
     };
   }
 
-  async loginToPortal(credentials) {
+  async loginToPortal(credentials, { force = false } = {}) {
+    const credentialFingerprint = getWebCredentialFingerprint(credentials);
+    const cachedTokenIsFresh = this.portalToken
+      && this.portalTokenFingerprint === credentialFingerprint
+      && (this.now() - this.portalTokenAt) < WEB_TOKEN_TTL_MS;
+    if (!force && cachedTokenIsFresh) return this.portalToken;
+
     const headers = await this.makePortalHeaders(WEB_LOGIN_PATH);
-    const response = await this.fetchImpl(`${this.webBaseUrl}${WEB_LOGIN_PATH}`, {
-      method: 'POST',
-      headers,
-      body: JSON.stringify({
-        user: credentials.foxWebUsername,
-        password: ensurePasswordHash(credentials.foxWebPassword),
-        type: 1,
-        verification: 1
-      }),
-      signal: AbortSignal.timeout(20_000)
-    });
-    if (!response.ok) throw new Error(`FoxESS web login returned HTTP ${response.status}`);
-    const data = await response.json();
-    if (data.errno !== 0 || !data.result?.token) {
-      throw new Error(`FoxESS web login rejected (${data.errno ?? 'unknown'})`);
+    let response;
+    try {
+      response = await this.fetchImpl(`${this.webBaseUrl}${WEB_LOGIN_PATH}`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({
+          user: credentials.foxWebUsername,
+          password: ensurePasswordHash(credentials.foxWebPassword),
+          type: 1,
+          verification: 1
+        }),
+        signal: AbortSignal.timeout(20_000)
+      });
+    } catch (error) {
+      throw new Error(`FoxESS web login request failed: ${normalizeError(error)}`);
     }
-    return data.result.token;
+    if (!response.ok) throw new Error(`FoxESS web login returned HTTP ${response.status}`);
+    let data;
+    try {
+      data = await response.json();
+    } catch (error) {
+      throw new Error(`FoxESS web login returned an unreadable response: ${normalizeError(error)}`);
+    }
+    if (data.errno !== 0 || !data.result?.token) {
+      const detail = data.msg ? `: ${String(data.msg).slice(0, 120)}` : '';
+      throw new Error(`FoxESS web login rejected (errno ${data.errno ?? 'unknown'}${detail})`);
+    }
+    this.portalToken = data.result.token;
+    this.portalTokenAt = this.now();
+    this.portalTokenFingerprint = credentialFingerprint;
+    return this.portalToken;
   }
 
   async discoverPlantId(state) {
@@ -279,9 +325,14 @@ export class FoxessLiveTelemetry {
     return String(plantId);
   }
 
-  async connect(state, credentials, generation) {
-    const plantId = await this.discoverPlantId(state);
-    const token = await this.loginToPortal(credentials);
+  async connect(state, credentials, generation, { forceLogin = false } = {}) {
+    let plantId;
+    try {
+      plantId = await this.discoverPlantId(state);
+    } catch (error) {
+      throw new Error(`FoxESS REST plant discovery failed: ${normalizeError(error)}`);
+    }
+    const token = await this.loginToPortal(credentials, { force: forceLogin });
     if (generation !== this.connectionGeneration) throw new Error('Live connection configuration changed');
 
     const socketUrl = new URL(
@@ -302,16 +353,12 @@ export class FoxessLiveTelemetry {
         else resolve();
       };
       const timeout = setTimeout(() => {
-        this.socket?.terminate?.();
         finish(new Error('FoxESS live self-test timed out without a fresh telemetry frame'));
+        this.socket?.terminate?.();
       }, CONNECT_TIMEOUT_MS);
       timeout.unref?.();
 
-      const socket = new this.WebSocketImpl(socketUrl, {
-        handshakeTimeout: 15_000,
-        origin: this.webBaseUrl,
-        headers: { 'User-Agent': 'Mozilla/5.0' }
-      });
+      const socket = new this.WebSocketImpl(socketUrl, { handshakeTimeout: 15_000 });
       this.socket = socket;
 
       socket.on('open', () => {
@@ -319,7 +366,13 @@ export class FoxessLiveTelemetry {
           socket.close();
           return;
         }
-        this.startLiveRequests(socket, generation);
+        this.startLiveSession(socket, generation);
+      });
+      socket.on('unexpected-response', (_request, response) => {
+        const status = response?.statusCode || 'unknown';
+        const statusText = response?.statusMessage ? ` ${response.statusMessage}` : '';
+        finish(new Error(`FoxESS live WebSocket handshake returned HTTP ${status}${statusText}`));
+        socket.terminate?.();
       });
       socket.on('message', raw => {
         if (generation !== this.connectionGeneration) return;
@@ -339,6 +392,7 @@ export class FoxessLiveTelemetry {
             ...mapped
           };
           this.status = {
+            ...this.status,
             mode: FOX_LIVE_MODE,
             source: 'live-ws',
             state: 'live',
@@ -355,16 +409,16 @@ export class FoxessLiveTelemetry {
       });
       socket.on('error', error => {
         if (generation === this.connectionGeneration) {
-          if (this.liveRequestTimer) clearInterval(this.liveRequestTimer);
-          this.liveRequestTimer = null;
+          if (this.liveHeartbeatTimer) clearInterval(this.liveHeartbeatTimer);
+          this.liveHeartbeatTimer = null;
           this.setFallback(FOX_LIVE_MODE, 'connection-error', error);
         }
-        finish(error);
+        finish(new Error(`FoxESS live WebSocket connection failed: ${normalizeError(error)}`));
       });
       socket.on('close', () => {
         if (generation === this.connectionGeneration) {
-          if (this.liveRequestTimer) clearInterval(this.liveRequestTimer);
-          this.liveRequestTimer = null;
+          if (this.liveHeartbeatTimer) clearInterval(this.liveHeartbeatTimer);
+          this.liveHeartbeatTimer = null;
           this.socket = null;
           this.setFallback(FOX_LIVE_MODE, 'connection-closed');
         }
@@ -377,7 +431,8 @@ export class FoxessLiveTelemetry {
     const state = await this.loadState();
     const credentials = state.credentials || {};
     const mode = normalizeMode(credentials);
-    const onDemandEnabled = state.liveWsOnDemand !== false;
+    const policy = normalizeLivePolicy(state, credentials);
+    const onDemandEnabled = policy === FOX_LIVE_POLICY_ON_DEMAND;
     const demandActive = isLiveDemandActive(state, this.now());
     const configured = Boolean(
       credentials.foxSN &&
@@ -387,21 +442,21 @@ export class FoxessLiveTelemetry {
     );
     this.status.mode = mode;
     this.status.configured = configured;
+    this.status.policy = policy;
     this.status.onDemandEnabled = onDemandEnabled;
     this.status.demandActive = demandActive;
 
-    if (mode === FOX_REST_MODE) {
-      this.connectionGeneration += 1;
-      this.closeSocket();
-      this.fingerprint = getCredentialFingerprint(credentials);
-      this.setFallback(mode, 'rest-selected');
+    // A manual self-test owns the temporary connection. Normal dashboard REST
+    // polling must not cancel it while on-demand mode is otherwise in standby.
+    if (this.manualTestActive && !force) {
       return this.getPublicStatus();
     }
-    if (!onDemandEnabled) {
+
+    if (policy === FOX_LIVE_POLICY_REST) {
       this.connectionGeneration += 1;
       this.closeSocket();
       this.fingerprint = getCredentialFingerprint(credentials);
-      this.setFallback(mode, 'client-disabled', null, { officialRest: true, state: 'rest-only' });
+      this.setFallback(FOX_REST_MODE, 'rest-selected');
       return this.getPublicStatus();
     }
     if (!configured) {
@@ -411,7 +466,7 @@ export class FoxessLiveTelemetry {
       this.setFallback(mode, 'live-credentials-empty');
       return this.getPublicStatus();
     }
-    if (!demandActive && !bypassDemand) {
+    if (policy === FOX_LIVE_POLICY_ON_DEMAND && !demandActive && !bypassDemand) {
       this.connectionGeneration += 1;
       this.closeSocket();
       this.fingerprint = getCredentialFingerprint(credentials);
@@ -434,6 +489,7 @@ export class FoxessLiveTelemetry {
     this.closeSocket();
     this.fingerprint = fingerprint;
     this.status = {
+      ...this.status,
       mode,
       source: 'rest-fallback',
       state: 'connecting',
@@ -443,7 +499,7 @@ export class FoxessLiveTelemetry {
       updatedAt: this.latestAt ? new Date(this.latestAt).toISOString() : null,
       lastError: null
     };
-    const attempt = this.connect(state, credentials, generation)
+    const attempt = this.connect(state, credentials, generation, { forceLogin: force })
       .catch(error => {
         if (generation === this.connectionGeneration) {
           this.setFallback(mode, 'self-test-failed', error);
@@ -473,9 +529,10 @@ export class FoxessLiveTelemetry {
     const state = await this.loadState();
     const credentials = state.credentials || {};
     const mode = normalizeMode(credentials);
-    const officialRest = mode === FOX_REST_MODE
-      || state.liveWsOnDemand === false
-      || !isLiveDemandActive(state, this.now());
+    const policy = normalizeLivePolicy(state, credentials);
+    const effectiveMode = policy === FOX_LIVE_POLICY_REST ? FOX_REST_MODE : mode;
+    const officialRest = policy === FOX_LIVE_POLICY_REST
+      || (policy === FOX_LIVE_POLICY_ON_DEMAND && !isLiveDemandActive(state, this.now()));
     const cacheFresh = this.restCache && (this.now() - this.restCache.updatedAt) < REST_CACHE_MS;
     if (cacheFresh) {
       return {
@@ -497,15 +554,15 @@ export class FoxessLiveTelemetry {
     this.restCache = { values, updatedAt };
     this.latestValues = { ...values, ...this.latestValues };
     this.setFallback(
-      mode,
-      mode === FOX_REST_MODE
+      effectiveMode,
+      policy === FOX_LIVE_POLICY_REST
         ? 'rest-selected'
-        : (state.liveWsOnDemand === false ? 'client-disabled' : (this.status.reason || 'live-unavailable')),
+        : (this.status.reason || 'live-unavailable'),
       this.status.lastError,
       {
         officialRest,
         state: officialRest
-          ? (mode === FOX_REST_MODE || state.liveWsOnDemand === false ? 'rest-only' : 'standby')
+          ? (policy === FOX_LIVE_POLICY_REST ? 'rest-only' : 'standby')
           : 'fallback'
       }
     );
@@ -519,11 +576,30 @@ export class FoxessLiveTelemetry {
   }
 
   async selfTest() {
+    this.manualTestActive = true;
+    let result;
     try {
       await this.reconcile({ force: true, waitForLive: true, bypassDemand: true });
+      result = this.getPublicStatus();
     } catch {
       // The public status contains a redacted diagnostic and REST fallback state.
+      result = this.getPublicStatus();
+    } finally {
+      this.manualTestActive = false;
+      // A test in on-demand standby is deliberately temporary. Disconnect as
+      // soon as the fresh frame has proved the credentials, avoiding a second
+      // FoxESS web session that could log the mobile app out.
+      if (result?.policy === FOX_LIVE_POLICY_ON_DEMAND && result?.demandActive !== true) {
+        this.connectionGeneration += 1;
+        this.closeSocket();
+        this.setFallback(
+          FOX_LIVE_MODE,
+          'waiting-for-dynamic-schedule',
+          null,
+          { officialRest: true, state: 'standby' }
+        );
+      }
     }
-    return this.getPublicStatus();
+    return result;
   }
 }

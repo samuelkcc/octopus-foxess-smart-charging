@@ -256,13 +256,20 @@ async function updateLinuxLiveDemand(dispatches = []) {
 function renderLiveWsMenuState(state = {}, status = null) {
     const toggle = document.getElementById('toggle-live-on-demand');
     const label = document.getElementById('live-on-demand-state');
-    const enabled = state.liveWsOnDemand !== false && status?.mode !== 'rest';
+    const policy = status?.policy
+        || state.liveWsPolicy
+        || (state.liveWsOnDemand === false ? 'rest' : 'on-demand');
+    const enabled = policy !== 'rest' && status?.mode !== 'rest';
     if (toggle) toggle.checked = enabled;
     if (!label) return;
     if (!enabled) {
         label.textContent = 'Off · official REST only';
     } else if (status?.source === 'live-ws' && status?.state === 'live') {
-        label.textContent = 'On-demand · active during dynamic charging';
+        label.textContent = policy === 'always'
+            ? 'Always · Live WS connected'
+            : 'On-demand · active during dynamic charging';
+    } else if (policy === 'always') {
+        label.textContent = 'Always · connecting or using REST fallback';
     } else {
         label.textContent = 'On-demand · waiting for a dynamic charge';
     }
@@ -272,7 +279,7 @@ async function setLiveWsOnDemand(enabled) {
     const toggle = document.getElementById('toggle-live-on-demand');
     if (toggle) toggle.disabled = true;
     try {
-        await updateLinuxState({ liveWsOnDemand: enabled });
+        await updateLinuxState({ liveWsPolicy: enabled ? 'on-demand' : 'rest' });
         const state = await loadLinuxState();
         const status = await fetchJson('/api/foxess/live/status');
         renderLiveWsMenuState(state, status);
@@ -369,9 +376,10 @@ function updateFoxLiveSettingsVisibility() {
 }
 
 function describeFoxLiveStatus(status) {
-    if (status?.source === 'live-ws' && status?.state === 'live') return 'LIVE WS · DYNAMIC CHARGE';
+    if (status?.source === 'live-ws' && status?.state === 'live') {
+        return status?.policy === 'always' ? 'LIVE WS · ALWAYS' : 'LIVE WS · DYNAMIC CHARGE';
+    }
     if (status?.reason === 'waiting-for-dynamic-schedule') return 'ON-DEMAND STANDBY · REST';
-    if (status?.reason === 'client-disabled') return 'LIVE WS OFF · REST';
     if (status?.mode === 'rest') return 'OFFICIAL REST';
     if (status?.reason === 'live-credentials-empty') return 'REST FALLBACK — LIVE LOGIN EMPTY';
     if (status?.state === 'connecting') return 'CONNECTING';
@@ -392,7 +400,9 @@ function renderFoxLiveStatus(status, messageTarget = null) {
     const hideManualFetch = isFoxLiveStatusHealthy(status);
     const badgeClass = status?.source === 'live-ws'
         ? 'badge off-peak'
-        : (status?.state === 'connecting' ? 'badge neutral' : 'badge peak');
+        : (status?.state === 'connecting' || status?.state === 'standby' || status?.mode === 'rest'
+            ? 'badge neutral'
+            : 'badge peak');
     if (sourceBadge) {
         sourceBadge.textContent = label;
         sourceBadge.className = badgeClass;
@@ -403,7 +413,7 @@ function renderFoxLiveStatus(status, messageTarget = null) {
     }
     if (scheduleFetchButton) scheduleFetchButton.style.display = hideManualFetch ? 'none' : '';
     if (telemetryFetchButton) telemetryFetchButton.style.display = hideManualFetch ? 'none' : '';
-    renderLiveWsMenuState({ liveWsOnDemand: status?.onDemandEnabled !== false }, status);
+    renderLiveWsMenuState({ liveWsPolicy: status?.policy }, status);
     if (messageTarget) {
         const reason = status?.lastError
             ? ` ${status.lastError}`

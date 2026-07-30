@@ -115,25 +115,35 @@ never displays or edits these service credentials.
 
 The native Server Configuration screen offers:
 
-- **Live WebSocket (default, REST fallback)** — optionally enter the same
-  FoxESS Cloud web-login email/username and password used at
-  `foxesscloud.com`, then select **Save & Test Live WS**. When a fresh
-  self-test frame is received, supported telemetry updates approximately every
-  five seconds.
+- **Live WS on demand (default)** — uses official REST normally, opens the web
+  connection only during an active Octopus dynamic charge, and disconnects
+  afterwards.
+- **Always Live WebSocket (REST fallback)** — keeps live telemetry connected
+  continuously, matching the original Live WS behavior.
 - **Official REST API only** — disables the undocumented live stream and uses
   the FoxESS Open API.
 
-The dashboard menu controls **Live WS on demand**. When enabled, the Pi opens
+The dashboard menu can enable **Live WS on demand** or turn Live WS off;
+**Always Live WebSocket** remains available in native Server Configuration.
+When on-demand mode is enabled, the Pi opens
 the FoxESS web connection only while an Octopus dynamic charge is active,
-requests a fresh frame every five seconds during that window, and disconnects
-afterwards. This reduces FoxESS web-login conflicts while retaining live
+subscribes once to the approximately five-second telemetry stream, keeps the
+transport alive with a protocol heartbeat, and disconnects afterwards. The
+web-session token is reused for up to 12 hours so reconnects do not repeatedly
+log in. This reduces FoxESS web-login conflicts while retaining live
 telemetry during EV charging. When the switch is off, telemetry uses only the
 official REST API. If either optional web-login field is empty, login fails,
 the stream closes, or no fresh frame arrives within 30 seconds, the Pi also
 uses REST. REST telemetry is cached for at least one minute to respect
 FoxESS's daily quota. The dashboard displays `LIVE WS · DYNAMIC CHARGE`,
-`ON-DEMAND STANDBY · REST`, or `LIVE WS OFF · REST` so the active source is
+`LIVE WS · ALWAYS`, `ON-DEMAND STANDBY · REST`, or `OFFICIAL REST` so the active source is
 visible.
+
+Opening or refreshing Server Configuration never logs in to the FoxESS web
+portal. **Save & Test Live WS now** is an explicit diagnostic: it may create one
+temporary web login, which may sign the FoxESS mobile app out. In on-demand
+standby, a successful test connection is closed immediately and REST remains
+active until the next dynamic charge.
 
 The live connection is an undocumented FoxESS web-portal interface and may
 change without notice. It is used only for read-only telemetry. Scheduler

@@ -20,9 +20,10 @@ fallback state, and red indicates a configuration or connection problem.
 
 Choose **Server Configuration…** from the taskbar menu to view the LAN listen
 address, enable or disable LAN access-code protection, enter the Octopus/FoxESS
-credentials, select or test Live WS, and inspect all integration states. This
-native window is the only Pi integration editor; the browser dashboard never
-displays service credentials.
+credentials, select **Live WS on demand**, **Always Live WebSocket**, or
+**Official REST API only**, and inspect all integration states. This native
+window is the only Pi integration editor; the browser dashboard never displays
+service credentials.
 
 The Pi settings app provides the FoxESS credentials and REST/live capability.
 The dashboard menu then controls **Live WS on demand**:
@@ -32,12 +33,17 @@ The dashboard menu then controls **Live WS on demand**:
 - **Off** keeps telemetry on the official REST API.
 
 Leaving either Live WS credential empty automatically uses REST. While an
-active dynamic charge keeps Live WS connected, the Pi requests a fresh frame
-every five seconds so a successful connection does not become stale after its
-initial frame. The **Save & Test Live WS** button can still test a fresh frame
-outside a charge window. Login, self-test, stale-frame, or connection failures
-also fall back to REST automatically. All schedule and inverter-control
-commands always use the official FoxESS REST API.
+active dynamic charge keeps Live WS connected, the Pi subscribes once to the
+approximately five-second telemetry stream and keeps the transport alive with a
+protocol heartbeat. It also reuses the current web-session token for up to 12
+hours instead of logging in again on every reconnect. The **Save & Test Live WS
+now** button can explicitly test one
+fresh frame outside a charge window. This diagnostic creates a FoxESS web login
+and may sign the FoxESS mobile app out; merely opening or refreshing Server
+Configuration does not perform that login. A successful on-demand test closes
+its temporary socket immediately. Login, self-test, stale-frame, or connection
+failures also fall back to REST automatically. All schedule and
+inverter-control commands always use the official FoxESS REST API.
 
 The Pi is the central source of truth. Closing the settings window does not stop
 the service. The separate **Octopus FoxESS Dashboard** desktop and

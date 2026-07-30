@@ -27,6 +27,7 @@ const integrationStatus = {
   octopus: { lastSuccessAt: null, lastErrorAt: null, lastError: null },
   foxRest: { lastSuccessAt: null, lastErrorAt: null, lastError: null }
 };
+const liveWsPolicies = new Set(['on-demand', 'always', 'rest']);
 let packageContents;
 try {
   packageContents = await readFile(path.join(appRoot, 'package.json'), 'utf8');
@@ -209,10 +210,27 @@ async function saveState(state) {
   await chmod(encryptedConfigPath, 0o600);
 }
 
+function getLiveWsPolicy(state = {}) {
+  if (state.credentials?.foxLiveMode === 'rest') return 'rest';
+  if (liveWsPolicies.has(state.liveWsPolicy)) return state.liveWsPolicy;
+  return state.liveWsOnDemand === false ? 'rest' : 'on-demand';
+}
+
+function requestedLiveWsPolicy(value, fallback) {
+  if (value === undefined) return fallback;
+  if (!liveWsPolicies.has(value)) {
+    throw Object.assign(new Error('Live WS policy must be on-demand, always, or rest'), { statusCode: 400 });
+  }
+  return value;
+}
+
 function getClientState(state) {
   const credentials = state.credentials || {};
+  const liveWsPolicy = getLiveWsPolicy(state);
   return {
     ...state,
+    liveWsPolicy,
+    liveWsOnDemand: liveWsPolicy === 'on-demand',
     credentials: {
       acc: credentials.acc || '',
       api: credentials.api ? 'pi-managed' : '',
@@ -485,9 +503,11 @@ const server = http.createServer(async (request, response) => {
       }
       if (request.method === 'GET') {
         const state = await loadState();
+        const liveWsPolicy = getLiveWsPolicy(state);
         return sendJson(response, 200, {
           accessRequired: state.lanAccessRequired !== false,
           accessKey: await getAccessKey(),
+          liveWsPolicy,
           credentials: {
             acc: state.credentials?.acc || '',
             api: state.credentials?.api || '',
@@ -506,12 +526,19 @@ const server = http.createServer(async (request, response) => {
         if (accessRequired) await saveAccessKey(update.accessKey);
         const current = await loadState();
         const supplied = update.credentials || {};
+        const currentLiveWsPolicy = getLiveWsPolicy(current);
+        const liveWsPolicy = requestedLiveWsPolicy(
+          update.liveWsPolicy,
+          supplied.foxLiveMode === 'rest'
+            ? 'rest'
+            : (currentLiveWsPolicy === 'rest' ? 'on-demand' : currentLiveWsPolicy)
+        );
         const credentials = {
           acc: String(supplied.acc || '').trim(),
           api: String(supplied.api || '').trim(),
           foxSN: String(supplied.foxSN || '').trim(),
           foxToken: String(supplied.foxToken || '').trim(),
-          foxLiveMode: supplied.foxLiveMode === 'rest' ? 'rest' : 'live-ws',
+          foxLiveMode: liveWsPolicy === 'rest' ? 'rest' : 'live-ws',
           foxWebUsername: String(supplied.foxWebUsername || '').trim(),
           foxWebPassword: String(supplied.foxWebPassword || ''),
           gasUrl: '/api/foxess'
@@ -519,6 +546,8 @@ const server = http.createServer(async (request, response) => {
         const next = {
           ...current,
           lanAccessRequired: accessRequired,
+          liveWsPolicy,
+          liveWsOnDemand: liveWsPolicy === 'on-demand',
           credentials,
           revision: Date.now()
         };
@@ -580,9 +609,17 @@ const server = http.createServer(async (request, response) => {
         return sendJson(response, 403, { error: 'Service credentials can only be changed from the Raspberry Pi Settings app' });
       }
       const current = await loadState();
+      const requestedPolicy = update.liveWsPolicy ?? (
+        Object.hasOwn(update, 'liveWsOnDemand')
+          ? (update.liveWsOnDemand === false ? 'rest' : 'on-demand')
+          : undefined
+      );
+      const liveWsPolicy = requestedLiveWsPolicy(requestedPolicy, getLiveWsPolicy(current));
       const next = {
         ...current,
         ...update,
+        liveWsPolicy,
+        liveWsOnDemand: liveWsPolicy === 'on-demand',
         revision: Date.now()
       };
       await saveState(next);
