@@ -1,4 +1,37 @@
-## Mobile telemetry controls and Raspberry Pi access v2026.08.01
+## Raspberry Pi telemetry and configuration polish v2026.08.01.1
+
+### Fixed
+
+- Formats solar, home, grid, battery, and SOC telemetry to two decimal places,
+  preventing floating-point values such as `2.4299999999999997 kW` from being
+  displayed.
+- Removes vertical scrolling from the native Raspberry Pi Server Configuration
+  window by using a compact two-column 980 × 620 layout.
+
+### Improved
+
+- Replaces the native telemetry-policy selector with one **Enable FoxESS Live
+  WS telemetry** toggle. FoxESS web-login fields appear only when it is enabled.
+- Moves the convenient day-to-day choice between **Live WS on demand**,
+  **Always Live WS (REST fallback)**, and **Official REST only** to the
+  dashboard client menu.
+- Prevents a client from selecting Live WS until the native Pi configuration
+  has enabled it and stored the optional web-login credentials.
+
+### Deployment
+
+- Publishes updated standalone Web and Raspberry Pi OS release assets while
+  keeping the two editions separate.
+- Preserves official FoxESS REST for every scheduler and inverter-control
+  action; Live WS remains read-only telemetry with REST fallback.
+
+### Validation
+
+- Covers two-decimal telemetry formatting, the no-scroll GTK window contract,
+  Live WS capability authorization, all three client policies, encrypted state,
+  standalone output, and Raspberry Pi release packaging.
+
+## Previous mobile telemetry controls and Raspberry Pi access v2026.08.01
 
 ### Fixed
 

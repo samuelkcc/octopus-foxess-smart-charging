@@ -427,7 +427,7 @@ export class FoxessLiveTelemetry {
     });
   }
 
-  async reconcile({ force = false, waitForLive = false, bypassDemand = false } = {}) {
+  async reconcile({ force = false, waitForLive = false, bypassDemand = false, bypassPolicy = false } = {}) {
     const state = await this.loadState();
     const credentials = state.credentials || {};
     const mode = normalizeMode(credentials);
@@ -452,7 +452,7 @@ export class FoxessLiveTelemetry {
       return this.getPublicStatus();
     }
 
-    if (policy === FOX_LIVE_POLICY_REST) {
+    if (policy === FOX_LIVE_POLICY_REST && !bypassPolicy) {
       this.connectionGeneration += 1;
       this.closeSocket();
       this.fingerprint = getCredentialFingerprint(credentials);
@@ -579,7 +579,7 @@ export class FoxessLiveTelemetry {
     this.manualTestActive = true;
     let result;
     try {
-      await this.reconcile({ force: true, waitForLive: true, bypassDemand: true });
+      await this.reconcile({ force: true, waitForLive: true, bypassDemand: true, bypassPolicy: true });
       result = this.getPublicStatus();
     } catch {
       // The public status contains a redacted diagnostic and REST fallback state.
@@ -589,15 +589,19 @@ export class FoxessLiveTelemetry {
       // A test in on-demand standby is deliberately temporary. Disconnect as
       // soon as the fresh frame has proved the credentials, avoiding a second
       // FoxESS web session that could log the mobile app out.
-      if (result?.policy === FOX_LIVE_POLICY_ON_DEMAND && result?.demandActive !== true) {
+      if (result?.policy !== FOX_LIVE_POLICY_ALWAYS && result?.demandActive !== true) {
         this.connectionGeneration += 1;
         this.closeSocket();
-        this.setFallback(
-          FOX_LIVE_MODE,
-          'waiting-for-dynamic-schedule',
-          null,
-          { officialRest: true, state: 'standby' }
-        );
+        if (result?.policy === FOX_LIVE_POLICY_REST) {
+          this.setFallback(FOX_REST_MODE, 'rest-selected');
+        } else {
+          this.setFallback(
+            FOX_LIVE_MODE,
+            'waiting-for-dynamic-schedule',
+            null,
+            { officialRest: true, state: 'standby' }
+          );
+        }
       }
     }
     return result;

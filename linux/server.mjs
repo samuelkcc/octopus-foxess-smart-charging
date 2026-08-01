@@ -210,10 +210,18 @@ async function saveState(state) {
   await chmod(encryptedConfigPath, 0o600);
 }
 
-function getLiveWsPolicy(state = {}) {
-  if (state.credentials?.foxLiveMode === 'rest') return 'rest';
+function isLiveWsEnabled(state = {}) {
+  if (typeof state.liveWsEnabled === 'boolean') return state.liveWsEnabled;
+  return state.credentials?.foxLiveMode !== 'rest';
+}
+
+function getStoredLiveWsPolicy(state = {}) {
   if (liveWsPolicies.has(state.liveWsPolicy)) return state.liveWsPolicy;
   return state.liveWsOnDemand === false ? 'rest' : 'on-demand';
+}
+
+function getLiveWsPolicy(state = {}) {
+  return isLiveWsEnabled(state) ? getStoredLiveWsPolicy(state) : 'rest';
 }
 
 function requestedLiveWsPolicy(value, fallback) {
@@ -229,6 +237,7 @@ function getClientState(state) {
   const liveWsPolicy = getLiveWsPolicy(state);
   return {
     ...state,
+    liveWsEnabled: isLiveWsEnabled(state),
     liveWsPolicy,
     liveWsOnDemand: liveWsPolicy === 'on-demand',
     credentials: {
@@ -507,6 +516,7 @@ const server = http.createServer(async (request, response) => {
         return sendJson(response, 200, {
           accessRequired: state.lanAccessRequired !== false,
           accessKey: await getAccessKey(),
+          liveWsEnabled: isLiveWsEnabled(state),
           liveWsPolicy,
           credentials: {
             acc: state.credentials?.acc || '',
@@ -526,19 +536,16 @@ const server = http.createServer(async (request, response) => {
         if (accessRequired) await saveAccessKey(update.accessKey);
         const current = await loadState();
         const supplied = update.credentials || {};
-        const currentLiveWsPolicy = getLiveWsPolicy(current);
-        const liveWsPolicy = requestedLiveWsPolicy(
-          update.liveWsPolicy,
-          supplied.foxLiveMode === 'rest'
-            ? 'rest'
-            : (currentLiveWsPolicy === 'rest' ? 'on-demand' : currentLiveWsPolicy)
-        );
+        const liveWsEnabled = typeof update.liveWsEnabled === 'boolean'
+          ? update.liveWsEnabled
+          : supplied.foxLiveMode !== 'rest';
+        const liveWsPolicy = getStoredLiveWsPolicy(current);
         const credentials = {
           acc: String(supplied.acc || '').trim(),
           api: String(supplied.api || '').trim(),
           foxSN: String(supplied.foxSN || '').trim(),
           foxToken: String(supplied.foxToken || '').trim(),
-          foxLiveMode: liveWsPolicy === 'rest' ? 'rest' : 'live-ws',
+          foxLiveMode: liveWsEnabled ? 'live-ws' : 'rest',
           foxWebUsername: String(supplied.foxWebUsername || '').trim(),
           foxWebPassword: String(supplied.foxWebPassword || ''),
           gasUrl: '/api/foxess'
@@ -546,6 +553,7 @@ const server = http.createServer(async (request, response) => {
         const next = {
           ...current,
           lanAccessRequired: accessRequired,
+          liveWsEnabled,
           liveWsPolicy,
           liveWsOnDemand: liveWsPolicy === 'on-demand',
           credentials,
@@ -608,6 +616,9 @@ const server = http.createServer(async (request, response) => {
       if (Object.hasOwn(update, 'credentials')) {
         return sendJson(response, 403, { error: 'Service credentials can only be changed from the Raspberry Pi Settings app' });
       }
+      if (Object.hasOwn(update, 'liveWsEnabled')) {
+        return sendJson(response, 403, { error: 'Live WS availability can only be changed from the Raspberry Pi Settings app' });
+      }
       const current = await loadState();
       const requestedPolicy = update.liveWsPolicy ?? (
         Object.hasOwn(update, 'liveWsOnDemand')
@@ -615,6 +626,9 @@ const server = http.createServer(async (request, response) => {
           : undefined
       );
       const liveWsPolicy = requestedLiveWsPolicy(requestedPolicy, getLiveWsPolicy(current));
+      if (liveWsPolicy !== 'rest' && !isLiveWsEnabled(current)) {
+        return sendJson(response, 409, { error: 'Enable Live WS in Raspberry Pi Server Configuration first' });
+      }
       const next = {
         ...current,
         ...update,

@@ -71,8 +71,9 @@ adds **Octopus FoxESS Server** and **Octopus FoxESS Dashboard** to the desktop.
 ### 2. Configure
 
 Open the taskbar icon and select **Server Configuration…**. Enter your Octopus
-and FoxESS details, choose a telemetry mode, then save and run the connection
-check.
+and FoxESS details. To make Live WS available, enable **FoxESS Live WS
+telemetry**, enter the revealed FoxESS web-login details, then save and run the
+connection check.
 
 The taskbar icon shows the server state:
 
@@ -104,7 +105,9 @@ If the Pi address changes, try `http://raspberrypi.local:8787` or run
 
 ### FoxESS telemetry
 
-Choose the mode that suits your setup:
+First enable Live WS and save its web-login credentials in native **Server
+Configuration**. Then choose the operating mode from **Menu → FoxESS
+telemetry** in any Pi dashboard client:
 
 | Mode | Behaviour |
 |---|---|
@@ -116,7 +119,7 @@ Live WS is read-only. Every scheduler or inverter change still uses the
 official FoxESS REST API. The live interface is undocumented and may change;
 if it is unavailable, the Pi safely returns to REST.
 
-**Save & Test Live WS now** is optional and may sign the FoxESS mobile app out.
+**Save & Test Live WS** is optional and may sign the FoxESS mobile app out.
 Opening Server Configuration by itself does not log in to FoxCloud.
 
 ### Access away from home

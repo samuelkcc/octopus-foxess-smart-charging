@@ -123,72 +123,75 @@ class ServerConfigurationWindow(Gtk.Window):
         self.config_loaded = False
         self.config_refresh_in_progress = False
         self.operation_in_progress = False
-        self.set_default_size(680, 760)
-        self.set_border_width(12)
+        self.set_default_size(980, 620)
+        self.set_border_width(10)
         self.connect("delete-event", self.hide_on_close)
 
-        root = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=10)
+        root = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=8)
         self.add(root)
-
-        scroller = Gtk.ScrolledWindow()
-        scroller.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC)
-        root.pack_start(scroller, True, True, 0)
-        content = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=12)
-        content.set_border_width(8)
-        scroller.add(content)
 
         heading = Gtk.Label()
         heading.set_markup("<span size='x-large' weight='bold'>Octopus FoxESS Server</span>")
         heading.set_xalign(0)
-        content.pack_start(heading, False, False, 0)
+        root.pack_start(heading, False, False, 0)
 
         intro = Gtk.Label(
-            label="This is the private Raspberry Pi configuration screen. "
-            "The background worker keeps running when this window and every browser are closed."
+            label="Private Raspberry Pi configuration. The automation worker keeps running after this window closes."
         )
         intro.set_xalign(0)
         intro.set_line_wrap(True)
-        content.pack_start(intro, False, False, 0)
+        root.pack_start(intro, False, False, 0)
 
-        grid = Gtk.Grid(column_spacing=14, row_spacing=10)
-        grid.set_column_homogeneous(False)
-        content.pack_start(grid, False, False, 0)
+        columns = Gtk.Grid(column_spacing=12, row_spacing=0)
+        columns.set_column_homogeneous(True)
+        columns.set_hexpand(True)
+        columns.set_vexpand(True)
+        root.pack_start(columns, True, True, 0)
+
+        left_column = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=8)
+        right_column = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=8)
+        columns.attach(left_column, 0, 0, 1, 1)
+        columns.attach(right_column, 1, 0, 1, 1)
+
+        access_frame = Gtk.Frame(label="Dashboard access")
+        left_column.pack_start(access_frame, False, False, 0)
+        access_grid = Gtk.Grid(column_spacing=10, row_spacing=7, margin=10)
+        access_frame.add(access_grid)
 
         self.address = Gtk.Entry()
         self.address.set_editable(False)
         self.address.set_hexpand(True)
-        grid.attach(Gtk.Label(label="Listen address", xalign=0), 0, 0, 1, 1)
-        grid.attach(self.address, 1, 0, 2, 1)
+        access_grid.attach(Gtk.Label(label="Listen address", xalign=0), 0, 0, 1, 1)
+        access_grid.attach(self.address, 1, 0, 2, 1)
 
         self.access_required = Gtk.CheckButton(
-            label="Require an access code from Mobile / LAN dashboard clients"
+            label="Require Dashboard Access Code"
         )
         self.access_required.set_active(True)
         self.access_required.connect("toggled", self.update_access_sensitivity)
-        grid.attach(self.access_required, 0, 1, 3, 1)
+        access_grid.attach(self.access_required, 0, 1, 3, 1)
 
         self.access_code = Gtk.Entry()
         self.access_code.set_visibility(False)
         self.access_code.set_input_purpose(Gtk.InputPurpose.PASSWORD)
         self.access_code.set_hexpand(True)
-        grid.attach(Gtk.Label(label="LAN access code", xalign=0), 0, 2, 1, 1)
-        grid.attach(self.access_code, 1, 2, 1, 1)
+        access_grid.attach(Gtk.Label(label="LAN access code", xalign=0), 0, 2, 1, 1)
+        access_grid.attach(self.access_code, 1, 2, 1, 1)
 
         show_code = Gtk.CheckButton(label="Show")
         show_code.connect("toggled", lambda button: self.access_code.set_visibility(button.get_active()))
-        grid.attach(show_code, 2, 2, 1, 1)
+        access_grid.attach(show_code, 2, 2, 1, 1)
 
         warning = Gtk.Label(
-            label="If access-code protection is off, anyone on this local network can view the "
-            "dashboard and change charging schedules."
+            label="Without protection, anyone on this LAN can view and control the dashboard."
         )
         warning.set_xalign(0)
         warning.set_line_wrap(True)
-        content.pack_start(warning, False, False, 0)
+        access_grid.attach(warning, 0, 3, 3, 1)
 
         integration_frame = Gtk.Frame(label="Integration settings")
-        content.pack_start(integration_frame, False, False, 0)
-        integration_grid = Gtk.Grid(column_spacing=14, row_spacing=9, margin=12)
+        right_column.pack_start(integration_frame, False, False, 0)
+        integration_grid = Gtk.Grid(column_spacing=10, row_spacing=7, margin=10)
         integration_grid.set_column_homogeneous(False)
         integration_frame.add(integration_grid)
 
@@ -209,34 +212,46 @@ class ServerConfigurationWindow(Gtk.Window):
         add_entry(2, "foxSN", "FoxESS serial number")
         add_entry(3, "foxToken", "FoxESS API token", True)
 
-        integration_grid.attach(Gtk.Label(label="Telemetry source", xalign=0), 0, 4, 1, 1)
-        self.live_mode = Gtk.ComboBoxText()
-        self.live_mode.append("on-demand", "Live WS on demand (REST normally)")
-        self.live_mode.append("always", "Always Live WebSocket (REST fallback)")
-        self.live_mode.append("rest", "Official REST API only")
-        self.live_mode.set_active_id("on-demand")
-        self.live_mode.connect("changed", self.update_live_sensitivity)
-        integration_grid.attach(self.live_mode, 1, 4, 2, 1)
+        self.live_enabled = Gtk.CheckButton(label="Enable FoxESS Live WS telemetry")
+        self.live_enabled.connect("toggled", self.update_live_sensitivity)
+        integration_grid.attach(self.live_enabled, 0, 4, 3, 1)
 
-        add_entry(5, "foxWebUsername", "FoxESS web-login email")
-        add_entry(6, "foxWebPassword", "FoxESS web-login password", True)
+        self.live_revealer = Gtk.Revealer()
+        self.live_revealer.set_transition_type(Gtk.RevealerTransitionType.SLIDE_DOWN)
+        live_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=6)
+        live_grid = Gtk.Grid(column_spacing=10, row_spacing=7)
+        live_box.pack_start(live_grid, False, False, 0)
 
-        self.show_secrets = Gtk.CheckButton(label="Show account, keys, tokens, and passwords")
-        self.show_secrets.connect("toggled", self.update_secret_visibility)
-        integration_grid.attach(self.show_secrets, 1, 7, 2, 1)
+        def add_live_entry(row, key, label, secret=False):
+            entry = Gtk.Entry()
+            entry.set_hexpand(True)
+            entry.set_visibility(not secret)
+            if secret:
+                entry.set_input_purpose(Gtk.InputPurpose.PASSWORD)
+            live_grid.attach(Gtk.Label(label=label, xalign=0), 0, row, 1, 1)
+            live_grid.attach(entry, 1, row, 1, 1)
+            self.fields[key] = entry
+
+        add_live_entry(0, "foxWebUsername", "FoxESS web-login email")
+        add_live_entry(1, "foxWebPassword", "FoxESS web-login password", True)
 
         live_note = Gtk.Label(
-            label="On-demand mode uses official REST until a dynamic charge starts. "
-            "Live WS is read-only and undocumented; testing it now creates a FoxESS "
-            "web login and may sign the mobile app out. All commands continue through official REST."
+            label="Live WS is read-only and may sign the FoxESS app out during a test. "
+            "Choose on-demand, always, or REST-only later from the dashboard menu."
         )
         live_note.set_xalign(0)
         live_note.set_line_wrap(True)
-        integration_grid.attach(live_note, 0, 8, 3, 1)
+        live_box.pack_start(live_note, False, False, 0)
+        self.live_revealer.add(live_box)
+        integration_grid.attach(self.live_revealer, 0, 5, 3, 1)
+
+        self.show_secrets = Gtk.CheckButton(label="Show account, keys, tokens, and passwords")
+        self.show_secrets.connect("toggled", self.update_secret_visibility)
+        integration_grid.attach(self.show_secrets, 0, 6, 3, 1)
 
         status_frame = Gtk.Frame(label="Connection status")
-        content.pack_start(status_frame, False, False, 0)
-        status_grid = Gtk.Grid(column_spacing=14, row_spacing=11, margin=12)
+        left_column.pack_start(status_frame, False, False, 0)
+        status_grid = Gtk.Grid(column_spacing=10, row_spacing=7, margin=10)
         status_frame.add(status_grid)
         self.status_values = {}
         for row, (key, label) in enumerate(
@@ -256,7 +271,7 @@ class ServerConfigurationWindow(Gtk.Window):
 
         self.message = Gtk.Label(xalign=0)
         self.message.set_line_wrap(True)
-        content.pack_start(self.message, False, False, 0)
+        root.pack_start(self.message, False, False, 0)
 
         buttons = Gtk.ButtonBox(orientation=Gtk.Orientation.HORIZONTAL)
         buttons.set_layout(Gtk.ButtonBoxStyle.END)
@@ -271,7 +286,7 @@ class ServerConfigurationWindow(Gtk.Window):
         self.refresh_button.connect("clicked", self.refresh_all)
         buttons.add(self.refresh_button)
 
-        self.live_test_button = Gtk.Button(label="Save & Test Live WS now")
+        self.live_test_button = Gtk.Button(label="Save & Test Live WS")
         self.live_test_button.connect("clicked", self.test_live_connection)
         buttons.add(self.live_test_button)
 
@@ -286,6 +301,7 @@ class ServerConfigurationWindow(Gtk.Window):
 
     def show_window(self):
         self.show_all()
+        self.update_live_sensitivity()
         self.present()
         self.refresh_all()
 
@@ -293,7 +309,8 @@ class ServerConfigurationWindow(Gtk.Window):
         self.access_code.set_sensitive(self.access_required.get_active())
 
     def update_live_sensitivity(self, *_args):
-        enabled = self.live_mode.get_active_id() != "rest"
+        enabled = self.live_enabled.get_active()
+        self.live_revealer.set_reveal_child(enabled)
         self.fields["foxWebUsername"].set_sensitive(enabled)
         self.fields["foxWebPassword"].set_sensitive(enabled)
         if hasattr(self, "live_test_button"):
@@ -328,10 +345,9 @@ class ServerConfigurationWindow(Gtk.Window):
         self.access_code.set_text(config.get("accessKey", ""))
         for key, entry in self.fields.items():
             entry.set_text(str(credentials.get(key, "")))
-        policy = config.get("liveWsPolicy")
-        if policy not in ("on-demand", "always", "rest"):
-            policy = "rest" if credentials.get("foxLiveMode") == "rest" else "on-demand"
-        self.live_mode.set_active_id(policy)
+        self.live_enabled.set_active(
+            config.get("liveWsEnabled", credentials.get("foxLiveMode") != "rest")
+        )
         self.config_loaded = True
         self.config_refresh_in_progress = False
         self.refresh_button.set_sensitive(True)
@@ -372,13 +388,13 @@ class ServerConfigurationWindow(Gtk.Window):
         return {
             "accessRequired": self.access_required.get_active(),
             "accessKey": self.access_code.get_text().strip(),
-            "liveWsPolicy": self.live_mode.get_active_id() or "on-demand",
+            "liveWsEnabled": self.live_enabled.get_active(),
             "credentials": {
                 "acc": self.fields["acc"].get_text().strip(),
                 "api": self.fields["api"].get_text().strip(),
                 "foxSN": self.fields["foxSN"].get_text().strip(),
                 "foxToken": self.fields["foxToken"].get_text().strip(),
-                "foxLiveMode": "rest" if self.live_mode.get_active_id() == "rest" else "live-ws",
+                "foxLiveMode": "live-ws" if self.live_enabled.get_active() else "rest",
                 "foxWebUsername": self.fields["foxWebUsername"].get_text().strip(),
                 "foxWebPassword": self.fields["foxWebPassword"].get_text(),
                 "gasUrl": "/api/foxess",
@@ -430,21 +446,17 @@ class ServerConfigurationWindow(Gtk.Window):
         return True
 
     def test_live_connection(self, _button):
-        policy = self.live_mode.get_active_id() or "on-demand"
-        self.save_configuration(
-            quiet=True,
-            after_save=lambda: self.start_live_connection_test(policy),
-        )
-
-    def start_live_connection_test(self, policy):
-        if policy == "rest":
-            self.set_operation_busy(False)
+        if not self.live_enabled.get_active():
             self.message.set_markup(
-                "<span foreground='#047857'>Configuration saved. Official REST is selected, "
-                "so no Live WS test is needed.</span>"
+                "<span foreground='#b45309'>Enable Live WS and enter the FoxESS web-login credentials first.</span>"
             )
             return
+        self.save_configuration(
+            quiet=True,
+            after_save=self.start_live_connection_test,
+        )
 
+    def start_live_connection_test(self):
         self.message.set_text(
             "Testing one fresh FoxESS Live WS frame now… "
             "The window remains usable while the check runs."
@@ -453,13 +465,13 @@ class ServerConfigurationWindow(Gtk.Window):
         def tested(status):
             self.set_operation_busy(False)
             if status.get("source") == "live-ws" and status.get("state") == "live":
-                if policy == "on-demand":
+                if status.get("policy") == "on-demand":
                     message = (
                         "Live WS test successful. The temporary test connection is closed; "
                         "official REST remains active until a dynamic charge starts."
                     )
                 else:
-                    message = "Live WS test successful and always-live updates are active."
+                    message = "Live WS test successful. The dashboard's selected telemetry policy remains active."
                 self.message.set_markup(f"<span foreground='#047857'>{message}</span>")
             else:
                 detail = status.get("lastError") or status.get("reason") or "connection unavailable"

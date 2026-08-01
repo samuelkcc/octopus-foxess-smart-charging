@@ -64,8 +64,8 @@ assert.match(markupSource, /class="input-group pi-config-only"/);
 assert.match(markupSource, /id="octopus-account-toggle"/);
 assert.match(markupSource, /rel="apple-touch-icon"/);
 assert.match(markupSource, /rel="manifest"/);
-assert.match(markupSource, /styles\.css\?v=2026\.8\.1/);
-assert.match(markupSource, /app\.js\?v=2026\.8\.1/);
+assert.match(markupSource, /styles\.css\?v=2026\.8\.1\.1/);
+assert.match(markupSource, /app\.js\?v=2026\.8\.1\.1/);
 assert.match(stylesSource, /\.linux-runtime \.pi-config-only \{ display: none !important; \}/);
 assert.match(stylesSource, /\.account-number-row \.account-secret-control \.val \{ max-width: none; white-space: nowrap/);
 assert.match(appSource, /LINUX_OCTOPUS_ENDPOINT = '\/api\/octopus'/);
@@ -75,10 +75,12 @@ assert.match(appSource, /octopusFoxessDashboardAccessCode/);
 assert.match(appSource, /localStorage\.setItem\(LINUX_ACCESS_STORAGE_KEY, key\)/);
 assert.match(appSource, /function removeSavedAccessCode/);
 assert.match(appSource, /function renderProtectionOverview/);
+assert.match(appSource, /function formatTelemetryNumber/);
 assert.match(appSource, /async function updateLinuxLiveDemand/);
 assert.match(appSource, /const credentials = window\.linuxRuntime\s*\?\s*activeCredentials/);
 assert.match(appSource, /OPEN DASHBOARD/);
 assert.match(await readFile(path.join(root, 'linux', 'server.mjs'), 'utf8'), /function getClientState\(state\)/);
+assert.match(await readFile(path.join(root, 'linux', 'server.mjs'), 'utf8'), /function isLiveWsEnabled\(state/);
 assert.match(await readFile(path.join(root, 'linux', 'server.mjs'), 'utf8'), /api: credentials\.api \? 'pi-managed' : ''/);
 assert.match(await readFile(path.join(root, 'linux', 'server.mjs'), 'utf8'), /Service credentials can only be changed from the Raspberry Pi Settings app/);
 assert.match(await readFile(path.join(root, 'linux', 'server.mjs'), 'utf8'), /async function proxyOctopusRequest/);
@@ -109,12 +111,15 @@ assert.match(traySource, /FoxESS REST/);
 assert.match(traySource, /FoxESS Live WS/);
 assert.match(traySource, /live\.get\("state"\) in \("connected", "live"\)/);
 assert.match(traySource, /LAN access code/);
-assert.match(traySource, /Require an access code from Mobile \/ LAN dashboard clients/);
+assert.match(traySource, /Require Dashboard Access Code/);
 assert.match(traySource, /Octopus account/);
 assert.match(traySource, /FoxESS web-login email/);
 assert.match(traySource, /Save & Test Live WS/);
-assert.match(traySource, /Live WS on demand \(REST normally\)/);
-assert.match(traySource, /Always Live WebSocket \(REST fallback\)/);
+assert.match(traySource, /Enable FoxESS Live WS telemetry/);
+assert.match(traySource, /set_default_size\(980, 620\)/);
+assert.match(traySource, /Gtk\.Revealer/);
+assert.doesNotMatch(traySource, /Gtk\.ScrolledWindow/);
+assert.doesNotMatch(traySource, /Gtk\.ComboBoxText/);
 assert.match(traySource, /run_in_background/);
 assert.match(traySource, /On-demand standby · official REST active/);
 assert.doesNotMatch(traySource, /Integration Settings/);
@@ -222,7 +227,7 @@ try {
     body: JSON.stringify({
       accessRequired: true,
       accessKey: changedAccessKey,
-      liveWsPolicy: 'on-demand',
+      liveWsEnabled: true,
       credentials
     })
   });
@@ -247,6 +252,7 @@ try {
   const nativeConfig = await fetch(`http://127.0.0.1:${port}/api/native-config`).then(response => response.json());
   assert.equal(nativeConfig.accessRequired, true);
   assert.equal(nativeConfig.accessKey, changedAccessKey);
+  assert.equal(nativeConfig.liveWsEnabled, true);
   assert.equal(nativeConfig.liveWsPolicy, 'on-demand');
   assert.deepEqual(nativeConfig.credentials, credentials);
 
@@ -257,6 +263,7 @@ try {
   assert.equal(workerState.credentials.foxToken, 'pi-managed');
   assert.equal(workerState.automations.dispatchCheck, true);
   assert.equal(workerState.liveWsDemandActive, true);
+  assert.equal(workerState.liveWsEnabled, true);
   assert.equal(workerState.liveWsPolicy, 'on-demand');
   assert.equal(workerState.liveWsOnDemand, true);
   assert.equal(typeof workerState.revision, 'number');
@@ -293,7 +300,42 @@ try {
   }).then(response => response.json());
   assert.equal(clientState.credentials.api, 'pi-managed');
   assert.equal(clientState.credentials.foxToken, 'pi-managed');
+  assert.equal(clientState.liveWsEnabled, true);
   assert.equal(clientState.liveWsPolicy, 'on-demand');
+
+  const disableLiveResponse = await fetch(`http://127.0.0.1:${port}/api/native-config`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      accessRequired: true,
+      accessKey: changedAccessKey,
+      liveWsEnabled: false,
+      credentials
+    })
+  });
+  assert.equal(disableLiveResponse.status, 200);
+  const disabledLiveState = await fetch(`http://127.0.0.1:${port}/api/config`, {
+    headers: { Referer: `http://127.0.0.1:${port}/?worker=1` }
+  }).then(response => response.json());
+  assert.equal(disabledLiveState.liveWsEnabled, false);
+  assert.equal(disabledLiveState.liveWsPolicy, 'rest');
+  const rejectedDisabledLivePolicy = await fetch(`http://127.0.0.1:${port}/api/config`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ liveWsPolicy: 'always' })
+  });
+  assert.equal(rejectedDisabledLivePolicy.status, 409);
+  const enableLiveResponse = await fetch(`http://127.0.0.1:${port}/api/native-config`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      accessRequired: true,
+      accessKey: changedAccessKey,
+      liveWsEnabled: true,
+      credentials
+    })
+  });
+  assert.equal(enableLiveResponse.status, 200);
 
   const encryptedFile = await readFile(path.join(stateRoot, 'config.enc'), 'utf8');
   assert.doesNotMatch(encryptedFile, /sk_live_test|fox-test|A-TEST/);

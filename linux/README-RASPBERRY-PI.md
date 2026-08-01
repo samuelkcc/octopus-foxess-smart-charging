@@ -20,13 +20,13 @@ fallback state, and red indicates a configuration or connection problem.
 
 Choose **Server Configuration…** from the taskbar menu to view the LAN listen
 address, enable or disable LAN access-code protection, enter the Octopus/FoxESS
-credentials, select **Live WS on demand**, **Always Live WebSocket**, or
-**Official REST API only**, and inspect all integration states. This native
-window is the only Pi integration editor; the browser dashboard never displays
-service credentials.
+credentials, enable optional Live WS access, and inspect all integration
+states. Enabling Live WS reveals the FoxESS web-login fields. This compact
+native window is the only Pi integration editor; the browser dashboard never
+displays service credentials.
 
-The Pi settings app provides the FoxESS credentials and REST/live capability.
-The dashboard menu and native Server Configuration both expose the same three
+The Pi settings app provides the FoxESS credentials and enables or disables the
+Live WS capability. Once enabled, the dashboard menu selects one of three
 telemetry policies:
 
 - **Live WS on demand** opens the WebSocket only while an Octopus dynamic
@@ -39,8 +39,8 @@ Leaving either Live WS credential empty automatically uses REST. While an
 active dynamic charge keeps Live WS connected, the Pi subscribes once to the
 approximately five-second telemetry stream and keeps the transport alive with a
 protocol heartbeat. It also reuses the current web-session token for up to 12
-hours instead of logging in again on every reconnect. The **Save & Test Live WS
-now** button can explicitly test one
+hours instead of logging in again on every reconnect. The **Save & Test Live
+WS** button can explicitly test one
 fresh frame outside a charge window. This diagnostic creates a FoxESS web login
 and may sign the FoxESS mobile app out; merely opening or refreshing Server
 Configuration does not perform that login. A successful on-demand test closes

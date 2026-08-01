@@ -326,6 +326,34 @@ assert.equal(alwaysStatus.source, 'live-ws');
 assert.equal(alwaysStatus.demandActive, false);
 alwaysService.stop();
 
+const enabledRestPolicyService = new FoxessLiveTelemetry({
+  loadState: async () => ({
+    liveWsPolicy: FOX_LIVE_POLICY_REST,
+    credentials: {
+      foxSN: 'SN-REST-TEST',
+      foxToken: 'TOKEN-REST-TEST',
+      foxLiveMode: FOX_LIVE_MODE,
+      foxWebUsername: 'user@example.test',
+      foxWebPassword: 'secret-password'
+    }
+  }),
+  foxOpenApiJson: async (_state, path) => {
+    assert.equal(path, '/op/v0/plant/list');
+    return { errno: 0, result: { data: [{ stationID: 'PLANT-REST-TEST' }] } };
+  },
+  fetchImpl: async () => ({
+    ok: true,
+    status: 200,
+    json: async () => ({ errno: 0, result: { token: 'WEB-TOKEN' } })
+  }),
+  WebSocketImpl: FakeWebSocket,
+  logger: { warn() {} }
+});
+const enabledRestPolicyTest = await enabledRestPolicyService.selfTest();
+assert.equal(enabledRestPolicyTest.source, 'live-ws', 'Native self-test must work while the client policy is REST-only');
+assert.equal(enabledRestPolicyService.getPublicStatus().state, 'rest-only');
+enabledRestPolicyService.stop();
+
 const restOnlyService = new FoxessLiveTelemetry({
   loadState: async () => ({
     credentials: {

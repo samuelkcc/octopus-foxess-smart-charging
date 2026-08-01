@@ -28,6 +28,7 @@ window.linuxRole = 'web';
 window.linuxAuthRequired = false;
 window.linuxAccessRequired = true;
 window.linuxLocalConfiguration = false;
+window.linuxLiveWsEnabled = false;
 window.linuxRevision = null;
 
 function escapeHtml(value) {
@@ -37,6 +38,12 @@ function escapeHtml(value) {
         .replaceAll('>', '&gt;')
         .replaceAll('"', '&quot;')
         .replaceAll("'", '&#039;');
+}
+
+function formatTelemetryNumber(value) {
+    if (value === undefined || value === null || value === '') return '--';
+    const number = Number(value);
+    return Number.isFinite(number) ? number.toFixed(2) : '--';
 }
 
 function showToast(message) {
@@ -256,16 +263,27 @@ async function updateLinuxLiveDemand(dispatches = []) {
 function renderLiveWsMenuState(state = {}, status = null) {
     const selector = document.getElementById('live-ws-policy');
     const label = document.getElementById('live-ws-policy-state');
-    const policy = status?.policy
+    if (typeof state.liveWsEnabled === 'boolean') {
+        window.linuxLiveWsEnabled = state.liveWsEnabled;
+    }
+    const liveWsEnabled = window.linuxLiveWsEnabled;
+    const selectedPolicy = status?.policy
         || state.liveWsPolicy
         || (state.liveWsOnDemand === false ? 'rest' : 'on-demand');
-    const enabled = policy !== 'rest';
+    const policy = liveWsEnabled ? selectedPolicy : 'rest';
     if (selector) {
+        selector.querySelectorAll('option[value="on-demand"], option[value="always"]')
+            .forEach(option => { option.disabled = !liveWsEnabled; });
         selector.value = policy;
         selector.dataset.savedPolicy = policy;
+        selector.title = liveWsEnabled
+            ? 'Choose how this client asks the Pi to obtain FoxESS telemetry.'
+            : 'Enable Live WS in the Pi Server Configuration window to use a live mode.';
     }
     if (!label) return;
-    if (!enabled) {
+    if (!liveWsEnabled) {
+        label.textContent = 'Live WS disabled in Server Configuration · official REST only';
+    } else if (policy === 'rest') {
         label.textContent = 'Off · official REST only';
     } else if (status?.source === 'live-ws' && status?.state === 'live') {
         label.textContent = policy === 'always'
@@ -282,6 +300,11 @@ async function setLiveWsPolicy(policy) {
     const selector = document.getElementById('live-ws-policy');
     const previousPolicy = selector?.dataset.savedPolicy || 'on-demand';
     if (!['on-demand', 'always', 'rest'].includes(policy)) return;
+    if (policy !== 'rest' && !window.linuxLiveWsEnabled) {
+        if (selector) selector.value = 'rest';
+        showToast('Enable Live WS and enter the FoxESS web-login credentials in Pi Server Configuration first.');
+        return;
+    }
     if (selector) selector.disabled = true;
     try {
         await updateLinuxState({ liveWsPolicy: policy });
@@ -291,7 +314,7 @@ async function setLiveWsPolicy(policy) {
         renderFoxLiveStatus(status);
         renderProtectionOverview();
         showToast(policy !== 'rest' && status.mode === 'rest'
-            ? 'The Pi Server Configuration is set to official REST. Enable Live WS credentials there before selecting a Live WS mode.'
+            ? 'Live WS is disabled in Pi Server Configuration. Enable it there before selecting a live mode.'
             : (policy === 'always'
                 ? 'Always Live WS selected. Official REST remains available as automatic fallback.'
                 : (policy === 'on-demand'
@@ -1497,7 +1520,7 @@ function updateModeBadge(mode, soc = null) {
     if (mode === 'SelfUse') text = 'SELF-USE';
     else if (mode === 'ForceCharge') text = 'FORCED CHARGE';
     
-    if (soc !== null) text += ` | ${soc}%`;
+    if (soc !== null) text += ` | ${formatTelemetryNumber(soc)}%`;
     modeBadge.textContent = text;
     
     if (mode === 'ForceCharge') modeBadge.className = 'badge live';
@@ -1571,16 +1594,23 @@ function renderProtectionOverview(now = new Date()) {
     const telemetry = window.lastFoxTelemetry || {};
     const setMetric = (id, value, suffix = '') => {
         const element = document.getElementById(id);
-        if (element) element.textContent = value === undefined || value === null ? '--' : `${value}${suffix}`;
+        if (element) {
+            const formatted = formatTelemetryNumber(value);
+            element.textContent = formatted === '--' ? '--' : `${formatted}${suffix}`;
+        }
     };
     setMetric('overview-solar-power', telemetry.pvPower, ' kW');
     setMetric('overview-home-load', telemetry.loadsPower, ' kW');
     const gridImport = Number(telemetry.gridConsumptionPower || 0);
     const gridExport = Number(telemetry.feedinPower || 0);
-    setMetric('overview-grid-power', gridImport > 0 ? `${gridImport} kW import` : (gridExport > 0 ? `${gridExport} kW export` : '--'));
+    const gridPower = gridImport > 0 ? gridImport : (gridExport > 0 ? gridExport : null);
+    const gridDirection = gridImport > 0 ? ' import' : (gridExport > 0 ? ' export' : '');
+    setMetric('overview-grid-power', gridPower, ` kW${gridDirection}`);
     const batteryCharge = Number(telemetry.batChargePower || 0);
     const batteryDischarge = Number(telemetry.batDischargePower || 0);
-    setMetric('overview-battery-power', batteryCharge > 0 ? `${batteryCharge} kW charge` : (batteryDischarge > 0 ? `${batteryDischarge} kW discharge` : '--'));
+    const batteryPower = batteryCharge > 0 ? batteryCharge : (batteryDischarge > 0 ? batteryDischarge : null);
+    const batteryDirection = batteryCharge > 0 ? ' charge' : (batteryDischarge > 0 ? ' discharge' : '');
+    setMetric('overview-battery-power', batteryPower, ` kW${batteryDirection}`);
     setMetric('overview-battery-soc', telemetry.SoC, '%');
 }
 

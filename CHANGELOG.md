@@ -1,5 +1,17 @@
 # Changelog
 
+## v2026.08.01.1 — 2026-08-01
+
+- Format every dashboard telemetry value to two decimal places.
+- Replace the vertically scrolling native Pi configuration window with a
+  compact two-column layout that fits in one 980 × 620 popup.
+- Replace the native telemetry-policy selector with a single **Enable FoxESS
+  Live WS telemetry** toggle that reveals the FoxESS web-login fields.
+- Make the dashboard menu the convenient place to select **Live WS on demand**,
+  **Always Live WS (REST fallback)**, or **Official REST only**.
+- Prevent clients from selecting a Live WS policy until it has been enabled in
+  native Server Configuration.
+
 ## v2026.08.01 — 2026-08-01
 
 - Replaced the Mobile / LAN dashboard's binary Live WS switch with explicit
