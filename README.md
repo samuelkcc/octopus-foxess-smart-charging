@@ -8,6 +8,13 @@ Protect a FoxESS home battery from discharging into an EV during Intelligent
 Octopus Go charging slots. The app follows Octopus dispatches and electricity
 prices, then manages the FoxESS schedule automatically.
 
+## Use the web version now
+
+### [▶ Open the live web app](https://samuelkcc.github.io/octopus-foxess-smart-charging/)
+
+No installation is required. Open it in a modern browser and follow the
+[web-edition setup instructions](#web-edition).
+
 ![Smart Charging Detector Dashboard](Dashboard.png)
 
 ## Choose your edition
