@@ -8,6 +8,11 @@
 - Adds the new Raspberry Pi Server Configuration screenshot to the README as a
   visual setup reference.
 
+### Improved
+
+- Uses the low-profile developer identity **SCKC** in the web and Raspberry Pi
+  editions while retaining the `samuelchen.hk` copyright notice.
+
 ### Deployment
 
 - Preserves encrypted credentials, automation preferences, and the Dashboard

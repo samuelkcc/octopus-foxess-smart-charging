@@ -2,6 +2,8 @@
 
 ## v2026.08.01.2 — 2026-08-01
 
+- Use the low-profile developer identity **SCKC** in the web and Raspberry Pi
+  editions while retaining the `samuelchen.hk` copyright notice.
 - Add **Update Raspberry Pi Edition** to native Server Configuration, using the
   standard graphical administrator prompt so future updates need no terminal
   command.
