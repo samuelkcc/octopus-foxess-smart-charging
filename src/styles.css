@@ -176,13 +176,19 @@
         .menu-setting-row label { margin: 0; color: var(--text-main); font-size: 0.86rem; }
         .menu-setting-row select { width: 100%; min-height: 44px; padding: 0.65rem 0.75rem; border: 1px solid var(--border); border-radius: 8px; background: var(--card-bg); color: var(--text-main); font-size: 0.86rem; }
         .menu-setting-row small { display: block; color: var(--text-muted); font-size: 0.68rem; line-height: 1.35; }
+        .menu-visibility-settings { margin: 0; padding: 0.85rem; border: 1px solid var(--border); border-radius: 8px; background: var(--card-bg); }
+        .menu-visibility-settings legend { padding: 0 0.35rem; color: var(--text-main); font-size: 0.78rem; font-weight: 700; }
+        .menu-visibility-settings label { display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; padding: 0.38rem 0; color: var(--text-main); font-size: 0.8rem; }
+        .menu-visibility-settings input { flex: 0 0 auto; }
+        .menu-visibility-settings small { display: block; margin-top: 0.45rem; color: var(--text-muted); font-size: 0.68rem; line-height: 1.4; }
+        .dashboard-section-hidden { display: none !important; }
         .remove-access-button { padding: 0.85rem; border: 1px dashed #ef4444; background: transparent; color: #ef4444; font-size: 0.88rem; text-align: left; }
         
         .card { background: var(--card-bg); padding: 1.5rem; border-radius: 16px; box-shadow: var(--card-shadow); border: 1px solid var(--border); display: flex; flex-direction: column; }
         .card-header { font-size: 1.1rem; font-weight: 700; margin-bottom: 1.5rem; border-bottom: 1px solid var(--border); padding-bottom: 1rem; display: flex; justify-content: space-between; align-items: center; color: var(--text-main); }
         
-        .summary-grid { display: flex; flex-direction: column; gap: 1.5rem; align-items: stretch; }
-        .price-display { padding: 1rem; background: #f8fafc; border-radius: 12px; border: 1px solid var(--border); }
+        .summary-grid { display: flex; flex-direction: column; gap: 1.5rem; align-items: stretch; min-width: 0; max-width: 100%; }
+        .price-display { min-width: 0; max-width: 100%; padding: 1rem; background: #f8fafc; border-radius: 12px; border: 1px solid var(--border); box-sizing: border-box; }
         .current-price { font-size: 4rem; font-weight: 900; line-height: 1; margin: 1rem 0; color: var(--text-main); letter-spacing: -1px; }
 
         .tariff-live-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.85rem; margin-bottom: 1rem; text-align: left; }
@@ -197,15 +203,16 @@
         .tariff-live-unit { margin-top: 0.4rem; color: var(--text-muted); font-size: 0.72rem; }
         .tariff-live-note { margin-top: 0.65rem; color: var(--text-muted); font-size: 0.72rem; }
 
-        .tariff-chart-stack { display: grid; gap: 0.9rem; }
-        .tariff-chart-panel { padding: 1rem; border: 1px solid var(--border); border-radius: 12px; background: var(--card-bg); }
+        .tariff-chart-stack { display: grid; min-width: 0; max-width: 100%; gap: 0.9rem; }
+        .tariff-chart-panel { min-width: 0; max-width: 100%; overflow: hidden; padding: 1rem; border: 1px solid var(--border); border-radius: 12px; background: var(--card-bg); box-sizing: border-box; }
         .tariff-chart-import { border-top: 3px solid #10b981; }
         .tariff-chart-export { border-top: 3px solid #3b82f6; }
         .tariff-chart-heading { display: flex; justify-content: space-between; align-items: center; gap: 1rem; margin-bottom: 0.65rem; text-align: left; }
         .tariff-chart-heading h4 { margin: 0.1rem 0 0; color: var(--text-main); font-size: 0.92rem; }
         .tariff-chart-kicker { color: var(--text-muted); font-size: 0.62rem; font-weight: 800; letter-spacing: 0.12em; }
         .tariff-chart-source { flex-shrink: 0; padding: 0.25rem 0.5rem; border-radius: 999px; background: rgba(148, 163, 184, 0.12); color: var(--text-muted); font-size: 0.62rem; font-weight: 700; }
-        .tariff-chart-frame { position: relative; width: 100%; height: 155px; }
+        .tariff-chart-frame { position: relative; width: 100%; min-width: 0; max-width: 100%; height: 155px; overflow: hidden; contain: inline-size; }
+        .tariff-chart-frame canvas { display: block; width: 100% !important; max-width: 100% !important; height: 100% !important; }
         .tariff-chart-empty { position: absolute; inset: 0; display: none; place-items: center; padding: 1rem; color: var(--text-muted); font-size: 0.78rem; text-align: center; border: 1px dashed var(--border); border-radius: 8px; }
         
         .badge { display: inline-flex; align-items: center; padding: 0.35rem 0.8rem; border-radius: 999px; font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; white-space: nowrap; }
@@ -240,6 +247,33 @@
         .rule-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem; }
         .rule-title { font-weight: 600; color: #1e293b; display: flex; align-items: center; gap: 8px; font-size: 0.95rem; }
         .indicator-dot { display: none; color: var(--fox-green); font-size: 1.2rem; line-height: 0; }
+
+        .smart-discharge-block { background: rgba(59, 130, 246, 0.06); border-color: rgba(59, 130, 246, 0.3); }
+        .smart-discharge-title { display: flex; align-items: center; gap: 0.5rem; }
+        .automation-guidance { margin: 0 0 1rem; color: var(--text-muted); font-size: 0.78rem; line-height: 1.5; }
+        .automation-rule-section { padding: 1rem 0; border-top: 1px dashed var(--border); }
+        .automation-rule-section:first-of-type { padding-top: 0; border-top: 0; }
+        .automation-help { display: block; margin-top: 0.25rem; color: var(--text-muted); font-size: 0.7rem; line-height: 1.4; }
+        .automation-inline-control { display: flex; align-items: center; gap: 0.5rem; color: var(--text-muted); font-size: 0.8rem; }
+        .automation-inline-control input { width: 6.5rem; margin: 0; }
+        .automation-preview { min-height: 1rem; margin-top: 0.55rem; color: var(--text-muted); font-size: 0.72rem; line-height: 1.4; }
+        .automation-time-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.75rem; margin-top: 0.75rem; }
+        .automation-time-grid label { display: block; margin-bottom: 0.25rem; color: var(--text-muted); font-size: 0.72rem; }
+        .automation-time-grid input { width: 100%; margin: 0; box-sizing: border-box; }
+        .automation-day-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0.4rem; margin-top: 0.75rem; }
+        .automation-day-grid label { display: flex; align-items: center; gap: 0.25rem; color: var(--text-muted); font-size: 0.7rem; }
+        .automation-safeguards .rule-row { gap: 1rem; padding: 0.65rem 0; margin: 0; border-bottom: 1px dashed var(--border); }
+        .automation-safeguards .rule-row:last-child { border-bottom: 0; }
+        .automation-limit-note { margin-bottom: 1rem; padding: 0.75rem; border: 1px solid #fbbf24; border-radius: 8px; background: #fffbeb; color: #92400e; font-size: 0.7rem; line-height: 1.45; }
+        [data-theme="dark"] .smart-discharge-block { background: rgba(59, 130, 246, 0.08); }
+        [data-theme="dark"] .automation-limit-note { background: rgba(245, 158, 11, 0.08); color: #fbbf24; border-color: #92400e; }
+
+        @media (max-width: 1100px) {
+            .dashboard { grid-template-columns: 1fr; }
+            .energy-overview-card { grid-column: auto; order: -2; }
+            .dashboard-column-primary { order: -1; }
+            .dashboard-column-secondary { order: 1; }
+        }
 
         @media (max-width: 768px) {
             .dashboard { grid-template-columns: 1fr; }
@@ -286,6 +320,8 @@
             .tariff-chart-frame { height: 190px; }
             .automation-block { padding: 1rem; }
             .rule-row { gap: 0.75rem; }
+            .automation-inline-control { width: 100%; justify-content: space-between; }
+            .automation-day-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
             .app-footer { flex-direction: column; gap: 0.25rem; text-align: center; padding-bottom: max(0.25rem, env(safe-area-inset-bottom)); }
             .app-footer > div { text-align: center !important; }
             #app-toast-notification { left: max(12px, env(safe-area-inset-left)); right: max(12px, env(safe-area-inset-right)); bottom: max(12px, env(safe-area-inset-bottom)); max-width: none !important; }

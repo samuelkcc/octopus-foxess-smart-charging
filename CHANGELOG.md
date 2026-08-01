@@ -1,5 +1,21 @@
 # Changelog
 
+## Unreleased
+
+- Fix tariff charts escaping their dashboard column when the browser becomes
+  narrow; the layout now stacks earlier and explicitly resizes both canvases.
+- Split SEG export-price discharging into a hidden-by-default **Smart
+  Discharging Automation** block and add a weekly Forced Discharge schedule.
+- Add default-on safeguards that pause discharging during Smart Dispatch and
+  remove overlapping ordinary Forced Charge periods while discharging is
+  active.
+- Add Menu visibility controls for Intelligent Octopus Go, FoxESS Mode
+  Selector, Device & Settings, Smart Charging Automations, and Smart
+  Discharging Automation.
+- Clarify that Auto-Resume only ends target-price or weekly charging and cannot
+  cancel an active Smart Dispatch.
+- Remove the Mini HUD.
+
 ## v2026.08.01.2 — 2026-08-01
 
 - Use a single-line **SCKC** developer and copyright credit in the web and

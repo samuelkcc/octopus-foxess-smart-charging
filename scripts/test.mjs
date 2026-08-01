@@ -38,12 +38,15 @@ const utilities = new Function(`
   ${extractFunction('getProductCodeFromTariffCode')}
   ${extractFunction('getRateAtTime')}
   ${extractFunction('getTariffSlotsForDate')}
+  ${extractFunction('getWeeklyModePeriods')}
   ${extractFunction('getWeeklyForcedChargePeriods')}
+  ${extractFunction('getWeeklyForcedDischargePeriods')}
+  ${extractFunction('resolveAutomationMinute')}
   ${extractFunction('buildScheduleGroupsFromTimeline')}
   ${extractFunction('getAutoResumeSource')}
   ${extractFunction('getAutoResumeUntil')}
   ${extractFunction('isScheduleMinuteSuppressed')}
-  return { window, isFoxScheduleActiveAt, getActiveFoxScheduleAt, getEffectiveFoxWorkMode, scheduleFingerprint, prepareFoxSchedulePayload, getActiveAgreement, selectActiveElectricityTariffs, getProductCodeFromTariffCode, getRateAtTime, getTariffSlotsForDate, getWeeklyForcedChargePeriods, buildScheduleGroupsFromTimeline, getAutoResumeSource, getAutoResumeUntil, isScheduleMinuteSuppressed };
+  return { window, isFoxScheduleActiveAt, getActiveFoxScheduleAt, getEffectiveFoxWorkMode, scheduleFingerprint, prepareFoxSchedulePayload, getActiveAgreement, selectActiveElectricityTariffs, getProductCodeFromTariffCode, getRateAtTime, getTariffSlotsForDate, getWeeklyForcedChargePeriods, getWeeklyForcedDischargePeriods, resolveAutomationMinute, buildScheduleGroupsFromTimeline, getAutoResumeSource, getAutoResumeUntil, isScheduleMinuteSuppressed };
 `)();
 
 const tariffNow = new Date('2026-07-26T12:00:00Z');
@@ -189,6 +192,54 @@ assert.deepEqual(
 );
 assert.deepEqual(utilities.getWeeklyForcedChargePeriods({ enabled: true, startTime: '05:30', endTime: '05:30', days: [1] }, new Date(2026, 6, 20, 12, 0)), []);
 
+const dischargeOvernight = utilities.getWeeklyForcedDischargePeriods({
+  enabled: true,
+  startTime: '23:30',
+  endTime: '05:30',
+  days: [2, 3]
+}, new Date(2026, 6, 22, 12, 0), 12);
+assert.deepEqual(
+  dischargeOvernight.map(period => [period.startHour, period.startMinute, period.endHour, period.endMinute, period.workMode, period.extraParam.fdSoc]),
+  [[0, 0, 5, 30, 'ForceDischarge', 12], [23, 30, 23, 59, 'ForceDischarge', 12]],
+  'Scheduled discharging must support the same overnight split and minimum SOC limit as charging'
+);
+
+const dispatchMinute = { workMode: 'ForceCharge', finalFdSoc: 80, source: 'dispatch' };
+const priceChargeMinute = { workMode: 'ForceCharge', finalFdSoc: 80, source: 'price' };
+const dischargeMinute = { workMode: 'ForceDischarge', finalFdSoc: 11, source: 'export' };
+assert.equal(
+  utilities.resolveAutomationMinute(dispatchMinute, dischargeMinute, {
+    pauseDischargeDuringDispatch: true,
+    disableForcedChargeDuringDischarge: true
+  }),
+  dispatchMinute,
+  'Smart Dispatch must win while the default discharge pause safeguard is enabled'
+);
+assert.equal(
+  utilities.resolveAutomationMinute(priceChargeMinute, dischargeMinute, {
+    pauseDischargeDuringDispatch: true,
+    disableForcedChargeDuringDischarge: true
+  }),
+  dischargeMinute,
+  'Discharging must replace an ordinary forced-charge minute when its default conflict safeguard is enabled'
+);
+assert.equal(
+  utilities.resolveAutomationMinute(priceChargeMinute, dischargeMinute, {
+    pauseDischargeDuringDispatch: true,
+    disableForcedChargeDuringDischarge: false
+  }),
+  priceChargeMinute,
+  'Forced charging must win when the user turns off the discharge-overrides-charge safeguard'
+);
+assert.equal(
+  utilities.resolveAutomationMinute(dispatchMinute, dischargeMinute, {
+    pauseDischargeDuringDispatch: false,
+    disableForcedChargeDuringDischarge: true
+  }),
+  dischargeMinute,
+  'Discharging may replace Smart Dispatch only after the user explicitly disables dispatch protection'
+);
+
 const mergedTimeline = new Array(1440).fill(null);
 for (let minute = 0; minute < 330; minute++) {
   mergedTimeline[minute] = {
@@ -207,6 +258,7 @@ assert.equal(mergedGroups[0].extraParam.schSource, 'weekly', 'The base weekly so
 
 assert.equal(utilities.getAutoResumeSource(['weekly'], false), 'weekly');
 assert.equal(utilities.getAutoResumeSource(['price'], false), 'price');
+assert.equal(utilities.getAutoResumeSource(['dispatch'], false), null, 'A completed Smart Dispatch must naturally return to the base mode rather than create an Auto-Resume lock');
 assert.equal(utilities.getAutoResumeSource(['weekly', 'dispatch'], true), null, 'Auto-Resume must not cancel an active Smart Dispatch');
 const weeklyConfig = { enabled: true, startTime: '23:30', endTime: '05:30', days: [3] };
 const overnightResumeUntil = utilities.getAutoResumeUntil('weekly', mergedGroups[0], new Date(2026, 6, 22, 23, 45), weeklyConfig);
@@ -221,7 +273,10 @@ assert.match(source, /if \(refreshTimerId !== null\) clearInterval\(refreshTimer
 assert.match(source, /async function fetchJson/);
 assert.match(source, /dispatchActiveNow/, 'Auto-Resume must not cancel an active Smart Dispatch');
 assert.match(source, /if \(isAutoPrice && window\.importRates\?\.length\)/, 'Target-price charging must use import rates');
-assert.match(source, /if \(isAutoPrice && isAutoExport && window\.exportRates\?\.length\)/, 'Price export must use export rates');
+assert.match(source, /if \(isAutoExport && window\.exportRates\?\.length\)/, 'Price-based discharging must run independently and use export rates');
+assert.match(source, /getWeeklyForcedDischargePeriods/, 'Smart Discharging must support a weekly schedule');
+assert.match(source, /pauseDischargeDuringDispatch/, 'Smart Discharging must provide explicit Smart Dispatch conflict protection');
+assert.match(source, /disableForcedChargeDuringDischarge/, 'Smart Discharging must provide explicit Forced Charge conflict protection');
 assert.match(source, /label: 'Import tariff'/, 'The import chart must label the import tariff');
 assert.match(source, /label: 'Export tariff'/, 'The export chart must label the export tariff');
 assert.match(source, /data: exportDataPoints/, 'The price chart must plot export rates independently');

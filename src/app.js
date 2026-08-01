@@ -22,6 +22,21 @@ const LINUX_CONFIG_ENDPOINT = '/api/config';
 const LINUX_OCTOPUS_ENDPOINT = '/api/octopus';
 const LINUX_FOX_LIVE_ENDPOINT = '/api/foxess/live';
 const LINUX_ACCESS_STORAGE_KEY = 'octopusFoxessDashboardAccessCode';
+const DASHBOARD_SECTION_VISIBILITY_KEY = 'dashboardSectionVisibilityV1';
+const DASHBOARD_SECTION_IDS = {
+    intelligentOctopus: 'section-intelligent-octopus',
+    foxessMode: 'section-foxess-mode',
+    deviceSettings: 'section-device-settings',
+    smartCharging: 'section-smart-charging',
+    smartDischarging: 'section-smart-discharging'
+};
+const DEFAULT_DASHBOARD_SECTION_VISIBILITY = {
+    intelligentOctopus: true,
+    foxessMode: true,
+    deviceSettings: true,
+    smartCharging: true,
+    smartDischarging: false
+};
 
 window.linuxRuntime = false;
 window.linuxRole = 'web';
@@ -44,6 +59,64 @@ function formatTelemetryNumber(value) {
     if (value === undefined || value === null || value === '') return '--';
     const number = Number(value);
     return Number.isFinite(number) ? number.toFixed(2) : '--';
+}
+
+function readStoredJson(key, fallback = {}) {
+    try {
+        return JSON.parse(localStorage.getItem(key) || JSON.stringify(fallback));
+    } catch (error) {
+        console.warn(`Ignoring invalid saved ${key} data.`, error);
+        return { ...fallback };
+    }
+}
+
+function schedulePriceChartResize() {
+    if (window.priceChartResizeFrame) cancelAnimationFrame(window.priceChartResizeFrame);
+    window.priceChartResizeFrame = requestAnimationFrame(() => {
+        importPriceChartInst?.resize();
+        exportPriceChartInst?.resize();
+        window.priceChartResizeFrame = null;
+    });
+}
+
+function getDashboardSectionVisibility() {
+    const saved = readStoredJson(DASHBOARD_SECTION_VISIBILITY_KEY, {});
+    const visibility = { ...DEFAULT_DASHBOARD_SECTION_VISIBILITY, ...saved };
+    if (!Object.prototype.hasOwnProperty.call(saved, 'smartDischarging')) {
+        const automations = readStoredJson('foxAutomations', {});
+        if (automations.exportCheck || automations.weeklyDischargeCheck) {
+            visibility.smartDischarging = true;
+        }
+    }
+    return visibility;
+}
+
+function applyDashboardSectionVisibility(visibility = getDashboardSectionVisibility()) {
+    Object.entries(DASHBOARD_SECTION_IDS).forEach(([key, sectionId]) => {
+        const visible = visibility[key] !== false;
+        document.getElementById(sectionId)?.classList.toggle('dashboard-section-hidden', !visible);
+        const control = document.getElementById(`show-section-${key}`);
+        if (control) control.checked = visible;
+    });
+    schedulePriceChartResize();
+}
+
+function setDashboardSectionVisibility(sectionKey, visible) {
+    if (!DASHBOARD_SECTION_IDS[sectionKey]) return;
+    const visibility = getDashboardSectionVisibility();
+    visibility[sectionKey] = Boolean(visible);
+    localStorage.setItem(DASHBOARD_SECTION_VISIBILITY_KEY, JSON.stringify(visibility));
+    applyDashboardSectionVisibility(visibility);
+}
+
+function markAutomationsDirty() {
+    ['btn-save-unified', 'btn-save-discharge'].forEach(id => {
+        const button = document.getElementById(id);
+        if (!button) return;
+        button.disabled = false;
+        button.style.background = '#16a34a';
+        button.style.cursor = 'pointer';
+    });
 }
 
 function showToast(message) {
@@ -835,6 +908,7 @@ function toggleDarkMode() {
 
 // On Load init
 document.addEventListener("DOMContentLoaded", async () => {
+    applyDashboardSectionVisibility();
     await detectLinuxRuntime();
     const savedTheme = localStorage.getItem('theme') || 'light';
     document.documentElement.setAttribute('data-theme', savedTheme);
@@ -919,6 +993,8 @@ document.addEventListener("DOMContentLoaded", async () => {
         }
     }, 1000);
 });
+
+window.addEventListener('resize', schedulePriceChartResize, { passive: true });
 
 async function clearCredentials() {
     if (window.linuxRuntime) {
@@ -1267,6 +1343,7 @@ async function initDashboard(isAutoRefresh = false, retryCount = 1) {
         }
 
         drawPriceCharts(maxRate, minRate, dispatches);
+        previewDischargeTimes();
         
         const dispatchHtml = dispatches.length ? 
             dispatches.map(d => `<div style="padding: 0.5rem 0.75rem; background: #e0f2fe; border: 1px solid #7dd3fc; border-radius: 8px; margin-bottom: 0.5rem; color: #0369a1; font-size: 0.9rem; font-weight: 600;">⚡ ${new Date(d.startDt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})} - ${new Date(d.endDt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</div>`).join('') 
@@ -1332,11 +1409,11 @@ function startAutoRefreshTimer() {
                 const currentDispatchesStr = JSON.stringify(window.currentDispatches || []);
                 if (currentDispatchesStr !== lastDispatchesStr) {
                     lastDispatchesStr = currentDispatchesStr;
-                    if (document.getElementById('toggle-auto-dispatch')?.checked) {
-                        evaluateLocalAutomations(); 
-                    }
                 }
-                if (document.getElementById('toggle-weekly-force')?.checked) {
+                // Tariff slots, Smart Dispatches, and today's weekly windows can
+                // all change after an Octopus refresh. Rebuild the complete,
+                // conflict-resolved timeline once instead of updating one rule.
+                if (hasEnabledLocalAutomation()) {
                     evaluateLocalAutomations(null, true);
                 }
                 updateCircleTimer('octo-timer', octoCountdown, octoRefreshInterval);
@@ -1740,7 +1817,11 @@ async function fetchFoxSchedules({ expectedGroups = null, attempts = 1 } = {}) {
                         detailLabel = `<span style="color: var(--text-muted); font-size: 0.8rem; font-weight: normal; margin-left: 4px;">(${subText} | Max SOC: ${soc}%)</span>`;
                     } else if (g.workMode === 'ForceDischarge') {
                         const soc = g.fdSoc || g.extraParam?.fdSoc || 11;
-                        detailLabel = `<span style="color: #ef4444; font-size: 0.8rem; font-weight: 600; margin-left: 4px;">(📤 Export Mode | Min SOC: ${soc}%)</span>`;
+                        const sources = getAutomationSourcesForGroup(g, new Date());
+                        const sourceLabels = [];
+                        if (sources.includes('dischargeSchedule')) sourceLabels.push('📅 Discharge Schedule');
+                        if (sources.includes('export')) sourceLabels.push('📤 Export Price');
+                        detailLabel = `<span style="color: #ef4444; font-size: 0.8rem; font-weight: 600; margin-left: 4px;">(${sourceLabels.join(' + ') || '📤 Export Mode'} | Min SOC: ${soc}%)</span>`;
                     }
 
                     const borderStyle = i === window.activeFoxGroups.length - 1 ? 'none' : '1px solid var(--border)';
@@ -1828,9 +1909,18 @@ function getWeeklyForceConfig() {
     };
 }
 
-function getWeeklyForcedChargePeriods(config, now = new Date()) {
+function getWeeklyDischargeConfig() {
+    return {
+        enabled: document.getElementById('toggle-weekly-discharge')?.checked === true,
+        startTime: document.getElementById('weekly-discharge-start')?.value || '',
+        endTime: document.getElementById('weekly-discharge-end')?.value || '',
+        days: Array.from(document.querySelectorAll('input[name="weekly-discharge-day"]:checked')).map(input => Number(input.value))
+    };
+}
+
+function getWeeklyModePeriods(config, now, workMode, source, fdSoc) {
     const selectedDays = Array.isArray(config?.days) ? config.days : [];
-    const isTime = value => /^\d{2}:\d{2}$/.test(value || '');
+    const isTime = value => /^\d\d:\d\d$/.test(value || '');
     if (!config?.enabled || !isTime(config.startTime) || !isTime(config.endTime)) return [];
 
     const [startHour, startMinute] = config.startTime.split(':').map(Number);
@@ -1846,8 +1936,8 @@ function getWeeklyForcedChargePeriods(config, now = new Date()) {
         startMinute: sMinute,
         endHour: eHour,
         endMinute: eMinute,
-        workMode: 'ForceCharge',
-        extraParam: { schSource: 'weekly', fdSoc: 100 }
+        workMode,
+        extraParam: { schSource: source, fdSoc }
     });
 
     if (startMinutes < endMinutes) {
@@ -1860,6 +1950,33 @@ function getWeeklyForcedChargePeriods(config, now = new Date()) {
     if (endMinutes > 0 && selectedDays.includes(previousDay)) periods.push(makePeriod(0, 0, endHour, endMinute));
     if (selectedDays.includes(currentDay)) periods.push(makePeriod(startHour, startMinute, 23, 59));
     return periods;
+}
+
+function getWeeklyForcedChargePeriods(config, now = new Date()) {
+    return getWeeklyModePeriods(config, now, 'ForceCharge', 'weekly', 100);
+}
+
+function getWeeklyForcedDischargePeriods(config, now = new Date(), fdSoc = 11) {
+    return getWeeklyModePeriods(config, now, 'ForceDischarge', 'dischargeSchedule', fdSoc);
+}
+
+function resolveAutomationMinute(existingState, incomingState, options) {
+    options = options || {};
+    if (!incomingState) return existingState;
+    if (incomingState.workMode !== 'ForceDischarge') return incomingState;
+
+    if (
+        options.pauseDischargeDuringDispatch !== false
+        && existingState?.workMode === 'ForceCharge'
+        && existingState?.source === 'dispatch'
+    ) return existingState;
+
+    if (
+        options.disableForcedChargeDuringDischarge === false
+        && existingState?.workMode === 'ForceCharge'
+    ) return existingState;
+
+    return incomingState;
 }
 
 function getAutomationSourcesForGroup(group, now = new Date()) {
@@ -1896,7 +2013,14 @@ function getAutomationSourcesForGroup(group, now = new Date()) {
         if (overlaps(start, end)) sources.add('dispatch');
     });
 
-    return ['weekly', 'dispatch', 'price', 'export'].filter(source => sources.has(source));
+    getWeeklyForcedDischargePeriods(getWeeklyDischargeConfig(), now).forEach(period => {
+        const start = period.startHour * 60 + period.startMinute;
+        let end = period.endHour * 60 + period.endMinute;
+        if (period.endHour === 23 && period.endMinute === 59) end = 1440;
+        if (overlaps(start, end)) sources.add('dischargeSchedule');
+    });
+
+    return ['weekly', 'dispatch', 'price', 'export', 'dischargeSchedule'].filter(source => sources.has(source));
 }
 
 function getAutoResumeSource(sources, dispatchActiveNow = false) {
@@ -2019,9 +2143,19 @@ function loadAutomations(minPrice, maxPrice) {
     if (saved.minSoc !== undefined) document.getElementById('adv-min-soc').value = saved.minSoc;
     if (saved.fdPwr !== undefined) document.getElementById('adv-fd-pwr').value = saved.fdPwr;
     
-    // Load new nested export features and dispatch SOC parameters
+    // Load discharge, dispatch SOC, and weekly scheduling parameters.
     if (saved.exportCheck !== undefined) document.getElementById('toggle-auto-export').checked = saved.exportCheck;
     if (saved.exportThreshold !== undefined) document.getElementById('export-threshold').value = saved.exportThreshold;
+    document.getElementById('toggle-discharge-pause-dispatch').checked = saved.pauseDischargeDuringDispatch !== false;
+    document.getElementById('toggle-discharge-overrides-charge').checked = saved.disableForcedChargeDuringDischarge !== false;
+    if (saved.weeklyDischargeCheck !== undefined) document.getElementById('toggle-weekly-discharge').checked = saved.weeklyDischargeCheck;
+    if (saved.weeklyDischargeStart) document.getElementById('weekly-discharge-start').value = saved.weeklyDischargeStart;
+    if (saved.weeklyDischargeEnd) document.getElementById('weekly-discharge-end').value = saved.weeklyDischargeEnd;
+    if (Array.isArray(saved.weeklyDischargeDays)) {
+        document.querySelectorAll('input[name="weekly-discharge-day"]').forEach(input => {
+            input.checked = saved.weeklyDischargeDays.includes(Number(input.value));
+        });
+    }
     if (saved.dispatchSocLimit !== undefined) document.getElementById('dispatch-soc-limit').value = saved.dispatchSocLimit;
     if (saved.applyDispatchLimit !== undefined) document.getElementById('toggle-dispatch-soc-limit').checked = saved.applyDispatchLimit;
     if (saved.weeklyForceCheck !== undefined) document.getElementById('toggle-weekly-force').checked = saved.weeklyForceCheck;
@@ -2041,7 +2175,8 @@ function loadAutomations(minPrice, maxPrice) {
     if (autoPriceEl) autoPriceEl.checked = saved.priceCheck || false;
     if (autoDispatchEl) autoDispatchEl.checked = saved.dispatchCheck || false;
     
-    if (blockUnified) blockUnified.classList.toggle('block-countdown-octo', hasEnabledLocalAutomation());
+    if (blockUnified) blockUnified.classList.toggle('block-countdown-octo', hasEnabledSmartChargingAutomation());
+    document.getElementById('block-discharge-auto')?.classList.toggle('block-countdown-fox', hasEnabledSmartDischargingAutomation());
 
     let thresh = saved.threshold;
     if ((!thresh || thresh === "0") && minPrice !== undefined) {
@@ -2049,11 +2184,29 @@ function loadAutomations(minPrice, maxPrice) {
     }
     const threshEl = document.getElementById('price-threshold');
     if(threshEl) threshEl.value = thresh || "";
+    previewDischargeTimes();
+    applyDashboardSectionVisibility();
+}
+
+function hasEnabledSmartChargingAutomation() {
+    return ['toggle-auto-price', 'toggle-auto-dispatch', 'toggle-weekly-force']
+        .some(id => document.getElementById(id)?.checked === true);
+}
+
+function hasEnabledSmartDischargingAutomation() {
+    return ['toggle-auto-export', 'toggle-weekly-discharge']
+        .some(id => document.getElementById(id)?.checked === true);
 }
 
 function hasEnabledLocalAutomation() {
-    return ['toggle-auto-price', 'toggle-auto-dispatch', 'toggle-weekly-force']
-        .some(id => document.getElementById(id)?.checked === true);
+    return hasEnabledSmartChargingAutomation() || hasEnabledSmartDischargingAutomation();
+}
+
+function resetAutomationApplyButton(button) {
+    if (!button) return;
+    button.textContent = button.dataset.defaultLabel || 'Apply Automations';
+    button.style.opacity = '1';
+    button.disabled = false;
 }
 
 // RUNS TO PUSH SCHEDULES VIA V3 API INSTEAD OF V0 LIVE-TOGGLE
@@ -2075,14 +2228,19 @@ async function evaluateLocalAutomations(btn = null, isStartup = false) {
     const isAutoDispatch = document.documentElement.querySelector('#toggle-auto-dispatch')?.checked;
     const isAutoExport = document.documentElement.querySelector('#toggle-auto-export')?.checked;
     const weeklyForce = getWeeklyForceConfig();
+    const weeklyDischarge = getWeeklyDischargeConfig();
+    const pauseDischargeDuringDispatch = document.getElementById('toggle-discharge-pause-dispatch')?.checked !== false;
+    const disableForcedChargeDuringDischarge = document.getElementById('toggle-discharge-overrides-charge')?.checked !== false;
 
     if (weeklyForce.enabled && (!weeklyForce.startTime || !weeklyForce.endTime || weeklyForce.startTime === weeklyForce.endTime)) {
         showToast('Set different start and end times for the weekly forced-charge schedule.');
-        if (btn) {
-            btn.textContent = 'Apply Combined Automations';
-            btn.style.opacity = '1';
-            btn.disabled = false;
-        }
+        resetAutomationApplyButton(btn);
+        return false;
+    }
+
+    if (weeklyDischarge.enabled && (!weeklyDischarge.startTime || !weeklyDischarge.endTime || weeklyDischarge.startTime === weeklyDischarge.endTime)) {
+        showToast('Set different start and end times for the weekly forced-discharge schedule.');
+        resetAutomationApplyButton(btn);
         return false;
     }
 
@@ -2093,6 +2251,12 @@ async function evaluateLocalAutomations(btn = null, isStartup = false) {
         exportCheck: isAutoExport,
         threshold: document.getElementById('price-threshold')?.value,
         exportThreshold: document.getElementById('export-threshold')?.value,
+        pauseDischargeDuringDispatch,
+        disableForcedChargeDuringDischarge,
+        weeklyDischargeCheck: weeklyDischarge.enabled,
+        weeklyDischargeStart: weeklyDischarge.startTime,
+        weeklyDischargeEnd: weeklyDischarge.endTime,
+        weeklyDischargeDays: weeklyDischarge.days,
         targetSoc: parseInt(document.getElementById('target-soc-limit')?.value || 80),
         applyLimit: document.getElementById('toggle-soc-limit')?.checked || false,
         autoResume: document.getElementById('toggle-auto-resume')?.checked || false,
@@ -2112,7 +2276,8 @@ async function evaluateLocalAutomations(btn = null, isStartup = false) {
     
     // Toggle borders when user clicks apply
     const blockUnified = document.getElementById('block-unified-auto');
-    if (blockUnified) blockUnified.classList.toggle('block-countdown-octo', hasEnabledLocalAutomation());
+    if (blockUnified) blockUnified.classList.toggle('block-countdown-octo', hasEnabledSmartChargingAutomation());
+    document.getElementById('block-discharge-auto')?.classList.toggle('block-countdown-fox', hasEnabledSmartDischargingAutomation());
     
     const now = new Date();
     
@@ -2127,7 +2292,7 @@ async function evaluateLocalAutomations(btn = null, isStartup = false) {
     // Create a 1440-minute timeline to resolve overlapping priorities beautifully
     let timeline = new Array(1440).fill(null);
 
-    const fillTimeline = (startDt, endDt, mode, soc, ruleSource = null) => {
+    const fillTimeline = (startDt, endDt, mode, soc, ruleSource = null, conflictOptions = {}) => {
         // Round odd smart dispatch times to make them legal for the inverter hardware
         let sMins = startDt.getHours() * 60 + startDt.getMinutes();
         let eMins = endDt.getHours() * 60 + endDt.getMinutes();
@@ -2161,7 +2326,11 @@ async function evaluateLocalAutomations(btn = null, isStartup = false) {
                     finalSoc = Math.min(soc, timeline[i].finalFdSoc);
                 }
                 
-                timeline[i] = { workMode: mode, finalFdSoc: finalSoc, source: ruleSource };
+                timeline[i] = resolveAutomationMinute(
+                    timeline[i],
+                    { workMode: mode, finalFdSoc: finalSoc, source: ruleSource },
+                    conflictOptions
+                );
             }
         };
         
@@ -2217,8 +2386,26 @@ async function evaluateLocalAutomations(btn = null, isStartup = false) {
         });
     }
 
-    // 4. Price Export Feature (Highest priority - overwrites any charge blocks)
-    if (isAutoPrice && isAutoExport && window.exportRates?.length) {
+    const dischargeConflictOptions = {
+        pauseDischargeDuringDispatch,
+        disableForcedChargeDuringDischarge
+    };
+
+    // 4. Scheduled discharging can replace ordinary forced charging, while
+    // Smart Dispatch remains protected when the default pause toggle is on.
+    getWeeklyForcedDischargePeriods(weeklyDischarge, now, minSoc).forEach(dischargePeriod => {
+        fillTimeline(
+            new Date(now.getFullYear(), now.getMonth(), now.getDate(), dischargePeriod.startHour, dischargePeriod.startMinute),
+            new Date(now.getFullYear(), now.getMonth(), now.getDate(), dischargePeriod.endHour, dischargePeriod.endMinute),
+            dischargePeriod.workMode,
+            dischargePeriod.extraParam.fdSoc,
+            dischargePeriod.extraParam.schSource,
+            dischargeConflictOptions
+        );
+    });
+
+    // 5. Export-price discharging is independent of target-price charging.
+    if (isAutoExport && window.exportRates?.length) {
         const expThreshold = parseFloat(document.getElementById('export-threshold').value || 99);
         const limitTime = new Date(now.getTime() + 24 * 60 * 60 * 1000);
         let currentExp = null;
@@ -2231,12 +2418,12 @@ async function evaluateLocalAutomations(btn = null, isStartup = false) {
                     if (!currentExp) currentExp = { start: new Date(r.valid_from), end: new Date(r.valid_to) };
                     else if (currentExp.end.getTime() === new Date(r.valid_from).getTime()) currentExp.end = new Date(r.valid_to);
                     else {
-                        if(currentExp.end > now) fillTimeline(currentExp.start, currentExp.end, "ForceDischarge", 11, "export");
+                        if(currentExp.end > now) fillTimeline(currentExp.start, currentExp.end, "ForceDischarge", minSoc, "export", dischargeConflictOptions);
                         currentExp = { start: new Date(r.valid_from), end: new Date(r.valid_to) };
                     }
                 }
             });
-        if (currentExp && currentExp.end > now) fillTimeline(currentExp.start, currentExp.end, "ForceDischarge", 11, "export");
+        if (currentExp && currentExp.end > now) fillTimeline(currentExp.start, currentExp.end, "ForceDischarge", minSoc, "export", dischargeConflictOptions);
     }
 
     // Reconstruct continuous groups. FoxESS merges adjacent periods when mode
@@ -2273,16 +2460,15 @@ async function evaluateLocalAutomations(btn = null, isStartup = false) {
     }
     
     // Provide brief success feedback on the buttons
-    const btnUnified = document.getElementById('btn-save-unified');
-    if (btnUnified) { 
-        btnUnified.textContent = "✅ Applied Automations"; 
-        setTimeout(() => { 
-            btnUnified.textContent = "Apply Combined Automations"; 
-            btnUnified.disabled = false; 
-            btnUnified.style.opacity = "1"; 
-            btnUnified.style.background = "#94a3b8"; 
-        }, 2500); 
-    }
+    ['btn-save-unified', 'btn-save-discharge'].forEach(id => {
+        const applyButton = document.getElementById(id);
+        if (!applyButton) return;
+        applyButton.textContent = '✅ Applied Automations';
+        setTimeout(() => {
+            resetAutomationApplyButton(applyButton);
+            applyButton.style.background = '#94a3b8';
+        }, 2500);
+    });
     
     // Fetch current work mode 1 minute (60000ms) after applying new schedules (bypass cache)
     setTimeout(() => fetchCurrentWorkMode(true), 60000);
@@ -2529,6 +2715,39 @@ function previewScheduleTimes() {
     else display.innerHTML = blocks.map(b => `🕒 ${b.start.toLocaleString([], {month:'short', day:'numeric', hour:'2-digit', minute:'2-digit'})} - ${b.end.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}`).join('<br>');
 }
 
+function previewDischargeTimes() {
+    const display = document.getElementById('export-target-times');
+    if (!display) return;
+    const isEnabled = document.getElementById('toggle-auto-export')?.checked === true;
+    const threshold = parseFloat(document.getElementById('export-threshold')?.value || 0);
+
+    if (!isEnabled) { display.innerHTML = ''; return; }
+    if (!window.exportRates?.length) { display.innerHTML = 'Waiting for SEG export rate data...'; return; }
+
+    const now = new Date();
+    let blocks = [];
+    let current = null;
+
+    getTariffSlotsForDate(window.exportRates, now)
+        .sort((a, b) => new Date(a.valid_from) - new Date(b.valid_from))
+        .forEach(rate => {
+            if (rate.value_inc_vat >= threshold) {
+                if (!current) current = { start: new Date(rate.valid_from), end: new Date(rate.valid_to) };
+                else if (current.end.getTime() === new Date(rate.valid_from).getTime()) current.end = new Date(rate.valid_to);
+                else {
+                    blocks.push(current);
+                    current = { start: new Date(rate.valid_from), end: new Date(rate.valid_to) };
+                }
+            }
+        });
+    if (current) blocks.push(current);
+
+    blocks = blocks.filter(block => block.end > now).slice(0, 3);
+    display.innerHTML = blocks.length === 0
+        ? `No upcoming SEG export periods &ge; ${threshold}p.`
+        : blocks.map(block => `🕒 ${block.start.toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })} - ${block.end.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`).join('<br>');
+}
+
 function showError(msg) {
     const errorDiv = document.getElementById('error');
     errorDiv.textContent = 'Error: ' + msg;
@@ -2551,56 +2770,3 @@ function toggleScreenSaver() {
     const overlay = document.getElementById('screen-saver-overlay');
     overlay.style.display = (overlay.style.display === 'none') ? 'block' : 'none';
 }
-
-function toggleMiniViewer() {
-    const hud = document.getElementById('mini-viewer-hud');
-    if (hud.style.display === 'none' || !hud.style.display) {
-        hud.style.display = 'block';
-        updateMiniViewer();
-    } else {
-        hud.style.display = 'none';
-    }
-}
-
-function updateMiniViewer() {
-    const hudOcto = document.getElementById('hud-octo-schedules');
-    const hudFox = document.getElementById('hud-fox-schedules');
-    if (!hudOcto || !hudFox) return;
-
-    // Render Octopus Dispatches
-    if (window.currentDispatches && window.currentDispatches.length > 0) {
-        hudOcto.innerHTML = window.currentDispatches.map(d => {
-            const s = new Date(d.startDt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
-            const e = new Date(d.endDt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
-            return `<div style="background: rgba(14, 165, 233, 0.2); padding: 4px 8px; border-radius: 4px; margin-bottom: 4px; border-left: 3px solid #38bdf8;">⚡ ${s} - ${e}</div>`;
-        }).join('');
-    } else {
-        hudOcto.innerHTML = '<div style="color: #64748b; font-style: italic;">No dispatches scheduled.</div>';
-    }
-
-    // Render FoxESS Schedules
-    if (window.activeFoxGroups && window.activeFoxGroups.length > 0) {
-        const activeGroups = window.activeFoxGroups.filter(g => g.enable !== 0); // Hide disabled ghost slots
-        if (activeGroups.length > 0) {
-            hudFox.innerHTML = activeGroups.map(g => {
-                const s = `${String(g.startHour).padStart(2,'0')}:${String(g.startMinute).padStart(2,'0')}`;
-                const e = `${String(g.endHour).padStart(2,'0')}:${String(g.endMinute).padStart(2,'0')}`;
-                let modeLabel = g.workMode === 'ForceCharge' ? 'CHG' : (g.workMode === 'ForceDischarge' ? 'DIS' : 'SLF');
-                let color = g.workMode === 'ForceCharge' ? '#fb923c' : (g.workMode === 'ForceDischarge' ? '#f87171' : '#34d399');
-                let bg = g.workMode === 'ForceCharge' ? 'rgba(249, 115, 22, 0.15)' : (g.workMode === 'ForceDischarge' ? 'rgba(239, 68, 68, 0.15)' : 'rgba(52, 211, 153, 0.15)');
-                return `<div style="background: ${bg}; padding: 4px 8px; border-radius: 4px; margin-bottom: 4px; border-left: 3px solid ${color};">
-                    <span style="color: ${color}; font-weight: 600; display: inline-block; width: 35px;">${modeLabel}</span> | ${s} - ${e}
-                </div>`;
-            }).join('');
-        } else {
-            hudFox.innerHTML = '<div style="color: #64748b; font-style: italic;">No active schedules.</div>';
-        }
-    } else {
-        hudFox.innerHTML = '<div style="color: #64748b; font-style: italic;">No active schedules.</div>';
-    }
-}
-
-// Auto-update the HUD every 5 seconds if left open
-setInterval(() => {
-    if (document.getElementById('mini-viewer-hud')?.style.display === 'block') updateMiniViewer();
-}, 5000);

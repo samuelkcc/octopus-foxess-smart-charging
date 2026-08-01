@@ -35,12 +35,37 @@ No installation is required. Open it in a modern browser and follow the
 ## What it does
 
 - Protects the home battery during Octopus dynamic EV charging slots.
-- Creates FoxESS Force Charge and battery-protection schedules.
-- Supports target-price charging, SEG export rates, weekly time windows, target
-  SOC, power limits, and Auto-Resume.
+- Creates separate FoxESS Force Charge and Force Discharge schedules.
+- Supports target-price charging, SEG export-price discharging, weekly charging
+  and discharging windows, target SOC, power limits, and Auto-Resume.
 - Shows import and export prices separately.
 - Tracks FoxESS API usage and limits unnecessary requests.
-- Provides responsive light, dark, full-screen, and Mini HUD layouts.
+- Provides responsive light, dark, and full-screen layouts, with menu controls
+  for showing or hiding the main dashboard blocks.
+
+### Automation precedence and Auto-Resume
+
+**Smart Discharging Automation** is hidden initially. Open **Menu → Dashboard
+blocks** to show it. It can discharge when the SEG export price reaches a
+threshold or during selected weekly time windows.
+
+To prevent conflicting FoxESS modes, the default precedence is:
+
+1. An active **Smart Dispatch** remains protected; Smart Discharging pauses.
+2. Outside a Smart Dispatch, an active discharge rule replaces an overlapping
+   target-price or weekly Forced Charge rule.
+3. If **Disable Forced Charge while active** is turned off, Forced Charge wins
+   instead. If **Pause during Smart Dispatch** is turned off, discharging may
+   also replace a Smart Dispatch.
+
+**Auto-Resume Self-Use** only ends the target-price or weekly Forced Charge rule
+that reached its target SOC. It never cancels an active Smart Dispatch. When a
+Smart Dispatch simply finishes, its schedule ends and FoxESS naturally returns
+to the base Self-Use mode unless another configured rule is active, so the app
+does not need to create a separate Self-Use schedule.
+
+FoxESS accepts at most five active scheduler periods. The app merges adjacent
+compatible periods and warns if later periods cannot fit within that limit.
 
 ## What you need
 
