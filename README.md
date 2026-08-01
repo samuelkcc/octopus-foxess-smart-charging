@@ -78,12 +78,35 @@ compatible periods and warns if later periods cannot fit within that limit.
 
 - Your Octopus account number (`A-...`) and API key (`sk_live_...`) from
   [Octopus API Access](https://octopus.energy/dashboard/new/accounts/personal-details/api-access).
-- Your FoxESS inverter serial number and API token from **User Profile → API
-  Management** on the [FoxCloud V1 website](https://www.foxesscloud.com/login).
+- Your FoxESS inverter serial number and API token from the
+  [FoxESSCloud V1 website](https://www.foxesscloud.com/login), as described
+  below.
 - For optional Live WS telemetry, your FoxCloud web login details.
 
-> FoxESS API tokens are created on the V1 website, not in the V2 website or
-> mobile app.
+### Get your FoxESS API token and inverter serial number
+
+Sign in to the [FoxESSCloud V1 website](https://www.foxesscloud.com/login).
+
+To generate the API token:
+
+1. Select the user profile icon in the top-right corner.
+2. Select **User Profile**.
+3. Select **API Management** in the left-hand panel.
+4. Open the **Private Token** tab and select **Generate API key**.
+5. Copy the generated key and enter it as the **FoxESS API Token** in this app.
+
+Store the key securely when it is generated. FoxESSCloud will not display the
+complete key again, and you should not share it publicly.
+
+To find the inverter serial number:
+
+1. Return to the main FoxESSCloud V1 dashboard.
+2. In the left-hand menu, open **Device → Inverter**.
+3. Copy the value shown in the **Inverter SN** column and enter it as the
+   **FoxESS Inverter Serial Number** in this app.
+
+> FoxESS API tokens are generated on the V1 website, not on the V2 website or
+> in the mobile app.
 
 ## Raspberry Pi OS edition
 
