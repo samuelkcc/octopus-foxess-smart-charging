@@ -245,7 +245,9 @@ This unofficial community project is independent of Octopus Energy Ltd and
 FoxESS Co., Ltd. You are responsible for checking schedules, limits, billing,
 and inverter behaviour before relying on automatic controls.
 
-## Support the project
+## Support the project ☕
 
-If this project helps you, you can
-[buy Samuel a coffee](https://buymeacoffee.com/samuelchen).
+If this project saves you time or helps protect your home battery, you can
+support future maintenance and improvements:
+
+[![Buy Samuel a coffee](https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png)](https://buymeacoffee.com/samuelchen)
