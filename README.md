@@ -12,8 +12,15 @@ prices, then manages the FoxESS schedule automatically.
 
 ### [▶ Open the live web app](https://samuelkcc.github.io/octopus-foxess-smart-charging/)
 
-No installation is required. Open it in a modern browser and follow the
-[web-edition setup instructions](#web-edition).
+The web edition is a standalone single-page application (SPA). No installation
+or application server is required. You can either:
+
+- use the hosted version on GitHub Pages; or
+- [download the latest standalone HTML file](https://github.com/samuelkcc/octopus-foxess-smart-charging/releases/latest/download/Octopus_IGO_Smart_Charging_Detector.html),
+  save it on your computer, and open it in a modern browser.
+
+Both options run the application in your browser. Follow the
+[web-edition setup instructions](#web-edition) before connecting your accounts.
 
 ![Smart Charging Detector Dashboard](Dashboard.png)
 
@@ -239,15 +246,53 @@ function doPost(e) {
 Use only one active automation dashboard. For unattended operation, use the
 Raspberry Pi edition.
 
-## Security
+## Security and privacy
 
-- This project has no tracking or third-party application server.
-- Raspberry Pi credentials are encrypted and never sent to LAN clients.
+### Web SPA
+
+The web edition is a static, client-side SPA. It can run from
+[GitHub Pages](https://samuelkcc.github.io/octopus-foxess-smart-charging/) or as
+the [downloaded standalone HTML file](https://github.com/samuelkcc/octopus-foxess-smart-charging/releases/latest/download/Octopus_IGO_Smart_Charging_Detector.html)
+on your own computer. There is no developer-operated application server and no
+analytics or tracking code.
+
+- Your account numbers, API credentials, relay URL, and preferences are stored
+  only in that browser profile. They are not uploaded to this repository or
+  stored by GitHub Pages.
+- Persisted credentials are encrypted in the browser with AES-GCM. The
+  non-exportable encryption key is kept in IndexedDB and the encrypted record
+  is kept in local storage. If secure persistent storage is unavailable, the
+  app falls back to session-only storage.
+- Credentials still have to be used for authenticated requests: Octopus
+  credentials are sent directly to the Octopus Energy API, while signed FoxESS
+  requests pass through the Google Apps Script relay that you create and then
+  go to FoxESS Cloud.
+- To remove all saved web-app data, open **Menu → Wipe Local Data** and confirm
+  **Yes, Wipe Data**. This clears the app's local storage, session storage, and
+  IndexedDB data from the current browser profile.
+- Browser storage is separate for each browser, profile, and site location. If
+  you have used both GitHub Pages and a downloaded copy, wipe each copy
+  separately. Clearing the browser's site data also removes the saved data.
+- **Save Config** is optional. If you use it, the app creates a
+  passphrase-encrypted backup file that you control. **Wipe Local Data** cannot
+  delete copies of that exported file, so remove them separately when they are
+  no longer needed.
+- Avoid using the app on a shared or public computer, keep the device and
+  browser profile protected, and remember that web-edition automation stops
+  when the page is closed or the device sleeps.
+
+### Raspberry Pi edition
+
+- Credentials and automation settings are encrypted on the Pi and are never
+  returned to browser clients on the LAN.
 - The Pi performs Octopus authentication and signs FoxESS requests for the
-  dashboard.
-- Live WS carries read-only telemetry; all controls use the official REST API.
-- Keep Dashboard Access Code protection enabled and use VPN or HTTPS for remote
-  access.
+  dashboard. The browser client only receives the data needed to display and
+  control the app.
+- Live WS carries read-only telemetry; all scheduler and inverter controls use
+  the official FoxESS REST API.
+- Keep Dashboard Access Code protection enabled. Use a private VPN for remote
+  access, or an authenticated HTTPS reverse proxy if a VPN is not available.
+  Never expose the Pi's raw HTTP port directly to the internet.
 
 ## Build from source
 
