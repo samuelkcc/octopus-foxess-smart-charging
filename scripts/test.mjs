@@ -222,7 +222,7 @@ assert.match(source, /window\.linuxRole === 'worker'/, 'Only the Raspberry Pi wo
 assert.match(source, /if \(!btn && !canRunAutomaticActions\(\)\) return false/, 'LAN dashboards must not duplicate unattended schedule writes');
 assert.match(source, /gasUrl: '\/api\/foxess'/, 'Raspberry Pi credentials must use the local FoxESS relay');
 assert.match(source, /scheduleFetchButton\.style\.display = hideManualFetch \? 'none' : ''/, 'Live WS must hide the redundant scheduler Fetch Now button');
-assert.match(source, /telemetryFetchButton\.style\.display = hideManualFetch \? 'none' : ''/, 'Live WS must hide the redundant telemetry Fetch Now button');
+assert.match(source, /async function setLiveWsPolicy\(policy\)/, 'The Mobile and LAN dashboard must support all three Live WS policies');
 assert.match(source, /getEffectiveFoxWorkMode\(window\.baseFoxWorkMode \|\| localWorkModeState\)/, 'Live WS SOC updates must refresh the Current Device Mode card');
 assert.match(source, /window\.activeFoxGroups = data\.result\.groups\.filter\(isActiveFoxSchedule\);[\s\S]*?updateModeBadge\(localWorkModeState, window\.lastFoxTelemetry\?\.SoC \?\? null\);/, 'A refreshed scheduler must update Current Device Mode even if the following REST mode request times out');
 

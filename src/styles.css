@@ -53,6 +53,7 @@
         .auth-subtitle { text-align: center; color: var(--text-muted); font-size: 0.9rem; margin-bottom: 2rem; line-height: 1.5; }
         .linux-only { display: none !important; }
         .linux-runtime .linux-only { display: block !important; }
+        .linux-runtime .overview-header-actions .linux-only { display: inline-flex !important; }
         .linux-runtime .web-runtime-only { display: none !important; }
         .linux-runtime .linux-access-group { display: none !important; }
         .linux-runtime.linux-auth-required .linux-access-group { display: block !important; }
@@ -92,7 +93,6 @@
         .fox-live-help { display: block; margin: -0.25rem 0 0.8rem; color: #78716c; font-size: 0.72rem; line-height: 1.45; }
         .fox-live-test-button { width: 100%; margin: 0; padding: 0.7rem 0.8rem; border: 1px solid #d97706; border-radius: 8px; background: #fff; color: #92400e; font-size: 0.82rem; font-weight: 700; cursor: pointer; }
         .fox-live-test-message { min-height: 1.1rem; margin-top: 0.55rem; color: #78716c; font-size: 0.72rem; line-height: 1.4; }
-        .fox-live-source-row { margin-top: 0.9rem; padding-top: 0.75rem; border-top: 1px dashed var(--border); display: flex !important; align-items: center; justify-content: space-between; gap: 0.75rem; color: var(--text-muted); font-size: 0.75rem; }
         [data-theme="dark"] .fox-live-settings { background: rgba(245, 158, 11, 0.08); border-color: #92400e; }
         [data-theme="dark"] .fox-live-settings-heading strong { color: #fbbf24; }
         [data-theme="dark"] .fox-live-settings-heading small,
@@ -172,11 +172,10 @@
         .overview-schedule-tag { flex-shrink: 0; color: #0284c7; font-size: 0.61rem; font-weight: 900; letter-spacing: 0.06em; }
         .overview-schedule-row.active .overview-schedule-tag { color: #059669; }
         .overview-empty { padding: 0.7rem 0; color: var(--text-muted); font-size: 0.76rem; text-align: center; }
-        .menu-setting-row { align-items: center; justify-content: space-between; gap: 1rem; padding: 0.85rem; border: 1px solid var(--border); border-radius: 8px; background: var(--card-bg); }
-        .menu-setting-row > div { min-width: 0; }
-        .menu-setting-row strong, .menu-setting-row small { display: block; }
-        .menu-setting-row strong { color: var(--text-main); font-size: 0.86rem; }
-        .menu-setting-row small { margin-top: 0.2rem; color: var(--text-muted); font-size: 0.68rem; line-height: 1.35; }
+        .menu-setting-row { flex-direction: column; align-items: stretch; gap: 0.55rem; padding: 0.85rem; border: 1px solid var(--border); border-radius: 8px; background: var(--card-bg); }
+        .menu-setting-row label { margin: 0; color: var(--text-main); font-size: 0.86rem; }
+        .menu-setting-row select { width: 100%; min-height: 44px; padding: 0.65rem 0.75rem; border: 1px solid var(--border); border-radius: 8px; background: var(--card-bg); color: var(--text-main); font-size: 0.86rem; }
+        .menu-setting-row small { display: block; color: var(--text-muted); font-size: 0.68rem; line-height: 1.35; }
         .remove-access-button { padding: 0.85rem; border: 1px dashed #ef4444; background: transparent; color: #ef4444; font-size: 0.88rem; text-align: left; }
         
         .card { background: var(--card-bg); padding: 1.5rem; border-radius: 16px; box-shadow: var(--card-shadow); border: 1px solid var(--border); display: flex; flex-direction: column; }
@@ -262,14 +261,6 @@
             .auth-card { padding: 1.25rem; border-radius: 14px; box-shadow: none; }
             .auth-card h2 { font-size: 1.3rem; }
             .auth-subtitle { margin-bottom: 1.5rem; }
-            .fox-live-source-row { flex-wrap: wrap; }
-            .fox-live-source-row .badge {
-                max-width: 100%;
-                white-space: normal;
-                overflow-wrap: anywhere;
-                line-height: 1.3;
-                text-align: left;
-            }
             input[type="text"], input[type="password"], input[type="number"], input[type="time"] { min-height: 48px; padding: 0.75rem; font-size: 16px; }
             button { min-height: 44px; }
             .dashboard, .dashboard-column { gap: 0.75rem; }

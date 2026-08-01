@@ -10,6 +10,9 @@ telemetry is adapted from:
 - Source: https://github.com/nicois/foxess-control
 - Licence: MIT
 
+This project gratefully acknowledges Nick Farrell's original work documenting
+the FoxESS web-signature and live-telemetry interface.
+
 The adapted portion includes the FoxESS web-signature calling convention and
 the `linux/foxess-signature.wasm` asset.
 

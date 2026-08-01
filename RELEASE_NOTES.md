@@ -1,4 +1,39 @@
-## Linux Live WS connection-check fix v2026.07.30.1
+## Mobile telemetry controls and Raspberry Pi access v2026.08.01
+
+### Fixed
+
+- Removed the duplicate Menu button that appeared again in the Intelligent
+  Octopus Go card on iPhone and other narrow displays.
+- Removed the duplicate Live Telemetry block from FoxESS Mode Selector. Live
+  power flow and telemetry-source status remain in the top Home Energy
+  Protection overview.
+
+### Improved
+
+- Replaced the dashboard's on/off Live WS switch with three clear choices:
+  **Live WS on demand**, **Always Live WS (REST fallback)**, and **Official REST
+  only**.
+- Rewrote the Raspberry Pi OS documentation to explain its always-on server and
+  responsive browser client, LAN use, secure DDNS/HTTPS remote access, and
+  iPhone/Android home-screen installation.
+- Added prominent credit to Nick Farrell's
+  [`nicois/foxess-control`](https://github.com/nicois/foxess-control) project,
+  whose MIT-licensed work underpins the optional Live WS module.
+
+### Deployment
+
+- Publishes the updated standalone GitHub Pages app and Raspberry Pi OS package
+  as separate supported editions.
+- Keeps unattended automation on the supervised Pi worker and all schedule or
+  inverter-control commands on the official FoxESS REST API.
+
+### Validation
+
+- Covers all three dashboard telemetry policies, single-menu mobile markup,
+  top-only telemetry presentation, Linux authorization, standalone builds, and
+  Raspberry Pi release packaging.
+
+## Previous Linux Live WS connection-check fix v2026.07.30.1
 
 ### Fixed
 

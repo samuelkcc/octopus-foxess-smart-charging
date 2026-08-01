@@ -254,13 +254,16 @@ async function updateLinuxLiveDemand(dispatches = []) {
 }
 
 function renderLiveWsMenuState(state = {}, status = null) {
-    const toggle = document.getElementById('toggle-live-on-demand');
-    const label = document.getElementById('live-on-demand-state');
+    const selector = document.getElementById('live-ws-policy');
+    const label = document.getElementById('live-ws-policy-state');
     const policy = status?.policy
         || state.liveWsPolicy
         || (state.liveWsOnDemand === false ? 'rest' : 'on-demand');
-    const enabled = policy !== 'rest' && status?.mode !== 'rest';
-    if (toggle) toggle.checked = enabled;
+    const enabled = policy !== 'rest';
+    if (selector) {
+        selector.value = policy;
+        selector.dataset.savedPolicy = policy;
+    }
     if (!label) return;
     if (!enabled) {
         label.textContent = 'Off · official REST only';
@@ -275,26 +278,30 @@ function renderLiveWsMenuState(state = {}, status = null) {
     }
 }
 
-async function setLiveWsOnDemand(enabled) {
-    const toggle = document.getElementById('toggle-live-on-demand');
-    if (toggle) toggle.disabled = true;
+async function setLiveWsPolicy(policy) {
+    const selector = document.getElementById('live-ws-policy');
+    const previousPolicy = selector?.dataset.savedPolicy || 'on-demand';
+    if (!['on-demand', 'always', 'rest'].includes(policy)) return;
+    if (selector) selector.disabled = true;
     try {
-        await updateLinuxState({ liveWsPolicy: enabled ? 'on-demand' : 'rest' });
+        await updateLinuxState({ liveWsPolicy: policy });
         const state = await loadLinuxState();
         const status = await fetchJson('/api/foxess/live/status');
         renderLiveWsMenuState(state, status);
         renderFoxLiveStatus(status);
         renderProtectionOverview();
-        showToast(enabled && status.mode === 'rest'
-            ? 'The Pi Server Configuration is set to official REST. Select Live WS there before enabling on-demand use.'
-            : (enabled
-                ? 'Live WS will connect only while a dynamic Octopus charge is active.'
-                : 'Live WS is off. FoxESS telemetry will use the official REST API.'));
+        showToast(policy !== 'rest' && status.mode === 'rest'
+            ? 'The Pi Server Configuration is set to official REST. Enable Live WS credentials there before selecting a Live WS mode.'
+            : (policy === 'always'
+                ? 'Always Live WS selected. Official REST remains available as automatic fallback.'
+                : (policy === 'on-demand'
+                    ? 'Live WS will connect only while a dynamic Octopus charge is active.'
+                    : 'Official REST only selected. Live WS is disabled.')));
     } catch (error) {
-        if (toggle) toggle.checked = !enabled;
+        if (selector) selector.value = previousPolicy;
         showToast(`Unable to change Live WS mode: ${error.message}`);
     } finally {
-        if (toggle) toggle.disabled = false;
+        if (selector) selector.disabled = false;
     }
 }
 
@@ -396,7 +403,6 @@ function renderFoxLiveStatus(status, messageTarget = null) {
     const sourceBadge = document.getElementById('fox-live-source-badge');
     const setupBadge = document.getElementById('fox-live-setup-status');
     const scheduleFetchButton = document.getElementById('fox-schedules-fetch-button');
-    const telemetryFetchButton = document.getElementById('fox-telemetry-fetch-button');
     const hideManualFetch = isFoxLiveStatusHealthy(status);
     const badgeClass = status?.source === 'live-ws'
         ? 'badge off-peak'
@@ -412,7 +418,6 @@ function renderFoxLiveStatus(status, messageTarget = null) {
         setupBadge.className = badgeClass;
     }
     if (scheduleFetchButton) scheduleFetchButton.style.display = hideManualFetch ? 'none' : '';
-    if (telemetryFetchButton) telemetryFetchButton.style.display = hideManualFetch ? 'none' : '';
     renderLiveWsMenuState({ liveWsPolicy: status?.policy }, status);
     if (messageTarget) {
         const reason = status?.lastError
@@ -1353,15 +1358,6 @@ function applyFoxTelemetry(values = {}, source = 'rest', updatedAt = null) {
     const telemetry = window.lastFoxTelemetry;
     const findVal = name => telemetry[name] ?? '--';
     const batterySoc = findVal('SoC');
-    const panel = document.getElementById('live-telemetry-panel');
-    if (panel) {
-        panel.innerHTML = `
-            <div>☀️ <strong>PV Power:</strong> ${escapeHtml(findVal('pvPower'))} kW</div>
-            <div>🏠 <strong>Load:</strong> ${escapeHtml(findVal('loadsPower'))} kW</div>
-            <div>🔋 <strong>Bat Temp:</strong> ${escapeHtml(findVal('batTemperature'))} °C</div>
-            <div>🌡️ <strong>Env Temp:</strong> ${escapeHtml(findVal('ambientTemperation'))} °C</div>
-        `;
-    }
     if (updatedAt) window.lastFoxTelemetryUpdate = updatedAt;
     if (batterySoc !== '--') {
         localWorkModeState = getEffectiveFoxWorkMode(window.baseFoxWorkMode || localWorkModeState);

@@ -1,5 +1,19 @@
 # Changelog
 
+## v2026.08.01 — 2026-08-01
+
+- Replaced the Mobile / LAN dashboard's binary Live WS switch with explicit
+  **Live WS on demand**, **Always Live WS (REST fallback)**, and **Official REST
+  only** choices.
+- Removed the duplicated Menu button from the Intelligent Octopus Go card; the
+  single Menu action remains in Home Energy Protection.
+- Removed the repeated Live Telemetry panel from FoxESS Mode Selector and kept
+  live power flow and telemetry-source status in the top protection overview.
+- Expanded the Raspberry Pi server/client, mobile home-screen, and secure
+  DDNS/HTTPS remote-access documentation.
+- Added prominent GitHub README acknowledgement of Nick Farrell's
+  `nicois/foxess-control` Live WS work.
+
 ## v2026.07.30.1 — 2026-07-30
 
 - Correct on-demand Live WS standby health reporting in the Raspberry Pi tray

@@ -16,11 +16,21 @@ Intelligent Octopus Go EV charging slots.
 | Always-on automation | Browser must remain open and awake | Supervised background worker |
 | Start after reboot | No | Yes, through `systemd` |
 | Local network GUI | No | Yes, responsive on phones, tablets, and computers |
+| FoxESS telemetry | Official REST through the browser relay | Live WS on demand, Always Live WS with REST fallback, or official REST only |
+| Remote access | Public GitHub Pages app | Private LAN by default; secure DDNS/HTTPS or VPN access can be configured |
 | Best for | Quick use and existing browser setups | Reliable 24/7 operation |
 
 Both editions use the same dashboard and automation logic. The GitHub Pages
 edition remains available; installing the Raspberry Pi edition does not replace
 or disable it.
+
+The Raspberry Pi OS edition combines an always-on server with a responsive
+browser client. Open its control panel from a phone, tablet, or computer on the
+local network. Advanced users can also publish it through a DDNS hostname and
+router port forwarding, but the public connection must be protected by HTTPS
+and a strong Dashboard Access Code; never expose the Pi's unencrypted port
+`8787` directly to the internet. A private VPN is the safer remote-access
+option.
 
 ![Smart Charging Detector Dashboard](Dashboard.png)
 
@@ -123,16 +133,18 @@ The native Server Configuration screen offers:
 - **Official REST API only** — disables the undocumented live stream and uses
   the FoxESS Open API.
 
-The dashboard menu can enable **Live WS on demand** or turn Live WS off;
-**Always Live WebSocket** remains available in native Server Configuration.
-When on-demand mode is enabled, the Pi opens
+The dashboard menu and native Server Configuration both offer the same three
+telemetry policies: **Live WS on demand**, **Always Live WebSocket (REST
+fallback)**, and **Official REST API only**. When on-demand mode is selected,
+the Pi opens
 the FoxESS web connection only while an Octopus dynamic charge is active,
 subscribes once to the approximately five-second telemetry stream, keeps the
 transport alive with a protocol heartbeat, and disconnects afterwards. The
 web-session token is reused for up to 12 hours so reconnects do not repeatedly
 log in. This reduces FoxESS web-login conflicts while retaining live
-telemetry during EV charging. When the switch is off, telemetry uses only the
-official REST API. If either optional web-login field is empty, login fails,
+telemetry during EV charging. Always-live mode keeps the stream connected and
+automatically falls back to REST if it becomes unavailable. Official-REST-only
+mode disables the undocumented stream. If either optional web-login field is empty, login fails,
 the stream closes, or no fresh frame arrives within 30 seconds, the Pi also
 uses REST. REST telemetry is cached for at least one minute to respect
 FoxESS's daily quota. The dashboard displays `LIVE WS · DYNAMIC CHARGE`,
@@ -184,6 +196,17 @@ The Raspberry Pi client login displays **Mobile / LAN access** followed by the
 detected local URL, and the native taskbar configuration window shows it too.
 Adding the page to an iOS or Android home screen uses the dedicated Octopus,
 fox, and charging-bolt app icon.
+
+For secure access away from home, use a private VPN or place an HTTPS reverse
+proxy in front of the Pi and point a DDNS hostname to it. If router port
+forwarding is used, forward only the HTTPS endpoint, leave Dashboard Access
+Code protection enabled, and use a strong unique code. Do not forward the raw
+HTTP service on port `8787` to the public internet.
+
+The dashboard is optimised for mobile access. On iPhone, open it in Safari,
+tap **Share**, then **Add to Home Screen** to create an app-style shortcut. On
+Android, use the browser menu and select **Add to Home screen** or **Install
+app**.
 
 If the IP address changes, try `http://raspberrypi.local:8787` or run
 `hostname -I` on the Pi. The Mobile view uses safe-area spacing, 16 px form
@@ -282,8 +305,9 @@ run the web edition's timers; use the Raspberry Pi edition for unattended use.
   Configuration can disable this protection only for a trusted private LAN;
   loopback access remains reserved for native configuration and the supervised
   worker.
-- Port `8787` uses HTTP on the trusted home LAN. Do not expose it through router
-  port forwarding, a public IP, or an untrusted Wi-Fi network.
+- Port `8787` uses HTTP on the trusted home LAN. For DDNS or router-port-forwarded
+  remote access, publish only an authenticated HTTPS reverse proxy in front of
+  it, or use a private VPN. Never expose raw port `8787` to the public internet.
 - The complete uninstall command removes the encrypted Pi configuration.
   LAN clients cannot wipe or replace service credentials.
 
@@ -319,13 +343,22 @@ The check produces:
 - `dist/install.sh`
 - `dist/uninstall.sh`
 
-The optional FoxESS live implementation is adapted from
-[`nicois/foxess-control`](https://github.com/nicois/foxess-control) under the
-MIT License. See [`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md).
+The Raspberry Pi archive retains the applicable third-party notices and
+licences for its bundled components.
 
 Pushes to `main` test and deploy the standalone HTML as the root GitHub Pages
 app. Tags matching `v*` create a GitHub release with both editions and the
 install/uninstall scripts.
+
+## Acknowledgements
+
+The Raspberry Pi edition's optional FoxESS Live WS implementation is adapted
+from Nick Farrell's
+[`nicois/foxess-control`](https://github.com/nicois/foxess-control) project and
+is used under the MIT License. Thank you to the original developer for the
+FoxESS web-signature and live-telemetry research. Full licence text and adapted
+component details are recorded in
+[`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md).
 
 ## Legal disclaimer
 

@@ -25,12 +25,12 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <meta name="apple-mobile-web-app-title" content="Octopus FoxESS">
     <title>Smart Charging Detector</title>
-    <link rel="icon" href="./octopus-foxess.svg?v=2026.7.30.1" type="image/svg+xml">
-    <link rel="apple-touch-icon" sizes="180x180" href="./icons/apple-touch-icon.png?v=2026.7.30.1">
-    <link rel="manifest" href="./site.webmanifest?v=2026.7.30.1">
+    <link rel="icon" href="./octopus-foxess.svg?v=2026.8.1" type="image/svg+xml">
+    <link rel="apple-touch-icon" sizes="180x180" href="./icons/apple-touch-icon.png?v=2026.8.1">
+    <link rel="manifest" href="./site.webmanifest?v=2026.8.1">
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.9/dist/chart.umd.min.js" integrity="sha384-b0GXujLkk9eYYSmcSfoyZbfyElGAQnDyY0skCHSG6w3JgTMFnz11ggrTAr7seu9f" crossorigin="anonymous"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js" integrity="sha384-S3wQ/l0OsbJoFeJC81UIr3JOlx/OzNJpRt1bV+yhpWQxPAahfpQtpxBSfn+Isslc" crossorigin="anonymous"></script>
-        <link rel="stylesheet" href="./styles.css?v=2026.7.30.1">
+        <link rel="stylesheet" href="./styles.css?v=2026.8.1">
 </head>
 <body>
 
@@ -177,7 +177,7 @@
             <div class="linux-only" style="background: #f0fdf4; padding: 1rem; border-radius: 10px; border: 1px solid #86efac;">
                 <strong style="color: #047857;">🍓 Raspberry Pi Local Service</strong>
                 <p style="margin: 0.5rem 0; color: #475569; line-height: 1.4;">
-                    The Pi provides the FoxESS relay and always-on automation worker. FoxESS telemetry uses official REST normally and can open Live WS on demand during a dynamic charge; native Server Configuration also retains an Always Live WS choice.
+                    The Pi provides the FoxESS relay and always-on automation worker. The dashboard and native Server Configuration both offer Live WS on demand, Always Live WebSocket with REST fallback, and official REST only.
                 </p>
                 <p style="margin: 0; color: #475569; line-height: 1.4;">
                     The undocumented stream is read-only. Schedule and inverter-control commands always use the official FoxESS REST API. You can close the browser after setup—the supervised worker continues running.
@@ -208,14 +208,13 @@
     <div style="display: flex; flex-direction: column; gap: 12px; margin-top: 1.5rem;">
         <button class="web-runtime-only" onclick="document.getElementById('disclaimer-modal').style.display='flex'; toggleAppMenu();" style="width: 100%; padding: 0.85rem; font-size: 0.9rem; background: #3b82f6; border-radius: 8px; border: none; color: white; cursor: pointer; text-align: left; display: flex; align-items: center; gap: 8px;">💾 Save Config</button>
         <div class="linux-client-only menu-setting-row">
-            <div>
-                <strong>Live WS on demand</strong>
-                <small id="live-on-demand-state">Waiting for Pi status…</small>
-            </div>
-            <label class="switch" aria-label="Use Live WS only during a dynamic Octopus charge">
-                <input type="checkbox" id="toggle-live-on-demand" onchange="setLiveWsOnDemand(this.checked)">
-                <span class="slider"></span>
-            </label>
+            <label for="live-ws-policy">FoxESS telemetry</label>
+            <select id="live-ws-policy" onchange="setLiveWsPolicy(this.value)" aria-describedby="live-ws-policy-state">
+                <option value="on-demand">Live WS on demand</option>
+                <option value="always">Always Live WS (REST fallback)</option>
+                <option value="rest">Official REST only</option>
+            </select>
+            <small id="live-ws-policy-state">Waiting for Pi status…</small>
         </div>
         <button onclick="toggleDarkMode(); toggleAppMenu();" class="theme-toggle-btn" style="width: 100%; padding: 0.85rem; font-size: 0.9rem; background: var(--card-bg); border-radius: 8px; border: 1px solid var(--border); color: var(--text-main); cursor: pointer; text-align: left; display: flex; align-items: center; gap: 8px;">🌗 Dark Mode</button>
         <button onclick="toggleFullScreen(); toggleAppMenu();" style="width: 100%; padding: 0.85rem; font-size: 0.9rem; background: var(--card-bg); border-radius: 8px; border: 1px solid var(--border); color: var(--text-main); cursor: pointer; text-align: left; display: flex; align-items: center; gap: 8px;">⛶ Full Screen</button>
@@ -236,6 +235,7 @@
                 <p id="protection-message">Checking the dynamic charge and FoxESS scheduler…</p>
             </div>
             <div class="overview-header-actions">
+                <span id="fox-live-source-badge" class="badge neutral linux-only">TELEMETRY CHECKING</span>
                 <span id="protection-state" class="badge neutral">CHECKING</span>
                 <button type="button" class="overview-menu-button" onclick="toggleAppMenu()">☰ Menu</button>
             </div>
@@ -266,11 +266,6 @@
             <div class="card-header" style="align-items: flex-start;">
                 <div style="display: flex; flex-direction: column; gap: 6px;">
                     <span>🐙 Intelligent Octopus Go</span>
-                    <div style="display: flex; gap: 8px;">
-                        <button onclick="toggleAppMenu()" style="width: fit-content; padding: 0.3rem 0.75rem; font-size: 0.9rem; background: var(--card-bg); border-radius: 6px; border: 1px solid var(--border); color: var(--text-main); cursor: pointer; display: flex; align-items: center; gap: 6px; font-weight: 600; box-shadow: 0 2px 4px rgba(0,0,0,0.05); transition: all 0.2s;">
-                            <span style="font-size: 1.1rem; line-height: 1;">☰</span> Menu
-                        </button>
-                    </div>
                 </div>
                 <div style="display: flex; flex-direction: column; align-items: flex-end; gap: 8px;">
                     <div id="octo-api-badge" class="badge neutral countdown-border" style="cursor: pointer; transition: opacity 0.2s; display: flex; align-items: center; --progress: 100%;" onclick="forceOctoRefresh()" onmouseover="this.style.opacity=0.7" onmouseout="this.style.opacity=1" title="Click to force refresh">
@@ -375,30 +370,6 @@
                 <div id="fox-active-schedules" class="block-countdown-fox" style="background: var(--card-bg); padding: 0.5rem 1rem; margin: 0 -1.05rem; border-radius: 8px; border: 1px solid var(--border); font-size: 0.85rem; color: var(--text-muted); text-align: center;">Click "Refresh" to fetch data.</div>
             </div>
 
-            <div class="automation-block" style="margin-bottom: 1.5rem; padding: 0.5rem 1.25rem;">
-                <details style="font-size: 0.85rem; cursor: pointer;">
-                    <summary style="font-weight: 600; color: var(--text-main); display: flex; justify-content: space-between; align-items: center; list-style: none; padding: 0.75rem 0;">
-                        <h4 style="margin: 0; font-size: 0.95rem; display: flex; align-items: center; gap: 8px;">📊 Live Telemetry</h4>
-                        <span class="telemetry-arrow" style="transition: transform 0.2s; font-size: 0.8rem; color: var(--text-muted);">▼</span>
-                    </summary>
-                    <div style="margin: 0 -1.2rem; padding-top: 0.5rem; padding-bottom: 0.75rem; padding: 3px; border-radius: 12px;" class="block-countdown-fox">
-                        <div style="background: var(--card-bg); padding: 1rem; border-radius: 10px; position: relative; z-index: 2;">
-                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; border-bottom: 1px solid var(--border); padding-bottom: 0.75rem;">
-                                <span style="font-weight: 600; color: var(--text-main);">Inverter Status</span>
-                                <button id="fox-telemetry-fetch-button" onclick="event.preventDefault(); this.textContent='Fetching...'; fetchCurrentWorkMode(true).then(() => this.textContent='🔄 Fetch Now');" style="width: auto; padding: 0.35rem 0.85rem; font-size: 0.75rem; font-weight: 600; background: #3b82f6; border-radius: 6px; color: white; border: none; cursor: pointer; transition: all 0.2s; box-shadow: 0 2px 4px rgba(59, 130, 246, 0.3);" onmouseover="this.style.transform='translateY(-1px)'; this.style.boxShadow='0 4px 6px rgba(59, 130, 246, 0.4)';" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 2px 4px rgba(59, 130, 246, 0.3)';">🔄 Fetch Now</button>
-                            </div>
-                            <div id="live-telemetry-panel" style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem;">
-                                <span style="color: var(--text-muted); font-size: 0.85rem; grid-column: 1 / -1; text-align: center;">Waiting for sync...</span>
-                            </div>
-                            <div class="linux-only fox-live-source-row">
-                                <span>Telemetry source</span>
-                                <span id="fox-live-source-badge" class="badge neutral">CHECKING</span>
-                            </div>
-                        </div>
-                    </div>
-                </details>
-                <style>details > summary::-webkit-details-marker { display: none; } details[open] .telemetry-arrow { transform: rotate(180deg); }</style>
-            </div>
             <div class="automation-block" style="margin-bottom: 0; flex-grow: 1; padding: 0.5rem 1.25rem;">
                 <details style="font-size: 0.85rem; cursor: pointer;">
                     <summary style="font-weight: 600; color: var(--text-main); display: flex; justify-content: space-between; align-items: center; list-style: none; padding: 0.75rem 0;">
@@ -557,7 +528,7 @@
 
     </div> <div class="app-footer">
         <div style="text-align: left;">Developer Samuel Chen</div>
-        <div style="text-align: right;">&copy; Copyright 2026 samuelchen.hk Build v2026.07.30.1</div>
+        <div style="text-align: right;">&copy; Copyright 2026 samuelchen.hk Build v2026.08.01</div>
     </div>
 </div> 
 
@@ -785,7 +756,7 @@
     </div>
 </div>
 
-<script src="./app.js?v=2026.7.30.1"></script>
+<script src="./app.js?v=2026.8.1"></script>
 
 <div id="screen-saver-overlay" onclick="toggleScreenSaver()" style="display: none; position: fixed; inset: 0; width: 100%; height: 100%; background: #000; z-index: 100000; cursor: pointer;"></div>
 

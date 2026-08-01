@@ -26,11 +26,14 @@ window is the only Pi integration editor; the browser dashboard never displays
 service credentials.
 
 The Pi settings app provides the FoxESS credentials and REST/live capability.
-The dashboard menu then controls **Live WS on demand**:
+The dashboard menu and native Server Configuration both expose the same three
+telemetry policies:
 
-- **On** opens the WebSocket only while an Octopus dynamic charge is active,
-  then disconnects it when that charge ends.
-- **Off** keeps telemetry on the official REST API.
+- **Live WS on demand** opens the WebSocket only while an Octopus dynamic
+  charge is active, then disconnects it when that charge ends.
+- **Always Live WebSocket (REST fallback)** keeps live telemetry connected and
+  automatically uses official REST when the stream is unavailable.
+- **Official REST API only** disables Live WS.
 
 Leaving either Live WS credential empty automatically uses REST. While an
 active dynamic charge keeps Live WS connected, the Pi subscribes once to the
@@ -57,10 +60,19 @@ address directly. Every client reads the Pi's current state and sends
 deliberate changes back to the Pi; it is not a pixel-by-pixel screen mirror.
 Only the loopback worker performs unattended schedule writes.
 
+Remote access can be configured with a private VPN or a DDNS hostname and
+router port forwarding. If using DDNS, place an authenticated HTTPS reverse
+proxy in front of the dashboard, forward only the HTTPS endpoint, keep access
+protection enabled, and use a strong unique Dashboard Access Code. Never expose
+the Pi's raw HTTP port `8787` directly to the public internet.
+
 Adding the dashboard to an iOS or Android home screen uses the supplied
 Octopus/fox/charging app icon. The narrow Mobile view fits the viewport without
 zooming out and presents the Octopus dynamic charge schedule, FoxESS mode
 scheduler, and Home Energy Protection status before tariff and account detail.
+On iPhone, open the dashboard in Safari, tap **Share**, then **Add to Home
+Screen**. On Android, use **Add to Home screen** or **Install app** from the
+browser menu.
 
 Install:
 
