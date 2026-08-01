@@ -1,4 +1,44 @@
-## Raspberry Pi graphical updater and configuration guide v2026.08.01.2
+## Smart Discharging and responsive dashboard v2026.08.01.3
+
+### Added
+
+- Adds a separate, hidden-by-default **Smart Discharging Automation** block
+  with SEG export-price and weekly Forced Discharge schedules.
+- Adds default-on safeguards to pause discharging during Smart Dispatch and
+  remove overlapping ordinary Forced Charge periods while discharging.
+- Adds Menu visibility controls for Intelligent Octopus Go, FoxESS Mode
+  Selector, Device & Settings, Smart Charging Automations, and Smart
+  Discharging Automation.
+
+### Fixed
+
+- Keeps import and SEG export charts inside their dashboard column when the
+  browser becomes narrow, and stacks the dashboard before either chart is
+  compressed beyond its usable width.
+- Keeps Auto-Resume scoped to target-price and weekly charging. It cannot
+  cancel an active Smart Dispatch or the next intentional charging rule.
+
+### Improved
+
+- Removes the obsolete Mini HUD and clarifies the automation precedence in the
+  dashboard and README.
+- Refreshes the complete conflict-resolved automation timeline when tariffs,
+  dispatches, or the current weekly window change.
+
+### Deployment
+
+- Publishes matching standalone GitHub Pages and Raspberry Pi OS editions.
+- Keeps GitHub Pages and the always-on Raspberry Pi worker as separate runtime
+  options while sharing the same tested scheduling rules.
+
+### Validation
+
+- Covers overnight Forced Discharge schedules, Smart Dispatch protection,
+  Forced Charge/discharge conflicts, Auto-Resume isolation, responsive chart
+  containment, dashboard visibility settings, Mini HUD removal, standalone
+  output, and Raspberry Pi release packaging.
+
+## Previous Raspberry Pi graphical updater and configuration guide v2026.08.01.2
 
 ### Added
 

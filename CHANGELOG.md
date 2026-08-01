@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## v2026.08.01.3 — 2026-08-01
 
 - Fix tariff charts escaping their dashboard column when the browser becomes
   narrow; the layout now stacks earlier and explicitly resizes both canvases.
