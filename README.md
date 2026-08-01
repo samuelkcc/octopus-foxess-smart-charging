@@ -81,6 +81,8 @@ The taskbar icon shows the server state:
 - **Amber:** waiting or using a safe fallback
 - **Red:** configuration or connection needs attention
 
+![Raspberry Pi Server Configuration](Pi_Config.png)
+
 ### 3. Open the dashboard
 
 On any device connected to the same network, open the address shown in **Server
@@ -132,8 +134,14 @@ Code protection enabled.
 
 ### Update or remove
 
-Run the install command again to update. Your encrypted configuration and
-access code are preserved.
+Select **Update Raspberry Pi Edition** in Server Configuration. Approve the
+Raspberry Pi OS administrator prompt; the latest release is installed and the
+services restart automatically. Your encrypted configuration and access code
+are preserved.
+
+> Existing installations without the update button need the install command
+> one final time. Future releases can then be installed from Server
+> Configuration without typing a terminal command.
 
 <details>
 <summary><strong>Service status and troubleshooting commands</strong></summary>

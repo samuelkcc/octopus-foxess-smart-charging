@@ -1,5 +1,16 @@
 # Changelog
 
+## v2026.08.01.2 — 2026-08-01
+
+- Add **Update Raspberry Pi Edition** to native Server Configuration, using the
+  standard graphical administrator prompt so future updates need no terminal
+  command.
+- Preserve encrypted configuration and the Dashboard Access Code while the
+  updater installs the latest release and restarts the Pi services and taskbar
+  indicator.
+- Add the Raspberry Pi Server Configuration reference screenshot to the main
+  README.
+
 ## v2026.08.01.1 — 2026-08-01
 
 - Format every dashboard telemetry value to two decimal places.

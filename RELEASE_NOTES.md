@@ -1,4 +1,29 @@
-## Raspberry Pi telemetry and configuration polish v2026.08.01.1
+## Raspberry Pi graphical updater and configuration guide v2026.08.01.2
+
+### Added
+
+- Adds **Update Raspberry Pi Edition** to native Server Configuration. It uses
+  Raspberry Pi OS's graphical administrator authorization and installs the
+  latest official release without requiring a terminal command.
+- Adds the new Raspberry Pi Server Configuration screenshot to the README as a
+  visual setup reference.
+
+### Deployment
+
+- Preserves encrypted credentials, automation preferences, and the Dashboard
+  Access Code during an update.
+- Restarts the server, worker, sleep inhibitor, and signed-in user's taskbar
+  indicator after installing the release.
+- Existing installations need the normal install command once to receive the
+  new updater; future releases can be installed from the configuration window.
+
+### Validation
+
+- Covers fixed-command graphical authorization, updater packaging and removal,
+  desktop-user relaunch, version consistency, standalone output, and Raspberry
+  Pi release packaging.
+
+## Previous Raspberry Pi telemetry and configuration polish v2026.08.01.1
 
 ### Fixed
 

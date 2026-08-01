@@ -22,6 +22,7 @@ await Promise.all([
   cp(path.join(root, 'linux', 'README-RASPBERRY-PI.md'), path.join(packageRoot, 'README-RASPBERRY-PI.md')),
   cp(path.join(root, 'linux', 'open-dashboard.sh'), path.join(packageRoot, 'open-dashboard.sh')),
   cp(path.join(root, 'linux', 'tray.py'), path.join(packageRoot, 'tray.py')),
+  cp(path.join(root, 'linux', 'update.sh'), path.join(packageRoot, 'update.sh')),
   cp(path.join(root, 'linux', 'octopus-foxess.desktop'), path.join(packageRoot, 'octopus-foxess.desktop')),
   cp(path.join(root, 'linux', 'octopus-foxess-tray.desktop'), path.join(packageRoot, 'octopus-foxess-tray.desktop')),
   cp(path.join(root, 'linux', 'octopus-foxess.svg'), path.join(packageRoot, 'octopus-foxess.svg')),

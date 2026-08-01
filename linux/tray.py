@@ -37,6 +37,8 @@ except (FileNotFoundError, ValueError):
     pass
 
 BASE_URL = f"http://127.0.0.1:{PORT}"
+UPDATE_COMMAND = "/usr/local/sbin/octopus-foxess-update"
+PKEXEC_COMMAND = "/usr/bin/pkexec"
 ICON_ROOT = "/usr/share/icons/hicolor"
 ICONS = {
     "green": "octopus-foxess-status-green",
@@ -130,10 +132,18 @@ class ServerConfigurationWindow(Gtk.Window):
         root = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=8)
         self.add(root)
 
+        header = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=12)
+        root.pack_start(header, False, False, 0)
+
         heading = Gtk.Label()
         heading.set_markup("<span size='x-large' weight='bold'>Octopus FoxESS Server</span>")
         heading.set_xalign(0)
-        root.pack_start(heading, False, False, 0)
+        heading.set_hexpand(True)
+        header.pack_start(heading, True, True, 0)
+
+        self.update_button = Gtk.Button(label="Update Raspberry Pi Edition")
+        self.update_button.connect("clicked", self.update_application)
+        header.pack_end(self.update_button, False, False, 0)
 
         intro = Gtk.Label(
             label="Private Raspberry Pi configuration. The automation worker keeps running after this window closes."
@@ -405,7 +415,60 @@ class ServerConfigurationWindow(Gtk.Window):
         self.operation_in_progress = busy
         self.save_button.set_sensitive(not busy)
         self.refresh_button.set_sensitive(not busy and not self.config_refresh_in_progress)
+        self.update_button.set_sensitive(not busy)
         self.update_live_sensitivity()
+
+    def update_application(self, _button):
+        if self.operation_in_progress:
+            return
+        if not os.path.isfile(UPDATE_COMMAND) or not os.access(UPDATE_COMMAND, os.X_OK):
+            self.message.set_markup(
+                "<span foreground='#b91c1c'>The graphical updater is not installed. "
+                "Install this release once using the README command; future updates can use this button.</span>"
+            )
+            return
+        if not os.path.isfile(PKEXEC_COMMAND) or not os.access(PKEXEC_COMMAND, os.X_OK):
+            self.message.set_markup(
+                "<span foreground='#b91c1c'>The Raspberry Pi administrator prompt is unavailable. "
+                "Install the pkexec package or update once using the README command.</span>"
+            )
+            return
+
+        self.set_operation_busy(True)
+        self.message.set_text(
+            "Requesting administrator permission… The latest release will be installed and the services restarted."
+        )
+
+        def run_update():
+            result = subprocess.run(
+                [PKEXEC_COMMAND, UPDATE_COMMAND],
+                stdin=subprocess.DEVNULL,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+                timeout=900,
+                check=False,
+            )
+            if result.returncode in (126, 127):
+                raise RuntimeError("Administrator permission was cancelled or denied.")
+            if result.returncode != 0:
+                raise RuntimeError("The update could not be installed. Check the network connection and try again.")
+            return result.returncode
+
+        def update_finished(_result):
+            self.set_operation_busy(False)
+            self.message.set_markup(
+                "<span foreground='#047857'>Update installed. The server and taskbar indicator are restarting.</span>"
+            )
+            return False
+
+        def update_failed(error):
+            self.set_operation_busy(False)
+            self.message.set_markup(
+                f"<span foreground='#b91c1c'>{GLib.markup_escape_text(str(error))}</span>"
+            )
+            return False
+
+        run_in_background(run_update, update_finished, update_failed)
 
     def save_configuration(self, _button=None, quiet=False, after_save=None):
         access_code = self.access_code.get_text().strip()

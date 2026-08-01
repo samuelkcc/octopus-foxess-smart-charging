@@ -24,7 +24,7 @@ echo "Installing system packages..."
 apt-get update
 DEBIAN_FRONTEND=noninteractive apt-get install -y \
   ca-certificates curl nodejs chromium fonts-noto-color-emoji \
-  python3 python3-gi gir1.2-ayatanaappindicator3-0.1
+  python3 python3-gi gir1.2-ayatanaappindicator3-0.1 pkexec
 
 NODE_MAJOR="$(node -p "Number(process.versions.node.split('.')[0])")"
 if [ "$NODE_MAJOR" -lt 18 ]; then
@@ -75,6 +75,7 @@ ln -sfn "$RELEASE_ROOT" "$APP_ROOT/current"
 
 install -m 0755 "$RELEASE_ROOT/open-dashboard.sh" /usr/local/bin/octopus-foxess-dashboard
 install -m 0755 "$RELEASE_ROOT/tray.py" /usr/local/bin/octopus-foxess-tray
+install -m 0755 "$RELEASE_ROOT/update.sh" /usr/local/sbin/octopus-foxess-update
 install -m 0644 "$RELEASE_ROOT/octopus-foxess.desktop" /usr/share/applications/octopus-foxess.desktop
 install -d -m 0755 /etc/xdg/autostart
 install -m 0644 "$RELEASE_ROOT/octopus-foxess-tray.desktop" /etc/xdg/autostart/octopus-foxess-tray.desktop

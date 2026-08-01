@@ -10,9 +10,10 @@ const stateRoot = path.join(temporaryRoot, 'state');
 const accessKeyFile = path.join(temporaryRoot, 'access.key');
 const port = 18_000 + Math.floor(Math.random() * 10_000);
 const accessKey = 'test-access-key';
-const [installerSource, uninstallerSource, stylesSource, markupSource, appSource, linuxBuildSource, traySource, dashboardLauncherSource, pagesWorkflow, releaseWorkflow] = await Promise.all([
+const [installerSource, uninstallerSource, updaterSource, stylesSource, markupSource, appSource, linuxBuildSource, traySource, dashboardLauncherSource, pagesWorkflow, releaseWorkflow] = await Promise.all([
   readFile(path.join(root, 'linux', 'install.sh'), 'utf8'),
   readFile(path.join(root, 'linux', 'uninstall.sh'), 'utf8'),
+  readFile(path.join(root, 'linux', 'update.sh'), 'utf8'),
   readFile(path.join(root, 'src', 'styles.css'), 'utf8'),
   readFile(path.join(root, 'src', 'index.html'), 'utf8'),
   readFile(path.join(root, 'src', 'app.js'), 'utf8'),
@@ -34,6 +35,8 @@ assert.match(installerSource, /chmod -R u=rwX,go=rX "\$RELEASE_ROOT"/);
 assert.doesNotMatch(installerSource, /install -m 0755 .*octopus-foxess-settings/);
 assert.match(installerSource, /octopus-foxess-dashboard/);
 assert.match(installerSource, /octopus-foxess-tray/);
+assert.match(installerSource, /install -m 0755 "\$RELEASE_ROOT\/update\.sh" \/usr\/local\/sbin\/octopus-foxess-update/);
+assert.match(installerSource, /gir1\.2-ayatanaappindicator3-0\.1 pkexec/);
 assert.match(installerSource, /pkill -u "\$DESKTOP_UID" -f 'octopus-foxess-tray'/);
 assert.match(installerSource, /gir1\.2-ayatanaappindicator3-0\.1/);
 assert.match(installerSource, /Octopus FoxESS Dashboard\.desktop/);
@@ -41,6 +44,11 @@ assert.match(installerSource, /OCTOPUS_ACCESS_KEY_FILE=\$ACCESS_KEY_FILE/);
 assert.match(uninstallerSource, /systemctl disable --now octopus-foxess-inhibit\.service octopus-foxess-worker\.service octopus-foxess\.service/);
 assert.match(uninstallerSource, /usr\/share\/applications\/octopus-foxess\.desktop/);
 assert.match(uninstallerSource, /etc\/xdg\/autostart\/octopus-foxess-tray\.desktop/);
+assert.match(uninstallerSource, /usr\/local\/sbin\/octopus-foxess-update/);
+assert.match(updaterSource, /PKEXEC_UID/);
+assert.match(updaterSource, /export SUDO_USER="\$DESKTOP_ACCOUNT"/);
+assert.match(updaterSource, /raw\.githubusercontent\.com\/samuelkcc\/octopus-foxess-smart-charging\/main\/linux\/install\.sh/);
+assert.match(updaterSource, /curl --proto '=https' --tlsv1\.2 -fsSL/);
 assert.match(stylesSource, /@media \(max-width: 600px\)/);
 assert.match(stylesSource, /font-size: 16px/);
 assert.match(stylesSource, /\.fox-live-settings-heading > div \{ flex: 1 1 12rem/);
@@ -64,8 +72,8 @@ assert.match(markupSource, /class="input-group pi-config-only"/);
 assert.match(markupSource, /id="octopus-account-toggle"/);
 assert.match(markupSource, /rel="apple-touch-icon"/);
 assert.match(markupSource, /rel="manifest"/);
-assert.match(markupSource, /styles\.css\?v=2026\.8\.1\.1/);
-assert.match(markupSource, /app\.js\?v=2026\.8\.1\.1/);
+assert.match(markupSource, /styles\.css\?v=2026\.8\.1\.2/);
+assert.match(markupSource, /app\.js\?v=2026\.8\.1\.2/);
 assert.match(stylesSource, /\.linux-runtime \.pi-config-only \{ display: none !important; \}/);
 assert.match(stylesSource, /\.account-number-row \.account-secret-control \.val \{ max-width: none; white-space: nowrap/);
 assert.match(appSource, /LINUX_OCTOPUS_ENDPOINT = '\/api\/octopus'/);
@@ -96,6 +104,7 @@ assert.match(linuxBuildSource, /octopus-foxess\.desktop/);
 assert.match(linuxBuildSource, /octopus-foxess-tray\.desktop/);
 assert.match(linuxBuildSource, /open-dashboard\.sh/);
 assert.match(linuxBuildSource, /tray\.py/);
+assert.match(linuxBuildSource, /update\.sh/);
 assert.match(linuxBuildSource, /octopus-foxess\.svg/);
 assert.match(linuxBuildSource, /packageRoot, 'web', 'octopus-foxess\.svg'/);
 assert.match(linuxBuildSource, /site\.webmanifest/);
@@ -116,6 +125,9 @@ assert.match(traySource, /Octopus account/);
 assert.match(traySource, /FoxESS web-login email/);
 assert.match(traySource, /Save & Test Live WS/);
 assert.match(traySource, /Enable FoxESS Live WS telemetry/);
+assert.match(traySource, /Update Raspberry Pi Edition/);
+assert.match(traySource, /\[PKEXEC_COMMAND, UPDATE_COMMAND\]/);
+assert.match(traySource, /timeout=900/);
 assert.match(traySource, /set_default_size\(980, 620\)/);
 assert.match(traySource, /Gtk\.Revealer/);
 assert.doesNotMatch(traySource, /Gtk\.ScrolledWindow/);

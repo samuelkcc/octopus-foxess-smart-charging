@@ -21,7 +21,9 @@ fallback state, and red indicates a configuration or connection problem.
 Choose **Server Configuration…** from the taskbar menu to view the LAN listen
 address, enable or disable LAN access-code protection, enter the Octopus/FoxESS
 credentials, enable optional Live WS access, and inspect all integration
-states. Enabling Live WS reveals the FoxESS web-login fields. This compact
+states. **Update Raspberry Pi Edition** opens the standard graphical
+administrator prompt, installs the latest release, and restarts the services.
+Enabling Live WS reveals the FoxESS web-login fields. This compact
 native window is the only Pi integration editor; the browser dashboard never
 displays service credentials.
 
@@ -94,7 +96,8 @@ sudo journalctl -u octopus-foxess -u octopus-foxess-worker -u octopus-foxess-inh
 sudo systemctl restart octopus-foxess octopus-foxess-worker octopus-foxess-inhibit
 ```
 
-Re-run the install command to update. The encrypted configuration and selected
-access code are preserved. The uninstall command removes the services, launcher,
-taskbar autostart entry, desktop client, encrypted configuration, and access
-code.
+Use **Update Raspberry Pi Edition** in Server Configuration for future updates.
+An existing installation without this button must re-run the install command
+once to add it. The encrypted configuration and selected access code are
+preserved. The uninstall command removes the services, launcher, taskbar
+autostart entry, desktop client, encrypted configuration, and access code.

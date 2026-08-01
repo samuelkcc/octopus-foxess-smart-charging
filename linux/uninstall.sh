@@ -19,6 +19,7 @@ if [ -s /etc/octopus-foxess/desktop-shortcut.path ]; then
   esac
 fi
 rm -f /usr/local/bin/octopus-foxess-settings /usr/local/bin/octopus-foxess-dashboard /usr/local/bin/octopus-foxess-tray
+rm -f /usr/local/sbin/octopus-foxess-update
 rm -f /usr/share/applications/octopus-foxess.desktop
 rm -f /etc/xdg/autostart/octopus-foxess-tray.desktop
 rm -f \
