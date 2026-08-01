@@ -10,8 +10,8 @@
 
 ### Improved
 
-- Uses the low-profile developer identity **SCKC** in the web and Raspberry Pi
-  editions while retaining the `samuelchen.hk` copyright notice.
+- Uses a single-line **SCKC** developer and copyright credit in the web and
+  Raspberry Pi editions, without linking the project to a personal website.
 
 ### Deployment
 
