@@ -102,6 +102,10 @@ For app-style access:
 - **Android:** open the browser menu, then select **Add to Home screen** or
   **Install app**.
 
+<p align="center">
+  <img src="Mobile_Dashboard.png" alt="Octopus FoxESS Home Energy Protection mobile dashboard" width="420">
+</p>
+
 If the Pi address changes, try `http://raspberrypi.local:8787` or run
 `hostname -I` on the Pi.
 
