@@ -1,219 +1,132 @@
 # 🐙🦊 Intelligent Octopus Go & FoxESS Smart Charging Detector
 
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
-[![Hosted on GitHub Pages](https://img.shields.io/badge/Web-GitHub%20Pages-success.svg)](https://samuelkcc.github.io/octopus-foxess-smart-charging/)
-[![Raspberry Pi OS](https://img.shields.io/badge/Linux-Raspberry%20Pi%20OS-c51a4a.svg)](#raspberry-pi-os-edition-recommended-for-always-on-use)
+[![Open Web App](https://img.shields.io/badge/Open-Web%20App-success.svg)](https://samuelkcc.github.io/octopus-foxess-smart-charging/)
+[![Raspberry Pi OS](https://img.shields.io/badge/Raspberry%20Pi-24%2F7-c51a4a.svg)](#raspberry-pi-os-edition)
 
-An always-on automation bridge that protects a FoxESS home battery during
-Intelligent Octopus Go EV charging slots.
-
-## Choose an edition
-
-| | Web edition | Raspberry Pi OS edition |
-|---|---|---|
-| Launch | [Open the live app](https://samuelkcc.github.io/octopus-foxess-smart-charging/) | Background server taskbar icon and LAN dashboard client |
-| Google Apps Script | Required for the FoxESS browser relay | Not required |
-| Always-on automation | Browser must remain open and awake | Supervised background worker |
-| Start after reboot | No | Yes, through `systemd` |
-| Local network GUI | No | Yes, responsive on phones, tablets, and computers |
-| FoxESS telemetry | Official REST through the browser relay | Live WS on demand, Always Live WS with REST fallback, or official REST only |
-| Remote access | Public GitHub Pages app | Private LAN by default; secure DDNS/HTTPS or VPN access can be configured |
-| Best for | Quick use and existing browser setups | Reliable 24/7 operation |
-
-Both editions use the same dashboard and automation logic. The GitHub Pages
-edition remains available; installing the Raspberry Pi edition does not replace
-or disable it.
-
-The Raspberry Pi OS edition combines an always-on server with a responsive
-browser client. Open its control panel from a phone, tablet, or computer on the
-local network. Advanced users can also publish it through a DDNS hostname and
-router port forwarding, but the public connection must be protected by HTTPS
-and a strong Dashboard Access Code; never expose the Pi's unencrypted port
-`8787` directly to the internet. A private VPN is the safer remote-access
-option.
+Protect a FoxESS home battery from discharging into an EV during Intelligent
+Octopus Go charging slots. The app follows Octopus dispatches and electricity
+prices, then manages the FoxESS schedule automatically.
 
 ![Smart Charging Detector Dashboard](Dashboard.png)
 
+## Choose your edition
+
+| | Raspberry Pi OS — recommended | Web app |
+|---|---|---|
+| Best for | Reliable 24/7 automation | Quick browser use |
+| Runs when the browser is closed | Yes | No |
+| Phone and tablet access | Yes, over your LAN | Yes |
+| FoxESS telemetry | Live WS or official REST | Official REST |
+| Google Apps Script | Not required | Required |
+
+- **Raspberry Pi OS:** an always-on server plus a mobile-friendly dashboard for
+  phones, tablets, and computers.
+- **Web app:** runs directly from GitHub Pages, but the browser must remain open
+  and awake for automation to continue.
+
 ## What it does
 
-When Intelligent Octopus Go opens a cheap EV charging slot, a FoxESS inverter in
-Self-Use mode may treat the EV load as normal household demand and discharge the
-home battery. This app reads Octopus dispatches and tariff rates, then maintains
-FoxESS V3 schedules that can Force Charge or protect the battery during those
-periods.
+- Protects the home battery during Octopus dynamic EV charging slots.
+- Creates FoxESS Force Charge and battery-protection schedules.
+- Supports target-price charging, SEG export rates, weekly time windows, target
+  SOC, power limits, and Auto-Resume.
+- Shows import and export prices separately.
+- Tracks FoxESS API usage and limits unnecessary requests.
+- Provides responsive light, dark, full-screen, and Mini HUD layouts.
 
-Features include:
+## What you need
 
-- Intelligent Octopus Go dispatch synchronisation
-- separate import and SEG export tariff detection and charts
-- target-price charging and price-based export rules
-- weekly forced-charge windows, including overnight periods
-- target SOC, minimum SOC, charge/discharge power, and Auto-Resume controls
-- FoxESS API quota tracking and request throttling
-- optional approximately five-second FoxESS Live WebSocket telemetry with automatic REST fallback on Raspberry Pi
-- encrypted configuration and password-protected manual backups
-- responsive phone, tablet, desktop, dark-mode, full-screen, and Mini HUD views
+- Your Octopus account number (`A-...`) and API key (`sk_live_...`) from
+  [Octopus API Access](https://octopus.energy/dashboard/new/accounts/personal-details/api-access).
+- Your FoxESS inverter serial number and API token from **User Profile → API
+  Management** on the [FoxCloud V1 website](https://www.foxesscloud.com/login).
+- For optional Live WS telemetry, your FoxCloud web login details.
 
-## Credentials required during initial setup
+> FoxESS API tokens are created on the V1 website, not in the V2 website or
+> mobile app.
 
-The web edition asks for these details in its browser login. For the Raspberry
-Pi edition, enter them once through native **Server Configuration…** from the
-Pi taskbar icon. Mobile / LAN clients never ask for them.
+## Raspberry Pi OS edition
 
-### Octopus Energy
+Recommended for Raspberry Pi 4 or 5 running a current Raspberry Pi OS.
 
-1. Sign in to the [Octopus dashboard](https://octopus.energy/dashboard/).
-2. Copy the account number beginning with `A-`.
-3. Open [API Access](https://octopus.energy/dashboard/new/accounts/personal-details/api-access)
-   and generate the `sk_live_...` API key.
+### 1. Install
 
-### FoxESS Cloud
-
-1. Copy the inverter serial number from the device label or FoxCloud app.
-2. Sign in to the [FoxCloud V1 website](https://www.foxesscloud.com/login).
-3. Open **User Profile → API Management** and generate an API token.
-
-The token cannot currently be generated from the V2 website or mobile app.
-
-## Raspberry Pi OS edition (recommended for always-on use)
-
-### Requirements
-
-- Raspberry Pi 4 or 5
-- current 32-bit or 64-bit Raspberry Pi OS with `systemd`
-- internet access for Octopus and FoxESS Cloud APIs
-- Pi and client device connected to the same trusted home network
-
-Raspberry Pi OS Bookworm or newer is recommended. The installer adds Node.js,
-Chromium, Python GTK/AppIndicator support, `curl`, CA certificates, and the Noto
-colour emoji font through `apt`.
-
-### Install
-
-On the Raspberry Pi, run:
+Run this command on the Pi:
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/samuelkcc/octopus-foxess-smart-charging/main/linux/install.sh | sudo sh
 ```
 
-The installer:
+The installer creates the always-on services, starts them after reboot, and
+adds **Octopus FoxESS Server** and **Octopus FoxESS Dashboard** to the desktop.
 
-1. downloads the latest Raspberry Pi release package;
-2. creates a restricted `octopus-foxess` service account;
-3. installs a LAN server on port `8787`;
-4. installs an always-on Chromium automation worker;
-5. enables the services at startup;
-6. blocks system sleep while the worker is active; and
-7. adds a native **Octopus FoxESS Server** taskbar status icon;
-8. adds a separate **Octopus FoxESS Dashboard** desktop/application-menu client; and
-9. prints the local URL and generated LAN access code.
+### 2. Configure
 
-The taskbar icon starts automatically at desktop login. Green means the server
-and configured API connections are healthy, amber means a connection is waiting
-or using an intentional fallback, and red indicates a configuration or
-connection problem. Its menu shows individual **Octopus API**, **FoxESS REST**,
-and **FoxESS Live WS** states.
+Open the taskbar icon and select **Server Configuration…**. Enter your Octopus
+and FoxESS details, choose a telemetry mode, then save and run the connection
+check.
 
-Select **Server Configuration…** from the taskbar icon to open the native
-Raspberry Pi configuration window. It is the only Pi integration editor and
-contains the listen address, optional LAN access-code protection, Octopus
-account/API key, FoxESS serial/API token, Live WS selector and optional
-web-login, self-test, and all integration health states. The browser dashboard
-never displays or edits these service credentials.
+The taskbar icon shows the server state:
 
-### FoxESS telemetry connection
+- **Green:** connected and healthy
+- **Amber:** waiting or using a safe fallback
+- **Red:** configuration or connection needs attention
 
-The native Server Configuration screen offers:
+### 3. Open the dashboard
 
-- **Live WS on demand (default)** — uses official REST normally, opens the web
-  connection only during an active Octopus dynamic charge, and disconnects
-  afterwards.
-- **Always Live WebSocket (REST fallback)** — keeps live telemetry connected
-  continuously, matching the original Live WS behavior.
-- **Official REST API only** — disables the undocumented live stream and uses
-  the FoxESS Open API.
-
-The dashboard menu and native Server Configuration both offer the same three
-telemetry policies: **Live WS on demand**, **Always Live WebSocket (REST
-fallback)**, and **Official REST API only**. When on-demand mode is selected,
-the Pi opens
-the FoxESS web connection only while an Octopus dynamic charge is active,
-subscribes once to the approximately five-second telemetry stream, keeps the
-transport alive with a protocol heartbeat, and disconnects afterwards. The
-web-session token is reused for up to 12 hours so reconnects do not repeatedly
-log in. This reduces FoxESS web-login conflicts while retaining live
-telemetry during EV charging. Always-live mode keeps the stream connected and
-automatically falls back to REST if it becomes unavailable. Official-REST-only
-mode disables the undocumented stream. If either optional web-login field is empty, login fails,
-the stream closes, or no fresh frame arrives within 30 seconds, the Pi also
-uses REST. REST telemetry is cached for at least one minute to respect
-FoxESS's daily quota. The dashboard displays `LIVE WS · DYNAMIC CHARGE`,
-`LIVE WS · ALWAYS`, `ON-DEMAND STANDBY · REST`, or `OFFICIAL REST` so the active source is
-visible.
-
-Opening or refreshing Server Configuration never logs in to the FoxESS web
-portal. **Save & Test Live WS now** is an explicit diagnostic: it may create one
-temporary web login, which may sign the FoxESS mobile app out. In on-demand
-standby, a successful test connection is closed immediately and REST remains
-active until the next dynamic charge.
-
-The live connection is an undocumented FoxESS web-portal interface and may
-change without notice. It is used only for read-only telemetry. Scheduler
-reads/writes, work-mode controls, and every deliberate inverter change continue
-to use the official FoxESS REST API.
-
-Open the address displayed in **Server Configuration** on any phone, tablet, or
-computer connected to the same LAN, for example:
+On any device connected to the same network, open the address shown in **Server
+Configuration**, for example:
 
 ```text
 http://192.168.1.42:8787
 ```
 
-Enter the LAN access code if protection is enabled in Server Configuration.
-After a successful check, that client device remembers the code and opens the
-dashboard directly on later visits. Use **Menu → Remove Access Code** to forget
-it and return to the login screen. You may turn protection off for a trusted
-private LAN; in that mode the client opens without a password and anyone on
-that LAN can view and control the dashboard.
-There is no Google Apps Script field in this edition,
-and the client does not show Octopus or FoxESS credential fields,
-configuration import, or wipe controls. After the one-key check, the Pi service
-authenticates with Octopus and signs FoxESS requests on the client's behalf.
-After the first successful Pi setup, the supervised worker reads the centrally
-stored encrypted configuration and keeps running even after the Pi settings
-window and every LAN browser are closed.
+Enter the Dashboard Access Code when prompted. Your device remembers a valid
+code until you select **Menu → Remove Access Code**.
 
-The Mobile / LAN view is not a pixel-by-pixel screen mirror. It is a responsive
-client of the Pi service and starts with the Home Energy Protection overview:
-Octopus Dynamic Charge Schedule, FoxESS Mode Scheduler, protection status,
-battery SOC, and available solar/home/grid/battery power data. It sends
-deliberate automation changes back to the Pi. Octopus and FoxESS service
-credentials can only be viewed or changed in native Server Configuration on
-the Pi. The Pi remains the source of truth and the only unattended automation
-worker.
+For app-style access:
 
-The Raspberry Pi client login displays **Mobile / LAN access** followed by the
-detected local URL, and the native taskbar configuration window shows it too.
-Adding the page to an iOS or Android home screen uses the dedicated Octopus,
-fox, and charging-bolt app icon.
+- **iPhone/iPad:** open the page in Safari, then tap **Share → Add to Home
+  Screen**.
+- **Android:** open the browser menu, then select **Add to Home screen** or
+  **Install app**.
 
-For secure access away from home, use a private VPN or place an HTTPS reverse
-proxy in front of the Pi and point a DDNS hostname to it. If router port
-forwarding is used, forward only the HTTPS endpoint, leave Dashboard Access
-Code protection enabled, and use a strong unique code. Do not forward the raw
-HTTP service on port `8787` to the public internet.
+If the Pi address changes, try `http://raspberrypi.local:8787` or run
+`hostname -I` on the Pi.
 
-The dashboard is optimised for mobile access. On iPhone, open it in Safari,
-tap **Share**, then **Add to Home Screen** to create an app-style shortcut. On
-Android, use the browser menu and select **Add to Home screen** or **Install
-app**.
+### FoxESS telemetry
 
-If the IP address changes, try `http://raspberrypi.local:8787` or run
-`hostname -I` on the Pi. The Mobile view uses safe-area spacing, 16 px form
-controls to prevent browser zoom, large touch targets, single-column cards, and
-responsive charts on iOS and Android.
+Choose the mode that suits your setup:
 
-### Service commands
+| Mode | Behaviour |
+|---|---|
+| **Live WS on demand (default)** | Uses REST normally and Live WS only during an active Octopus dynamic charge. |
+| **Always Live WebSocket (REST fallback)** | Keeps live telemetry connected and falls back to REST automatically. |
+| **Official REST API only** | Disables Live WS and uses only the FoxESS Open API. |
+
+Live WS is read-only. Every scheduler or inverter change still uses the
+official FoxESS REST API. The live interface is undocumented and may change;
+if it is unavailable, the Pi safely returns to REST.
+
+**Save & Test Live WS now** is optional and may sign the FoxESS mobile app out.
+Opening Server Configuration by itself does not log in to FoxCloud.
+
+### Access away from home
+
+A private VPN is the safest option. DDNS and port forwarding can also be used,
+but only through an authenticated **HTTPS reverse proxy** with Dashboard Access
+Code protection enabled.
+
+**Never expose the Pi's raw HTTP port `8787` directly to the internet.**
+
+### Update or remove
+
+Run the install command again to update. Your encrypted configuration and
+access code are preserved.
+
+<details>
+<summary><strong>Service status and troubleshooting commands</strong></summary>
 
 ```bash
 sudo systemctl status octopus-foxess octopus-foxess-worker octopus-foxess-inhibit
@@ -221,36 +134,35 @@ sudo journalctl -u octopus-foxess -u octopus-foxess-worker -u octopus-foxess-inh
 sudo systemctl restart octopus-foxess octopus-foxess-worker octopus-foxess-inhibit
 ```
 
-All three services use `Restart=always`. A separate root-owned
-`octopus-foxess-inhibit` service holds the sleep and idle inhibitor without
-granting elevated privileges to the server or Chromium worker. Rebooting the Pi
-automatically starts all three services again.
+</details>
 
-### Update
-
-Run the install command again. It downloads the latest release and preserves the
-encrypted configuration and access code.
-
-### Uninstall
+To completely uninstall the Pi edition:
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/samuelkcc/octopus-foxess-smart-charging/main/linux/uninstall.sh | sudo sh
 ```
 
-Uninstalling stops and removes both services, the application, the generated
-access code, and the encrypted configuration. This is intentionally a complete
-removal.
+> Uninstalling removes the services, application, access code, and encrypted
+> configuration.
 
-## Web edition on GitHub Pages
+## Web edition
 
-Open the [live GitHub Pages app](https://samuelkcc.github.io/octopus-foxess-smart-charging/).
-Because a static browser page cannot call FoxESS Cloud directly due to browser
-CORS restrictions, this edition uses a personal Google Apps Script relay.
+[Open the live web app](https://samuelkcc.github.io/octopus-foxess-smart-charging/).
 
-### Create the relay
+The web edition needs a personal Google Apps Script relay because a static web
+page cannot contact FoxESS Cloud directly. Keep the dashboard open and the
+device awake while automation is active.
 
-1. Open [Google Apps Script](https://script.google.com/) and create a project.
-2. Replace its contents with:
+### Create the FoxESS relay
+
+1. Create a project at [Google Apps Script](https://script.google.com/).
+2. Add the relay code below.
+3. Select **Deploy → New deployment → Web app**.
+4. Set **Execute as** to **Me** and **Who has access** to **Anyone**.
+5. Deploy, then paste the Web App URL into the dashboard login screen.
+
+<details>
+<summary><strong>Show Google Apps Script relay code</strong></summary>
 
 ```javascript
 function doPost(e) {
@@ -275,103 +187,47 @@ function doPost(e) {
 }
 ```
 
-3. Select **Deploy → New deployment → Web app**.
-4. Set **Execute as** to **Me** and **Who has access** to **Anyone**.
-5. Deploy and paste the Web App URL into the dashboard login screen.
+</details>
 
-Keep one active automation dashboard only. A sleeping or closed browser cannot
-run the web edition's timers; use the Raspberry Pi edition for unattended use.
+Use only one active automation dashboard. For unattended operation, use the
+Raspberry Pi edition.
 
-## Security and network guidance
+## Security
 
-- The project has no telemetry or third-party application server.
-- Web-edition credentials use a non-exportable browser AES-GCM key when secure
-  browser storage is available.
-- Raspberry Pi credentials and automation settings are encrypted with AES-256-GCM
-  in `/var/lib/octopus-foxess`.
-- LAN clients receive only managed-configuration status; Octopus
-  API keys, FoxESS tokens, and inverter serial numbers are not returned.
-- Optional FoxESS web-login credentials for Live WS are also encrypted on the
-  Pi and are never returned to a LAN client.
-- The Pi authenticates Octopus requests and signs FoxESS requests server-side.
-- The LAN access code is stored with service-only permissions in
-  `/var/lib/octopus-foxess/access.key` and can only be viewed or changed through
-  the settings screen opened locally on the Pi.
-- The Pi relay accepts only HTTPS requests to `www.foxesscloud.com/op/...`.
-- The optional read-only live stream connects from the Pi to the undocumented
-  `wss://www.foxesscloud.com/dew/v0/wsmaitian` endpoint. It never carries
-  scheduler or inverter-control commands.
-- LAN API access requires the configured access code by default. Server
-  Configuration can disable this protection only for a trusted private LAN;
-  loopback access remains reserved for native configuration and the supervised
-  worker.
-- Port `8787` uses HTTP on the trusted home LAN. For DDNS or router-port-forwarded
-  remote access, publish only an authenticated HTTPS reverse proxy in front of
-  it, or use a private VPN. Never expose raw port `8787` to the public internet.
-- The complete uninstall command removes the encrypted Pi configuration.
-  LAN clients cannot wipe or replace service credentials.
+- This project has no tracking or third-party application server.
+- Raspberry Pi credentials are encrypted and never sent to LAN clients.
+- The Pi performs Octopus authentication and signs FoxESS requests for the
+  dashboard.
+- Live WS carries read-only telemetry; all controls use the official REST API.
+- Keep Dashboard Access Code protection enabled and use VPN or HTTPS for remote
+  access.
 
-FoxESS enforces API limits. The Pi worker owns unattended automation; connected
-clients do not perform duplicate automatic schedule writes. Deliberate manual
-controls from a Mobile / LAN dashboard remain available.
+## Build from source
 
-## Development and release builds
-
-The maintainable source is split by responsibility:
-
-```text
-src/                 Shared dashboard markup, styles, and behaviour
-linux/               Raspberry Pi server, installer, and uninstaller
-scripts/build.mjs    Standalone web build
-scripts/build-linux.mjs
-                     Raspberry Pi release package build
-prototype/           Original single-file reference
-dist/                Generated release output
-```
-
-Node.js 18 or newer is required. The Raspberry Pi package vendors the pinned
-`ws` WebSocket client; the standalone GitHub Pages build has no npm runtime.
+Node.js 18 or newer is required.
 
 ```bash
+npm install
 npm run check
 ```
 
-The check produces:
-
-- `dist/Octopus_IGO_Smart_Charging_Detector.html`
-- `dist/Octopus_FoxESS_Raspberry_Pi.tar.gz`
-- `dist/install.sh`
-- `dist/uninstall.sh`
-
-The Raspberry Pi archive retains the applicable third-party notices and
-licences for its bundled components.
-
-Pushes to `main` test and deploy the standalone HTML as the root GitHub Pages
-app. Tags matching `v*` create a GitHub release with both editions and the
-install/uninstall scripts.
+Build output is written to `dist/`. Pushes to `main` deploy the web edition;
+tags beginning with `v` create GitHub release assets for both editions.
 
 ## Acknowledgements
 
-The Raspberry Pi edition's optional FoxESS Live WS implementation is adapted
-from Nick Farrell's
-[`nicois/foxess-control`](https://github.com/nicois/foxess-control) project and
-is used under the MIT License. Thank you to the original developer for the
-FoxESS web-signature and live-telemetry research. Full licence text and adapted
-component details are recorded in
-[`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md).
+The optional FoxESS Live WS module is adapted from Nick Farrell's
+[`nicois/foxess-control`](https://github.com/nicois/foxess-control) project
+under the MIT License. See [`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md)
+for licence and component details.
 
-## Legal disclaimer
+## Disclaimer
 
-This unofficial community utility is independent of Octopus Energy Ltd and
-FoxESS Co., Ltd. Product names, trademarks, and branding belong to their
-respective owners.
-
-Controlling battery infrastructure and using third-party services creates risks,
-including unexpected inverter behaviour, hardware degradation, API
-rate-limiting, and billing differences. You are responsible for checking
-schedules, limits, logs, and inverter behaviour.
+This unofficial community project is independent of Octopus Energy Ltd and
+FoxESS Co., Ltd. You are responsible for checking schedules, limits, billing,
+and inverter behaviour before relying on automatic controls.
 
 ## Support the project
 
-If the project has been useful, you can
+If this project helps you, you can
 [buy Samuel a coffee](https://buymeacoffee.com/samuelchen).
