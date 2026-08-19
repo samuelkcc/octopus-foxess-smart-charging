@@ -10,10 +10,12 @@ let octoCountdown = 60;
 let foxRefreshInterval = 600;
 let foxCountdown = 600;
 let refreshTimerId = null;
+let foxScheduleReadbackTimeoutIds = [];
 let linuxConfigPollId = null;
 let linuxLiveTelemetryPollId = null;
 let linuxLiveTelemetryBusy = false;
 let activeCredentials = null;
+let pendingAutomationEvaluation = false;
 
 const CREDENTIAL_STORAGE_KEY = 'encryptedCredentialsV1';
 const CREDENTIAL_DB_NAME = 'octopusFoxessSecureStorage';
@@ -22,6 +24,7 @@ const LINUX_CONFIG_ENDPOINT = '/api/config';
 const LINUX_OCTOPUS_ENDPOINT = '/api/octopus';
 const LINUX_FOX_LIVE_ENDPOINT = '/api/foxess/live';
 const LINUX_ACCESS_STORAGE_KEY = 'octopusFoxessDashboardAccessCode';
+const LINUX_WORKER_OCTOPUS_INTERVAL_SECONDS = 15;
 const DASHBOARD_SECTION_VISIBILITY_KEY = 'dashboardSectionVisibilityV1';
 const DASHBOARD_SECTION_IDS = {
     intelligentOctopus: 'section-intelligent-octopus',
@@ -407,6 +410,8 @@ function removeSavedAccessCode() {
     sessionStorage.removeItem('sessionCredentials');
     if (refreshTimerId !== null) clearInterval(refreshTimerId);
     refreshTimerId = null;
+    foxScheduleReadbackTimeoutIds.forEach(clearTimeout);
+    foxScheduleReadbackTimeoutIds = [];
     if (linuxLiveTelemetryPollId !== null) clearInterval(linuxLiveTelemetryPollId);
     linuxLiveTelemetryPollId = null;
     document.getElementById('dashboard')?.classList.remove('visible');
@@ -420,6 +425,53 @@ function removeSavedAccessCode() {
     }
     document.getElementById('local-access-key')?.focus();
 }
+
+function scheduleFoxScheduleReadbacks() {
+    if (!window.linuxRuntime || window.linuxRole === 'worker' || !globalFoxSN || !globalGasUrl) return;
+
+    // The unattended worker and visible dashboard poll Octopus independently.
+    // Give the worker up to one complete poll cycle to write the new schedule,
+    // while refreshing the visible REST-confirmed state much sooner than 10 min.
+    foxScheduleReadbackTimeoutIds.forEach(clearTimeout);
+    foxScheduleReadbackTimeoutIds = [5000, 20000, 40000].map(delay => setTimeout(() => {
+        fetchFoxSchedules().catch(error => {
+            console.warn('FoxESS schedule readback after a dispatch change failed.', error);
+        });
+    }, delay));
+}
+
+function getEffectiveOctopusRefreshInterval() {
+    if (window.linuxRuntime && window.linuxRole === 'worker') {
+        return Math.min(octoRefreshInterval, LINUX_WORKER_OCTOPUS_INTERVAL_SECONDS);
+    }
+    return octoRefreshInterval;
+}
+
+let linuxDashboardResumeRefreshPromise = null;
+
+function refreshLinuxDashboardAfterResume() {
+    if (!window.linuxRuntime || window.linuxRole === 'worker' || !activeCredentials) return Promise.resolve();
+    if (document.visibilityState === 'hidden') return Promise.resolve();
+    if (linuxDashboardResumeRefreshPromise) return linuxDashboardResumeRefreshPromise;
+
+    linuxDashboardResumeRefreshPromise = (async () => {
+        await initDashboard(true);
+        scheduleFoxScheduleReadbacks();
+        if (globalFoxSN && globalGasUrl) await fetchFoxSchedules();
+    })().catch(error => {
+        console.warn('Raspberry Pi dashboard refresh after resume failed.', error);
+    }).finally(() => {
+        linuxDashboardResumeRefreshPromise = null;
+    });
+
+    return linuxDashboardResumeRefreshPromise;
+}
+
+document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') refreshLinuxDashboardAfterResume();
+});
+window.addEventListener('pageshow', refreshLinuxDashboardAfterResume);
+window.addEventListener('focus', refreshLinuxDashboardAfterResume);
 
 function startLinuxWorkerConfigPoll() {
     if (!window.linuxRuntime || window.linuxRole !== 'worker' || linuxConfigPollId !== null) return;
@@ -1392,23 +1444,26 @@ async function initDashboard(isAutoRefresh = false, retryCount = 1) {
 }
 
 function startAutoRefreshTimer() {
-    window.nextOctoTime = Date.now() + (octoRefreshInterval * 1000);
+    const initialOctoInterval = getEffectiveOctopusRefreshInterval();
+    window.nextOctoTime = Date.now() + (initialOctoInterval * 1000);
     window.nextFoxTime = Date.now() + (foxRefreshInterval * 1000);
 
     if (refreshTimerId !== null) clearInterval(refreshTimerId);
     refreshTimerId = setInterval(() => {
         const now = Date.now();
+        const effectiveOctoInterval = getEffectiveOctopusRefreshInterval();
         
         // 1. Octopus Logic Loop
         octoCountdown = Math.max(0, Math.ceil((window.nextOctoTime - now) / 1000));
-        updateCircleTimer('octo-timer', octoCountdown, octoRefreshInterval);
+        updateCircleTimer('octo-timer', octoCountdown, effectiveOctoInterval);
         
         if (now >= window.nextOctoTime) {
-            window.nextOctoTime = now + (octoRefreshInterval * 1000);
+            window.nextOctoTime = now + (effectiveOctoInterval * 1000);
             initDashboard(true).then(() => {
                 const currentDispatchesStr = JSON.stringify(window.currentDispatches || []);
                 if (currentDispatchesStr !== lastDispatchesStr) {
                     lastDispatchesStr = currentDispatchesStr;
+                    scheduleFoxScheduleReadbacks();
                 }
                 // Tariff slots, Smart Dispatches, and today's weekly windows can
                 // all change after an Octopus refresh. Rebuild the complete,
@@ -1416,7 +1471,7 @@ function startAutoRefreshTimer() {
                 if (hasEnabledLocalAutomation()) {
                     evaluateLocalAutomations(null, true);
                 }
-                updateCircleTimer('octo-timer', octoCountdown, octoRefreshInterval);
+                updateCircleTimer('octo-timer', octoCountdown, effectiveOctoInterval);
             });
         }
 
@@ -1960,6 +2015,25 @@ function getWeeklyForcedDischargePeriods(config, now = new Date(), fdSoc = 11) {
     return getWeeklyModePeriods(config, now, 'ForceDischarge', 'dischargeSchedule', fdSoc);
 }
 
+function getUpcomingSmartDispatches(dispatches, now = new Date(), horizonHours = 24) {
+    const nowTime = now.getTime();
+    const horizonTime = nowTime + horizonHours * 60 * 60 * 1000;
+
+    return (dispatches || [])
+        .map(dispatch => ({
+            ...dispatch,
+            start: new Date(dispatch.startDt),
+            end: new Date(dispatch.endDt)
+        }))
+        .filter(dispatch =>
+            Number.isFinite(dispatch.start.getTime())
+            && Number.isFinite(dispatch.end.getTime())
+            && dispatch.end > now
+            && dispatch.start < horizonTime
+        )
+        .sort((a, b) => a.start - b.start);
+}
+
 function resolveAutomationMinute(existingState, incomingState, options) {
     options = options || {};
     if (!incomingState) return existingState;
@@ -2130,6 +2204,12 @@ async function pushGroupsToFoxESS(groups, maxAttempts = 3) {
         throw lastError || new Error('FoxESS schedule synchronization failed');
     } finally {
         isCurrentlyUpdatingMode = false;
+        if (pendingAutomationEvaluation) {
+            pendingAutomationEvaluation = false;
+            setTimeout(() => {
+                if (hasEnabledLocalAutomation()) evaluateLocalAutomations(null, true);
+            }, 0);
+        }
     }
 }
 
@@ -2211,8 +2291,12 @@ function resetAutomationApplyButton(button) {
 
 // RUNS TO PUSH SCHEDULES VIA V3 API INSTEAD OF V0 LIVE-TOGGLE
 async function evaluateLocalAutomations(btn = null, isStartup = false) {
-    if (!globalFoxSN || !globalGasUrl || isCurrentlyUpdatingMode) return;
+    if (!globalFoxSN || !globalGasUrl) return;
     if (!btn && !canRunAutomaticActions()) return false;
+    if (isCurrentlyUpdatingMode) {
+        pendingAutomationEvaluation = true;
+        return false;
+    }
     
     if (btn) {
         btn.textContent = "Syncing...";
@@ -2380,9 +2464,8 @@ async function evaluateLocalAutomations(btn = null, isStartup = false) {
     // 3. Dispatch Check (Higher priority - overrides target-price and weekly charge blocks)
     if (isAutoDispatch && window.currentDispatches) {
         const soc = applyDispatchLimit ? dispatchSocLimit : 100;
-        window.currentDispatches.forEach(d => {
-            const s = new Date(d.startDt); const e = new Date(d.endDt);
-            if(e > now && s.getDate() === now.getDate()) fillTimeline(s, e, "ForceCharge", soc, "dispatch");
+        getUpcomingSmartDispatches(window.currentDispatches, now).forEach(dispatch => {
+            fillTimeline(dispatch.start, dispatch.end, "ForceCharge", soc, "dispatch");
         });
     }
 

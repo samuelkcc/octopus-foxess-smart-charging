@@ -421,3 +421,28 @@ v2026.07.26.9:
 
 - JavaScript syntax, scheduler, tariff-selection, chart, encrypted-state, proxy restriction, static-GUI, standalone build, and Raspberry Pi package checks run through `npm run check`.
 - GitHub Pages continues to publish `Octopus_IGO_Smart_Charging_Detector.html` as the root app.
+## Smart Dispatch scheduler reconciliation v2026.08.19.1
+
+### Fixed
+
+- Includes every valid Smart Dispatch in the next 24 hours, including
+  after-midnight periods, when constructing the FoxESS schedule.
+- Queues a fresh scheduler evaluation if Octopus changes while FoxESS is still
+  confirming the preceding write.
+- Removes obsolete dynamic Forced Charge periods promptly after Octopus removes
+  a dispatch, while preserving intentional weekly charge periods.
+
+### Improved
+
+- The Raspberry Pi worker detects dispatch additions and removals within 15
+  seconds and writes only when the calculated FoxESS schedule differs.
+- The Pi dashboard re-reads the confirmed scheduler after a dispatch change and
+  refreshes immediately when an iPhone or LAN client returns to the foreground.
+- Live WS remains read-only telemetry; all scheduler changes use official
+  FoxESS REST requests with confirmation readback.
+
+### Validation
+
+- Covers overnight dispatch selection, queued schedule reconciliation, Pi-only
+  fast polling, mobile resume refresh, Live WS policy, Linux service behavior,
+  and both release artifacts.

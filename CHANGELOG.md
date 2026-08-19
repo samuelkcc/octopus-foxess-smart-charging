@@ -1,5 +1,20 @@
 # Changelog
 
+## Unreleased
+
+- Fixed Raspberry Pi Smart Dispatch synchronization so FoxESS receives dynamic
+  charging periods in the next 24 hours, including slots that begin after
+  midnight on the following calendar date.
+- Queued dispatch changes that arrive while a FoxESS scheduler write is being
+  confirmed, so the newest schedule is applied immediately instead of being
+  silently skipped until a later polling cycle.
+- Refresh the visible Active Mode Scheduler shortly after Octopus dispatches
+  change, instead of leaving it stale until the normal 10-minute FoxESS poll.
+- Detect Smart Dispatch additions and removals in the Raspberry Pi worker within
+  15 seconds, without increasing the standalone HTML edition's polling rate.
+- Refresh Octopus and the REST-confirmed FoxESS scheduler immediately when an
+  iPhone or other LAN dashboard returns from the background.
+
 ## v2026.08.01.3 — 2026-08-01
 
 - Fix tariff charts escaping their dashboard column when the browser becomes

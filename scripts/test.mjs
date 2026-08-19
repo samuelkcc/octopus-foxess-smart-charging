@@ -41,12 +41,13 @@ const utilities = new Function(`
   ${extractFunction('getWeeklyModePeriods')}
   ${extractFunction('getWeeklyForcedChargePeriods')}
   ${extractFunction('getWeeklyForcedDischargePeriods')}
+  ${extractFunction('getUpcomingSmartDispatches')}
   ${extractFunction('resolveAutomationMinute')}
   ${extractFunction('buildScheduleGroupsFromTimeline')}
   ${extractFunction('getAutoResumeSource')}
   ${extractFunction('getAutoResumeUntil')}
   ${extractFunction('isScheduleMinuteSuppressed')}
-  return { window, isFoxScheduleActiveAt, getActiveFoxScheduleAt, getEffectiveFoxWorkMode, scheduleFingerprint, prepareFoxSchedulePayload, getActiveAgreement, selectActiveElectricityTariffs, getProductCodeFromTariffCode, getRateAtTime, getTariffSlotsForDate, getWeeklyForcedChargePeriods, getWeeklyForcedDischargePeriods, resolveAutomationMinute, buildScheduleGroupsFromTimeline, getAutoResumeSource, getAutoResumeUntil, isScheduleMinuteSuppressed };
+  return { window, isFoxScheduleActiveAt, getActiveFoxScheduleAt, getEffectiveFoxWorkMode, scheduleFingerprint, prepareFoxSchedulePayload, getActiveAgreement, selectActiveElectricityTariffs, getProductCodeFromTariffCode, getRateAtTime, getTariffSlotsForDate, getWeeklyForcedChargePeriods, getWeeklyForcedDischargePeriods, getUpcomingSmartDispatches, resolveAutomationMinute, buildScheduleGroupsFromTimeline, getAutoResumeSource, getAutoResumeUntil, isScheduleMinuteSuppressed };
 `)();
 
 const tariffNow = new Date('2026-07-26T12:00:00Z');
@@ -192,6 +193,21 @@ assert.deepEqual(
 );
 assert.deepEqual(utilities.getWeeklyForcedChargePeriods({ enabled: true, startTime: '05:30', endTime: '05:30', days: [1] }, new Date(2026, 6, 20, 12, 0)), []);
 
+const eveningDispatchCheck = new Date(2026, 7, 19, 20, 21);
+const upcomingDispatches = utilities.getUpcomingSmartDispatches([
+  { startDt: '2026-08-19T21:30:00+01:00', endDt: '2026-08-19T22:00:00+01:00' },
+  { startDt: '2026-08-20T02:00:00+01:00', endDt: '2026-08-20T03:00:00+01:00' },
+  { startDt: '2026-08-20T03:30:00+01:00', endDt: '2026-08-20T04:00:00+01:00' },
+  { startDt: '2026-08-20T05:00:00+01:00', endDt: '2026-08-20T05:30:00+01:00' },
+  { startDt: '2026-08-20T21:30:00+01:00', endDt: '2026-08-20T22:00:00+01:00' },
+  { startDt: 'invalid', endDt: 'invalid' }
+], eveningDispatchCheck);
+assert.deepEqual(
+  upcomingDispatches.map(dispatch => [dispatch.start.getDate(), dispatch.start.getHours(), dispatch.start.getMinutes()]),
+  [[19, 21, 30], [20, 2, 0], [20, 3, 30], [20, 5, 0]],
+  'The FoxESS schedule must include every valid dispatch in the next 24 hours, including slots after midnight'
+);
+
 const dischargeOvernight = utilities.getWeeklyForcedDischargePeriods({
   enabled: true,
   startTime: '23:30',
@@ -270,6 +286,12 @@ assert.equal(utilities.isScheduleMinuteSuppressed(fulfilledWeekly, 'weekly', new
 
 assert.doesNotMatch(source, /localStorage\.setItem\(['"](?:octoAcc|octoApi|foxSn|foxToken|gasUrl)['"]/);
 assert.match(source, /if \(refreshTimerId !== null\) clearInterval\(refreshTimerId\)/);
+assert.match(source, /function scheduleFoxScheduleReadbacks\(\)[\s\S]*?\[5000, 20000, 40000\]/, 'A changed Octopus dispatch must trigger prompt FoxESS REST readbacks in the visible dashboard');
+assert.match(source, /currentDispatchesStr !== lastDispatchesStr[\s\S]*?scheduleFoxScheduleReadbacks\(\)/, 'Dispatch changes must start the FoxESS scheduler readback sequence');
+assert.match(source, /function getEffectiveOctopusRefreshInterval\(\)[\s\S]*?window\.linuxRole === 'worker'[\s\S]*?LINUX_WORKER_OCTOPUS_INTERVAL_SECONDS/, 'The Pi worker must detect added and removed dispatches faster than the visible dashboard polling interval');
+assert.match(source, /document\.addEventListener\('visibilitychange'[\s\S]*?refreshLinuxDashboardAfterResume/, 'A resumed iPhone dashboard must immediately refresh its Octopus and FoxESS state');
+assert.match(source, /window\.addEventListener\('pageshow', refreshLinuxDashboardAfterResume\)/, 'A restored iOS page must immediately refresh its scheduler state');
+assert.match(source, /if \(!window\.linuxRuntime \|\| window\.linuxRole === 'worker' \|\| !activeCredentials\)/, 'Pi dashboard resume handling must not affect the standalone HTML edition');
 assert.match(source, /async function fetchJson/);
 assert.match(source, /dispatchActiveNow/, 'Auto-Resume must not cancel an active Smart Dispatch');
 assert.match(source, /if \(isAutoPrice && window\.importRates\?\.length\)/, 'Target-price charging must use import rates');
@@ -284,6 +306,8 @@ assert.match(source, /getElementById\('importPriceChart'\)/, 'The import tariff 
 assert.match(source, /getElementById\('exportPriceChart'\)/, 'The export tariff must use its own chart');
 assert.match(source, /window\.linuxRole === 'worker'/, 'Only the Raspberry Pi worker may run unattended actions');
 assert.match(source, /if \(!btn && !canRunAutomaticActions\(\)\) return false/, 'LAN dashboards must not duplicate unattended schedule writes');
+assert.match(source, /if \(isCurrentlyUpdatingMode\) \{[\s\S]*?pendingAutomationEvaluation = true;/, 'A dispatch refresh during a FoxESS write must queue the newest automation schedule');
+assert.match(source, /if \(pendingAutomationEvaluation\) \{[\s\S]*?evaluateLocalAutomations\(null, true\)/, 'A queued automation schedule must run as soon as the current FoxESS write completes');
 assert.match(source, /gasUrl: '\/api\/foxess'/, 'Raspberry Pi credentials must use the local FoxESS relay');
 assert.match(source, /scheduleFetchButton\.style\.display = hideManualFetch \? 'none' : ''/, 'Live WS must hide the redundant scheduler Fetch Now button');
 assert.match(source, /async function setLiveWsPolicy\(policy\)/, 'The Mobile and LAN dashboard must support all three Live WS policies');
