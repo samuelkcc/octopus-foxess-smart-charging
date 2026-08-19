@@ -203,8 +203,13 @@ const upcomingDispatches = utilities.getUpcomingSmartDispatches([
   { startDt: 'invalid', endDt: 'invalid' }
 ], eveningDispatchCheck);
 assert.deepEqual(
-  upcomingDispatches.map(dispatch => [dispatch.start.getDate(), dispatch.start.getHours(), dispatch.start.getMinutes()]),
-  [[19, 21, 30], [20, 2, 0], [20, 3, 30], [20, 5, 0]],
+  upcomingDispatches.map(dispatch => dispatch.start.toISOString()),
+  [
+    '2026-08-19T20:30:00.000Z',
+    '2026-08-20T01:00:00.000Z',
+    '2026-08-20T02:30:00.000Z',
+    '2026-08-20T04:00:00.000Z'
+  ],
   'The FoxESS schedule must include every valid dispatch in the next 24 hours, including slots after midnight'
 );
 

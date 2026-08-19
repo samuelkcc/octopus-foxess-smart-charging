@@ -421,7 +421,7 @@ v2026.07.26.9:
 
 - JavaScript syntax, scheduler, tariff-selection, chart, encrypted-state, proxy restriction, static-GUI, standalone build, and Raspberry Pi package checks run through `npm run check`.
 - GitHub Pages continues to publish `Octopus_IGO_Smart_Charging_Detector.html` as the root app.
-## Smart Dispatch scheduler reconciliation v2026.08.19.1
+## Smart Dispatch scheduler reconciliation v2026.08.19.2
 
 ### Fixed
 
