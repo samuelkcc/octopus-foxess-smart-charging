@@ -2,6 +2,21 @@
 
 ## Unreleased
 
+## v2026.08.24.1 — 2026-08-24
+
+- Round Smart Dispatch windows outward to 30-minute Octopus slots, including
+  rounding an 18:11 start down to 18:00.
+- Give Smart Dispatch SOC and mode priority inside overlapping weekly or
+  target-price Forced Charge periods while those rules fill the remaining
+  gaps.
+- Show Smart Dispatch explicitly in the Mode Scheduler even when FoxESS merges
+  it into a compatible weekly or target-price Forced Charge period.
+- Apply a changed Smart Dispatch through the official FoxESS REST scheduler as
+  soon as the worker receives it, before tariff refresh work completes and
+  without waiting for another automation cycle.
+
+## v2026.08.19.2 — 2026-08-19
+
 - Fixed Raspberry Pi Smart Dispatch synchronization so FoxESS receives dynamic
   charging periods in the next 24 hours, including slots that begin after
   midnight on the following calendar date.

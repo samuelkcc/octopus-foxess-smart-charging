@@ -440,6 +440,19 @@ function scheduleFoxScheduleReadbacks() {
     }, delay));
 }
 
+function getDispatchScheduleFingerprint(dispatches) {
+    return JSON.stringify((dispatches || [])
+        .map(dispatch => ({ startDt: dispatch.startDt, endDt: dispatch.endDt }))
+        .sort((a, b) => String(a.startDt).localeCompare(String(b.startDt)) || String(a.endDt).localeCompare(String(b.endDt))));
+}
+
+function updateDispatchScheduleFingerprint(dispatches) {
+    const fingerprint = getDispatchScheduleFingerprint(dispatches);
+    const changed = fingerprint !== lastDispatchesStr;
+    lastDispatchesStr = fingerprint;
+    return changed;
+}
+
 function getEffectiveOctopusRefreshInterval() {
     if (window.linuxRuntime && window.linuxRole === 'worker') {
         return Math.min(octoRefreshInterval, LINUX_WORKER_OCTOPUS_INTERVAL_SECONDS);
@@ -1232,6 +1245,19 @@ async function initDashboard(isAutoRefresh = false, retryCount = 1) {
         await updateLinuxLiveDemand(dispatches);
         renderProtectionOverview();
 
+        // Once Octopus reports a changed Smart Dispatch schedule, write the
+        // conflict-resolved FoxESS schedule immediately. Do not wait for tariff
+        // requests to finish or for the next worker interval. A visible Pi
+        // dashboard cannot perform unattended writes, but it begins prompt REST
+        // readbacks while the loopback worker applies and confirms the change.
+        const dispatchesChanged = updateDispatchScheduleFingerprint(dispatches);
+        if (dispatchesChanged) {
+            scheduleFoxScheduleReadbacks();
+            if (isAutoRefresh && hasEnabledLocalAutomation() && canRunAutomaticActions()) {
+                await evaluateLocalAutomations(null, true);
+            }
+        }
+
         // Save valid credentials
         if (!isAutoRefresh) {
             await saveCredentials({
@@ -1460,11 +1486,6 @@ function startAutoRefreshTimer() {
         if (now >= window.nextOctoTime) {
             window.nextOctoTime = now + (effectiveOctoInterval * 1000);
             initDashboard(true).then(() => {
-                const currentDispatchesStr = JSON.stringify(window.currentDispatches || []);
-                if (currentDispatchesStr !== lastDispatchesStr) {
-                    lastDispatchesStr = currentDispatchesStr;
-                    scheduleFoxScheduleReadbacks();
-                }
                 // Tariff slots, Smart Dispatches, and today's weekly windows can
                 // all change after an Octopus refresh. Rebuild the complete,
                 // conflict-resolved timeline once instead of updating one rule.
@@ -1713,8 +1734,9 @@ function renderProtectionOverview(now = new Date()) {
     foxList.innerHTML = groups.length
         ? groups.map(group => {
             const active = isFoxScheduleActiveAt(group, now);
+            const sources = getAutomationSourcesForGroup(group, now);
             const mode = group.workMode === 'ForceCharge'
-                ? 'Forced Charge'
+                ? getForceChargeOverviewLabel(sources)
                 : (group.workMode === 'ForceDischarge' ? 'Force Discharge' : 'Self-Use');
             return `<div class="overview-schedule-row ${active ? 'active' : ''}">
                 <span><strong>${escapeHtml(mode)}</strong><small>${String(group.startHour).padStart(2, '0')}:${String(group.startMinute).padStart(2, '0')} – ${String(group.endHour).padStart(2, '0')}:${String(group.endMinute).padStart(2, '0')}</small></span>
@@ -1863,8 +1885,8 @@ async function fetchFoxSchedules({ expectedGroups = null, attempts = 1 } = {}) {
                         
                         const sources = getAutomationSourcesForGroup(g, new Date());
                         const sourceLabels = [];
-                        if (sources.includes('weekly')) sourceLabels.push('📅 Weekly Schedule');
                         if (sources.includes('dispatch') || (isDispatch && !sources.includes('weekly'))) sourceLabels.push('⚡ Smart Dispatch');
+                        if (sources.includes('weekly')) sourceLabels.push('📅 Weekly Schedule');
                         if (sources.includes('price') && !sources.includes('weekly')) sourceLabels.push('🎯 Target Price');
                         const subText = sourceLabels.join(' + ') || '⚙️ Manual Schedule';
                         const soc = g.fdSoc || g.extraParam?.fdSoc || 100;
@@ -2034,6 +2056,22 @@ function getUpcomingSmartDispatches(dispatches, now = new Date(), horizonHours =
         .sort((a, b) => a.start - b.start);
 }
 
+function getRoundedSmartDispatchMinutes(startDt, endDt) {
+    const start = new Date(startDt);
+    const end = new Date(endDt);
+    let startMinute = start.getHours() * 60 + start.getMinutes();
+    let endMinute = end.getHours() * 60 + end.getMinutes();
+
+    // Intelligent Octopus Go dispatches are half-hour charging slots, while
+    // their reported timestamps may include odd minutes. Cover the complete
+    // slot by rounding the start down and the end up to 30-minute boundaries.
+    startMinute = Math.floor(startMinute / 30) * 30;
+    endMinute = Math.ceil(endMinute / 30) * 30;
+    if (endMinute === 0 && end.getTime() > start.getTime()) endMinute = 1440;
+
+    return { startMinute, endMinute };
+}
+
 function resolveAutomationMinute(existingState, incomingState, options) {
     options = options || {};
     if (!incomingState) return existingState;
@@ -2162,6 +2200,16 @@ function buildScheduleGroupsFromTimeline(timeline, minSoc, fdPwr) {
     }
 
     return groups;
+}
+
+function getForceChargeOverviewLabel(sources) {
+    const hasDispatch = sources.includes('dispatch');
+    if (hasDispatch && sources.includes('weekly')) return 'Smart Dispatch + Weekly Charge';
+    if (hasDispatch && sources.includes('price')) return 'Smart Dispatch + Target Charge';
+    if (hasDispatch) return 'Smart Dispatch';
+    if (sources.includes('weekly')) return 'Weekly Forced Charge';
+    if (sources.includes('price')) return 'Target-price Charge';
+    return 'Forced Charge';
 }
 
 async function pushGroupsToFoxESS(groups, maxAttempts = 3) {
@@ -2377,14 +2425,13 @@ async function evaluateLocalAutomations(btn = null, isStartup = false) {
     let timeline = new Array(1440).fill(null);
 
     const fillTimeline = (startDt, endDt, mode, soc, ruleSource = null, conflictOptions = {}) => {
-        // Round odd smart dispatch times to make them legal for the inverter hardware
         let sMins = startDt.getHours() * 60 + startDt.getMinutes();
         let eMins = endDt.getHours() * 60 + endDt.getMinutes();
         
-        // Snap to 15-min boundaries for FoxESS hardware compatibility
         if (ruleSource === 'dispatch') {
-            sMins = Math.floor(sMins / 15) * 15;
-            eMins = Math.ceil(eMins / 15) * 15;
+            const rounded = getRoundedSmartDispatchMinutes(startDt, endDt);
+            sMins = rounded.startMinute;
+            eMins = rounded.endMinute;
         }
         
         if (eMins === 0 && endDt.getTime() > startDt.getTime()) eMins = 1440; // Treat exactly midnight as 1440
@@ -2403,16 +2450,9 @@ async function evaluateLocalAutomations(btn = null, isStartup = false) {
                     if (isScheduleMinuteSuppressed(window.fulfilledSchedule, ruleSource, minuteTime)) continue;
                 }
                 
-                // Best Practice: If a Smart Dispatch overlaps an existing Target Price block, 
-                // automatically inherit the lower SOC so we don't accidentally charge the house battery to 100%
-                let finalSoc = soc;
-                if (ruleSource === 'dispatch' && timeline[i] && timeline[i].workMode === 'ForceCharge') {
-                    finalSoc = Math.min(soc, timeline[i].finalFdSoc);
-                }
-                
                 timeline[i] = resolveAutomationMinute(
                     timeline[i],
-                    { workMode: mode, finalFdSoc: finalSoc, source: ruleSource },
+                    { workMode: mode, finalFdSoc: soc, source: ruleSource },
                     conflictOptions
                 );
             }

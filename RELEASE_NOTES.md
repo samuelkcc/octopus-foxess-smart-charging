@@ -1,3 +1,25 @@
+## Smart Dispatch priority and immediate REST sync v2026.08.24.1
+
+### Fixed
+
+- Rounds Smart Dispatch starts down and ends up to complete 30-minute Octopus
+  slots. A dispatch reported at 18:11 therefore starts FoxESS Forced Charge at
+  18:00.
+- Gives Smart Dispatch priority throughout an overlap while weekly or
+  target-price Forced Charge fills the remaining gaps.
+- Identifies compatible merged periods as **Smart Dispatch + Weekly Charge** or
+  **Smart Dispatch + Target Charge** in the Mode Scheduler, so the active
+  protection is visible even when FoxESS stores one continuous period.
+- Sends the recalculated scheduler through the official FoxESS REST API as soon
+  as the Pi worker detects a changed Octopus dispatch response, without waiting
+  for tariff requests or another automation interval.
+
+### Validation
+
+- Covers odd-minute and overnight half-hour rounding, overlap priority and gap
+  filling, immediate dispatch reconciliation, scheduler labels, the standalone
+  HTML build, and the Raspberry Pi release package.
+
 ## Smart Discharging and responsive dashboard v2026.08.01.3
 
 ### Added

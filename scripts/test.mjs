@@ -42,12 +42,14 @@ const utilities = new Function(`
   ${extractFunction('getWeeklyForcedChargePeriods')}
   ${extractFunction('getWeeklyForcedDischargePeriods')}
   ${extractFunction('getUpcomingSmartDispatches')}
+  ${extractFunction('getRoundedSmartDispatchMinutes')}
   ${extractFunction('resolveAutomationMinute')}
   ${extractFunction('buildScheduleGroupsFromTimeline')}
+  ${extractFunction('getForceChargeOverviewLabel')}
   ${extractFunction('getAutoResumeSource')}
   ${extractFunction('getAutoResumeUntil')}
   ${extractFunction('isScheduleMinuteSuppressed')}
-  return { window, isFoxScheduleActiveAt, getActiveFoxScheduleAt, getEffectiveFoxWorkMode, scheduleFingerprint, prepareFoxSchedulePayload, getActiveAgreement, selectActiveElectricityTariffs, getProductCodeFromTariffCode, getRateAtTime, getTariffSlotsForDate, getWeeklyForcedChargePeriods, getWeeklyForcedDischargePeriods, getUpcomingSmartDispatches, resolveAutomationMinute, buildScheduleGroupsFromTimeline, getAutoResumeSource, getAutoResumeUntil, isScheduleMinuteSuppressed };
+  return { window, isFoxScheduleActiveAt, getActiveFoxScheduleAt, getEffectiveFoxWorkMode, scheduleFingerprint, prepareFoxSchedulePayload, getActiveAgreement, selectActiveElectricityTariffs, getProductCodeFromTariffCode, getRateAtTime, getTariffSlotsForDate, getWeeklyForcedChargePeriods, getWeeklyForcedDischargePeriods, getUpcomingSmartDispatches, getRoundedSmartDispatchMinutes, resolveAutomationMinute, buildScheduleGroupsFromTimeline, getForceChargeOverviewLabel, getAutoResumeSource, getAutoResumeUntil, isScheduleMinuteSuppressed };
 `)();
 
 const tariffNow = new Date('2026-07-26T12:00:00Z');
@@ -213,6 +215,23 @@ assert.deepEqual(
   'The FoxESS schedule must include every valid dispatch in the next 24 hours, including slots after midnight'
 );
 
+assert.deepEqual(
+  utilities.getRoundedSmartDispatchMinutes(
+    new Date(2026, 7, 24, 18, 11),
+    new Date(2026, 7, 24, 18, 41)
+  ),
+  { startMinute: 18 * 60, endMinute: 19 * 60 },
+  'An 18:11 Smart Dispatch must cover the complete 18:00-19:00 half-hour slots'
+);
+assert.deepEqual(
+  utilities.getRoundedSmartDispatchMinutes(
+    new Date(2026, 7, 24, 23, 51),
+    new Date(2026, 7, 25, 0, 21)
+  ),
+  { startMinute: 23 * 60 + 30, endMinute: 30 },
+  'Half-hour dispatch rounding must preserve an overnight period'
+);
+
 const dischargeOvernight = utilities.getWeeklyForcedDischargePeriods({
   enabled: true,
   startTime: '23:30',
@@ -260,6 +279,11 @@ assert.equal(
   dischargeMinute,
   'Discharging may replace Smart Dispatch only after the user explicitly disables dispatch protection'
 );
+assert.equal(
+  utilities.resolveAutomationMinute(priceChargeMinute, dispatchMinute, {}),
+  dispatchMinute,
+  'Smart Dispatch must replace an overlapping ordinary Forced Charge minute'
+);
 
 const mergedTimeline = new Array(1440).fill(null);
 for (let minute = 0; minute < 330; minute++) {
@@ -277,6 +301,23 @@ assert.deepEqual(
 );
 assert.equal(mergedGroups[0].extraParam.schSource, 'weekly', 'The base weekly source must remain available for display and Auto-Resume');
 
+const priorityTimeline = new Array(1440).fill(null);
+for (let minute = 18 * 60; minute < 20 * 60; minute++) {
+  priorityTimeline[minute] = { workMode: 'ForceCharge', finalFdSoc: 100, source: 'weekly' };
+}
+for (let minute = 18 * 60 + 30; minute < 19 * 60; minute++) {
+  priorityTimeline[minute] = { workMode: 'ForceCharge', finalFdSoc: 80, source: 'dispatch' };
+}
+const priorityGroups = utilities.buildScheduleGroupsFromTimeline(priorityTimeline, 11, 5000);
+assert.deepEqual(
+  priorityGroups.map(group => [group.startHour, group.startMinute, group.endHour, group.endMinute, group.extraParam.fdSoc, group.extraParam.schSource]),
+  [[18, 0, 18, 30, 100, 'weekly'], [18, 30, 19, 0, 80, 'dispatch'], [19, 0, 20, 0, 100, 'weekly']],
+  'Smart Dispatch must take priority while weekly Forced Charge fills both remaining gaps'
+);
+assert.equal(utilities.getForceChargeOverviewLabel(['dispatch', 'weekly']), 'Smart Dispatch + Weekly Charge');
+assert.equal(utilities.getForceChargeOverviewLabel(['dispatch']), 'Smart Dispatch');
+assert.equal(utilities.getForceChargeOverviewLabel(['weekly']), 'Weekly Forced Charge');
+
 assert.equal(utilities.getAutoResumeSource(['weekly'], false), 'weekly');
 assert.equal(utilities.getAutoResumeSource(['price'], false), 'price');
 assert.equal(utilities.getAutoResumeSource(['dispatch'], false), null, 'A completed Smart Dispatch must naturally return to the base mode rather than create an Auto-Resume lock');
@@ -292,7 +333,11 @@ assert.equal(utilities.isScheduleMinuteSuppressed(fulfilledWeekly, 'weekly', new
 assert.doesNotMatch(source, /localStorage\.setItem\(['"](?:octoAcc|octoApi|foxSn|foxToken|gasUrl)['"]/);
 assert.match(source, /if \(refreshTimerId !== null\) clearInterval\(refreshTimerId\)/);
 assert.match(source, /function scheduleFoxScheduleReadbacks\(\)[\s\S]*?\[5000, 20000, 40000\]/, 'A changed Octopus dispatch must trigger prompt FoxESS REST readbacks in the visible dashboard');
-assert.match(source, /currentDispatchesStr !== lastDispatchesStr[\s\S]*?scheduleFoxScheduleReadbacks\(\)/, 'Dispatch changes must start the FoxESS scheduler readback sequence');
+assert.match(source, /const dispatchesChanged = updateDispatchScheduleFingerprint\(dispatches\);[\s\S]*?scheduleFoxScheduleReadbacks\(\)/, 'Dispatch changes must start the FoxESS scheduler readback sequence');
+assert.match(source, /const dispatchesChanged = updateDispatchScheduleFingerprint\(dispatches\);[\s\S]*?await evaluateLocalAutomations\(null, true\);/, 'The Pi worker must write a changed Smart Dispatch schedule immediately after the Octopus response');
+assert.doesNotMatch(source, /Math\.floor\(sMins \/ 15\)|Math\.ceil\(eMins \/ 15\)/, 'Smart Dispatch must no longer use 15-minute rounding');
+assert.doesNotMatch(source, /Math\.min\(soc, timeline\[i\]\.finalFdSoc\)/, 'An ordinary Forced Charge SOC must not override Smart Dispatch priority');
+assert.match(source, /Smart Dispatch \+ Weekly Charge/, 'The overview must identify Smart Dispatch inside a merged weekly Forced Charge period');
 assert.match(source, /function getEffectiveOctopusRefreshInterval\(\)[\s\S]*?window\.linuxRole === 'worker'[\s\S]*?LINUX_WORKER_OCTOPUS_INTERVAL_SECONDS/, 'The Pi worker must detect added and removed dispatches faster than the visible dashboard polling interval');
 assert.match(source, /document\.addEventListener\('visibilitychange'[\s\S]*?refreshLinuxDashboardAfterResume/, 'A resumed iPhone dashboard must immediately refresh its Octopus and FoxESS state');
 assert.match(source, /window\.addEventListener\('pageshow', refreshLinuxDashboardAfterResume\)/, 'A restored iOS page must immediately refresh its scheduler state');

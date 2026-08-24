@@ -73,6 +73,13 @@ does not need to create a separate Self-Use schedule.
 
 FoxESS accepts at most five active scheduler periods. The app merges adjacent
 compatible periods and warns if later periods cannot fit within that limit.
+Smart Dispatch starts are rounded down and ends up to Octopus's 30-minute slot
+boundaries, so a dispatch reported at 18:11 is protected from 18:00. Smart
+Dispatch has priority inside an overlapping weekly or target-price Forced
+Charge period; the ordinary Forced Charge rule fills the remaining gaps. When
+FoxESS merges compatible periods, the Mode Scheduler identifies the combined
+period as **Smart Dispatch + Weekly Charge** or **Smart Dispatch + Target
+Charge** so the protection remains visible.
 
 ## What you need
 
