@@ -38,6 +38,7 @@ const utilities = new Function(`
   ${extractFunction('getProductCodeFromTariffCode')}
   ${extractFunction('getRateAtTime')}
   ${extractFunction('getTariffSlotsForDate')}
+  ${extractFunction('buildIntelligentGoFixedRates')}
   ${extractFunction('getWeeklyModePeriods')}
   ${extractFunction('getWeeklyForcedChargePeriods')}
   ${extractFunction('getWeeklyForcedDischargePeriods')}
@@ -49,7 +50,7 @@ const utilities = new Function(`
   ${extractFunction('getAutoResumeSource')}
   ${extractFunction('getAutoResumeUntil')}
   ${extractFunction('isScheduleMinuteSuppressed')}
-  return { window, isFoxScheduleActiveAt, getActiveFoxScheduleAt, getEffectiveFoxWorkMode, scheduleFingerprint, prepareFoxSchedulePayload, getActiveAgreement, selectActiveElectricityTariffs, getProductCodeFromTariffCode, getRateAtTime, getTariffSlotsForDate, getWeeklyForcedChargePeriods, getWeeklyForcedDischargePeriods, getUpcomingSmartDispatches, getRoundedSmartDispatchMinutes, resolveAutomationMinute, buildScheduleGroupsFromTimeline, getForceChargeOverviewLabel, getAutoResumeSource, getAutoResumeUntil, isScheduleMinuteSuppressed };
+  return { window, isFoxScheduleActiveAt, getActiveFoxScheduleAt, getEffectiveFoxWorkMode, scheduleFingerprint, prepareFoxSchedulePayload, getActiveAgreement, selectActiveElectricityTariffs, getProductCodeFromTariffCode, getRateAtTime, getTariffSlotsForDate, buildIntelligentGoFixedRates, getWeeklyForcedChargePeriods, getWeeklyForcedDischargePeriods, getUpcomingSmartDispatches, getRoundedSmartDispatchMinutes, resolveAutomationMinute, buildScheduleGroupsFromTimeline, getForceChargeOverviewLabel, getAutoResumeSource, getAutoResumeUntil, isScheduleMinuteSuppressed };
 `)();
 
 const tariffNow = new Date('2026-07-26T12:00:00Z');
@@ -89,6 +90,24 @@ assert.equal(
   4.1,
   'A fixed SEG rate with no end date must remain active'
 );
+
+const fixedIogRates = utilities.buildIntelligentGoFixedRates(
+  [{ valid_from: '2026-07-05T23:00:00Z', valid_to: null, value_inc_vat: 31.31604 }],
+  [{ valid_from: '2026-07-05T23:00:00Z', valid_to: null, value_inc_vat: 7.99995 }],
+  new Date(2026, 8, 1, 12, 0, 0)
+);
+assert.equal(fixedIogRates.length, 144, 'Fixed IOG fallback must cover yesterday, today, and tomorrow');
+const localRateAt = (hour, minute) => fixedIogRates.find(rate => {
+  const start = new Date(rate.valid_from);
+  return start.getFullYear() === 2026
+    && start.getMonth() === 8
+    && start.getDate() === 1
+    && start.getHours() === hour
+    && start.getMinutes() === minute;
+});
+assert.equal(localRateAt(23, 30).value_inc_vat, 7.99995, 'Fixed IOG must switch to the night rate at 23:30');
+assert.equal(localRateAt(5, 0).value_inc_vat, 7.99995, 'Fixed IOG night rate must remain active through 05:00');
+assert.equal(localRateAt(5, 30).value_inc_vat, 31.31604, 'Fixed IOG must switch to the day rate at 05:30');
 const fixedExportSlots = utilities.getTariffSlotsForDate(
   [{ valid_from: '2022-02-01T00:00:00Z', valid_to: null, value_inc_vat: 4.1 }],
   tariffNow
@@ -335,6 +354,9 @@ assert.match(source, /if \(refreshTimerId !== null\) clearInterval\(refreshTimer
 assert.match(source, /function scheduleFoxScheduleReadbacks\(\)[\s\S]*?\[1000, 5000, 15000\]/, 'A worker-confirmed dispatch must trigger prompt FoxESS REST readbacks in the visible dashboard');
 assert.match(source, /shouldFetchDispatches = !window\.linuxRuntime \|\| window\.linuxRole === 'worker'/, 'A Pi dashboard must never query an independent Octopus dispatch schedule');
 assert.match(source, /await publishLinuxDispatchSnapshot\(dispatches, dispatchEnabled \? 'syncing' : 'disabled'\)/, 'The worker must publish a new dispatch revision as syncing before applying it');
+assert.match(source, /'X-Octopus-Worker': '1'/, 'Worker publications must use an explicit loopback-only marker when Referrer-Policy suppresses the Referer');
+assert.match(source, /day-unit-rates\//, 'Fixed Intelligent Octopus tariffs must fall back to their four-rate day endpoint');
+assert.match(source, /night-unit-rates\//, 'Fixed Intelligent Octopus tariffs must fall back to their four-rate night endpoint');
 assert.match(source, /await publishLinuxDispatchSnapshot\([\s\S]*?isAutoDispatch \? 'confirmed' : 'disabled'/, 'The worker must publish the exact FoxESS-confirmed revision');
 assert.match(source, /const dispatchesChanged = updateDispatchScheduleFingerprint\(dispatches\);[\s\S]*?await evaluateLocalAutomations\(null, true\);/, 'The Pi worker must write a changed Smart Dispatch schedule immediately after the Octopus response');
 assert.doesNotMatch(source, /Math\.floor\(sMins \/ 15\)|Math\.ceil\(eMins \/ 15\)/, 'Smart Dispatch must no longer use 15-minute rounding');

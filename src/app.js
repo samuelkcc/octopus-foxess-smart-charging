@@ -331,7 +331,10 @@ async function updateLinuxLiveDemand(dispatches = []) {
     try {
         await fetchJson('/api/live-demand', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: {
+                'Content-Type': 'application/json',
+                'X-Octopus-Worker': '1'
+            },
             body: JSON.stringify(demand)
         });
     } catch (error) {
@@ -359,7 +362,10 @@ async function publishLinuxDispatchSnapshot(dispatches, status, details = {}) {
     if (!window.linuxRuntime || window.linuxRole !== 'worker') return null;
     const response = await fetch(LINUX_DISPATCH_SNAPSHOT_ENDPOINT, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+            'Content-Type': 'application/json',
+            'X-Octopus-Worker': '1'
+        },
         body: JSON.stringify({
             dispatches: dispatches || [],
             status,
@@ -719,10 +725,43 @@ async function fetchTariffRates(tariffCode) {
     if (!tariffCode) return [];
     const productCode = getProductCodeFromTariffCode(tariffCode);
     if (!productCode) throw new Error(`Unable to identify product from tariff ${tariffCode}`);
+    const tariffUrl = `https://api.octopus.energy/v1/products/${encodeURIComponent(productCode)}/electricity-tariffs/${encodeURIComponent(tariffCode)}`;
     const ratesData = await fetchJson(
-        `https://api.octopus.energy/v1/products/${encodeURIComponent(productCode)}/electricity-tariffs/${encodeURIComponent(tariffCode)}/standard-unit-rates/`
+        `${tariffUrl}/standard-unit-rates/`
     );
-    return Array.isArray(ratesData?.results) ? ratesData.results : [];
+    const standardRates = Array.isArray(ratesData?.results) ? ratesData.results : [];
+    if (standardRates.length > 0 || !/(^|-)IOG(?:-|$)/i.test(productCode)) return standardRates;
+
+    // Fixed Intelligent Octopus Go products publish grid prices through the
+    // four-rate day/night endpoints, so standard-unit-rates is intentionally
+    // empty. Convert the fixed 23:30–05:30 grid window into the same half-hour
+    // timeline used by Agile and legacy Intelligent Octopus tariffs.
+    const [dayData, nightData] = await Promise.all([
+        fetchJson(`${tariffUrl}/day-unit-rates/`),
+        fetchJson(`${tariffUrl}/night-unit-rates/`)
+    ]);
+    return buildIntelligentGoFixedRates(dayData?.results, nightData?.results);
+}
+
+function buildIntelligentGoFixedRates(dayRates = [], nightRates = [], now = new Date()) {
+    if (!dayRates.length || !nightRates.length) return [];
+    const slots = [];
+    for (const dayOffset of [-1, 0, 1]) {
+        const date = new Date(now.getFullYear(), now.getMonth(), now.getDate() + dayOffset);
+        for (let minute = 0; minute < 24 * 60; minute += 30) {
+            const start = new Date(date.getFullYear(), date.getMonth(), date.getDate(), 0, minute, 0);
+            const end = new Date(start.getTime() + 30 * 60 * 1000);
+            const isNight = minute >= 23 * 60 + 30 || minute < 5 * 60 + 30;
+            const source = getRateAtTime(isNight ? nightRates : dayRates, start);
+            if (!source) continue;
+            slots.push({
+                ...source,
+                valid_from: start.toISOString(),
+                valid_to: end.toISOString()
+            });
+        }
+    }
+    return slots;
 }
 
 function openCredentialDatabase() {

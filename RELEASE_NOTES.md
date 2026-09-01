@@ -1,3 +1,22 @@
+## Worker publication and fixed IOG tariff repair v2026.09.01.2
+
+### Fixed
+
+- Restores Raspberry Pi worker publication of Octopus Smart Dispatch windows.
+  Worker-only loopback requests now use an explicit marker instead of relying
+  on a `Referer` that the server intentionally removes for privacy.
+- Allows the worker to publish **SYNCING FOXESS** immediately and complete the
+  official FoxESS scheduler write and exact REST readback confirmation.
+- Supports fixed four-rate Intelligent Octopus Go products whose
+  `standard-unit-rates` response is empty. The dashboard now reads the public
+  day and night rate endpoints and constructs the 23:30–05:30 tariff timeline.
+
+### Validation
+
+- Covers marker-authenticated worker publication without a `Referer`, rejects
+  unmarked updates, and verifies the fixed IOG switch to night rate at 23:30
+  and back to day rate at 05:30.
+
 ## Worker-authoritative Smart Dispatch protection v2026.09.01.1
 
 ### Fixed

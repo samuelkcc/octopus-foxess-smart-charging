@@ -86,15 +86,16 @@ assert.match(markupSource, /class="input-group pi-config-only"/);
 assert.match(markupSource, /id="octopus-account-toggle"/);
 assert.match(markupSource, /rel="apple-touch-icon"/);
 assert.match(markupSource, /rel="manifest"/);
-assert.match(markupSource, /styles\.css\?v=2026\.9\.1\.1/);
-assert.match(markupSource, /app\.js\?v=2026\.9\.1\.1/);
-assert.match(markupSource, /Build v2026\.09\.01\.1/);
+assert.match(markupSource, /styles\.css\?v=2026\.9\.1\.2/);
+assert.match(markupSource, /app\.js\?v=2026\.9\.1\.2/);
+assert.match(markupSource, /Build v2026\.09\.01\.2/);
 assert.match(stylesSource, /\.linux-runtime \.pi-config-only \{ display: none !important; \}/);
 assert.match(stylesSource, /\.account-number-row \.account-secret-control \.val \{ max-width: none; white-space: nowrap/);
 assert.match(appSource, /LINUX_OCTOPUS_ENDPOINT = '\/api\/octopus'/);
 assert.match(appSource, /LINUX_DISPATCH_SNAPSHOT_ENDPOINT = '\/api\/dispatch-snapshot'/);
 assert.match(appSource, /shouldFetchDispatches = !window\.linuxRuntime \|\| window\.linuxRole === 'worker'/, 'Only the worker may query Octopus plannedDispatches on Raspberry Pi');
 assert.match(appSource, /await publishLinuxDispatchSnapshot\(dispatches, dispatchEnabled \? 'syncing' : 'disabled'\)/, 'A new worker dispatch revision must be published before FoxESS synchronization');
+assert.match(appSource, /'X-Octopus-Worker': '1'/, 'Worker-only requests must not depend on a Referer that the Pi server suppresses');
 assert.match(appSource, /await publishLinuxDispatchSnapshot\([\s\S]*?isAutoDispatch \? 'confirmed' : 'disabled'/, 'The worker must publish only a REST-confirmed scheduler result');
 assert.match(appSource, /startLinuxDispatchSnapshotPoll/, 'Dashboards must follow the worker dispatch snapshot promptly');
 assert.match(appSource, /LINUX_FOX_LIVE_ENDPOINT = '\/api\/foxess\/live'/);
@@ -277,7 +278,7 @@ try {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      Referer: `http://127.0.0.1:${port}/?worker=1`
+      'X-Octopus-Worker': '1'
     },
     body: JSON.stringify({ active: true, startsAt: '2026-07-29T11:00:00.000Z', endsAt: '2026-07-29T12:00:00.000Z' })
   });
@@ -298,7 +299,7 @@ try {
 
   const workerHeaders = {
     'Content-Type': 'application/json',
-    Referer: `http://127.0.0.1:${port}/?worker=1`
+    'X-Octopus-Worker': '1'
   };
   const syncingDispatchA = await fetch(`http://127.0.0.1:${port}/api/dispatch-snapshot`, {
     method: 'POST',

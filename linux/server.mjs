@@ -56,6 +56,7 @@ function isExplicitClientRequest(request) {
 }
 
 function isExplicitWorkerRequest(request) {
+  if (request.headers['x-octopus-worker'] === '1') return true;
   try {
     const referer = new URL(String(request.headers.referer || ''));
     return referer.searchParams.get('worker') === '1';

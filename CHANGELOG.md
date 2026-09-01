@@ -2,6 +2,17 @@
 
 ## Unreleased
 
+## v2026.09.01.2 — 2026-09-01
+
+- Authenticate loopback worker publications with an explicit request marker
+  instead of a `Referer` that the Pi server's privacy policy suppresses.
+- Restore immediate Smart Dispatch publication and FoxESS reconciliation after
+  Raspberry Pi worker startup.
+- Read fixed Intelligent Octopus Go import prices from the four-rate day and
+  night endpoints when `standard-unit-rates` is intentionally empty.
+- Build the fixed 23:30–05:30 off-peak timeline so live import price, charts,
+  and price-based automation use the correct day and night rates.
+
 ## v2026.09.01.1 — 2026-09-01
 
 - Make the Raspberry Pi worker the single source of truth for Octopus Smart
