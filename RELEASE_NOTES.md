@@ -1,3 +1,36 @@
+## Worker-authoritative Smart Dispatch protection v2026.09.01.1
+
+### Fixed
+
+- Makes the Raspberry Pi worker the only Octopus Smart Dispatch consumer. Every
+  Pi dashboard now displays the exact dispatch snapshot used to program FoxESS,
+  eliminating mismatches caused by independent browser and worker API polls.
+- Publishes a changed dispatch revision as **SYNCING FOXESS** before immediately
+  rebuilding and writing the conflict-resolved FoxESS schedule.
+- Marks a revision **FOXESS CONFIRMED** only after the official FoxESS REST API
+  returns the exact schedule fingerprint requested by the worker.
+- Rejects a late confirmation for an older dispatch revision when Octopus
+  changes the schedule during an in-flight FoxESS write; the newest revision
+  remains authoritative and is applied next.
+- Shows explicit waiting, syncing, failed, disabled, confirmed, and protected
+  states instead of presenting an unconfirmed dispatch as safely scheduled.
+
+### Safety behaviour
+
+- The worker still polls Octopus at most every 15 seconds and begins the FoxESS
+  write before tariff refresh work completes.
+- Dashboards refresh the worker snapshot every five seconds and perform a prompt
+  FoxESS readback after confirmation.
+- An active dispatch is labelled **PROTECTED** only when the worker revision is
+  confirmed and the effective FoxESS mode is Forced Charge.
+
+### Validation
+
+- Covers worker-only snapshot publication, authenticated dashboard reads,
+  dispatch normalization, rapid revision replacement, stale-result rejection,
+  confirmed scheduler fingerprints, the standalone web build, and the complete
+  Raspberry Pi release package.
+
 ## Smart Dispatch priority and immediate REST sync v2026.08.24.1
 
 ### Fixed

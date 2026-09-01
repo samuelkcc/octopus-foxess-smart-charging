@@ -62,6 +62,14 @@ address directly. Every client reads the Pi's current state and sends
 deliberate changes back to the Pi; it is not a pixel-by-pixel screen mirror.
 Only the loopback worker performs unattended schedule writes.
 
+The worker is also the single source of truth for Octopus Smart Dispatch. It
+publishes every changed dispatch revision as syncing, immediately writes the
+matching conflict-resolved FoxESS schedule, and publishes confirmed status only
+after an exact official-REST scheduler readback. All dashboards display this
+worker snapshot and refresh it every five seconds. A stale confirmation for an
+older Octopus revision is rejected, and the dashboard clearly distinguishes
+**SYNCING FOXESS**, **FOXESS CONFIRMED**, and **FOXESS SYNC FAILED**.
+
 Remote access can be configured with a private VPN or a DDNS hostname and
 router port forwarding. If using DDNS, place an authenticated HTTPS reverse
 proxy in front of the dashboard, forward only the HTTPS endpoint, keep access

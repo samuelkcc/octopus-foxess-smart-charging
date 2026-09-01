@@ -81,6 +81,16 @@ FoxESS merges compatible periods, the Mode Scheduler identifies the combined
 period as **Smart Dispatch + Weekly Charge** or **Smart Dispatch + Target
 Charge** so the protection remains visible.
 
+On Raspberry Pi, the background worker is the single source of truth for Smart
+Dispatch. A new Octopus revision is immediately marked **SYNCING FOXESS**, sent
+to the official FoxESS REST scheduler, and marked **FOXESS CONFIRMED** only
+after an exact scheduler readback. Mobile, desktop, and Pi dashboards display
+that worker snapshot instead of querying Octopus independently. If Octopus
+changes a dispatch while an older FoxESS write is still being confirmed, the
+older result is rejected and the newest revision remains authoritative. An
+active charge is labelled **PROTECTED** only after confirmation and when the
+effective FoxESS mode is Forced Charge.
+
 ## What you need
 
 - Your Octopus account number (`A-...`) and API key (`sk_live_...`) from

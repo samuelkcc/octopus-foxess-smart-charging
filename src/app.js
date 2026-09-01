@@ -14,6 +14,8 @@ let foxScheduleReadbackTimeoutIds = [];
 let linuxConfigPollId = null;
 let linuxLiveTelemetryPollId = null;
 let linuxLiveTelemetryBusy = false;
+let linuxDispatchSnapshotPollId = null;
+let linuxDispatchSnapshotBusy = false;
 let activeCredentials = null;
 let pendingAutomationEvaluation = false;
 
@@ -23,6 +25,7 @@ const REQUEST_TIMEOUT_MS = 15000;
 const LINUX_CONFIG_ENDPOINT = '/api/config';
 const LINUX_OCTOPUS_ENDPOINT = '/api/octopus';
 const LINUX_FOX_LIVE_ENDPOINT = '/api/foxess/live';
+const LINUX_DISPATCH_SNAPSHOT_ENDPOINT = '/api/dispatch-snapshot';
 const LINUX_ACCESS_STORAGE_KEY = 'octopusFoxessDashboardAccessCode';
 const LINUX_WORKER_OCTOPUS_INTERVAL_SECONDS = 15;
 const DASHBOARD_SECTION_VISIBILITY_KEY = 'dashboardSectionVisibilityV1';
@@ -48,6 +51,7 @@ window.linuxAccessRequired = true;
 window.linuxLocalConfiguration = false;
 window.linuxLiveWsEnabled = false;
 window.linuxRevision = null;
+window.linuxDispatchSnapshot = null;
 
 function escapeHtml(value) {
     return String(value ?? '')
@@ -336,6 +340,69 @@ async function updateLinuxLiveDemand(dispatches = []) {
     }
 }
 
+function normalizeLinuxDispatchSnapshot(snapshot = {}) {
+    const statuses = new Set(['waiting', 'syncing', 'confirmed', 'failed', 'disabled']);
+    return {
+        dispatches: Array.isArray(snapshot.dispatches) ? snapshot.dispatches : [],
+        fingerprint: String(snapshot.fingerprint || ''),
+        status: statuses.has(snapshot.status) ? snapshot.status : 'waiting',
+        fetchedAt: snapshot.fetchedAt || null,
+        updatedAt: snapshot.updatedAt || null,
+        confirmedAt: snapshot.confirmedAt || null,
+        scheduleFingerprint: snapshot.scheduleFingerprint || null,
+        error: snapshot.error || null,
+        revision: Number(snapshot.revision || 0)
+    };
+}
+
+async function publishLinuxDispatchSnapshot(dispatches, status, details = {}) {
+    if (!window.linuxRuntime || window.linuxRole !== 'worker') return null;
+    const response = await fetch(LINUX_DISPATCH_SNAPSHOT_ENDPOINT, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            dispatches: dispatches || [],
+            status,
+            fetchedAt: details.fetchedAt || new Date().toISOString(),
+            scheduleFingerprint: details.scheduleFingerprint || null,
+            error: details.error || null
+        })
+    });
+    if (response.status === 409) {
+        // A newer Octopus response became authoritative while this FoxESS
+        // write was being confirmed. The queued evaluation will sync it next.
+        return null;
+    }
+    if (!response.ok) throw new Error(`Unable to publish Smart Dispatch state (HTTP ${response.status})`);
+    const snapshot = normalizeLinuxDispatchSnapshot(await response.json());
+    window.linuxDispatchSnapshot = snapshot;
+    return snapshot;
+}
+
+async function fetchLinuxDispatchSnapshot({ refreshFox = false } = {}) {
+    if (!window.linuxRuntime || window.linuxRole === 'worker') return null;
+    const response = await fetch(LINUX_DISPATCH_SNAPSHOT_ENDPOINT, {
+        headers: { 'X-Octopus-Access-Key': getLinuxAccessKey() },
+        cache: 'no-store'
+    });
+    if (response.status === 401) throw new Error('LAN access code required');
+    if (!response.ok) throw new Error(`Unable to load Smart Dispatch state (HTTP ${response.status})`);
+    const previous = window.linuxDispatchSnapshot;
+    const snapshot = normalizeLinuxDispatchSnapshot(await response.json());
+    const changed = !previous
+        || previous.revision !== snapshot.revision
+        || previous.status !== snapshot.status
+        || previous.fingerprint !== snapshot.fingerprint;
+    window.linuxDispatchSnapshot = snapshot;
+    window.currentDispatches = snapshot.dispatches;
+    renderDispatchScheduleList(snapshot.dispatches);
+    renderProtectionOverview();
+    if (refreshFox && changed && snapshot.status === 'confirmed' && globalFoxSN && globalGasUrl) {
+        await fetchFoxSchedules();
+    }
+    return snapshot;
+}
+
 function renderLiveWsMenuState(state = {}, status = null) {
     const selector = document.getElementById('live-ws-policy');
     const label = document.getElementById('live-ws-policy-state');
@@ -414,6 +481,8 @@ function removeSavedAccessCode() {
     foxScheduleReadbackTimeoutIds = [];
     if (linuxLiveTelemetryPollId !== null) clearInterval(linuxLiveTelemetryPollId);
     linuxLiveTelemetryPollId = null;
+    if (linuxDispatchSnapshotPollId !== null) clearInterval(linuxDispatchSnapshotPollId);
+    linuxDispatchSnapshotPollId = null;
     document.getElementById('dashboard')?.classList.remove('visible');
     const login = document.getElementById('login-layout');
     if (login) login.style.display = 'flex';
@@ -429,13 +498,13 @@ function removeSavedAccessCode() {
 function scheduleFoxScheduleReadbacks() {
     if (!window.linuxRuntime || window.linuxRole === 'worker' || !globalFoxSN || !globalGasUrl) return;
 
-    // The unattended worker and visible dashboard poll Octopus independently.
-    // Give the worker up to one complete poll cycle to write the new schedule,
-    // while refreshing the visible REST-confirmed state much sooner than 10 min.
+    // The dashboard only presents the worker's authoritative dispatch state.
+    // Once that state is confirmed, refresh FoxESS promptly so both columns
+    // show the exact schedule that passed the worker's REST readback.
     foxScheduleReadbackTimeoutIds.forEach(clearTimeout);
-    foxScheduleReadbackTimeoutIds = [5000, 20000, 40000].map(delay => setTimeout(() => {
+    foxScheduleReadbackTimeoutIds = [1000, 5000, 15000].map(delay => setTimeout(() => {
         fetchFoxSchedules().catch(error => {
-            console.warn('FoxESS schedule readback after a dispatch change failed.', error);
+            console.warn('FoxESS schedule readback after worker confirmation failed.', error);
         });
     }, delay));
 }
@@ -469,7 +538,7 @@ function refreshLinuxDashboardAfterResume() {
 
     linuxDashboardResumeRefreshPromise = (async () => {
         await initDashboard(true);
-        scheduleFoxScheduleReadbacks();
+        await fetchLinuxDispatchSnapshot({ refreshFox: true });
         if (globalFoxSN && globalGasUrl) await fetchFoxSchedules();
     })().catch(error => {
         console.warn('Raspberry Pi dashboard refresh after resume failed.', error);
@@ -1203,11 +1272,12 @@ async function initDashboard(isAutoRefresh = false, retryCount = 1) {
         const GRAPHQL_URL = 'https://api.octopus.energy/v1/graphql/';
 
         // 1. Octopus Auth (with automatic retry for API cold-starts)
+        const shouldFetchDispatches = !window.linuxRuntime || window.linuxRole === 'worker';
         const dashboardQuery = {
             query: `query getGoData($acc: String!) {
                 registeredKrakenflexDevice(accountNumber: $acc) { provider vehicleMake vehicleModel chargePointMake chargePointModel status }
                 vehicleChargingPreferences(accountNumber: $acc) { weekdayTargetTime weekdayTargetSoc }
-                plannedDispatches(accountNumber: $acc) { startDt endDt }
+                ${shouldFetchDispatches ? 'plannedDispatches(accountNumber: $acc) { startDt endDt }' : ''}
             }`,
             variables: { acc }
         };
@@ -1240,19 +1310,27 @@ async function initDashboard(isAutoRefresh = false, retryCount = 1) {
         }
         const device = gqlData.data?.registeredKrakenflexDevice;
         const prefs = gqlData.data?.vehicleChargingPreferences;
-        const dispatches = gqlData.data?.plannedDispatches || [];
+        let dispatches = gqlData.data?.plannedDispatches || [];
+        if (window.linuxRuntime && window.linuxRole !== 'worker') {
+            const snapshot = await fetchLinuxDispatchSnapshot();
+            dispatches = snapshot?.dispatches || [];
+        }
         window.currentDispatches = dispatches;
         await updateLinuxLiveDemand(dispatches);
         renderProtectionOverview();
 
         // Once Octopus reports a changed Smart Dispatch schedule, write the
         // conflict-resolved FoxESS schedule immediately. Do not wait for tariff
-        // requests to finish or for the next worker interval. A visible Pi
-        // dashboard cannot perform unattended writes, but it begins prompt REST
-        // readbacks while the loopback worker applies and confirms the change.
+        // requests to finish or for the next worker interval. The worker first
+        // publishes this exact revision as syncing; dashboards consume that
+        // authoritative snapshot and never a separate Octopus response.
         const dispatchesChanged = updateDispatchScheduleFingerprint(dispatches);
         if (dispatchesChanged) {
-            scheduleFoxScheduleReadbacks();
+            if (window.linuxRuntime && window.linuxRole === 'worker') {
+                const dispatchEnabled = document.getElementById('toggle-auto-dispatch')?.checked === true
+                    || readStoredJson('foxAutomations', {}).dispatchCheck === true;
+                await publishLinuxDispatchSnapshot(dispatches, dispatchEnabled ? 'syncing' : 'disabled');
+            }
             if (isAutoRefresh && hasEnabledLocalAutomation() && canRunAutomaticActions()) {
                 await evaluateLocalAutomations(null, true);
             }
@@ -1423,16 +1501,7 @@ async function initDashboard(isAutoRefresh = false, retryCount = 1) {
         drawPriceCharts(maxRate, minRate, dispatches);
         previewDischargeTimes();
         
-        const dispatchHtml = dispatches.length ? 
-            dispatches.map(d => `<div style="padding: 0.5rem 0.75rem; background: #e0f2fe; border: 1px solid #7dd3fc; border-radius: 8px; margin-bottom: 0.5rem; color: #0369a1; font-size: 0.9rem; font-weight: 600;">⚡ ${new Date(d.startDt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})} - ${new Date(d.endDt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</div>`).join('') 
-            : '<div style="color: var(--text-muted); font-size: 0.9rem; text-align: center; padding: 1rem 0;">No smart dispatches scheduled right now.</div>';
-        
-        document.getElementById('ui-dispatches-list').innerHTML = `
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
-                <h4 style="margin: 0; font-size: 0.95rem; color: var(--text-main);">📅 Schedule created</h4>
-            </div>
-            ${dispatchHtml}
-        `;
+        renderDispatchScheduleList(dispatches);
         renderProtectionOverview();
 
         if (!isAutoRefresh) {
@@ -1443,6 +1512,7 @@ async function initDashboard(isAutoRefresh = false, retryCount = 1) {
                 // schedule/mode request. If REST is temporarily unavailable,
                 // an already healthy Live WS stream can still update the UI.
                 startLinuxLiveTelemetryPoll();
+                startLinuxDispatchSnapshotPoll();
                 await fetchFoxSchedules(); 
                 await fetchCurrentWorkMode(); 
                 
@@ -1618,6 +1688,30 @@ function startLinuxLiveTelemetryPoll() {
     linuxLiveTelemetryPollId = setInterval(fetchLinuxLiveTelemetry, 5000);
 }
 
+async function pollLinuxDispatchSnapshot() {
+    if (!window.linuxRuntime || window.linuxRole === 'worker' || linuxDispatchSnapshotBusy) return;
+    linuxDispatchSnapshotBusy = true;
+    try {
+        const previousStatus = window.linuxDispatchSnapshot?.status;
+        const previousFingerprint = window.linuxDispatchSnapshot?.fingerprint;
+        const snapshot = await fetchLinuxDispatchSnapshot({ refreshFox: true });
+        if (
+            snapshot?.status === 'confirmed'
+            && (previousStatus !== 'confirmed' || previousFingerprint !== snapshot.fingerprint)
+        ) scheduleFoxScheduleReadbacks();
+    } catch (error) {
+        console.warn('Unable to refresh the worker Smart Dispatch state.', error);
+    } finally {
+        linuxDispatchSnapshotBusy = false;
+    }
+}
+
+function startLinuxDispatchSnapshotPoll() {
+    if (!window.linuxRuntime || window.linuxRole === 'worker' || linuxDispatchSnapshotPollId !== null) return;
+    void pollLinuxDispatchSnapshot();
+    linuxDispatchSnapshotPollId = setInterval(pollLinuxDispatchSnapshot, 5000);
+}
+
 async function fetchCurrentWorkMode(forceModeUpdate = false) {
     if (!globalGasUrl || !globalFoxSN) return null;
     const path = '/op/v0/device/setting/get';
@@ -1688,6 +1782,35 @@ function formatDashboardTime(value) {
     return new Date(value).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 }
 
+function getDispatchSyncUiState() {
+    if (!window.linuxRuntime || window.linuxRole === 'worker') return null;
+    const snapshot = normalizeLinuxDispatchSnapshot(window.linuxDispatchSnapshot || {});
+    const states = {
+        waiting: { label: 'WAITING FOR WORKER', className: 'badge neutral', rowTag: 'WAITING' },
+        syncing: { label: 'SYNCING FOXESS', className: 'badge peak', rowTag: 'SYNCING' },
+        confirmed: { label: 'FOXESS CONFIRMED', className: 'badge off-peak', rowTag: 'CONFIRMED' },
+        failed: { label: 'FOXESS SYNC FAILED', className: 'badge peak', rowTag: 'FAILED' },
+        disabled: { label: 'SYNC DISABLED', className: 'badge neutral', rowTag: 'NOT ENABLED' }
+    };
+    return { ...states[snapshot.status], ...snapshot };
+}
+
+function renderDispatchScheduleList(dispatches = window.currentDispatches || []) {
+    const container = document.getElementById('ui-dispatches-list');
+    if (!container) return;
+    const sync = getDispatchSyncUiState();
+    const dispatchHtml = dispatches.length
+        ? dispatches.map(dispatch => `<div style="padding: 0.5rem 0.75rem; background: #e0f2fe; border: 1px solid #7dd3fc; border-radius: 8px; margin-bottom: 0.5rem; color: #0369a1; font-size: 0.9rem; font-weight: 600;">⚡ ${formatDashboardTime(dispatch.startDt)} - ${formatDashboardTime(dispatch.endDt)}</div>`).join('')
+        : '<div style="color: var(--text-muted); font-size: 0.9rem; text-align: center; padding: 1rem 0;">No smart dispatches scheduled right now.</div>';
+    container.innerHTML = `
+        <div style="display: flex; justify-content: space-between; align-items: center; gap: 0.75rem; margin-bottom: 1rem;">
+            <h4 style="margin: 0; font-size: 0.95rem; color: var(--text-main);">📅 Worker schedule</h4>
+            ${sync ? `<span class="${sync.className}">${escapeHtml(sync.label)}</span>` : ''}
+        </div>
+        ${dispatchHtml}
+    `;
+}
+
 function renderProtectionOverview(now = new Date()) {
     const stateBadge = document.getElementById('protection-state');
     const stateMessage = document.getElementById('protection-message');
@@ -1701,19 +1824,38 @@ function renderProtectionOverview(now = new Date()) {
     const activeDispatch = dispatches.find(dispatch => new Date(dispatch.startDt) <= now && new Date(dispatch.endDt) > now);
     const effectiveMode = getEffectiveFoxWorkMode(window.baseFoxWorkMode || localWorkModeState, now);
     const forceChargeActive = effectiveMode === 'ForceCharge';
+    const sync = getDispatchSyncUiState();
 
-    if (activeDispatch && forceChargeActive) {
+    if (sync?.status === 'waiting') {
+        stateBadge.textContent = 'WAITING';
+        stateBadge.className = 'badge neutral';
+        stateMessage.textContent = 'Waiting for the Pi worker to publish and verify the authoritative Octopus Smart Dispatch schedule.';
+    } else if (sync?.status === 'syncing') {
+        stateBadge.textContent = 'SYNCING';
+        stateBadge.className = 'badge peak';
+        stateMessage.textContent = 'A new Octopus Smart Dispatch was detected. FoxESS is being programmed now; battery protection is not confirmed yet.';
+    } else if (sync?.status === 'failed') {
+        stateBadge.textContent = 'SYNC FAILED';
+        stateBadge.className = 'badge peak';
+        stateMessage.textContent = `FoxESS did not confirm the worker schedule. Battery protection is not guaranteed${sync.error ? `: ${sync.error}` : '.'}`;
+    } else if (sync?.status === 'disabled' && dispatches.length > 0) {
+        stateBadge.textContent = 'NOT PROTECTED';
+        stateBadge.className = 'badge neutral';
+        stateMessage.textContent = 'Octopus Smart Dispatch synchronization is disabled, so FoxESS protection has not been applied.';
+    } else if (activeDispatch && forceChargeActive && (!sync || sync.status === 'confirmed')) {
         stateBadge.textContent = 'PROTECTED';
         stateBadge.className = 'badge off-peak';
-        stateMessage.textContent = 'EV charging is active and FoxESS is in Forced Charge, so the solar battery is protected from the EV load.';
+        stateMessage.textContent = 'The worker confirmed the schedule and FoxESS is in Forced Charge, so the solar battery is protected from the EV load.';
     } else if (activeDispatch) {
         stateBadge.textContent = 'CHECK FOXESS';
         stateBadge.className = 'badge peak';
         stateMessage.textContent = `EV charging is active but the effective FoxESS mode is ${effectiveMode || 'unknown'}. Forced Charge should be active now.`;
     } else if (dispatches.length > 0) {
-        stateBadge.textContent = 'SCHEDULED';
-        stateBadge.className = 'badge live';
-        stateMessage.textContent = 'The next Octopus dynamic charge is scheduled. Confirm the FoxESS Forced Charge period below covers the same time.';
+        stateBadge.textContent = sync?.status === 'confirmed' ? 'CONFIRMED' : 'SCHEDULED';
+        stateBadge.className = sync?.status === 'confirmed' ? 'badge off-peak' : 'badge live';
+        stateMessage.textContent = sync?.status === 'confirmed'
+            ? 'The Pi worker applied this exact Octopus schedule and confirmed it through the FoxESS REST scheduler readback.'
+            : 'The next Octopus dynamic charge is scheduled. Confirm the FoxESS Forced Charge period below covers the same time.';
     } else {
         stateBadge.textContent = 'STANDBY';
         stateBadge.className = 'badge neutral';
@@ -1723,9 +1865,10 @@ function renderProtectionOverview(now = new Date()) {
     dynamicList.innerHTML = dispatches.length
         ? dispatches.map(dispatch => {
             const active = new Date(dispatch.startDt) <= now && new Date(dispatch.endDt) > now;
+            const tag = sync ? sync.rowTag : (active ? 'ACTIVE' : 'UPCOMING');
             return `<div class="overview-schedule-row ${active ? 'active' : ''}">
                 <span><strong>${active ? 'Charging now' : 'Dynamic charge'}</strong><small>${formatDashboardTime(dispatch.startDt)} – ${formatDashboardTime(dispatch.endDt)}</small></span>
-                <span class="overview-schedule-tag">${active ? 'ACTIVE' : 'UPCOMING'}</span>
+                <span class="overview-schedule-tag">${escapeHtml(tag)}</span>
             </div>`;
         }).join('')
         : '<div class="overview-empty">No dynamic charge schedule.</div>';
@@ -2357,12 +2500,18 @@ async function evaluateLocalAutomations(btn = null, isStartup = false) {
     }
 
     const isAutoPrice = document.documentElement.querySelector('#toggle-auto-price')?.checked;
-    const isAutoDispatch = document.documentElement.querySelector('#toggle-auto-dispatch')?.checked;
+    const isAutoDispatch = document.documentElement.querySelector('#toggle-auto-dispatch')?.checked === true;
     const isAutoExport = document.documentElement.querySelector('#toggle-auto-export')?.checked;
     const weeklyForce = getWeeklyForceConfig();
     const weeklyDischarge = getWeeklyDischargeConfig();
     const pauseDischargeDuringDispatch = document.getElementById('toggle-discharge-pause-dispatch')?.checked !== false;
     const disableForcedChargeDuringDischarge = document.getElementById('toggle-discharge-overrides-charge')?.checked !== false;
+    // Freeze the exact worker snapshot used for this scheduler write. Octopus
+    // may publish another revision while FoxESS is still confirming this one.
+    const automationDispatches = (window.currentDispatches || []).map(dispatch => ({
+        startDt: dispatch.startDt,
+        endDt: dispatch.endDt
+    }));
 
     if (weeklyForce.enabled && (!weeklyForce.startTime || !weeklyForce.endTime || weeklyForce.startTime === weeklyForce.endTime)) {
         showToast('Set different start and end times for the weekly forced-charge schedule.');
@@ -2502,9 +2651,9 @@ async function evaluateLocalAutomations(btn = null, isStartup = false) {
     });
 
     // 3. Dispatch Check (Higher priority - overrides target-price and weekly charge blocks)
-    if (isAutoDispatch && window.currentDispatches) {
+    if (isAutoDispatch) {
         const soc = applyDispatchLimit ? dispatchSocLimit : 100;
-        getUpcomingSmartDispatches(window.currentDispatches, now).forEach(dispatch => {
+        getUpcomingSmartDispatches(automationDispatches, now).forEach(dispatch => {
             fillTimeline(dispatch.start, dispatch.end, "ForceCharge", soc, "dispatch");
         });
     }
@@ -2565,13 +2714,34 @@ async function evaluateLocalAutomations(btn = null, isStartup = false) {
         const remoteStr = window.activeFoxGroups.filter(isActiveFoxSchedule).map(mapGroup).sort().join('|');
         if (localStr === remoteStr) {
             console.log("Startup Check: Local automations match inverter schedules perfectly. Skipping sync.");
-            return;
+            if (window.linuxRuntime && window.linuxRole === 'worker') {
+                await publishLinuxDispatchSnapshot(
+                    automationDispatches,
+                    isAutoDispatch ? 'confirmed' : 'disabled',
+                    { scheduleFingerprint: scheduleFingerprint(groups) }
+                );
+            }
+            return true;
         }
     }
 
     try {
-        await pushGroupsToFoxESS(groups);
+        const result = await pushGroupsToFoxESS(groups);
+        if (window.linuxRuntime && window.linuxRole === 'worker') {
+            await publishLinuxDispatchSnapshot(
+                automationDispatches,
+                isAutoDispatch ? 'confirmed' : 'disabled',
+                { scheduleFingerprint: scheduleFingerprint(result.groups) }
+            );
+        }
     } catch (error) {
+        if (window.linuxRuntime && window.linuxRole === 'worker' && isAutoDispatch) {
+            try {
+                await publishLinuxDispatchSnapshot(automationDispatches, 'failed', { error: error.message });
+            } catch (publishError) {
+                console.warn('Unable to publish the failed Smart Dispatch state.', publishError);
+            }
+        }
         showToast(`Automation schedules were not applied: ${error.message}`);
         if (btn) {
             btn.textContent = '❌ Apply Failed';

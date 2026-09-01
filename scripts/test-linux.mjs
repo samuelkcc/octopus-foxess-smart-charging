@@ -86,12 +86,17 @@ assert.match(markupSource, /class="input-group pi-config-only"/);
 assert.match(markupSource, /id="octopus-account-toggle"/);
 assert.match(markupSource, /rel="apple-touch-icon"/);
 assert.match(markupSource, /rel="manifest"/);
-assert.match(markupSource, /styles\.css\?v=2026\.8\.24\.1/);
-assert.match(markupSource, /app\.js\?v=2026\.8\.24\.1/);
-assert.match(markupSource, /Build v2026\.08\.24\.1/);
+assert.match(markupSource, /styles\.css\?v=2026\.9\.1\.1/);
+assert.match(markupSource, /app\.js\?v=2026\.9\.1\.1/);
+assert.match(markupSource, /Build v2026\.09\.01\.1/);
 assert.match(stylesSource, /\.linux-runtime \.pi-config-only \{ display: none !important; \}/);
 assert.match(stylesSource, /\.account-number-row \.account-secret-control \.val \{ max-width: none; white-space: nowrap/);
 assert.match(appSource, /LINUX_OCTOPUS_ENDPOINT = '\/api\/octopus'/);
+assert.match(appSource, /LINUX_DISPATCH_SNAPSHOT_ENDPOINT = '\/api\/dispatch-snapshot'/);
+assert.match(appSource, /shouldFetchDispatches = !window\.linuxRuntime \|\| window\.linuxRole === 'worker'/, 'Only the worker may query Octopus plannedDispatches on Raspberry Pi');
+assert.match(appSource, /await publishLinuxDispatchSnapshot\(dispatches, dispatchEnabled \? 'syncing' : 'disabled'\)/, 'A new worker dispatch revision must be published before FoxESS synchronization');
+assert.match(appSource, /await publishLinuxDispatchSnapshot\([\s\S]*?isAutoDispatch \? 'confirmed' : 'disabled'/, 'The worker must publish only a REST-confirmed scheduler result');
+assert.match(appSource, /startLinuxDispatchSnapshotPoll/, 'Dashboards must follow the worker dispatch snapshot promptly');
 assert.match(appSource, /LINUX_FOX_LIVE_ENDPOINT = '\/api\/foxess\/live'/);
 assert.match(appSource, /startLinuxLiveTelemetryPoll/);
 assert.match(appSource, /octopusFoxessDashboardAccessCode/);
@@ -113,6 +118,8 @@ assert.match(await readFile(path.join(root, 'linux', 'server.mjs'), 'utf8'), /\/
 assert.match(await readFile(path.join(root, 'linux', 'server.mjs'), 'utf8'), /\/api\/service-status/);
 assert.match(await readFile(path.join(root, 'linux', 'server.mjs'), 'utf8'), /\/api\/native-config/);
 assert.match(await readFile(path.join(root, 'linux', 'server.mjs'), 'utf8'), /\/api\/live-demand/);
+assert.match(await readFile(path.join(root, 'linux', 'server.mjs'), 'utf8'), /\/api\/dispatch-snapshot/);
+assert.match(await readFile(path.join(root, 'linux', 'server.mjs'), 'utf8'), /Stale Smart Dispatch synchronization result/);
 assert.match(await readFile(path.join(root, 'linux', 'server.mjs'), 'utf8'), /lanAccessRequired/);
 assert.match(await readFile(path.join(root, 'linux', 'server.mjs'), 'utf8'), /'Cache-Control': 'no-cache'/);
 assert.match(linuxBuildSource, /octopus-foxess\.desktop/);
@@ -275,6 +282,79 @@ try {
     body: JSON.stringify({ active: true, startsAt: '2026-07-29T11:00:00.000Z', endsAt: '2026-07-29T12:00:00.000Z' })
   });
   assert.equal(acceptedLiveDemand.status, 200);
+
+  const dispatchA = [
+    { startDt: '2026-09-01T22:00:00.000Z', endDt: '2026-09-01T22:30:00.000Z' }
+  ];
+  const dispatchB = [
+    { startDt: '2026-09-02T00:00:00.000Z', endDt: '2026-09-02T02:00:00.000Z' }
+  ];
+  const rejectedDispatchUpdate = await fetch(`http://127.0.0.1:${port}/api/dispatch-snapshot`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ dispatches: dispatchA, status: 'syncing' })
+  });
+  assert.equal(rejectedDispatchUpdate.status, 403, 'Only the loopback worker may publish Smart Dispatch state');
+
+  const workerHeaders = {
+    'Content-Type': 'application/json',
+    Referer: `http://127.0.0.1:${port}/?worker=1`
+  };
+  const syncingDispatchA = await fetch(`http://127.0.0.1:${port}/api/dispatch-snapshot`, {
+    method: 'POST',
+    headers: workerHeaders,
+    body: JSON.stringify({ dispatches: dispatchA, status: 'syncing', fetchedAt: '2026-09-01T20:00:00.000Z' })
+  });
+  assert.equal(syncingDispatchA.status, 200);
+  const dispatchAState = await syncingDispatchA.json();
+  assert.equal(dispatchAState.status, 'syncing');
+  assert.deepEqual(dispatchAState.dispatches, dispatchA);
+
+  const unauthorizedDispatchRead = await fetch(`http://127.0.0.1:${port}/api/dispatch-snapshot`, {
+    headers: { Referer: `http://127.0.0.1:${port}/?client=1` }
+  });
+  assert.equal(unauthorizedDispatchRead.status, 401);
+  const authorizedDispatchA = await fetch(`http://127.0.0.1:${port}/api/dispatch-snapshot`, {
+    headers: {
+      Referer: `http://127.0.0.1:${port}/?client=1`,
+      'X-Octopus-Access-Key': changedAccessKey
+    }
+  }).then(response => response.json());
+  assert.equal(authorizedDispatchA.status, 'syncing');
+  assert.equal(authorizedDispatchA.fetchedAt, '2026-09-01T20:00:00.000Z');
+
+  const syncingDispatchB = await fetch(`http://127.0.0.1:${port}/api/dispatch-snapshot`, {
+    method: 'POST',
+    headers: workerHeaders,
+    body: JSON.stringify({ dispatches: dispatchB, status: 'syncing' })
+  });
+  assert.equal(syncingDispatchB.status, 200);
+  const staleDispatchAConfirmation = await fetch(`http://127.0.0.1:${port}/api/dispatch-snapshot`, {
+    method: 'POST',
+    headers: workerHeaders,
+    body: JSON.stringify({ dispatches: dispatchA, status: 'confirmed', scheduleFingerprint: 'schedule-a' })
+  });
+  assert.equal(staleDispatchAConfirmation.status, 409, 'A stale FoxESS confirmation must not replace a newer Octopus revision');
+  const confirmedDispatchB = await fetch(`http://127.0.0.1:${port}/api/dispatch-snapshot`, {
+    method: 'POST',
+    headers: workerHeaders,
+    body: JSON.stringify({ dispatches: dispatchB, status: 'confirmed', scheduleFingerprint: 'schedule-b' })
+  });
+  assert.equal(confirmedDispatchB.status, 200);
+  const confirmedDispatchState = await confirmedDispatchB.json();
+  assert.equal(confirmedDispatchState.status, 'confirmed');
+  assert.equal(confirmedDispatchState.scheduleFingerprint, 'schedule-b');
+  assert.ok(confirmedDispatchState.confirmedAt);
+
+  const invalidDispatchUpdate = await fetch(`http://127.0.0.1:${port}/api/dispatch-snapshot`, {
+    method: 'POST',
+    headers: workerHeaders,
+    body: JSON.stringify({
+      dispatches: [{ startDt: 'invalid', endDt: 'also-invalid' }],
+      status: 'syncing'
+    })
+  });
+  assert.equal(invalidDispatchUpdate.status, 400);
 
   const nativeConfig = await fetch(`http://127.0.0.1:${port}/api/native-config`).then(response => response.json());
   assert.equal(nativeConfig.accessRequired, true);

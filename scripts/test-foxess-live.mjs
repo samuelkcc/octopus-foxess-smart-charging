@@ -170,7 +170,10 @@ assert.equal(liveTelemetry.source, 'live-ws');
 assert.equal(liveTelemetry.values.SoC, 82);
 assert.equal(liveTelemetry.values.batDischargePower, 1.2);
 assert.equal(liveOpenApiCalls, 1);
-await new Promise(resolve => setTimeout(resolve, 35));
+const heartbeatDeadline = Date.now() + 250;
+while (liveHeartbeats < 3 && Date.now() < heartbeatDeadline) {
+  await new Promise(resolve => setTimeout(resolve, 10));
+}
 assert.equal(liveFramesRequested, 1, 'Live WS should subscribe to the telemetry stream once');
 assert.ok(liveHeartbeats >= 3, 'Live WS should keep the transport alive with protocol heartbeats');
 assert.equal(liveService.getPublicStatus().source, 'live-ws');

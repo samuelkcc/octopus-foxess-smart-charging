@@ -28,6 +28,7 @@ const integrationStatus = {
   foxRest: { lastSuccessAt: null, lastErrorAt: null, lastError: null }
 };
 const liveWsPolicies = new Set(['on-demand', 'always', 'rest']);
+const dispatchSyncStatuses = new Set(['waiting', 'syncing', 'confirmed', 'failed', 'disabled']);
 let packageContents;
 try {
   packageContents = await readFile(path.join(appRoot, 'package.json'), 'utf8');
@@ -250,6 +251,39 @@ function getClientState(state) {
       foxWebPassword: credentials.foxWebPassword ? 'pi-managed' : '',
       gasUrl: '/api/foxess'
     }
+  };
+}
+
+function normalizeDispatches(dispatches) {
+  if (!Array.isArray(dispatches) || dispatches.length > 96) {
+    throw Object.assign(new Error('Smart Dispatch data must be an array of at most 96 windows'), { statusCode: 400 });
+  }
+  return dispatches.map(dispatch => {
+    const start = new Date(dispatch?.startDt);
+    const end = new Date(dispatch?.endDt);
+    if (!Number.isFinite(start.getTime()) || !Number.isFinite(end.getTime()) || end <= start) {
+      throw Object.assign(new Error('Invalid Smart Dispatch window'), { statusCode: 400 });
+    }
+    return { startDt: start.toISOString(), endDt: end.toISOString() };
+  }).sort((a, b) => a.startDt.localeCompare(b.startDt) || a.endDt.localeCompare(b.endDt));
+}
+
+function dispatchFingerprint(dispatches) {
+  return createHash('sha256').update(JSON.stringify(dispatches)).digest('hex');
+}
+
+function getDispatchSnapshot(state = {}) {
+  const snapshot = state.dispatchSnapshot || {};
+  return {
+    dispatches: Array.isArray(snapshot.dispatches) ? snapshot.dispatches : [],
+    fingerprint: snapshot.fingerprint || dispatchFingerprint([]),
+    status: dispatchSyncStatuses.has(snapshot.status) ? snapshot.status : 'waiting',
+    fetchedAt: snapshot.fetchedAt || null,
+    updatedAt: snapshot.updatedAt || null,
+    confirmedAt: snapshot.confirmedAt || null,
+    scheduleFingerprint: snapshot.scheduleFingerprint || null,
+    error: snapshot.error || null,
+    revision: Number(snapshot.revision || 0)
   };
 }
 
@@ -601,7 +635,7 @@ const server = http.createServer(async (request, response) => {
       });
     }
 
-    const protectedApi = ['/api/config', '/api/foxess', '/api/octopus'];
+    const protectedApi = ['/api/config', '/api/dispatch-snapshot', '/api/foxess', '/api/octopus'];
     const isProtected = protectedApi.includes(pathname) || pathname.startsWith('/api/foxess/live');
     if (isProtected && !(await isAuthorized(request))) {
       return sendJson(response, 401, { error: 'Invalid LAN access code' });
@@ -647,6 +681,59 @@ const server = http.createServer(async (request, response) => {
       await saveState({ revision: Date.now() });
       void foxessLive.reconcile({ force: true });
       return sendEmpty(response);
+    }
+    if (pathname === '/api/dispatch-snapshot' && request.method === 'GET') {
+      return sendJson(response, 200, getDispatchSnapshot(await loadState()));
+    }
+    if (pathname === '/api/dispatch-snapshot' && request.method === 'POST') {
+      if (!isLoopback(request) || !isExplicitWorkerRequest(request)) {
+        return sendJson(response, 403, { error: 'Smart Dispatch state can only be updated by the Raspberry Pi worker' });
+      }
+      const update = await readJsonBody(request);
+      if (!dispatchSyncStatuses.has(update.status)) {
+        return sendJson(response, 400, { error: 'Invalid Smart Dispatch synchronization state' });
+      }
+      const dispatches = normalizeDispatches(update.dispatches || []);
+      const fingerprint = dispatchFingerprint(dispatches);
+      const current = await loadState();
+      const previous = getDispatchSnapshot(current);
+
+      // A slower FoxESS confirmation must never overwrite a newer Octopus
+      // schedule that arrived while the earlier scheduler write was in flight.
+      if (['confirmed', 'failed'].includes(update.status) && previous.fingerprint !== fingerprint) {
+        return sendJson(response, 409, {
+          error: 'Stale Smart Dispatch synchronization result',
+          currentFingerprint: previous.fingerprint
+        });
+      }
+
+      const scheduleFingerprint = String(update.scheduleFingerprint || '').slice(0, 2048) || null;
+      const error = update.status === 'failed'
+        ? String(update.error || 'FoxESS did not confirm the Smart Dispatch schedule').slice(0, 240)
+        : null;
+      const unchanged = previous.fingerprint === fingerprint
+        && previous.status === update.status
+        && previous.scheduleFingerprint === scheduleFingerprint
+        && previous.error === error;
+      if (unchanged) return sendJson(response, 200, { saved: false, ...previous });
+
+      const now = new Date().toISOString();
+      const fetchedAt = previous.fingerprint === fingerprint && previous.fetchedAt
+        ? previous.fetchedAt
+        : (Number.isFinite(new Date(update.fetchedAt).getTime()) ? new Date(update.fetchedAt).toISOString() : now);
+      const snapshot = {
+        dispatches,
+        fingerprint,
+        status: update.status,
+        fetchedAt,
+        updatedAt: now,
+        confirmedAt: update.status === 'confirmed' ? now : null,
+        scheduleFingerprint,
+        error,
+        revision: Date.now()
+      };
+      await saveState({ ...current, dispatchSnapshot: snapshot });
+      return sendJson(response, 200, { saved: true, ...snapshot });
     }
     if (pathname === '/api/octopus' && request.method === 'POST') {
       try {

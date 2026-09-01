@@ -2,6 +2,22 @@
 
 ## Unreleased
 
+## v2026.09.01.1 — 2026-09-01
+
+- Make the Raspberry Pi worker the single source of truth for Octopus Smart
+  Dispatch windows; Pi dashboards no longer make an independent dispatch query.
+- Publish each new worker dispatch revision as syncing before immediately
+  rebuilding and writing the FoxESS scheduler.
+- Mark a dispatch revision confirmed only after the FoxESS REST readback exactly
+  matches the requested conflict-resolved schedule.
+- Reject stale FoxESS confirmations when Octopus replaces a dispatch while an
+  earlier scheduler write is still in flight.
+- Show waiting, syncing, confirmed, failed, and disabled protection states in
+  every Pi dashboard, refreshed from the worker every five seconds.
+- Add Linux integration coverage for worker-only updates, protected dashboard
+  reads, rapid dispatch replacement, stale confirmation rejection, and invalid
+  dispatch data.
+
 ## v2026.08.24.1 — 2026-08-24
 
 - Round Smart Dispatch windows outward to 30-minute Octopus slots, including

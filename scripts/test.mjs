@@ -332,8 +332,10 @@ assert.equal(utilities.isScheduleMinuteSuppressed(fulfilledWeekly, 'weekly', new
 
 assert.doesNotMatch(source, /localStorage\.setItem\(['"](?:octoAcc|octoApi|foxSn|foxToken|gasUrl)['"]/);
 assert.match(source, /if \(refreshTimerId !== null\) clearInterval\(refreshTimerId\)/);
-assert.match(source, /function scheduleFoxScheduleReadbacks\(\)[\s\S]*?\[5000, 20000, 40000\]/, 'A changed Octopus dispatch must trigger prompt FoxESS REST readbacks in the visible dashboard');
-assert.match(source, /const dispatchesChanged = updateDispatchScheduleFingerprint\(dispatches\);[\s\S]*?scheduleFoxScheduleReadbacks\(\)/, 'Dispatch changes must start the FoxESS scheduler readback sequence');
+assert.match(source, /function scheduleFoxScheduleReadbacks\(\)[\s\S]*?\[1000, 5000, 15000\]/, 'A worker-confirmed dispatch must trigger prompt FoxESS REST readbacks in the visible dashboard');
+assert.match(source, /shouldFetchDispatches = !window\.linuxRuntime \|\| window\.linuxRole === 'worker'/, 'A Pi dashboard must never query an independent Octopus dispatch schedule');
+assert.match(source, /await publishLinuxDispatchSnapshot\(dispatches, dispatchEnabled \? 'syncing' : 'disabled'\)/, 'The worker must publish a new dispatch revision as syncing before applying it');
+assert.match(source, /await publishLinuxDispatchSnapshot\([\s\S]*?isAutoDispatch \? 'confirmed' : 'disabled'/, 'The worker must publish the exact FoxESS-confirmed revision');
 assert.match(source, /const dispatchesChanged = updateDispatchScheduleFingerprint\(dispatches\);[\s\S]*?await evaluateLocalAutomations\(null, true\);/, 'The Pi worker must write a changed Smart Dispatch schedule immediately after the Octopus response');
 assert.doesNotMatch(source, /Math\.floor\(sMins \/ 15\)|Math\.ceil\(eMins \/ 15\)/, 'Smart Dispatch must no longer use 15-minute rounding');
 assert.doesNotMatch(source, /Math\.min\(soc, timeline\[i\]\.finalFdSoc\)/, 'An ordinary Forced Charge SOC must not override Smart Dispatch priority');
