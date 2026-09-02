@@ -1,3 +1,31 @@
+## Octopus throttling safety and linked-device repair v2026.09.02.1
+
+### Fixed
+
+- Treats Octopus GraphQL errors, missing response data, and a null
+  `plannedDispatches` field as failed reads. They can no longer be converted to
+  an empty schedule that removes valid FoxESS Forced Charge protection.
+- Preserves the server's last authoritative Smart Dispatch snapshot while an
+  Octopus request is throttled and keeps the background worker retrying.
+- Displays the linked charger or vehicle make when Octopus does not provide the
+  optional provider label, fixing the misleading `NONE DETECTED` status.
+
+### API reliability
+
+- Reuses the Octopus Kraken token for ten minutes instead of requesting a new
+  token for every GraphQL call.
+- Restricts the Raspberry Pi worker query to Smart Dispatch data and changes
+  its interval to 60 seconds; visible dashboard Octopus refreshes use five
+  minutes. New dispatches are still applied immediately on the first successful
+  response and are confirmed by exact FoxESS REST scheduler readback.
+
+### Validation
+
+- Covers rate-limit responses, null and missing dispatch fields, authoritative
+  empty responses, linked-device fallbacks, retry startup, worker query scope,
+  polling intervals, token reuse, the standalone build, and the Raspberry Pi
+  package.
+
 ## Worker publication and fixed IOG tariff repair v2026.09.01.2
 
 ### Fixed

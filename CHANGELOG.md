@@ -2,6 +2,17 @@
 
 ## Unreleased
 
+## v2026.09.02.1 — 2026-09-02
+
+- Preserve the last confirmed Smart Dispatch schedule when Octopus GraphQL
+  returns a rate-limit error, missing data, or a null dispatch field.
+- Reduce Octopus API pressure by caching the Kraken authentication token,
+  limiting worker queries to dispatch data, and using safer polling intervals.
+- Keep the worker retrying after an unsuccessful startup without clearing the
+  server's last authoritative dispatch snapshot.
+- Show the linked charger or vehicle make when Octopus omits the optional
+  device-provider label instead of incorrectly displaying `NONE DETECTED`.
+
 ## v2026.09.01.2 — 2026-09-01
 
 - Authenticate loopback worker publications with an explicit request marker

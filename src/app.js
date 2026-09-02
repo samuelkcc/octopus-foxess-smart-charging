@@ -1,12 +1,12 @@
 let importPriceChartInst = null;
 let exportPriceChartInst = null;
 let globalFoxSN = "";
-let lastDispatchesStr = "[]";
+let lastDispatchesStr = null;
 let scheduleToDelete = -1;
 let globalFoxToken = "";
 let globalGasUrl = "";
-let octoRefreshInterval = 60;
-let octoCountdown = 60;
+let octoRefreshInterval = 300;
+let octoCountdown = 300;
 let foxRefreshInterval = 600;
 let foxCountdown = 600;
 let refreshTimerId = null;
@@ -27,7 +27,7 @@ const LINUX_OCTOPUS_ENDPOINT = '/api/octopus';
 const LINUX_FOX_LIVE_ENDPOINT = '/api/foxess/live';
 const LINUX_DISPATCH_SNAPSHOT_ENDPOINT = '/api/dispatch-snapshot';
 const LINUX_ACCESS_STORAGE_KEY = 'octopusFoxessDashboardAccessCode';
-const LINUX_WORKER_OCTOPUS_INTERVAL_SECONDS = 15;
+const LINUX_WORKER_OCTOPUS_INTERVAL_SECONDS = 60;
 const DASHBOARD_SECTION_VISIBILITY_KEY = 'dashboardSectionVisibilityV1';
 const DASHBOARD_SECTION_IDS = {
     intelligentOctopus: 'section-intelligent-octopus',
@@ -696,6 +696,33 @@ function getProductCodeFromTariffCode(tariffCode) {
     return String(tariffCode || '').split('-').slice(2, -1).join('-');
 }
 
+function assertValidOctopusGraphqlResponse(response, options) {
+    options = options || {};
+    const requireDispatches = options.requireDispatches === true;
+    const errors = Array.isArray(response?.errors) ? response.errors : [];
+    if (errors.length > 0) {
+        const message = errors
+            .map(error => error?.extensions?.errorDescription || error?.message)
+            .filter(Boolean)
+            .join('; ');
+        throw new Error('Octopus API error: ' + (message || 'The response was rejected'));
+    }
+    if (!response?.data) throw new Error('Octopus API returned no data');
+    if (requireDispatches && !Array.isArray(response.data.plannedDispatches)) {
+        throw new Error('Octopus API did not return a Smart Dispatch schedule');
+    }
+    return response.data;
+}
+
+function getLinkedDeviceLabel(device) {
+    if (!device) return 'NOT REPORTED';
+    const label = device.provider
+        || device.chargePointMake
+        || device.vehicleMake
+        || (device.status ? 'CONNECTED DEVICE' : 'DEVICE DETAILS AVAILABLE');
+    return String(label).trim().toUpperCase();
+}
+
 function getRateAtTime(rates, time) {
     const timeValue = time instanceof Date ? time.getTime() : new Date(time).getTime();
     return (rates || []).find(rate => {
@@ -1311,11 +1338,12 @@ async function initDashboard(isAutoRefresh = false, retryCount = 1) {
         const GRAPHQL_URL = 'https://api.octopus.energy/v1/graphql/';
 
         // 1. Octopus Auth (with automatic retry for API cold-starts)
-        const shouldFetchDispatches = !window.linuxRuntime || window.linuxRole === 'worker';
+        const workerOnlyQuery = window.linuxRuntime && window.linuxRole === 'worker';
+        const shouldFetchDispatches = !window.linuxRuntime || workerOnlyQuery;
         const dashboardQuery = {
             query: `query getGoData($acc: String!) {
-                registeredKrakenflexDevice(accountNumber: $acc) { provider vehicleMake vehicleModel chargePointMake chargePointModel status }
-                vehicleChargingPreferences(accountNumber: $acc) { weekdayTargetTime weekdayTargetSoc }
+                ${workerOnlyQuery ? '' : 'registeredKrakenflexDevice(accountNumber: $acc) { provider vehicleMake vehicleModel chargePointMake chargePointModel status }'}
+                ${workerOnlyQuery ? '' : 'vehicleChargingPreferences(accountNumber: $acc) { weekdayTargetTime weekdayTargetSoc }'}
                 ${shouldFetchDispatches ? 'plannedDispatches(accountNumber: $acc) { startDt endDt }' : ''}
             }`,
             variables: { acc }
@@ -1347,9 +1375,10 @@ async function initDashboard(isAutoRefresh = false, retryCount = 1) {
                 body: JSON.stringify(dashboardQuery)
             });
         }
-        const device = gqlData.data?.registeredKrakenflexDevice;
-        const prefs = gqlData.data?.vehicleChargingPreferences;
-        let dispatches = gqlData.data?.plannedDispatches || [];
+        const gqlResult = assertValidOctopusGraphqlResponse(gqlData, { requireDispatches: shouldFetchDispatches });
+        const device = gqlResult.registeredKrakenflexDevice;
+        const prefs = gqlResult.vehicleChargingPreferences;
+        let dispatches = gqlResult.plannedDispatches || [];
         if (window.linuxRuntime && window.linuxRole !== 'worker') {
             const snapshot = await fetchLinuxDispatchSnapshot();
             dispatches = snapshot?.dispatches || [];
@@ -1373,6 +1402,26 @@ async function initDashboard(isAutoRefresh = false, retryCount = 1) {
             if (isAutoRefresh && hasEnabledLocalAutomation() && canRunAutomaticActions()) {
                 await evaluateLocalAutomations(null, true);
             }
+        }
+
+        // The always-on worker needs only the authoritative dispatch response
+        // and FoxESS synchronization. Avoid repeatedly querying static device,
+        // account, and tariff data from the headless browser.
+        if (workerOnlyQuery) {
+            if (!isAutoRefresh) {
+                loadAutomations(0, 0);
+                startAutoRefreshTimer();
+                if (globalFoxSN && globalGasUrl) {
+                    startLinuxLiveTelemetryPoll();
+                    await fetchFoxSchedules();
+                    await fetchCurrentWorkMode();
+                    if (hasEnabledLocalAutomation()) {
+                        await evaluateLocalAutomations(null, true);
+                        await fetchFoxSchedules();
+                    }
+                }
+            }
+            return;
         }
 
         // Save valid credentials
@@ -1521,14 +1570,15 @@ async function initDashboard(isAutoRefresh = false, retryCount = 1) {
                     <button type="button" class="inline-visibility-button" id="dashboard-account-toggle" onclick="toggleDashboardAccountVisibility()">Show</button>
                 </span>
             </li>
-            <li><span class="label">Linked Device</span> <span class="val" style="color: var(--accent);">${escapeHtml(device?.provider ? device.provider.toUpperCase() : 'NONE DETECTED')}</span></li>
+            <li><span class="label">Linked Device</span> <span class="val" style="color: var(--accent);">${escapeHtml(getLinkedDeviceLabel(device))}</span></li>
             <li><span class="label">Import Tariff Code</span> <span class="val" style="font-size: 0.8rem; font-family: monospace;">${escapeHtml(importTariffCode)}</span></li>
             <li><span class="label">Export Tariff Code</span> <span class="val" style="font-size: 0.8rem; font-family: monospace;">${escapeHtml(exportTariffCode)}</span></li>
         `;
 
         if (device) {
-            document.getElementById('ui-device-status').textContent = device.status || 'UNKNOWN';
-            document.getElementById('ui-device-status').className = `badge ${device.status === 'LIVE' ? 'live' : 'neutral'}`;
+            const deviceStatus = String(device.status || 'UNKNOWN').toUpperCase();
+            document.getElementById('ui-device-status').textContent = deviceStatus;
+            document.getElementById('ui-device-status').className = `badge ${deviceStatus === 'LIVE' ? 'live' : 'neutral'}`;
             document.getElementById('ui-device-prefs').innerHTML = `
                 <li><span class="label">EV Info</span> <span class="val">${escapeHtml(device.vehicleMake || '')} ${escapeHtml(device.vehicleModel || 'Unknown')}</span></li>
                 <li><span class="label">Charge Point</span> <span class="val">${escapeHtml(device.chargePointMake || '')} ${escapeHtml(device.chargePointModel || 'Unknown')}</span></li>
@@ -1564,6 +1614,13 @@ async function initDashboard(isAutoRefresh = false, retryCount = 1) {
         }
 
     } catch (err) {
+        if (window.linuxRuntime && window.linuxRole === 'worker' && refreshTimerId === null) {
+            // A transient Octopus error during boot must not strand the worker.
+            // Load the saved rules and keep the conservative retry loop alive
+            // while preserving the last server-side dispatch snapshot.
+            loadAutomations(0, 0);
+            startAutoRefreshTimer();
+        }
         if ((err.message === 'Load failed' || err.message === 'Failed to fetch') && retryCount > 0) {
             console.warn("Network error caught, retrying automatically...");
             setTimeout(() => initDashboard(isAutoRefresh, retryCount - 1), 1500);

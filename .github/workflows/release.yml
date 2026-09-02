@@ -9,7 +9,7 @@ on:
       tag:
         description: Release tag
         required: true
-        default: v2026.09.01.2
+        default: v2026.09.02.1
 
 permissions:
   contents: write

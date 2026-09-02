@@ -36,6 +36,8 @@ const utilities = new Function(`
   ${extractFunction('getActiveAgreement')}
   ${extractFunction('selectActiveElectricityTariffs')}
   ${extractFunction('getProductCodeFromTariffCode')}
+  ${extractFunction('assertValidOctopusGraphqlResponse')}
+  ${extractFunction('getLinkedDeviceLabel')}
   ${extractFunction('getRateAtTime')}
   ${extractFunction('getTariffSlotsForDate')}
   ${extractFunction('buildIntelligentGoFixedRates')}
@@ -50,7 +52,7 @@ const utilities = new Function(`
   ${extractFunction('getAutoResumeSource')}
   ${extractFunction('getAutoResumeUntil')}
   ${extractFunction('isScheduleMinuteSuppressed')}
-  return { window, isFoxScheduleActiveAt, getActiveFoxScheduleAt, getEffectiveFoxWorkMode, scheduleFingerprint, prepareFoxSchedulePayload, getActiveAgreement, selectActiveElectricityTariffs, getProductCodeFromTariffCode, getRateAtTime, getTariffSlotsForDate, buildIntelligentGoFixedRates, getWeeklyForcedChargePeriods, getWeeklyForcedDischargePeriods, getUpcomingSmartDispatches, getRoundedSmartDispatchMinutes, resolveAutomationMinute, buildScheduleGroupsFromTimeline, getForceChargeOverviewLabel, getAutoResumeSource, getAutoResumeUntil, isScheduleMinuteSuppressed };
+  return { window, isFoxScheduleActiveAt, getActiveFoxScheduleAt, getEffectiveFoxWorkMode, scheduleFingerprint, prepareFoxSchedulePayload, getActiveAgreement, selectActiveElectricityTariffs, getProductCodeFromTariffCode, assertValidOctopusGraphqlResponse, getLinkedDeviceLabel, getRateAtTime, getTariffSlotsForDate, buildIntelligentGoFixedRates, getWeeklyForcedChargePeriods, getWeeklyForcedDischargePeriods, getUpcomingSmartDispatches, getRoundedSmartDispatchMinutes, resolveAutomationMinute, buildScheduleGroupsFromTimeline, getForceChargeOverviewLabel, getAutoResumeSource, getAutoResumeUntil, isScheduleMinuteSuppressed };
 `)();
 
 const tariffNow = new Date('2026-07-26T12:00:00Z');
@@ -82,6 +84,27 @@ assert.equal(tariffSelections.importTariff.agreement.tariff_code, importAgreemen
 assert.equal(tariffSelections.exportTariff.meterPoint.mpan, 'export-first');
 assert.equal(tariffSelections.exportTariff.agreement.tariff_code, exportAgreement.tariff_code);
 assert.equal(utilities.getProductCodeFromTariffCode(importAgreement.tariff_code), 'INTELLI-VAR-24-10-29');
+assert.equal(utilities.getLinkedDeviceLabel({ provider: null, chargePointMake: 'Ohme', vehicleMake: 'Peugeot', status: 'Live' }), 'OHME');
+assert.equal(utilities.getLinkedDeviceLabel({ provider: null, chargePointMake: null, vehicleMake: 'Peugeot', status: 'Live' }), 'PEUGEOT');
+assert.equal(utilities.getLinkedDeviceLabel(null), 'NOT REPORTED');
+assert.throws(
+  () => utilities.assertValidOctopusGraphqlResponse({
+    errors: [{ message: 'Too many requests.', extensions: { errorDescription: 'There were too many requests. Please try again later.' } }],
+    data: { plannedDispatches: null }
+  }, { requireDispatches: true }),
+  /too many requests/i,
+  'A rate-limited response must never be treated as an empty Smart Dispatch schedule'
+);
+assert.throws(
+  () => utilities.assertValidOctopusGraphqlResponse({ data: { plannedDispatches: null } }, { requireDispatches: true }),
+  /did not return a Smart Dispatch schedule/,
+  'A missing dispatch field must preserve the last authoritative worker snapshot'
+);
+assert.deepEqual(
+  utilities.assertValidOctopusGraphqlResponse({ data: { plannedDispatches: [] } }, { requireDispatches: true }),
+  { plannedDispatches: [] },
+  'A successful empty dispatch array remains a valid authoritative response'
+);
 assert.equal(
   utilities.getRateAtTime(
     [{ valid_from: '2022-02-01T00:00:00Z', valid_to: null, value_inc_vat: 4.1 }],
@@ -352,7 +375,7 @@ assert.equal(utilities.isScheduleMinuteSuppressed(fulfilledWeekly, 'weekly', new
 assert.doesNotMatch(source, /localStorage\.setItem\(['"](?:octoAcc|octoApi|foxSn|foxToken|gasUrl)['"]/);
 assert.match(source, /if \(refreshTimerId !== null\) clearInterval\(refreshTimerId\)/);
 assert.match(source, /function scheduleFoxScheduleReadbacks\(\)[\s\S]*?\[1000, 5000, 15000\]/, 'A worker-confirmed dispatch must trigger prompt FoxESS REST readbacks in the visible dashboard');
-assert.match(source, /shouldFetchDispatches = !window\.linuxRuntime \|\| window\.linuxRole === 'worker'/, 'A Pi dashboard must never query an independent Octopus dispatch schedule');
+assert.match(source, /workerOnlyQuery = window\.linuxRuntime && window\.linuxRole === 'worker'[\s\S]*?shouldFetchDispatches = !window\.linuxRuntime \|\| workerOnlyQuery/, 'A Pi dashboard must never query an independent Octopus dispatch schedule');
 assert.match(source, /await publishLinuxDispatchSnapshot\(dispatches, dispatchEnabled \? 'syncing' : 'disabled'\)/, 'The worker must publish a new dispatch revision as syncing before applying it');
 assert.match(source, /'X-Octopus-Worker': '1'/, 'Worker publications must use an explicit loopback-only marker when Referrer-Policy suppresses the Referer');
 assert.match(source, /day-unit-rates\//, 'Fixed Intelligent Octopus tariffs must fall back to their four-rate day endpoint');
@@ -363,6 +386,11 @@ assert.doesNotMatch(source, /Math\.floor\(sMins \/ 15\)|Math\.ceil\(eMins \/ 15\
 assert.doesNotMatch(source, /Math\.min\(soc, timeline\[i\]\.finalFdSoc\)/, 'An ordinary Forced Charge SOC must not override Smart Dispatch priority');
 assert.match(source, /Smart Dispatch \+ Weekly Charge/, 'The overview must identify Smart Dispatch inside a merged weekly Forced Charge period');
 assert.match(source, /function getEffectiveOctopusRefreshInterval\(\)[\s\S]*?window\.linuxRole === 'worker'[\s\S]*?LINUX_WORKER_OCTOPUS_INTERVAL_SECONDS/, 'The Pi worker must detect added and removed dispatches faster than the visible dashboard polling interval');
+assert.match(source, /const LINUX_WORKER_OCTOPUS_INTERVAL_SECONDS = 60/, 'The worker must poll conservatively enough to avoid Octopus throttling');
+assert.match(source, /let octoRefreshInterval = 300/, 'Visible dashboards must not repeatedly query static Octopus device data every minute');
+assert.match(source, /const gqlResult = assertValidOctopusGraphqlResponse[\s\S]*?let dispatches = gqlResult\.plannedDispatches \|\| \[\]/, 'GraphQL errors must be rejected before dispatch state can be replaced');
+assert.match(source, /if \(workerOnlyQuery\)[\s\S]*?startAutoRefreshTimer\(\)[\s\S]*?return;/, 'The headless worker must skip static device, tariff, and chart requests');
+assert.match(source, /refreshTimerId === null[\s\S]*?loadAutomations\(0, 0\);[\s\S]*?startAutoRefreshTimer\(\)/, 'A rate-limited worker boot must retain its retry loop');
 assert.match(source, /document\.addEventListener\('visibilitychange'[\s\S]*?refreshLinuxDashboardAfterResume/, 'A resumed iPhone dashboard must immediately refresh its Octopus and FoxESS state');
 assert.match(source, /window\.addEventListener\('pageshow', refreshLinuxDashboardAfterResume\)/, 'A restored iOS page must immediately refresh its scheduler state');
 assert.match(source, /if \(!window\.linuxRuntime \|\| window\.linuxRole === 'worker' \|\| !activeCredentials\)/, 'Pi dashboard resume handling must not affect the standalone HTML edition');

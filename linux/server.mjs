@@ -29,6 +29,7 @@ const integrationStatus = {
 };
 const liveWsPolicies = new Set(['on-demand', 'always', 'rest']);
 const dispatchSyncStatuses = new Set(['waiting', 'syncing', 'confirmed', 'failed', 'disabled']);
+let octopusTokenCache = { apiKeyFingerprint: null, token: null, expiresAt: 0 };
 let packageContents;
 try {
   packageContents = await readFile(path.join(appRoot, 'package.json'), 'utf8');
@@ -385,19 +386,31 @@ async function proxyOctopusRequest(request, response) {
 
   let upstream;
   if (payload.authMode === 'graphql' && target.pathname === '/v1/graphql/') {
-    const authResponse = await fetch(target, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        query: `mutation { obtainKrakenToken(input: { APIKey: ${JSON.stringify(apiKey)} }) { token } }`
-      }),
-      signal: AbortSignal.timeout(20_000)
-    });
-    const authData = await authResponse.json();
-    const token = authData.data?.obtainKrakenToken?.token;
-    if (!authResponse.ok || !token) {
-      markIntegrationError('octopus', authData.errors?.[0]?.message || `Octopus authentication returned HTTP ${authResponse.status}`);
-      return sendJson(response, authResponse.ok ? 401 : authResponse.status, authData);
+    const apiKeyFingerprint = createHash('sha256').update(apiKey).digest('hex');
+    let token = octopusTokenCache.apiKeyFingerprint === apiKeyFingerprint
+      && octopusTokenCache.expiresAt > Date.now()
+      ? octopusTokenCache.token
+      : null;
+    if (!token) {
+      const authResponse = await fetch(target, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          query: `mutation { obtainKrakenToken(input: { APIKey: ${JSON.stringify(apiKey)} }) { token } }`
+        }),
+        signal: AbortSignal.timeout(20_000)
+      });
+      const authData = await authResponse.json();
+      token = authData.data?.obtainKrakenToken?.token;
+      if (!authResponse.ok || !token) {
+        markIntegrationError('octopus', authData.errors?.[0]?.message || `Octopus authentication returned HTTP ${authResponse.status}`);
+        return sendJson(response, authResponse.ok ? 401 : authResponse.status, authData);
+      }
+      octopusTokenCache = {
+        apiKeyFingerprint,
+        token,
+        expiresAt: Date.now() + 10 * 60_000
+      };
     }
     const body = {
       ...(payload.body || {}),
