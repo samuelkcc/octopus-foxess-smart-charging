@@ -1,7 +1,7 @@
 // Copyright (C) 2026 SCKC. GPL-3.0-or-later.
 // Local, read-only diagnostics. Only explicit public fields reach the report.
 import {fileURLToPath} from 'node:url';
-import path from 'node:path';
+import {realpathSync} from 'node:fs';
 export async function readRuntimeReport(fetcher=fetch) {
   const routes=['health','service-status','integration-status','history','automation/pause','dispatch-snapshot','foxess/live','remote-access'];
   const values=await Promise.all(routes.map(async route=>{
@@ -23,4 +23,4 @@ export async function readRuntimeReport(fetcher=fetch) {
     remote:{enabled:remote.enabled === true,state:remote.state || null,url:remote.url || null}
   };
 }
-if(process.argv[1] && path.resolve(process.argv[1])===fileURLToPath(import.meta.url))console.log(JSON.stringify(await readRuntimeReport(),null,2));
+if(process.argv[1] && realpathSync(process.argv[1])===fileURLToPath(import.meta.url))console.log(JSON.stringify(await readRuntimeReport(),null,2));
