@@ -332,3 +332,20 @@ node /opt/octopus-foxess/current/inspect-runtime.mjs
 The report includes connection states, dispatch confirmation, readings, history storage, and the public URL.
 It uses read-only requests.
 It excludes service credentials and the Remote Access Key.
+
+
+## API limits
+
+Settings rejects Octopus intervals below 60 seconds and FoxESS intervals below 600 seconds.
+Every outbound Octopus request uses one shared queue.
+Opening more Pi dashboards does not create separate upstream polling loops.
+Authentication, dispatch, account, and tariff requests remain at least one minute apart.
+The first connection can require several minutes.
+A reported rate limit delays later requests.
+The last valid dispatch remains available after a failed request.
+
+FoxESS routine reads share a cache for at least ten minutes.
+New Smart Dispatch schedules apply immediately when automation is active.
+Official scheduler readback remains fresh after a command.
+A successful schedule command restarts the normal FoxESS interval.
+The explicit automation pause still blocks commands.

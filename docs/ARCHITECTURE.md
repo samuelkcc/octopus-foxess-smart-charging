@@ -227,3 +227,31 @@ Page exit can cancel a pending browser request.
 The monitor ignores failures after `pagehide` and resumes normal reporting after `pageshow`.
 It does not ignore failures while a page is merely in the background.
 Retained alerts identify browser requests separately from Pi service requests.
+
+
+## API request budgets
+
+`linux/request-budget.mjs` provides the shared queue and duplicate-request cache.
+The browser build embeds the same implementation.
+`src/request-policy.js` connects standalone requests to that queue.
+The Pi proxy owns one queue for all connected clients.
+
+Every outbound Octopus request consumes one slot.
+Authentication, dispatch, account, and tariff requests remain at least 60 seconds apart.
+The Pi persists only the next permitted send time.
+A restart does not reset that limit.
+Browser storage and Web Locks coordinate tabs on the same origin where supported.
+Independent browsers and other applications cannot share this local budget.
+
+The first connection can require several minutes.
+Tariff loading runs separately from dispatch reconciliation.
+A combined GraphQL response serves Pi worker and dashboard reads.
+Visible clients still use the authoritative worker snapshot for dispatch confirmation.
+Rate-limit responses delay the entire Octopus queue.
+A failed dispatch response does not clear the last valid schedule.
+
+Routine FoxESS endpoint reads share a cache for at least 600 seconds.
+A successful schedule command invalidates that cache.
+Fresh scheduler verification is allowed for 30 seconds after a successful command.
+The normal worker countdown restarts after command acceptance.
+Explicit pause still blocks schedule writes.

@@ -12,6 +12,7 @@ import { FoxessLiveTelemetry } from './foxess-live.mjs';
 import { CompactHistory } from './history.mjs';
 import { AutomationPause } from './automation-pause.mjs';
 import { IntegrationState } from './integration-state.mjs';
+import { RequestBudget, retryDelay } from './request-budget.mjs';
 
 const appRoot = path.dirname(fileURLToPath(import.meta.url));
 const webRoot = process.env.OCTOPUS_WEB_ROOT || path.join(appRoot, 'web');
@@ -38,6 +39,8 @@ const integrationStatus = {
 };
 const liveWsPolicies = new Set(['on-demand', 'always', 'rest']);
 const dispatchSyncStatuses = new Set(['waiting', 'syncing', 'confirmed', 'failed', 'disabled']);
+let octopusAuthPromise = null;
+let octopusAuthFingerprint = null;
 let octopusTokenCache = { apiKeyFingerprint: null, token: null, expiresAt: 0 };
 let packageContents;
 try {
@@ -50,6 +53,47 @@ const packageInfo = JSON.parse(packageContents);
 const version = packageInfo.version;
 
 await mkdir(stateRoot, { recursive: true });
+
+// Only timestamps are persisted. A restart cannot bypass the Octopus budget.
+const octopusBudgetFile = path.join(stateRoot, 'octopus-request-budget.json');
+let savedOctopusNextAt = Date.now() + 60_000;
+try {
+  const saved = JSON.parse(await readFile(octopusBudgetFile, 'utf8'));
+  if (Number.isFinite(saved.nextAt)) savedOctopusNextAt = saved.nextAt;
+} catch (error) { if (error.code !== 'ENOENT') throw error; }
+const octopusBudget = new RequestBudget({
+  readNext: () => savedOctopusNextAt,
+  saveNext: async nextAt => {
+    savedOctopusNextAt = nextAt;
+    const temporary = `${octopusBudgetFile}.tmp`;
+    await writeFile(temporary, JSON.stringify({ nextAt }), { mode: 0o600 });
+    await rename(temporary, octopusBudgetFile);
+  }
+});
+const foxReadCache = new RequestBudget({ interval: 0 });
+let foxCacheRevision = 0;
+let foxReadbackUntil = 0;
+let foxReadbackSerial = 0;
+const responsePacket = async response => ({ fetchedAt: Date.now(), status: response.status, text: await response.text(),
+  type: response.headers.get('content-type'), retryAfter: response.headers.get('retry-after') });
+const unpackResponse = packet => new Response(packet.text, { status: packet.status,
+  headers: { 'Content-Type': packet.type || 'application/json', 'X-Smart-Charging-Fetched-At': String(packet.fetchedAt), ...(packet.retryAfter ? { 'Retry-After': packet.retryAfter } : {}) } });
+const cacheSuccessfulJson = packet => {
+  try { const data = JSON.parse(packet.text); return packet.status === 200 && !data.errors && (data.errno === undefined || data.errno === 0); }
+  catch { return false; }
+};
+async function octopusFetch(key, target, options, ttl = 0) {
+  const packet = await octopusBudget.run(key, async () => {
+    const result = await responsePacket(await fetch(target, { ...options, signal: AbortSignal.timeout(20_000) }));
+    let data;
+    try { data = JSON.parse(result.text); } catch { /* Invalid upstream data remains an error. */ }
+    const delay = retryDelay(unpackResponse(result), data);
+    if (delay) await octopusBudget.defer(delay);
+    return result;
+  }, { ttl, cacheWhen: cacheSuccessfulJson });
+  return unpackResponse(packet);
+}
+
 
 function isLoopback(request) {
   if (remoteRequests.has(request)) return false;
@@ -173,17 +217,18 @@ function publicProblem(error) {
   if (http) return `Request failed (HTTP ${http[1]}).`;
   const code = text.match(/\((\d+)\)\s*$/);
   if (code) return `The service rejected the request (code ${code[1]}).`;
+  if (/too many requests|rate.?limit|KT-CT-1199/i.test(text)) return 'The API rate limit was reached. Requests will retry after the cooldown.';
   if (/timed? ?out|timeout|abort/i.test(text)) return 'The service request timed out.';
   if (/auth|credential|token|API key/i.test(text)) return 'Authentication failed. Check the configured credentials.';
   return 'The service request failed. Check the connection and configuration.';
 }
-function markIntegrationSuccess(name, channel = 'api') {
-  integrationStatus[name] = { ...integrationStatus[name], lastSuccessAt: new Date().toISOString(), lastError: null };
+function markIntegrationSuccess(name, channel = 'api', at = new Date().toISOString()) {
+  integrationStatus[name] = { ...integrationStatus[name], lastSuccessAt: at, lastError: null };
   const service = name === 'foxRest' ? 'foxess' : 'octopus';
   const previous = integrationHealth.service(service).channels;
   const recovered = previous[channel]?.ok === false || previous.api?.ok === false;
-  integrationHealth.success(service, channel);
-  integrationHealth.success(service, 'api');
+  integrationHealth.success(service, channel, at);
+  integrationHealth.success(service, 'api', at);
   if (recovered) void saveIntegrationHealth(true).catch(() => {});
 }
 function markIntegrationError(name, error, channel = 'api') {
@@ -353,7 +398,9 @@ function relayUpstreamResponse(upstream, response) {
     response.writeHead(upstream.status, {
       'Content-Type': upstream.headers.get('content-type') || 'application/json; charset=utf-8',
       'Cache-Control': 'no-store',
-      'X-Content-Type-Options': 'nosniff'
+      'X-Smart-Charging-Fetched-At': upstream.headers.get('X-Smart-Charging-Fetched-At') || String(Date.now()),
+      'X-Content-Type-Options': 'nosniff',
+      ...(upstream.headers.get('retry-after') ? { 'Retry-After': upstream.headers.get('retry-after') } : {})
     });
     response.end(body);
   });
@@ -370,17 +417,17 @@ async function proxyFoxRequest(request, response) {
     return sendJson(response, 400, { errno: 998, msg: 'Only FoxESS Cloud API requests are allowed' });
   }
   const state = await loadState();
-  const upstream = await requestFoxOpenApi(state, target.pathname, payload.body || {});
+  const upstream = await requestFoxOpenApi(state, target.pathname, payload.body || {}, { readback: payload.readback === true });
   const upstreamData = await upstream.clone().json().catch(() => null);
   if (upstream.ok && upstreamData?.errno === 0) {
-    markIntegrationSuccess('foxRest', target.pathname);
+    markIntegrationSuccess('foxRest', target.pathname, new Date(Number(upstream.headers.get('X-Smart-Charging-Fetched-At')) || Date.now()).toISOString());
   } else {
     markIntegrationError('foxRest', `FoxESS REST rejected ${target.pathname} (${upstreamData?.errno ?? upstream.status})`, target.pathname);
   }
   return relayUpstreamResponse(upstream, response);
 }
 
-async function requestFoxOpenApi(state, pathname, requestedBody = {}) {
+async function requestFoxOpenApi(state, pathname, requestedBody = {}, { readback = false } = {}) {
   const foxSN = state.credentials?.foxSN;
   const foxToken = state.credentials?.foxToken;
   if (!foxSN || !foxToken) {
@@ -406,7 +453,24 @@ async function requestFoxOpenApi(state, pathname, requestedBody = {}) {
     body: JSON.stringify(body),
     signal: AbortSignal.timeout(20_000)
   });
-  return pathname === '/op/v3/device/scheduler/enable' ? automationPause.runWrite(send) : send();
+  if (pathname === '/op/v3/device/scheduler/enable') {
+    const upstream = await automationPause.runWrite(send);
+    const result = await upstream.clone().json().catch(() => null);
+    if (upstream.ok && result?.errno === 0) {
+      foxCacheRevision++;
+      foxReadCache.cache.clear();
+      foxReadbackUntil = Date.now() + 30_000;
+    }
+    return upstream;
+  }
+  // Only scheduler verification just after a successful write bypasses the read cache.
+  const fresh = readback && pathname === '/op/v3/device/scheduler/get' && Date.now() < foxReadbackUntil;
+  const credentialScope = createHash('sha256').update(`${foxSN}:${foxToken}`).digest('hex');
+  const cacheKey = JSON.stringify([credentialScope, foxCacheRevision, pathname, body, fresh ? ++foxReadbackSerial : 0]);
+  const interval = Math.max(600, Number(state.automations?.refreshIntervals?.foxess) || 600) * 1000;
+  const packet = await foxReadCache.run(cacheKey, async () => responsePacket(await send()),
+    { ttl: fresh ? 0 : interval, errorTtl: fresh ? 0 : interval });
+  return unpackResponse(packet);
 }
 
 async function foxOpenApiJson(state, pathname, body) {
@@ -417,8 +481,9 @@ async function foxOpenApiJson(state, pathname, body) {
     if (data.errno !== 0) {
       throw new Error(`FoxESS Open API rejected ${pathname} (${data.errno ?? 'unknown'})`);
     }
-    markIntegrationSuccess('foxRest', pathname);
-    return data;
+    const fetchedAt = Number(upstream.headers.get('X-Smart-Charging-Fetched-At')) || Date.now();
+    markIntegrationSuccess('foxRest', pathname, new Date(fetchedAt).toISOString());
+    return { ...data, _fetchedAt: fetchedAt };
   } catch (error) {
     if (error.statusCode !== 423) markIntegrationError('foxRest', error, pathname);
     throw error;
@@ -452,54 +517,49 @@ async function proxyOctopusRequest(request, response) {
       ? octopusTokenCache.token
       : null;
     if (!token) {
-      const authResponse = await fetch(target, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          query: `mutation { obtainKrakenToken(input: { APIKey: ${JSON.stringify(apiKey)} }) { token } }`
-        }),
-        signal: AbortSignal.timeout(20_000)
-      });
-      const authData = await authResponse.json();
-      token = authData.data?.obtainKrakenToken?.token;
-      if (!authResponse.ok || !token) {
-        markIntegrationError('octopus', authData.errors?.[0]?.message || `Octopus authentication returned HTTP ${authResponse.status}`, 'auth');
-        return sendJson(response, authResponse.ok ? 401 : authResponse.status, authData);
+      if (!octopusAuthPromise || octopusAuthFingerprint !== apiKeyFingerprint) {
+        octopusAuthFingerprint = apiKeyFingerprint;
+        octopusAuthPromise = (async () => {
+          const authResponse = await octopusFetch(`auth:${apiKeyFingerprint}`, target, {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ query: `mutation { obtainKrakenToken(input: { APIKey: ${JSON.stringify(apiKey)} }) { token } }` })
+          });
+          const authData = await authResponse.json();
+          const nextToken = authData.data?.obtainKrakenToken?.token;
+          if (!authResponse.ok || !nextToken) {
+            throw Object.assign(new Error(authData.errors?.[0]?.message || `Octopus authentication returned HTTP ${authResponse.status}`),
+              { statusCode: authResponse.ok ? 401 : authResponse.status });
+          }
+          markIntegrationSuccess('octopus', 'auth');
+          octopusTokenCache = { apiKeyFingerprint, token: nextToken, expiresAt: Date.now() + 10 * 60_000 };
+          return nextToken;
+        })().finally(() => { octopusAuthPromise = null; });
       }
-      markIntegrationSuccess('octopus', 'auth');
-      octopusTokenCache = {
-        apiKeyFingerprint,
-        token,
-        expiresAt: Date.now() + 10 * 60_000
-      };
+      token = await octopusAuthPromise;
     }
-    const body = {
-      ...(payload.body || {}),
-      variables: {
-        ...(payload.body?.variables || {}),
-        acc: accountNumber
-      }
-    };
-    upstream = await fetch(target, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: token
-      },
-      body: JSON.stringify(body),
-      signal: AbortSignal.timeout(20_000)
-    });
+    // One combined read serves worker dispatches and dashboard metadata.
+    // Dashboard clients still display the worker's authoritative dispatch snapshot.
+    if (!/\bgetGoData\b/.test(payload.body?.query || '') || /\bmutation\b/.test(payload.body.query)) {
+      return sendJson(response, 400, { error: 'Only dashboard data queries are supported' });
+    }
+    const body = { query: `query getGoData($acc: String!) {
+      registeredKrakenflexDevice(accountNumber: $acc) { provider vehicleMake vehicleModel chargePointMake chargePointModel status }
+      vehicleChargingPreferences(accountNumber: $acc) { weekdayTargetTime weekdayTargetSoc }
+      plannedDispatches(accountNumber: $acc) { startDt endDt }
+    }`, variables: { acc: accountNumber } };
+    upstream = await octopusFetch(`dashboard:${apiKeyFingerprint}:${accountNumber}`, target, {
+      method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: token }, body: JSON.stringify(body)
+    }, 60_000);
   } else if (payload.authMode === 'basic') {
     const expectedPath = `/v1/accounts/${encodeURIComponent(accountNumber)}/`;
     if (target.pathname !== expectedPath) {
       return sendJson(response, 400, { error: 'Only the configured Octopus account may be queried' });
     }
-    upstream = await fetch(target, {
-      headers: {
-        Authorization: `Basic ${Buffer.from(`${apiKey}:`).toString('base64')}`
-      },
-      signal: AbortSignal.timeout(20_000)
-    });
+    upstream = await octopusFetch(`account:${createHash('sha256').update(apiKey).digest('hex')}:${accountNumber}`, target, {
+      headers: { Authorization: `Basic ${Buffer.from(`${apiKey}:`).toString('base64')}` }
+    }, 30 * 60_000);
+  } else if (payload.authMode === 'none' && /^\/v1\/products\/[^/]+\/electricity-tariffs\/[^/]+\/(standard|day|night)-unit-rates\/$/.test(target.pathname) && !target.search) {
+    upstream = await octopusFetch(`tariff:${target.pathname}`, target, {}, 30 * 60_000);
   } else {
     markIntegrationError('octopus', 'Unsupported Octopus API request');
     return sendJson(response, 400, { error: 'Unsupported Octopus API request' });
@@ -510,7 +570,7 @@ async function proxyOctopusRequest(request, response) {
   const channel = dispatchQuery ? 'dispatch-data' : 'account-data';
   const validData = payload.authMode !== 'graphql' || (upstreamData?.data && (!dispatchQuery || Array.isArray(upstreamData.data.plannedDispatches)));
   if (upstream.ok && !upstreamData?.errors && validData) {
-    markIntegrationSuccess('octopus', channel);
+    markIntegrationSuccess('octopus', channel, new Date(Number(upstream.headers.get('X-Smart-Charging-Fetched-At')) || Date.now()).toISOString());
     if (payload.authMode === 'graphql') markIntegrationSuccess('octopus', 'auth');
   } else {
     markIntegrationError('octopus', upstreamData?.errors?.[0]?.message || `Octopus data request failed (HTTP ${upstream.status})`, channel);
@@ -800,6 +860,10 @@ async function handleRequest(request, response) {
       const allowedUpdates = new Set(['automations', 'liveWsPolicy', 'liveWsOnDemand']);
       if (Object.keys(update).some(key => !allowedUpdates.has(key))) {
         return sendJson(response, 403, { error: 'Only dashboard preferences may be changed here' });
+      }
+      const intervals = update.automations?.refreshIntervals;
+      if (intervals && (Object.entries(intervals).some(([name, value]) => !['octopus', 'foxess'].includes(name) || !Number.isInteger(value) || value < (name === 'octopus' ? 60 : 600) || value > 86400))) {
+        return sendJson(response, 400, { error: 'Minimum intervals: Octopus 60 seconds. FoxESS 600 seconds.' });
       }
       const current = await loadState();
       const requestedPolicy = update.liveWsPolicy ?? (

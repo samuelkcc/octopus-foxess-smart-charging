@@ -1,5 +1,12 @@
 ## v2.0.0 — Major redesign under review
 
+- Serialize all Octopus requests with at least 60 seconds between sends. Preserve this limit across Pi service restarts.
+- Share authentication and combined dashboard data across Pi clients. Queue account and tariff reads behind the same limit.
+- Honour HTTP and GraphQL rate-limit responses. Retain the last valid dispatch after a failed check.
+- Load tariffs separately so price requests do not block immediate dispatch reconciliation.
+- Cache routine FoxESS reads for at least 600 seconds. Keep post-command scheduler verification fresh.
+- After a successful schedule command, restart the normal FoxESS interval.
+
 - Use readable desktop text at the same size as the navigation menu. Fill the common frame with flexible cards and plots.
 - Keep Welcome as the entry screen in both editions, including restored sessions.
 - Ignore request cancellations after page exit. Keep real failures and show the source of each retained alert.
@@ -16,7 +23,7 @@
 - Move Pause automation into the shared application header. Keep the red pause banner and duration dialog.
 - Keep retained problem alerts in fixed-size red indicators. Remove the separate Update now action.
 - Move refresh intervals into Settings. Save browser values locally and Pi values in encrypted configuration for the worker.
-- Keep the Pi Smart Dispatch interval at 60 seconds or less. Retain confirmation before shorter API intervals.
+- Enforce minimum settings of 60 seconds for Octopus and 600 seconds for FoxESS. Reject shorter saved values.
 
 - Put developer and build details in About. Add the project background, battery-protection purpose, and edition-specific operating requirements.
 

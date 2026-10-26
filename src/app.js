@@ -141,8 +141,15 @@ function showToast(message) {
 async function fetchJson(url, options = {}, timeoutMs = REQUEST_TIMEOUT_MS) {
     let scheduleWrite = false;
     try { scheduleWrite = JSON.parse(options.body || '{}').url?.endsWith('/op/v3/device/scheduler/enable'); } catch { /* Other request bodies are not FoxESS commands. */ }
-    const operation = () => fetchJsonUnblocked(url, options, timeoutMs);
+    const operation = () => window.requestPolicy
+        ? window.requestPolicy.run(url, options, () => fetchJsonUnblocked(url, options, String(url).startsWith('/api/octopus') ? 20 * 60_000 : timeoutMs))
+        : fetchJsonUnblocked(url, options, timeoutMs);
     return scheduleWrite && window.automationControl ? window.automationControl.write(operation) : operation();
+}
+
+function scheduleCommandSucceeded(url, options, result) {
+    try { return result?.errno === 0 && JSON.parse(options.body || '{}').url?.endsWith('/scheduler/enable'); }
+    catch { return false; }
 }
 
 async function fetchJsonUnblocked(url, options = {}, timeoutMs = REQUEST_TIMEOUT_MS) {
@@ -172,8 +179,16 @@ async function fetchJsonUnblocked(url, options = {}, timeoutMs = REQUEST_TIMEOUT
             signal: controller.signal
         });
         if (response.status === 401 && window.linuxRemoteAccess) window.location.reload();
+        if (service === 'octopus' && !window.linuxRuntime && window.requestPolicy) {
+            const sample = await response.clone().json().catch(() => null);
+            const delay = window.retryDelay(response, sample);
+            if (delay) await window.requestPolicy.octopus.defer(delay);
+        }
         if (!response.ok) throw Object.assign(new Error(`HTTP ${response.status} from ${new URL(url, window.location.href).hostname}`), {statusCode:response.status});
         const result = await response.json();
+        const fetchedAt = Number(response.headers?.get?.('X-Smart-Charging-Fetched-At'));
+        if (fetchedAt && result && typeof result === 'object') result._fetchedAt = fetchedAt;
+        if (scheduleCommandSucceeded(url, options, result)) window.nextFoxTime = Date.now() + Math.max(600, foxRefreshInterval) * 1000;
         if (service) {
             const rejected = result?.errno !== undefined && result.errno !== 0;
             const graphError = Array.isArray(result?.errors) ? result.errors.length > 0 : Boolean(result?.errors);
@@ -586,9 +601,9 @@ function updateDispatchScheduleFingerprint(dispatches) {
 
 function getEffectiveOctopusRefreshInterval() {
     if (window.linuxRuntime && window.linuxRole === 'worker') {
-        return Math.min(octoRefreshInterval, LINUX_WORKER_OCTOPUS_INTERVAL_SECONDS);
+        return Math.max(octoRefreshInterval, LINUX_WORKER_OCTOPUS_INTERVAL_SECONDS);
     }
-    return octoRefreshInterval;
+    return Math.max(60, octoRefreshInterval);
 }
 
 let linuxDashboardResumeRefreshPromise = null;
@@ -809,7 +824,7 @@ async function fetchTariffRates(tariffCode) {
     const productCode = getProductCodeFromTariffCode(tariffCode);
     if (!productCode) throw new Error(`Unable to identify product from tariff ${tariffCode}`);
     const tariffUrl = `https://api.octopus.energy/v1/products/${encodeURIComponent(productCode)}/electricity-tariffs/${encodeURIComponent(tariffCode)}`;
-    const ratesData = await fetchJson(
+    const ratesData = await fetchOctopusJson(
         `${tariffUrl}/standard-unit-rates/`
     );
     const standardRates = Array.isArray(ratesData?.results) ? ratesData.results : [];
@@ -820,8 +835,8 @@ async function fetchTariffRates(tariffCode) {
     // empty. Convert the fixed 23:30–05:30 grid window into the same half-hour
     // timeline used by Agile and legacy Intelligent Octopus tariffs.
     const [dayData, nightData] = await Promise.all([
-        fetchJson(`${tariffUrl}/day-unit-rates/`),
-        fetchJson(`${tariffUrl}/night-unit-rates/`)
+        fetchOctopusJson(`${tariffUrl}/day-unit-rates/`),
+        fetchOctopusJson(`${tariffUrl}/night-unit-rates/`)
     ]);
     return buildIntelligentGoFixedRates(dayData?.results, nightData?.results);
 }
@@ -1306,7 +1321,75 @@ async function executeImport() {
     }
 }
 
-async function initDashboard(isAutoRefresh = false, retryCount = 1) {
+let octopusTariffState = null;
+let octopusTariffPromise = null;
+let octopusTariffNextAt = 0;
+function refreshOctopusTariffs(acc, api) {
+    if (octopusTariffPromise || Date.now() < octopusTariffNextAt) return octopusTariffPromise;
+    octopusTariffNextAt = Date.now() + 30 * 60_000;
+    octopusTariffPromise = (async () => {
+        let importTariffCode = 'Data unavailable';
+        let exportTariffCode = 'Not available';
+        let minRate = 0;
+        let maxRate = 0;
+        let importRates = [];
+        let exportRates = [];
+
+        try {
+            const accData = await fetchOctopusJson(`https://api.octopus.energy/v1/accounts/${encodeURIComponent(acc)}/`, {
+                headers: { 'Authorization': 'Basic ' + btoa(api + ':') }
+            }, 'basic');
+            const { importTariff, exportTariff } = selectActiveElectricityTariffs(accData);
+            importTariffCode = importTariff?.agreement?.tariff_code || importTariffCode;
+            exportTariffCode = exportTariff?.agreement?.tariff_code || exportTariffCode;
+
+            const [importResult, exportResult] = await Promise.allSettled([
+                fetchTariffRates(importTariff?.agreement?.tariff_code),
+                fetchTariffRates(exportTariff?.agreement?.tariff_code)
+            ]);
+
+            if (importResult.status === 'fulfilled') {
+                importRates = importResult.value;
+                window.integrationMonitor?.success('octopus', 'import-tariff');
+            } else {
+                window.integrationMonitor?.failure('octopus', 'import-tariff', importResult.reason);
+                console.warn('Failed import tariff rate fetch', importResult.reason);
+            }
+            if (exportResult.status === 'fulfilled') {
+                exportRates = exportResult.value;
+                window.integrationMonitor?.success('octopus', 'export-tariff');
+            } else {
+                window.integrationMonitor?.failure('octopus', 'export-tariff', exportResult.reason);
+                console.warn('Failed export tariff rate fetch', exportResult.reason);
+            }
+
+            if (importRates.length > 0) {
+                const sorted = [...importRates].sort((a,b) => a.value_inc_vat - b.value_inc_vat);
+                minRate = parseFloat(sorted[0].value_inc_vat.toFixed(2));
+                maxRate = parseFloat(sorted[sorted.length-1].value_inc_vat.toFixed(2));
+            }
+        } catch (err) { throw err; }
+
+        octopusTariffState = { importTariffCode, exportTariffCode, minRate, maxRate, importRates, exportRates };
+    })().catch(error => {
+        window.integrationMonitor?.failure('octopus', 'tariff-data', error);
+        console.warn('Tariff data remains unchanged until a later update.', error);
+    }).finally(() => {
+        octopusTariffPromise = null;
+        // Render the new prices without waiting for another dispatch interval.
+        if (octopusTariffState) void initDashboard(true, 0);
+    });
+    return octopusTariffPromise;
+}
+
+let dashboardRefreshPromise = null;
+function initDashboard(isAutoRefresh = false, retryCount = 1) {
+    if (dashboardRefreshPromise) return dashboardRefreshPromise;
+    dashboardRefreshPromise = refreshDashboard(isAutoRefresh, retryCount).finally(() => { dashboardRefreshPromise = null; });
+    return dashboardRefreshPromise;
+}
+
+async function refreshDashboard(isAutoRefresh = false, retryCount = 1) {
     const credentials = window.linuxRuntime
         ? activeCredentials
         : getCredentialInputs();
@@ -1343,7 +1426,7 @@ async function initDashboard(isAutoRefresh = false, retryCount = 1) {
         if (!isAutoRefresh && canRunAutomaticActions()) loadAutomations(0, 0);
         const GRAPHQL_URL = 'https://api.octopus.energy/v1/graphql/';
 
-        // 1. Octopus Auth (with automatic retry for API cold-starts)
+        // Authentication and data requests share one outbound budget.
         const workerOnlyQuery = window.linuxRuntime && window.linuxRole === 'worker';
         const shouldFetchDispatches = !window.linuxRuntime || workerOnlyQuery;
         const dashboardQuery = {
@@ -1365,15 +1448,13 @@ async function initDashboard(isAutoRefresh = false, retryCount = 1) {
                 body: JSON.stringify(dashboardQuery)
             }, 'graphql');
         } else {
-            let authData;
-            for (let attempt = 1; attempt <= 2; attempt++) {
-                authData = await fetchJson(GRAPHQL_URL, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ query: `mutation { obtainKrakenToken(input: { APIKey: ${JSON.stringify(api)} }) { token } }` })
-                });
-                if(!authData.errors) break;
-                if(attempt === 2) throw new Error("Invalid Octopus API Key or API offline");
+            const authData = await fetchJson(GRAPHQL_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ query: `mutation { obtainKrakenToken(input: { APIKey: ${JSON.stringify(api)} }) { token } }` })
+            });
+            if (authData.errors || !authData.data?.obtainKrakenToken?.token) {
+                throw new Error(authData.errors?.[0]?.message || 'Octopus authentication failed.');
             }
             gqlData = await fetchJson(GRAPHQL_URL, {
                 method: 'POST',
@@ -1443,48 +1524,9 @@ async function initDashboard(isAutoRefresh = false, retryCount = 1) {
             });
         }
 
-        // 3. Fetch exact rates from REST API
-        let importTariffCode = 'Data unavailable';
-        let exportTariffCode = 'Not available';
-        let minRate = 0;
-        let maxRate = 0;
-        let importRates = [];
-        let exportRates = [];
-
-        try {
-            const accData = await fetchOctopusJson(`https://api.octopus.energy/v1/accounts/${encodeURIComponent(acc)}/`, {
-                headers: { 'Authorization': 'Basic ' + btoa(api + ':') }
-            }, 'basic');
-            const { importTariff, exportTariff } = selectActiveElectricityTariffs(accData);
-            importTariffCode = importTariff?.agreement?.tariff_code || importTariffCode;
-            exportTariffCode = exportTariff?.agreement?.tariff_code || exportTariffCode;
-
-            const [importResult, exportResult] = await Promise.allSettled([
-                fetchTariffRates(importTariff?.agreement?.tariff_code),
-                fetchTariffRates(exportTariff?.agreement?.tariff_code)
-            ]);
-
-            if (importResult.status === 'fulfilled') {
-                importRates = importResult.value;
-                window.integrationMonitor?.success('octopus', 'import-tariff');
-            } else {
-                window.integrationMonitor?.failure('octopus', 'import-tariff', importResult.reason);
-                console.warn('Failed import tariff rate fetch', importResult.reason);
-            }
-            if (exportResult.status === 'fulfilled') {
-                exportRates = exportResult.value;
-                window.integrationMonitor?.success('octopus', 'export-tariff');
-            } else {
-                window.integrationMonitor?.failure('octopus', 'export-tariff', exportResult.reason);
-                console.warn('Failed export tariff rate fetch', exportResult.reason);
-            }
-
-            if (importRates.length > 0) {
-                const sorted = [...importRates].sort((a,b) => a.value_inc_vat - b.value_inc_vat);
-                minRate = parseFloat(sorted[0].value_inc_vat.toFixed(2));
-                maxRate = parseFloat(sorted[sorted.length-1].value_inc_vat.toFixed(2));
-            }
-        } catch (err) { console.warn("Failed exact rate fetch", err); }
+        void refreshOctopusTariffs(acc, api);
+        const { importTariffCode = 'Data unavailable', exportTariffCode = 'Not available', minRate = 0, maxRate = 0,
+            importRates = window.importRates || [], exportRates = window.exportRates || [] } = octopusTariffState || {};
 
         // Import is always the primary/default tariff. Keep todayRates as a
         // compatibility alias for existing chart and target-price behaviour.
@@ -1635,7 +1677,7 @@ async function initDashboard(isAutoRefresh = false, retryCount = 1) {
         }
         if ((err.message === 'Load failed' || err.message === 'Failed to fetch') && retryCount > 0) {
             console.warn("Network error caught, retrying automatically...");
-            setTimeout(() => initDashboard(isAutoRefresh, retryCount - 1), 1500);
+            setTimeout(() => initDashboard(isAutoRefresh, retryCount - 1), 60_000);
             return;
         }
         if (!isAutoRefresh) {
@@ -1681,7 +1723,7 @@ function startAutoRefreshTimer() {
             updateCircleTimer('fox-timer', foxCountdown, foxRefreshInterval);
             
             if (now >= window.nextFoxTime) {
-                window.nextFoxTime = now + (foxRefreshInterval * 1000);
+                window.nextFoxTime = now + (Math.max(600, foxRefreshInterval) * 1000);
                 fetchFoxSchedules().then(() => {
                     if (hasEnabledLocalAutomation()) {
                         evaluateLocalAutomations(null, true);
@@ -1838,7 +1880,7 @@ async function fetchCurrentWorkMode(forceModeUpdate = false) {
         const nowMs = Date.now();
         
         // 🛡️ API QUOTA SAVER: Cache WorkMode for 10 minutes. Saves 50% API calls!
-        if (forceModeUpdate || !window.lastModeFetchTime || (nowMs - window.lastModeFetchTime > 600000)) {
+        if (!window.lastModeFetchTime || (nowMs - window.lastModeFetchTime >= Math.max(600, foxRefreshInterval) * 1000)) {
             incrementFoxApi(); // Count mode call
             data = await fetchJson(globalGasUrl, { method: 'POST', body: JSON.stringify(payload) });
             if (data.errno === 0) {
@@ -1858,7 +1900,7 @@ async function fetchCurrentWorkMode(forceModeUpdate = false) {
         if (socData.errno === 0 && socData.result && socData.result[0] && socData.result[0].datas) {
             const d = socData.result[0].datas;
             const values = Object.fromEntries(d.map(row => [row.variable, row.value]));
-            batterySoc = applyFoxTelemetry(values, 'rest', new Date().toISOString());
+            batterySoc = applyFoxTelemetry(values, 'rest', new Date(socData._fetchedAt || Date.now()).toISOString());
         }
         
         if (data.errno === 0 && data.result) {
@@ -2115,7 +2157,7 @@ async function fetchFoxSchedules({ expectedGroups = null, attempts = 1, refreshM
 
     for (let attempt = 1; attempt <= attempts; attempt++) {
         try {
-            const payload = { url: `https://www.foxesscloud.com${path}`, headers: getFoxHeaders(path), body: { deviceSN: globalFoxSN } };
+            const payload = { url: `https://www.foxesscloud.com${path}`, headers: getFoxHeaders(path), body: { deviceSN: globalFoxSN }, readback: expectedGroups !== null };
             incrementFoxApi();
             const data = await fetchJson(globalGasUrl, { method: 'POST', body: JSON.stringify(payload) });
         

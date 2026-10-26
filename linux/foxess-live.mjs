@@ -550,7 +550,7 @@ export class FoxessLiveTelemetry {
       { sn: credentials.foxSN, variables: TELEMETRY_VARIABLES }
     );
     const values = mapOfficialTelemetry(data.result);
-    const updatedAt = this.now();
+    const updatedAt = Number(data._fetchedAt) || this.now();
     this.restCache = { values, updatedAt };
     this.latestValues = { ...values, ...this.latestValues };
     this.setFallback(

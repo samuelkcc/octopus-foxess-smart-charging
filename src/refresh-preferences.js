@@ -3,12 +3,12 @@
  * Saving intervals does not send an inverter command.
  */
 (() => {
-  const normalize = (value, fallback, maximum=86400) => Number.isInteger(Number(value)) && Number(value)>=10 && Number(value)<=maximum ? Number(value) : fallback;
+  const normalize = (value, fallback, minimum, maximum=86400) => Number.isInteger(Number(value)) && Number(value)>=minimum && Number(value)<=maximum ? Number(value) : fallback;
   const defaults = () => ({octopus:window.linuxRuntime?60:300,foxess:600});
   const values = () => ({octopus:getEffectiveOctopusRefreshInterval(),foxess:foxRefreshInterval});
   const load = saved => {
     const fallback=defaults();
-    const next={octopus:normalize(saved?.octopus,fallback.octopus,window.linuxRuntime?60:86400),foxess:normalize(saved?.foxess,fallback.foxess)};
+    const next={octopus:normalize(saved?.octopus,fallback.octopus,60),foxess:normalize(saved?.foxess,fallback.foxess,600)};
     for(const [name,id] of [['octopus','octo-interval-input'],['foxess','fox-interval-input']]) {
       const input=document.getElementById(id);
       if(input && document.activeElement!==input)input.value=next[name];
@@ -31,16 +31,9 @@
   };
   const apply = name => {
     const octopus=name==='octopus';const input=document.getElementById(octopus?'octo-interval-input':'fox-interval-input');
-    const value=Number(input.value);const maximum=octopus && window.linuxRuntime?60:86400;
-    if(!Number.isInteger(value) || value<10 || value>maximum) {showToast(`Enter a whole number from 10 to ${maximum} seconds.`);return;}
+    const value=Number(input.value);const minimum=octopus?60:600;const maximum=86400;
+    if(!Number.isInteger(value) || value<minimum || value>maximum) {showToast(`Enter a whole number from ${minimum} to ${maximum} seconds.`);return;}
     const commit=()=>save(name,value).catch(error=>showToast(`Could not save refresh interval: ${error.message}`));
-    if(value<(octopus?60:600)) {
-      const prefix=octopus?'octo':'fox';const modal=document.getElementById(`${prefix}-warning-modal`);
-      modal.style.display='flex';
-      document.getElementById(`cancel-${prefix}-btn`).onclick=()=>{modal.style.display='none';input.value=values()[name];};
-      document.getElementById(`confirm-${prefix}-btn`).onclick=()=>{modal.style.display='none';void commit();};
-      return;
-    }
     return commit();
   };
   window.refreshPreferences={values,load,apply};

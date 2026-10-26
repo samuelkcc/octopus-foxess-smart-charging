@@ -10,6 +10,9 @@ const origin=`http://127.0.0.1:${port}`;
 const toggle=path.join(root,'upstream-mode');const hook=path.join(root,'mock-fetch.mjs');
 await writeFile(toggle,'fail');
 await writeFile(hook,`import {readFile} from 'node:fs/promises';
+import {readFileSync} from 'node:fs';
+const originalNow=Date.now;
+Date.now=()=>originalNow()+(readFileSync(${JSON.stringify(toggle)},'utf8')==='ok'?600001:0);
 const original=globalThis.fetch;
 globalThis.fetch=async (url,options)=>{
  if(String(url).startsWith('https://www.foxesscloud.com')){
