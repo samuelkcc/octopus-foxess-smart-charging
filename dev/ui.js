@@ -25,7 +25,18 @@
   };
   const nav = Object.entries({overview:'Overview',schedules:'Schedules',rules:'Automations',history:'History',connections:'Connections',settings:'Settings'}).map(([page,label]) => `<button type="button" data-page="${page}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${navIcons[page]}</svg><span>${label}</span></button>`).join('');
   shell.innerHTML = `<aside class="dev-rail"><div class="dev-brand"><img src="/octopus-foxess.svg" alt="" width="42" height="42"><div><strong>Smart Charging</strong><small>for Octopus Energy &amp; FoxESS</small></div></div><span class="dev-tag">HOME ENERGY</span><nav aria-label="Main navigation">${nav}</nav><div class="dev-rail-bottom"><button id="dev-about">About &amp; licences</button></div></aside><div class="dev-workspace"><header class="dev-appbar"><div><span class="dev-breadcrumb">Smart Charging</span><span class="dev-breadcrumb-separator" aria-hidden="true">/</span><strong id="dev-page-name">Overview</strong></div><div class="dev-app-actions"><span class="dev-service" hidden></span><button id="dev-theme" aria-label="Toggle light and dark appearance">◐</button></div></header><div class="dev-announcement">Automation runs on your Pi. You can close this dashboard.</div><div id="dev-content"></div></div>`;
+  // The app theme selects both brand and browser-tab artwork.
+  const syncBrandTheme = () => {
+    const key = document.documentElement.dataset.theme === 'light' ? 'iconLight' : 'iconDark';
+    document.querySelectorAll('[data-icon-light][data-icon-dark]').forEach(element => {
+      const attribute = element.tagName === 'LINK' ? 'href' : 'src';
+      const source = element.dataset[key];
+      if (element.getAttribute(attribute) !== source) element.setAttribute(attribute, source);
+    });
+  };
+  new MutationObserver(syncBrandTheme).observe(document.documentElement, {attributes:true,attributeFilter:['data-theme']});
   wrapper.before(shell);
+  syncBrandTheme();
   shell.querySelector('#dev-content').append(wrapper);
   // Credits, licence terms, and build details remain in About.
   wrapper.querySelector('.app-footer')?.remove();
@@ -79,8 +90,7 @@
   }
   const integrations = document.createElement('section');
   integrations.className = 'card dev-integrations';
-  integrations.innerHTML = '<h2>Pi administration</h2><p>Use the charger icon in the Pi taskbar to manage Octopus and FoxESS accounts, remote access and application updates.</p><p>This browser uses the settings stored on your Pi.</p><button id="dev-connection-menu">Open Settings</button>';
-  move(integrations, 'connections');
+  if (!piEdition) move(integrations, 'connections');
   if (piEdition) {
     const updateInfo = document.createElement('section');
     updateInfo.className = 'card dev-integrations';
@@ -169,7 +179,7 @@
   document.getElementById('dev-theme').addEventListener('click', toggleDarkMode);
   // Legacy controls use the same Settings page instead of a second menu.
   toggleAppMenu = () => navigate('settings');
-  document.getElementById('dev-connection-menu').addEventListener('click', () => navigate('settings'));
+  document.getElementById('dev-connection-menu')?.addEventListener('click', () => navigate('settings'));
   document.getElementById('dev-about').addEventListener('click', () => openLicenseModal(false));
   function updateWorkerView() {
     const snapshot = window.linuxDispatchSnapshot;

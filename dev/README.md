@@ -510,3 +510,26 @@ Browser measurements showed zero pixels between the menu and content lower edges
 History, Settings, Schedules, and Overview retained all navigation buttons without document overflow at 1280 by 720.
 The 2560-by-1320 History preview also showed matching lower edges at the original scale.
 The full check suite and both interface builds passed.
+
+
+UI commit `76f4dc2bafeb46b08b1aa25675aa94f3f21a42a9` was installed on the Pi on 26 October 2026.
+The installer completed its pinned source build and interface checks.
+The update preserved the server, worker, tunnel, and existing public URL.
+
+## Theme artwork and Connections
+
+The selected app appearance controls the charging icon and browser-tab icon.
+Light appearance uses a pale background with a dark plug and charge port.
+Dark appearance uses a dark background with a white plug and charge port.
+Both retain the pink lightning mark.
+The launch screen uses the same artwork.
+The Pi Connections page no longer repeats the administration card or Settings shortcut.
+Account details and service status remain available.
+The standalone account setup actions remain available.
+
+Browser checks confirmed both artwork variants in Pi login, the Pi dashboard, and standalone web login.
+The selected artwork also matched the browser-tab icon.
+The Pi Connections page retained account details and service status without the repeated administration card.
+The Settings page retained matching menu and content lower edges after theme changes.
+The full check suite and both interface builds passed.
+No real inverter or account setting was changed.

@@ -1,5 +1,8 @@
 ## v2.0.0 — Major redesign under review
 
+- Match the charging icon and browser-tab icon to the selected light or dark appearance.
+- Remove the repeated Pi administration card from Connections. Keep Settings in the navigation menu.
+
 - Fit desktop pages inside one viewport. Dynamically align the menu bottom with the visible content. Preserve phone scrolling.
 - Use compact desktop cards, responsive chart heights, and three Settings columns on wide screens.
 - Page through history activity without extending the dashboard. Keep all four history charts and Expand actions available.

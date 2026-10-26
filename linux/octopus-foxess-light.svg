@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Smart Charging: EV plug and vehicle charge port">
+  <rect width="512" height="512" rx="112" fill="#f3effa"/>
+  <g transform="translate(56 56) scale(2)">
+  <path d="M102 55v-7q0-9-10-9H24q-10 0-10 10v70q0 10 10 10h19" fill="none" stroke="#24074a" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="m139 31 34-3q17-2 17 17v82q0 16-16 14l-37-4q-15-2-15-17V50q0-16 17-19z" fill="#24074a"/>
+  <ellipse cx="158" cy="85" rx="25" ry="43" fill="#f3effa"/>
+  <ellipse cx="158" cy="85" rx="19" ry="35" fill="#24074a"/>
+  <path d="M153 63h11q9 0 9 12v24q0 13-13 13h-7z" fill="#24074a" stroke="#f3effa" stroke-width="6" stroke-linejoin="round"/>
+  <path d="M114 57h36q14 0 14 14v32q0 14-14 14h-37q-11 0-17 10l-11 17H58q-9 0-6-12l11-42q10-33 51-33z" fill="#24074a" stroke="#f3effa" stroke-width="7" stroke-linejoin="round"/>
+  <path d="m58 148-9 26h19l8-26zm38-21h16q-4 12-19 12h-4z" fill="#24074a"/>
+  <path d="m119 73-10 13h12l-11 15" fill="none" stroke="#bb0097" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+</svg>
