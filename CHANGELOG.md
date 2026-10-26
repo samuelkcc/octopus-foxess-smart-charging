@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+## v2026.10.26.4 — 2026-10-26
+
+- Replace the Pi taskbar wall-box artwork with a charging-plug-and-socket silhouette based on the supplied visual reference, rendered as scalable vectors in green, orange, and red.
+- Keep connection-health rules and the application launcher icon unchanged.
+
 ## v2026.10.26.3 — 2026-10-26
 
 - Refine the Raspberry Pi taskbar symbol to a home EV wall charger with a lightning bolt, cable, and plug, retaining green/orange/red health states.
