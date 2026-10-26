@@ -694,7 +694,7 @@ class TrayController:
         about.connect("activate", self.show_about)
         self.menu.append(about)
 
-        dashboard = Gtk.MenuItem(label="Open Desktop Client (DEV)" if dev_interface_available() else "Open Desktop Client")
+        dashboard = Gtk.MenuItem(label="Open Desktop Client")
         dashboard.connect("activate", lambda _item: self.open_dashboard())
         self.menu.append(dashboard)
 

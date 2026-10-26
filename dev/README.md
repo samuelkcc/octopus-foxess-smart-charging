@@ -48,7 +48,7 @@ It keeps the previous runtime for rollback.
 It restarts the existing server and worker.
 It does not create another worker.
 
-The taskbar charger menu provides **Open Desktop Client (DEV)**.
+The taskbar charger menu provides **Open Desktop Client**.
 The installer does not create desktop shortcuts.
 The DEV route is `/dev/index.html?client=1`.
 The Pi exposes one client interface.
