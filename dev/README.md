@@ -349,3 +349,11 @@ Desktop measurements showed identical timer-control widths during connected and 
 The 390-pixel phone header retained both timers and the update action without horizontal overflow.
 Both About panels displayed their edition-specific requirements and full licence tabs.
 The full check suite and both interface builds passed.
+
+
+UI commit `ef215b95ac6805adbb6b86d26417d1831722e943` was installed on 26 October 2026.
+The interface-only update did not restart the server, worker, or tunnel.
+The existing authenticated Safari session displayed the top-right timers and both real schedule cards.
+The repeated footer and connected Pi label were absent.
+The live About panel displayed the new background and the exact installed UI revision.
+The runtime remains `214132d72ab06c9ea6696c14b645be4c90da7c6d`.
