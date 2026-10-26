@@ -2,12 +2,12 @@
 (() => {
   const make=(tag,text='',className='')=>{const node=document.createElement(tag);node.textContent=text;node.className=className;return node;};
   const action=(text,handler)=>{const node=make('button',text);node.type='button';node.addEventListener('click',handler);return node;};
-  const panel=make('section','','next-panel wide overview-updates');
-  const heading=make('div','','overview-updates-heading');
-  const copy=make('div');copy.append(make('h2','Data updates','next-panel-title'),make('p','Automatic refresh and retained connection problems.','next-muted'));
+  const panel=make('section','','overview-updates');
+  panel.setAttribute('aria-label','API refresh status');
+  panel.append(make('span','Next refresh','overview-update-label'));
   const refresh=action('Update now',async()=>{await refreshOverviewNow();render();});
-  heading.append(copy,refresh);panel.append(heading);
-  const grid=make('div','','overview-update-grid');panel.append(grid);
+  refresh.title='Refresh Octopus and FoxESS now. Refreshing does not cancel a pause.';
+  const grid=make('div','','overview-update-grid');panel.append(grid,refresh);
   const views={};let selected=null;
   const dialog=make('dialog','','dev-review-dialog');
   const dialogTitle=make('h2');dialogTitle.id='overview-incident-title';dialog.setAttribute('aria-labelledby',dialogTitle.id);const details=make('div','','overview-incident-details');
@@ -23,14 +23,13 @@
   buttons.append(close,clear);dialog.append(dialogTitle,details,feedback,buttons);document.body.append(dialog);
   for(const [name,title] of [['octopus','Octopus Energy'],['foxess','FoxESS']]) {
     const card=make('section','','overview-update-card');
-    const header=make('div','','overview-update-title');const status=make('span','','overview-update-status');header.append(make('h3',title),status);
+    const status=make('span','','overview-update-status');
+    const label=make('span',name==='octopus'?'Octopus':'FoxESS','overview-update-name');
     const timer=make('strong','','overview-update-clock');
-    const description=make('p','','next-muted');const last=make('p','','overview-update-last');
     const incident=action('Review problem',()=>{selected=name;feedback.textContent='';render();dialog.showModal();});incident.className='overview-error-button';incident.hidden=true;
-    card.append(header,timer,description,last,incident);grid.append(card);views[name]={title,status,timer,description,last,incident};
+    card.append(status,label,timer,incident);grid.append(card);views[name]={title,status,timer,incident,card};
   }
-  panel.append(make('p','Refreshing data does not cancel a pause.','overview-update-note'));
-  document.querySelector('#dev-shell [data-page="overview"] .next-power').after(panel);
+  document.querySelector('#dev-shell [data-page="overview"] .dev-page-heading').append(panel);
   const formatTime=value=>value?new Date(value).toLocaleString():'No successful update recorded yet';
   const seconds=value=>{const remaining=Math.max(0,Math.ceil((value-Date.now())/1000));return `${Math.floor(remaining/60)}:${String(remaining%60).padStart(2,'0')}`;};
   function summary(snapshot,name) {
@@ -44,13 +43,16 @@
     for(const [name,view] of Object.entries(views)) {
       const info=summary(snapshot,name);const running=Boolean(snapshot.busy[name] || timing.workerBusy[name]);
       const next=name==='octopus'?timing.octopusNextAt:timing.foxessNextAt;
-      view.status.textContent=info.active?'Update failed':running?'Updating':info.last?'Connected':'Waiting';
+      const stateText=info.active?'Update failed':running?'Updating':info.last?'Connected':'Waiting';
+      view.status.setAttribute('aria-label',stateText);
       view.status.dataset.state=info.active?'error':running?'updating':info.last?'ok':'waiting';
       view.timer.textContent=running?'Updating…':next?seconds(next):'—';
-      view.description.textContent=timing.workerTiming?'Next Pi worker API refresh':window.linuxRuntime?'Next dashboard API refresh':'Next API refresh';
-      view.last.textContent=`Last success: ${formatTime(info.last)}`;
+      const source=timing.workerTiming?'Pi worker':window.linuxRuntime?'dashboard':'browser';
+      view.card.title=`${view.title}: ${stateText}. Next ${source} API refresh: ${view.timer.textContent}. Last success: ${formatTime(info.last)}`;
+      view.card.setAttribute('aria-label',view.card.title);
       view.incident.hidden=info.alerts.length===0;
-      view.incident.textContent=info.active?'Review update problem':'Recovered · clear alert';
+      view.incident.textContent=info.active?'Problem':'Recovered · clear';
+      view.incident.setAttribute('aria-label',`${view.title}: ${info.active?'Review update problem':'Recovered, review and clear alert'}`);
       if(dialog.open && selected===name) renderDialog(info,view.title);
     }
     if(selected && !dialog.open)renderDialog(summary(snapshot,selected),views[selected].title);

@@ -1,5 +1,7 @@
 ## v2.0.0 — Major redesign under review
 
+- Move API countdowns and Update now into a compact Overview header row. Keep retained problem buttons and both schedules visible.
+
 Development Pi verification: version 2.0.0 is installed. Both APIs, REST schedule confirmation, power readings, retained history, and chart expansion were checked.
 Public release remains pending approval. See `dev/README.md` for the installed commit and verification limits.
 

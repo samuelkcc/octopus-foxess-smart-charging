@@ -1,5 +1,7 @@
 ## v2.0.0 — Major redesign under review
 
+- Move API countdowns and Update now into a compact Overview header row. Keep retained problem buttons and both schedules visible.
+
 - Buffer history readings in memory. Save compressed monthly archives every hour by default, with a 30-minute option.
 - Show history disk use, free space, unsaved intervals, and the last save time.
 - Below 4 GB free space, show an Overview warning and remove oldest history early. Preserve the newest 24 hours.

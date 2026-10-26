@@ -314,3 +314,14 @@ node --preserve-symlinks-main /opt/octopus-foxess/current/inspect-runtime.mjs
 Commit `6aa9b081636d506ca725875070488b264a95d761` removes that command-line requirement for future installations.
 This helper-only correction was not installed on the Pi during these checks.
 Public Pages and release publication remain pending approval.
+
+
+## Compact Overview refresh header
+
+API refresh status now uses a small row in the Overview heading.
+The two countdowns and Update now remain available.
+Retained problem buttons still open the acknowledgement dialog.
+Both schedule cards follow the power readings without an intervening update panel.
+Desktop and 390-pixel phone layouts were checked with mock data.
+Recovered alert acknowledgement was checked for both services.
+The full check suite and both interface builds passed.
