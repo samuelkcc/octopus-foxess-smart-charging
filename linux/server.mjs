@@ -9,6 +9,7 @@ import { fileURLToPath } from 'node:url';
 import { QuickTunnel, RemoteSessions, createRemoteKey, matchesRemoteKey, remoteCookie } from './remote-access.mjs';
 
 import { FoxessLiveTelemetry } from './foxess-live.mjs';
+import { CompactHistory } from './history.mjs';
 
 const appRoot = path.dirname(fileURLToPath(import.meta.url));
 const webRoot = process.env.OCTOPUS_WEB_ROOT || path.join(appRoot, 'web');
@@ -477,6 +478,8 @@ const foxessLive = new FoxessLiveTelemetry({
   loadState,
   foxOpenApiJson
 });
+const history = new CompactHistory({ directory: path.join(stateRoot, 'history') });
+let historyErrorReported = false;
 
 const contentTypes = {
   '.html': 'text/html; charset=utf-8',
@@ -520,7 +523,7 @@ async function handleRequest(request, response) {
       response.setHeader('X-Frame-Options', 'DENY');
       const remote = (await loadState()).remoteAccess;
       if (!remote?.enabled) return sendJson(response, 503, { error: 'Remote access is disabled' });
-      const permitted = new Set(['/api/runtime', '/api/auth', '/api/logout', '/api/config', '/api/dispatch-snapshot', '/api/foxess', '/api/octopus', '/api/foxess/live', '/api/foxess/live/status']);
+      const permitted = new Set(['/api/runtime', '/api/auth', '/api/logout', '/api/config', '/api/dispatch-snapshot', '/api/foxess', '/api/octopus', '/api/foxess/live', '/api/foxess/live/status', '/api/history']);
       if (pathname.startsWith('/api/') && !permitted.has(pathname)) return sendJson(response, 403, { error: 'This endpoint is only available on the Raspberry Pi' });
       if (!['GET', 'HEAD'].includes(request.method)) {
         const origin = request.headers.origin;
@@ -720,7 +723,7 @@ async function handleRequest(request, response) {
       });
     }
 
-    const protectedApi = ['/api/config', '/api/dispatch-snapshot', '/api/foxess', '/api/octopus'];
+    const protectedApi = ['/api/config', '/api/dispatch-snapshot', '/api/foxess', '/api/octopus', '/api/history'];
     const isProtected = protectedApi.includes(pathname) || pathname.startsWith('/api/foxess/live');
     if (isProtected && !(await isAuthorized(request))) {
       return sendJson(response, 401, { error: 'Invalid LAN access code' });
@@ -845,7 +848,18 @@ async function handleRequest(request, response) {
       return sendJson(response, 200, foxessLive.getPublicStatus());
     }
     if (pathname === '/api/foxess/live' && request.method === 'GET') {
-      return sendJson(response, 200, await foxessLive.getTelemetry());
+      const telemetry = await foxessLive.getTelemetry();
+      // Reuse the worker's existing readings. History must not add API calls or
+      // prevent live telemetry/automation if the storage device is unavailable.
+      void history.record(telemetry).then(() => { historyErrorReported = false; }).catch(() => {
+        if (!historyErrorReported) console.error('History storage unavailable; live automation continues.');
+        historyErrorReported = true;
+      });
+      return sendJson(response, 200, telemetry);
+    }
+    if (pathname === '/api/history') {
+      if (request.method !== 'GET') return sendJson(response, 405, { error: 'History is read-only' });
+      return sendJson(response, 200, await history.readMonth(requestUrl.searchParams.get('month') || undefined));
     }
     if (pathname === '/api/foxess/live/test' && request.method === 'POST') {
       if (!isLoopback(request)) {
@@ -895,6 +909,9 @@ for (const signal of ['SIGINT', 'SIGTERM']) {
     foxessLive.stop();
     quickTunnel.stop();
     remoteServer.close();
-    server.close(() => process.exit(0));
+    server.close(async () => {
+      await history.close().catch(() => {});
+      process.exit(0);
+    });
   });
 }

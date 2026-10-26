@@ -51,6 +51,7 @@ try {
   assert.equal(runtime.authRequired, true);
   assert.equal(runtime.remoteAccess, true);
   assert.equal((await call(remote, '/api/config')).status, 401);
+  assert.equal((await call(remote, '/api/history')).status, 401, 'History requires remote authentication');
   assert.equal((await call(remote, '/api/auth', { method: 'POST', headers: { 'X-Octopus-Access-Key': 'dummy-lan-key' } })).status, 401, 'LAN code never authenticates remote requests');
   const keyHeaders = { 'X-Octopus-Remote-Key': enabled.key };
   for (const route of ['/api/native-config', '/api/access-key', '/api/remote-access', '/api/service-status', '/api/live-demand', '/api/foxess/live/test']) {
@@ -61,6 +62,9 @@ try {
   const cookie = login.headers.get('set-cookie');
   assert.match(cookie, /Secure; HttpOnly; SameSite=Strict; Path=\//);
   const sessionHeaders = { Cookie: cookie.split(';')[0] };
+  assert.equal((await call(remote, '/api/history', { headers: sessionHeaders })).status, 200);
+  assert.equal((await call(remote, '/api/history?month=../../config', { headers: sessionHeaders })).status, 400);
+  assert.equal((await call(remote, '/api/history', { method:'DELETE', headers:sessionHeaders })).status, 405);
   const publicConfig = await call(remote, '/api/config', { headers: sessionHeaders }).then(r => r.json());
   assert.equal(publicConfig.remoteAccess, undefined, 'Remote key must never leak in dashboard state');
   assert.equal(publicConfig.credentials.api, '');

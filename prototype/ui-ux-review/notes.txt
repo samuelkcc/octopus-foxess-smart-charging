@@ -1,0 +1,18 @@
+Smart Charging UI/UX review — preview only
+
+Current application: v2026.10.26.5. Production src/, Linux runtime, release workflows, and installed Pi UI are not changed by this prototype.
+
+Reference: sam-filemaker-script-bridge, Desktop/web interface and v1.1.0 workspace screenshot. Reused layout ideas: clear navigation, app header, focused workspace with a right-hand inspector, visible connection/validation states, and a review-before-apply action row. Colours follow the current Octopus app: rose accents in light mode, bright pink accents with deep purple backgrounds in dark mode. Script Bridge colours are not used.
+
+Three review surfaces:
+- Pi desktop control center: server connections, credentials, telemetry, remote access, About/license.
+- Standalone HTML dashboard: desktop energy monitoring, schedules and automation review, explicit open-browser requirement, browser/GAS configuration.
+- Mobile Pi client: compact protection summary, bottom navigation, key-only login, settings and home-screen instructions.
+
+All energy, schedule, URL, account and key values are examples. Buttons only update preview state. The prototype has no network requests and does not write to the clipboard, store credentials, send email, connect to a Pi or command an inverter.
+
+The remote-access flow distinguishes URL lifetime, browser session lifetime, and reusable key lifetime. It shows a dedicated Copy actual key action followed by Pi Connect Copy from remote. Copying a masked GTK field can yield bullet characters; actual clipboard transfer behavior in the current Pi UI still needs a focused reproduction if the dedicated Copy Key button also fails.
+
+Email notification and stable-link choices are proposed setup affordances, not implemented features. An email PIN cannot recover the current URL/key or update an iOS shortcut. A stable home-screen shortcut requires a stable hostname; a Quick Tunnel address changes on tunnel restart.
+
+Approval is required before integrating or deploying this design. Do not publish or replace the current UI based solely on the presence of these files.

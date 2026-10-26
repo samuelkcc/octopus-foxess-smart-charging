@@ -1,0 +1,417 @@
+<div id="energy-review" aria-label="Smart Charging interface design review">
+  <div class="review-caption">Design preview · sample data · no live services or inverter commands</div>
+  <div class="viz-carousel" aria-label="Smart Charging interfaces">
+    <section class="review-stage" data-variant="Pi desktop" aria-label="Pi desktop control center">
+      <div id="review-pi" class="p-app" data-profile="pi"></div>
+    </section>
+    <section class="review-stage" data-variant="HTML dashboard" aria-label="Standalone HTML dashboard" hidden>
+      <div id="review-web" class="p-app" data-profile="web"></div>
+    </section>
+    <section class="review-stage viz-dotted-background" data-variant="Mobile access" aria-label="Mobile dashboard connected to the Pi" hidden>
+      <div id="review-mobile" class="p-app is-mobile" data-profile="mobile"></div>
+    </section>
+  </div>
+  <style>
+    #energy-review { width:100%; color-scheme:light dark; }
+    #energy-review .review-caption { margin:0 0 14px; color:light-dark(#747183,#aaa5b9); font:12px system-ui,sans-serif; }
+    #energy-review .review-stage { min-height:1020px; padding:0 0 12px; }
+    #energy-review .p-app {
+      --p-bg:light-dark(#f8fafc,#10002b); --p-panel:light-dark(#ffffff,#1a0b3c); --p-wash:light-dark(#fff7fa,#211047);
+      --p-rail:light-dark(#fff0f6,#140532); --p-line:light-dark(#e2e8f0,#3b2268); --p-ink:light-dark(#0f172a,#f8fafc);
+      --p-muted:light-dark(#64748b,#a9b6c9); --p-accent:light-dark(#e11d48,#f300c5); --p-accent-ink:light-dark(#ffffff,#10002b);
+      --p-tint:light-dark(#ffe4ed,#3b104e); --p-green:light-dark(#047857,#34d399); --p-green-bg:light-dark(#ecfdf5,#12372f);
+      --p-amber:light-dark(#95601b,#e7b874); --p-amber-bg:light-dark(#fff5e6,#43331f); --p-red:light-dark(#b34550,#f09da7);
+      --p-red-bg:light-dark(#fff0f1,#45252c); --p-blue:light-dark(#3d6b9e,#96bcea); --p-blue-bg:light-dark(#ecf3fb,#233349);
+      font:14px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; color:var(--p-ink); background:var(--p-bg);
+      border:1px solid var(--p-line); border-radius:14px; overflow:hidden; position:relative; min-height:860px; isolation:isolate;
+    }
+    #energy-review .p-app * { box-sizing:border-box; }
+    #energy-review .p-app [hidden] { display:none !important; }
+    #energy-review .p-app h1,#energy-review .p-app h2,#energy-review .p-app h3,#energy-review .p-app p { margin:0; }
+    #energy-review .p-app h1 { font-size:26px; line-height:1.2; font-weight:500; letter-spacing:-.7px; }
+    #energy-review .p-app h2 { font-size:17px; font-weight:500; line-height:1.3; letter-spacing:-.25px; }
+    #energy-review .p-app h3 { font-size:14px; font-weight:500; }
+    #energy-review .p-app button,#energy-review .p-app input,#energy-review .p-app select { font:inherit; }
+    #energy-review .p-app button { cursor:inherit; }
+    #energy-review .p-app svg { width:17px; height:17px; flex-shrink:0; }
+    #energy-review .p-app .p-button { display:inline-flex; justify-content:center; align-items:center; gap:7px; min-height:36px; padding:7px 12px; border:1px solid var(--p-line); border-radius:7px; background:var(--p-panel); color:var(--p-ink); font-size:12px; font-weight:500; white-space:normal; }
+    #energy-review .p-app .p-button:hover { background:var(--p-wash); }
+    #energy-review .p-app .p-button.main { background:var(--p-accent); color:var(--p-accent-ink); border-color:var(--p-accent); }
+    #energy-review .p-app .p-button.quiet { border-color:transparent; background:transparent; color:var(--p-muted); }
+    #energy-review .p-app .p-button.danger { color:var(--p-red); }
+    #energy-review .p-app .p-button:disabled { opacity:.45; cursor:default; }
+    #energy-review .p-app button:focus-visible,#energy-review .p-app input:focus-visible,#energy-review .p-app select:focus-visible { outline:3px solid var(--p-accent); outline-offset:3px; }
+    #energy-review .p-app .p-chrome { display:flex; align-items:center; justify-content:space-between; gap:16px; padding:9px 16px; min-height:38px; background:var(--p-panel); border-bottom:1px solid var(--p-line); color:var(--p-muted); font-size:11px; }
+    #energy-review .p-app .p-window { display:flex; align-items:center; gap:8px; min-width:0; }
+    #energy-review .p-app .p-window svg { width:13px; height:13px; }
+    #energy-review .p-app .p-badge { display:inline-flex; align-items:center; gap:5px; padding:3px 7px; border-radius:5px; font-size:11px; line-height:1.35; color:var(--p-muted); background:var(--p-wash); white-space:normal; }
+    #energy-review .p-app .p-badge.good { color:var(--p-green); background:var(--p-green-bg); }
+    #energy-review .p-app .p-badge.wait { color:var(--p-amber); background:var(--p-amber-bg); }
+    #energy-review .p-app .p-badge.bad { color:var(--p-red); background:var(--p-red-bg); }
+    #energy-review .p-app .p-layout { display:grid; grid-template-columns:176px minmax(0,1fr); min-height:790px; }
+    #energy-review .p-app .p-rail { display:flex; flex-direction:column; gap:24px; padding:24px 12px 16px; border-right:1px solid var(--p-line); background:var(--p-rail); }
+    #energy-review .p-app .p-brand { display:flex; align-items:center; gap:9px; padding:0 4px; }
+    #energy-review .p-app .p-brand-mark { width:35px; height:35px; border-radius:10px; background:var(--p-accent); color:var(--p-accent-ink); display:grid; place-items:center; flex-shrink:0; }
+    #energy-review .p-app .p-brand-mark svg { width:22px; height:22px; }
+    #energy-review .p-app .p-brand strong { display:block; font-size:13px; font-weight:500; letter-spacing:-.3px; }
+    #energy-review .p-app .p-brand small { display:block; color:var(--p-muted); font-size:10px; margin-top:3px; }
+    #energy-review .p-app .p-nav { display:grid; gap:5px; }
+    #energy-review .p-app .p-nav button { display:flex; gap:9px; align-items:center; min-height:40px; width:100%; text-align:left; border:1px solid transparent; border-radius:7px; padding:9px; background:transparent; color:var(--p-muted); font-size:12px; }
+    #energy-review .p-app .p-nav button.active { background:var(--p-panel); color:var(--p-accent); border-color:var(--p-line); }
+    #energy-review .p-app .p-rail-bottom { margin-top:auto; display:grid; gap:8px; }
+    #energy-review .p-app .p-rail-note { font-size:11px; color:var(--p-muted); padding:12px 8px; border-top:1px solid var(--p-line); }
+    #energy-review .p-app .p-content { min-width:0; display:flex; flex-direction:column; }
+    #energy-review .p-app .p-appbar { display:flex; justify-content:space-between; align-items:center; gap:10px; min-height:54px; padding:10px 24px; border-bottom:1px solid var(--p-line); background:var(--p-panel); font-size:12px; }
+    #energy-review .p-app .p-crumb { color:var(--p-muted); }
+    #energy-review .p-app .p-crumb b { color:var(--p-ink); font-weight:500; }
+    #energy-review .p-app .p-appbar-actions { display:flex; align-items:center; gap:7px; }
+    #energy-review .p-app .p-main { padding:26px 24px; flex:1; min-width:0; }
+    #energy-review .p-app .p-page-heading { display:flex; align-items:flex-start; justify-content:space-between; gap:14px; margin-bottom:21px; }
+    #energy-review .p-app .p-page-heading p { font-size:12px; color:var(--p-muted); margin-top:7px; max-width:54ch; }
+    #energy-review .p-app .p-eyebrow { display:block; color:var(--p-accent); font-size:10px; font-weight:500; letter-spacing:1.5px; text-transform:uppercase; margin-bottom:8px; }
+    #energy-review .p-app .p-panel { background:var(--p-panel); border:1px solid var(--p-line); border-radius:10px; min-width:0; }
+    #energy-review .p-app .p-panel-head { display:flex; justify-content:space-between; align-items:center; gap:10px; padding:13px 16px; border-bottom:1px solid var(--p-line); }
+    #energy-review .p-app .p-panel-head h2 { font-size:13px; display:flex; align-items:center; gap:8px; }
+    #energy-review .p-app .p-panel-body { padding:17px; }
+    #energy-review .p-app .p-split { display:grid; grid-template-columns:minmax(0,1.25fr) minmax(230px,.85fr); gap:16px; align-items:start; }
+    #energy-review .p-app .p-stack { display:grid; gap:16px; }
+    #energy-review .p-app .p-muted { color:var(--p-muted); font-size:12px; }
+    #energy-review .p-app .p-small { font-size:11px; }
+    #energy-review .p-app .p-row { display:flex; align-items:center; justify-content:space-between; gap:12px; }
+    #energy-review .p-app .p-rule { border:0; border-top:1px solid var(--p-line); margin:16px 0; }
+    #energy-review .p-app .p-health { display:flex; align-items:flex-start; gap:11px; padding:18px; background:var(--p-green-bg); color:var(--p-green); border-radius:10px; margin-bottom:18px; }
+    #energy-review .p-app .p-health.wait { background:var(--p-amber-bg); color:var(--p-amber); }
+    #energy-review .p-app .p-health.bad { background:var(--p-red-bg); color:var(--p-red); }
+    #energy-review .p-app .p-health>svg { width:24px; height:24px; margin-top:1px; }
+    #energy-review .p-app .p-health h2 { color:inherit; font-size:19px; }
+    #energy-review .p-app .p-health p { font-size:12px; margin-top:5px; color:var(--p-ink); }
+    #energy-review .p-app .p-health .p-button { margin-left:auto; flex-shrink:0; align-self:center; }
+    #energy-review .p-app .p-energy { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:12px; margin-bottom:18px; }
+    #energy-review .p-app .p-meter { padding:15px 12px; border:1px solid var(--p-line); border-radius:9px; background:var(--p-panel); }
+    #energy-review .p-app .p-meter>span { display:flex; align-items:center; gap:7px; font-size:11px; color:var(--p-muted); }
+    #energy-review .p-app .p-meter strong { display:block; font-size:23px; font-weight:500; letter-spacing:-.5px; margin-top:9px; font-variant-numeric:tabular-nums; }
+    #energy-review .p-app .p-meter small { color:var(--p-muted); font-size:10px; }
+    #energy-review .p-app .p-meter svg { color:var(--p-accent); width:15px; height:15px; }
+    #energy-review .p-app .p-event { display:grid; grid-template-columns:68px minmax(0,1fr) auto; gap:10px; align-items:center; padding:13px 0; border-bottom:1px solid var(--p-line); }
+    #energy-review .p-app .p-event:last-child { border-bottom:0; }
+    #energy-review .p-app .p-event time { font-size:12px; font-variant-numeric:tabular-nums; }
+    #energy-review .p-app .p-event strong { display:block; font-weight:500; font-size:12px; }
+    #energy-review .p-app .p-event small { display:block; color:var(--p-muted); font-size:11px; margin-top:2px; }
+    #energy-review .p-app .p-event.current { color:var(--p-accent); }
+    #energy-review .p-app .p-inspector-item { display:flex; gap:9px; align-items:flex-start; margin-bottom:17px; }
+    #energy-review .p-app .p-inspector-item:last-child { margin-bottom:0; }
+    #energy-review .p-app .p-inspector-item>svg { color:var(--p-green); margin-top:2px; width:16px; height:16px; }
+    #energy-review .p-app .p-inspector-item strong { display:block; font-weight:500; font-size:12px; }
+    #energy-review .p-app .p-inspector-item p { font-size:11px; color:var(--p-muted); margin-top:3px; }
+    #energy-review .p-app .p-actionbar { display:flex; justify-content:space-between; align-items:center; gap:14px; margin-top:18px; padding:14px 16px; border-radius:9px; border:1px solid var(--p-line); background:var(--p-panel); }
+    #energy-review .p-app .p-actionbar strong { font-weight:500; font-size:12px; }
+    #energy-review .p-app .p-actionbar p { font-size:11px; color:var(--p-muted); margin-top:3px; }
+    #energy-review .p-app .p-actions { display:flex; flex-wrap:wrap; gap:7px; }
+    #energy-review .p-app .p-field { display:grid; gap:6px; margin-bottom:15px; font-size:12px; min-width:0; }
+    #energy-review .p-app .p-field small { color:var(--p-muted); font-size:11px; }
+    #energy-review .p-app .p-input { width:100%; min-width:0; min-height:38px; padding:9px 10px; border:1px solid var(--p-line); border-radius:7px; background:var(--p-panel); color:var(--p-ink); font-size:13px; }
+    #energy-review .p-app .p-input[readonly] { background:var(--p-wash); }
+    #energy-review .p-app .p-field-row { display:grid; grid-template-columns:1fr 1fr; gap:13px; }
+    #energy-review .p-app .p-copy-row { display:flex; gap:7px; align-items:center; margin-bottom:7px; }
+    #energy-review .p-app .p-copy-row .p-input { flex:1; width:0; }
+    #energy-review .p-app .p-check { display:flex; gap:10px; align-items:flex-start; font-size:12px; padding:10px 0; }
+    #energy-review .p-app .p-check input { margin:4px 0 0; accent-color:var(--p-accent); width:16px; height:16px; flex-shrink:0; }
+    #energy-review .p-app .p-check small { display:block; font-size:11px; color:var(--p-muted); margin-top:3px; }
+    #energy-review .p-app .p-info { display:flex; align-items:flex-start; gap:9px; padding:12px; border-radius:7px; background:var(--p-tint); color:var(--p-ink); font-size:12px; }
+    #energy-review .p-app .p-info svg { color:var(--p-accent); margin-top:1px; }
+    #energy-review .p-app .p-info.good { background:var(--p-green-bg); }
+    #energy-review .p-app .p-info.good svg { color:var(--p-green); }
+    #energy-review .p-app .p-info.warn { background:var(--p-amber-bg); }
+    #energy-review .p-app .p-info.warn svg { color:var(--p-amber); }
+    #energy-review .p-app .p-info p { margin-top:4px; font-size:11px; color:var(--p-muted); }
+    #energy-review .p-app .p-facts { margin:0; display:grid; gap:12px; }
+    #energy-review .p-app .p-facts>div { display:flex; gap:15px; justify-content:space-between; font-size:12px; }
+    #energy-review .p-app .p-facts dt { color:var(--p-muted); }
+    #energy-review .p-app .p-facts dd { margin:0; text-align:right; }
+    #energy-review .p-app .p-foot { display:flex; gap:12px; align-items:center; justify-content:space-between; padding:8px 15px; border-top:1px solid var(--p-line); background:var(--p-panel); color:var(--p-muted); font-size:10px; }
+    #energy-review .p-app .p-dot { display:inline-block; width:6px; height:6px; border-radius:50%; margin-right:5px; background:var(--p-green); }
+    #energy-review .p-app .p-prices { display:flex; gap:28px; margin-bottom:18px; }
+    #energy-review .p-app .p-prices strong { display:block; font-size:24px; line-height:1.2; font-weight:500; margin:7px 0 4px; font-variant-numeric:tabular-nums; }
+    #energy-review .p-app .p-prices small { font-size:10px; color:var(--p-muted); }
+    #energy-review .p-app .p-chart { height:126px; display:flex; gap:3px; align-items:flex-end; padding-top:15px; border-bottom:1px solid var(--p-line); }
+    #energy-review .p-app .p-chart i { display:block; flex:1; min-width:1px; background:var(--p-line); border-radius:2px 2px 0 0; }
+    #energy-review .p-app .p-chart i.cheap { background:var(--p-accent); }
+    #energy-review .p-app .p-axis { display:flex; justify-content:space-between; color:var(--p-muted); font-size:10px; margin-top:7px; }
+    #energy-review .p-app .p-tabs { display:flex; gap:4px; flex-wrap:wrap; margin-bottom:18px; }
+    #energy-review .p-app .p-tabs button { border:1px solid var(--p-line); border-radius:6px; background:var(--p-panel); padding:7px 12px; font-size:12px; color:var(--p-muted); }
+    #energy-review .p-app .p-tabs button.selected { color:var(--p-accent); background:var(--p-tint); border-color:var(--p-tint); }
+    #energy-review .p-app .p-schedule-row { display:grid; grid-template-columns:92px minmax(0,1fr); gap:14px; padding:16px 0; border-bottom:1px solid var(--p-line); }
+    #energy-review .p-app .p-schedule-row:last-child { border:0; }
+    #energy-review .p-app .p-schedule-row time { font-size:12px; color:var(--p-muted); }
+    #energy-review .p-app .p-schedule-row h3 { margin-bottom:4px; }
+    #energy-review .p-app .p-schedule-row p { color:var(--p-muted); font-size:11px; margin-top:6px; }
+    #energy-review .p-app .p-toggle-row { display:flex; justify-content:space-between; gap:20px; align-items:flex-start; padding:15px 0; border-bottom:1px solid var(--p-line); }
+    #energy-review .p-app .p-toggle-row:last-child { border-bottom:0; }
+    #energy-review .p-app .p-toggle-row h3 { margin-bottom:4px; }
+    #energy-review .p-app .p-toggle-row p { color:var(--p-muted); font-size:11px; }
+    #energy-review .p-app .p-toggle-row input[type=checkbox] { width:18px; height:18px; accent-color:var(--p-accent); margin:4px 0 0; flex-shrink:0; }
+    #energy-review .p-app .p-choice { display:flex; align-items:center; gap:9px; border:1px solid var(--p-line); border-radius:8px; padding:12px; margin-bottom:10px; font-size:12px; }
+    #energy-review .p-app .p-choice input { accent-color:var(--p-accent); }
+    #energy-review .p-app .p-choice strong { display:block; font-weight:500; }
+    #energy-review .p-app .p-choice small { display:block; color:var(--p-muted); margin-top:2px; font-size:11px; }
+    #energy-review .p-app .p-about { max-width:570px; margin:auto; }
+    #energy-review .p-app .p-about-brand { display:flex; align-items:center; gap:13px; margin-bottom:22px; }
+    #energy-review .p-app .p-about-brand .p-brand-mark { width:52px; height:52px; }
+    #energy-review .p-app .p-about p { font-size:12px; color:var(--p-muted); margin:9px 0; }
+    #energy-review .p-app details { font-size:12px; padding:13px 0; border-top:1px solid var(--p-line); }
+    #energy-review .p-app summary { font-weight:500; }
+    #energy-review .p-app .p-notice { padding:12px 16px; border-radius:8px; background:var(--p-amber-bg); color:var(--p-ink); font-size:12px; margin-bottom:18px; }
+    #energy-review .p-app .p-modal-layer { position:absolute; inset:0; z-index:15; padding:80px 20px 24px; background:light-dark(#29213b66,#08060bb3); display:flex; align-items:flex-start; justify-content:center; }
+    #energy-review .p-app .p-modal { background:var(--p-panel); color:var(--p-ink); border:1px solid var(--p-line); border-radius:13px; padding:23px; width:100%; max-width:490px; box-shadow:0 20px 70px light-dark(#29213b33,#00000070); }
+    #energy-review .p-app .p-modal h2 { font-size:20px; margin-bottom:10px; }
+    #energy-review .p-app .p-modal p,#energy-review .p-app .p-modal li { font-size:12px; color:var(--p-muted); }
+    #energy-review .p-app .p-modal ul,#energy-review .p-app .p-modal ol { padding-left:22px; margin:15px 0 20px; }
+    #energy-review .p-app .p-modal li { margin:9px 0; }
+    #energy-review .p-app .p-modal-actions { display:flex; justify-content:flex-end; gap:8px; margin-top:20px; }
+    #energy-review .p-app .p-feedback { padding:10px 13px; margin-top:14px; border-radius:7px; background:var(--p-green-bg); color:var(--p-green); font-size:12px; }
+    #energy-review .p-app .p-mobile-head,#energy-review .p-app .p-bottom-nav { display:none; }
+    #energy-review .p-app .p-phone-time { font-size:11px; font-weight:500; display:flex; justify-content:space-between; padding:9px 19px 5px; }
+    #energy-review .p-app .p-login { padding:32px 23px; }
+    #energy-review .p-app .p-login h1 { margin-top:20px; margin-bottom:9px; }
+    #energy-review .p-app .p-login .p-brand-mark { width:48px; height:48px; }
+    #energy-review .p-app .p-login .p-field { margin-top:26px; }
+    #energy-review .p-app.is-mobile { max-width:390px; margin:0 auto; border-radius:22px; min-height:850px; }
+    #energy-review .p-app.is-mobile .p-chrome,#energy-review .p-app.is-mobile .p-rail,#energy-review .p-app.is-mobile .p-appbar,#energy-review .p-app.is-mobile .p-foot { display:none; }
+    #energy-review .p-app.is-mobile .p-layout { display:block; min-height:0; }
+    #energy-review .p-app.is-mobile .p-mobile-head { display:block; background:var(--p-panel); border-bottom:1px solid var(--p-line); }
+    #energy-review .p-app.is-mobile .p-mobile-brand { display:flex; justify-content:space-between; align-items:center; padding:12px 17px; gap:8px; }
+    #energy-review .p-app.is-mobile .p-mobile-brand strong { font-size:15px; font-weight:500; }
+    #energy-review .p-app.is-mobile .p-mobile-brand small { display:block; color:var(--p-muted); font-size:10px; }
+    #energy-review .p-app.is-mobile .p-main { padding:20px 17px; }
+    #energy-review .p-app.is-mobile .p-page-heading h1 { font-size:22px; }
+    #energy-review .p-app.is-mobile .p-page-heading { margin-bottom:16px; }
+    #energy-review .p-app.is-mobile .p-page-heading p { font-size:11px; }
+    #energy-review .p-app.is-mobile .p-energy { grid-template-columns:repeat(2,minmax(0,1fr)); gap:9px; }
+    #energy-review .p-app.is-mobile .p-meter { padding:12px; }
+    #energy-review .p-app.is-mobile .p-meter strong { font-size:22px; }
+    #energy-review .p-app.is-mobile .p-split { grid-template-columns:1fr; }
+    #energy-review .p-app.is-mobile .p-health { padding:13px; }
+    #energy-review .p-app.is-mobile .p-health h2 { font-size:17px; }
+    #energy-review .p-app.is-mobile .p-health>svg { width:20px; height:20px; }
+    #energy-review .p-app.is-mobile .p-health .p-button { display:none; }
+    #energy-review .p-app.is-mobile .p-health p { font-size:11px; }
+    #energy-review .p-app.is-mobile .p-bottom-nav { display:grid; grid-template-columns:repeat(4,1fr); padding:9px 4px 15px; border-top:1px solid var(--p-line); background:var(--p-panel); }
+    #energy-review .p-app.is-mobile .p-bottom-nav button { display:grid; justify-items:center; gap:4px; color:var(--p-muted); border:0; background:transparent; font-size:10px; padding:7px 2px; min-height:47px; }
+    #energy-review .p-app.is-mobile .p-bottom-nav button.active { color:var(--p-accent); }
+    #energy-review .p-app.is-mobile .p-actionbar { flex-direction:column; align-items:stretch; }
+    #energy-review .p-app.is-mobile .p-actionbar .p-actions { justify-content:flex-end; }
+    #energy-review .p-app.is-mobile .p-field-row { grid-template-columns:1fr; gap:0; }
+    #energy-review .p-app.is-mobile .p-prices { gap:25px; }
+    #energy-review .p-app.is-mobile .p-modal-layer { padding-top:50px; }
+    #energy-review .p-app.is-mobile .p-modal { padding:19px; }
+    #energy-review .p-app.is-mobile .p-event { grid-template-columns:60px minmax(0,1fr) auto; gap:7px; }
+    #energy-review .p-app.is-mobile .p-copy-row { flex-wrap:wrap; }
+    #energy-review .p-app.is-mobile .p-copy-row .p-input { flex-basis:100%; width:100%; }
+    #energy-review .p-app.dense .p-main { padding:20px; }
+    #energy-review .p-app.dense .p-panel-body { padding:13px; }
+    @media(max-width:820px) {
+      #energy-review .p-app:not(.is-mobile) .p-layout { grid-template-columns:154px minmax(0,1fr); }
+      #energy-review .p-app:not(.is-mobile) .p-main { padding:22px 18px; }
+      #energy-review .p-app .p-split { grid-template-columns:1fr; }
+      #energy-review .p-app .p-energy { grid-template-columns:repeat(2,minmax(0,1fr)); }
+    }
+    @media(max-width:560px) {
+      #energy-review .review-stage { min-height:1200px; }
+      #energy-review .p-app:not(.is-mobile) .p-layout { display:block; }
+      #energy-review .p-app:not(.is-mobile) .p-rail { display:block; padding:14px; border-right:0; border-bottom:1px solid var(--p-line); }
+      #energy-review .p-app:not(.is-mobile) .p-rail .p-brand { margin-bottom:13px; }
+      #energy-review .p-app:not(.is-mobile) .p-nav { display:flex; flex-wrap:wrap; gap:5px; }
+      #energy-review .p-app:not(.is-mobile) .p-nav button { width:auto; min-height:36px; padding:6px 9px; }
+      #energy-review .p-app:not(.is-mobile) .p-nav button svg { display:none; }
+      #energy-review .p-app .p-rail-bottom { display:none; }
+      #energy-review .p-app .p-appbar { padding:10px 14px; }
+      #energy-review .p-app .p-crumb { display:none; }
+      #energy-review .p-app .p-health { flex-wrap:wrap; }
+      #energy-review .p-app .p-health .p-button { margin-left:34px; }
+      #energy-review .p-app .p-page-heading { flex-wrap:wrap; }
+      #energy-review .p-app .p-actionbar { flex-wrap:wrap; }
+      #energy-review .p-app .p-field-row { grid-template-columns:1fr; }
+      #energy-review .p-app .p-foot { flex-wrap:wrap; }
+      #energy-review .p-app .p-schedule-row { grid-template-columns:1fr; gap:5px; }
+      #energy-review .p-app .p-copy-row { flex-wrap:wrap; }
+      #energy-review .p-app .p-copy-row .p-input { width:100%; flex-basis:100%; }
+    }
+    @media(pointer:coarse) { #energy-review .p-app button { min-height:44px; } #energy-review .p-app input,#energy-review .p-app select { font-size:16px; } }
+  </style>
+  <script>
+    (() => {
+      const root = document.getElementById('energy-review');
+      const design = { appearance:'Dark', density:'Comfortable', protection:'Confirmed' };
+      const profiles = [
+        { key:'pi', element:root.querySelector('#review-pi'), page:'connections', edition:'Pi control center', mode:'pi', rules:{dispatch:true, weekly:true, price:false, discharge:true, guard:true}, tab:'octopus', dirty:false, showKey:false, copyStep:0, notice:'', modal:null },
+        { key:'web', element:root.querySelector('#review-web'), page:'overview', edition:'Standalone HTML', mode:'web', rules:{dispatch:true, weekly:true, price:false, discharge:true, guard:true}, tab:'octopus', dirty:false, showKey:false, copyStep:0, notice:'', modal:null },
+        { key:'mobile', element:root.querySelector('#review-mobile'), page:'overview', edition:'Pi mobile client', mode:'mobile', rules:{dispatch:true, weekly:true, price:false, discharge:true, guard:true}, tab:'octopus', dirty:false, showKey:false, copyStep:0, notice:'', modal:null }
+      ];
+      profiles.forEach(p=>{p.form={soc:80,weeklySoc:100,minSoc:11,fdPwr:5000};});
+      const icon = name => `<i data-lucide="${name}" aria-hidden="true"></i>`;
+      const escape = value => String(value).replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;');
+      const button = (label, action, style='') => `<button type="button" class="p-button cursor-interaction ${style}" data-action="${action}" ${action==='appearance'?'aria-label="Toggle light and dark appearance"':''}>${label}</button>`;
+      const routeButton = (label, route, symbol, active) => `<button type="button" class="cursor-interaction ${active?'active':''}" data-route="${route}" ${active?'aria-current="page"':''}>${icon(symbol)}<span>${label}</span></button>`;
+      const demoKey = 'DEMO-ONLY-paste-your-remote-key-here';
+      const demoUrl = 'https://your-pi.trycloudflare.com';
+      function field(label, value, options={}) {
+        const id = `${options.prefix||'demo'}-${label.toLowerCase().replace(/[^a-z0-9]/g,'-')}`;
+        return `<label class="p-field" for="${id}"><span>${label}</span><input id="${id}" class="p-input" type="${options.secret?'password':options.type||'text'}" value="${escape(value)}" ${options.readonly?'readonly':''} ${options.field?`data-field="${options.field}"`:''}>${options.help?`<small>${options.help}</small>`:''}</label>`;
+      }
+      function heading(eyebrow,title,description,action='') {
+        return `<header class="p-page-heading"><div><span class="p-eyebrow">${eyebrow}</span><h1>${title}</h1><p>${description}</p></div>${action}</header>`;
+      }
+      function panel(title, symbol, content, badge='') {
+        return `<section class="p-panel"><header class="p-panel-head"><h2>${icon(symbol)}${title}</h2>${badge}</header><div class="p-panel-body">${content}</div></section>`;
+      }
+      function status() {
+        if(design.protection==='Syncing') return {tone:'wait',symbol:'loader-circle',title:'Confirming dispatch schedule',detail:'A changed dispatch is being written to FoxESS. Confirmation is pending.',badge:'Syncing FoxESS'};
+        if(design.protection==='Connection problem') return {tone:'bad',symbol:'shield-alert',title:'Protection needs attention',detail:'FoxESS has not confirmed the latest schedule. The last valid dispatch is retained.',badge:'Confirmation failed'};
+        return {tone:'',symbol:'shield-check',title:'Dispatch schedule confirmed',detail:'FoxESS REST confirms Force Charge for 18:00–19:00. Actual power is shown below.',badge:'FoxESS confirmed'};
+      }
+      function healthBanner() {
+        const s=status();
+        return `<div class="p-health ${s.tone}" role="status">${icon(s.symbol)}<div><h2>${s.title}</h2><p>${s.detail}</p></div>${button(s.tone?'Retry sync':'View schedule',s.tone?'retry':'schedule','quiet')}</div>`;
+      }
+      function meter(symbol,label,value,detail) { return `<div class="p-meter"><span>${icon(symbol)}${label}</span><strong>${value}</strong><small>${detail}</small></div>`; }
+      function scheduleEvents() {
+        return `<div class="p-event current"><time>18:00<br>19:00</time><div><strong>Smart Dispatch</strong><small>Force Charge · target 80%</small></div><span class="p-badge good">Now</span></div>
+          <div class="p-event"><time>23:30<br>05:30</time><div><strong>Overnight charging</strong><small>Weekly rule · target 100%</small></div><span class="p-badge">Next</span></div>`;
+      }
+      function priceContent() {
+        const bars=Array.from({length:48},(_,i)=>{const cheap=i<11||i===47||(i>=36&&i<38);return `<i aria-hidden="true" class="${cheap?'cheap':''}" style="height:${cheap?23:78+(i%5)*4}%"></i>`;}).join('');
+        return `<div class="p-prices"><div><span class="p-muted">Import now</span><strong>8.00<small> p/kWh</small></strong><small>Smart Dispatch rate</small></div><div><span class="p-muted">Export</span><strong>4.10<small> p/kWh</small></strong><small>SEG rate</small></div></div><div class="p-row p-muted p-small"><span>Illustrative import rates</span><span>0–35 p/kWh</span></div><div class="p-chart" role="img" aria-label="Sample tariff chart: cheaper overnight and during the 18:00–19:00 Smart Dispatch">${bars}</div><div class="p-axis"><span>00:00</span><span>06:00</span><span>12:00</span><span>18:00</span><span>24:00</span></div>`;
+      }
+      function overview(p) {
+        const s=status();
+        const inspector = `<div class="p-inspector-item">${icon(s.symbol)}<div><strong>${s.badge}</strong><p>Official REST schedule readback · 18:14:06</p></div></div><div class="p-inspector-item">${icon('shield-check')}<div><strong>Smart Dispatch has priority</strong><p>Discharging pauses during protected EV charging.</p></div></div><div class="p-inspector-item">${icon(p.mode==='web'?'monitor':'cpu')}<div><strong>${p.mode==='web'?'Runs in this browser':'Always-on Pi worker'}</strong><p>${p.mode==='web'?'Keep this tab open and the device awake.':'Automation continues when this dashboard closes.'}</p></div></div>`;
+        return heading(p.mode==='mobile'?'Connected to Pi5':'Home energy protection','Overview','Monday 26 October · sample view at 18:14',p.mode==='mobile'?'':button(icon('refresh-cw')+'Refresh','refresh'))+
+          (p.mode==='web'?`<div class="p-notice">${icon('monitor')} Browser edition: automation requires this tab to remain open and awake.</div>`:'')+
+          healthBanner()+`<div class="p-energy">${meter('sun','Solar','0.1 kW','Generating')}${meter('house','Home','8.5 kW','Including EV load')}${meter('battery-charging','Battery','64%','Charging at 2.8 kW')}${meter('arrow-down-left','Grid','11.2 kW','Importing')}</div>`+
+          `<div class="p-split"><div class="p-stack">${panel('Charging schedule','calendar-clock',scheduleEvents(),'<span class="p-badge">Today & tonight</span>')}${panel('Electricity tariffs','chart-no-axes-combined',priceContent())}</div>${panel('Protection checks','shield-check',inspector,`<span class="p-badge ${s.tone||'good'}">${s.badge}</span>`)}</div>`+
+          `<div class="p-actionbar"><div><strong>Four hardware periods in use</strong><p>Smart Dispatch takes priority within the FoxESS five-period limit.</p></div>${button('Review automation rules'+icon('chevron-right'),'rules')}</div>`;
+      }
+      function schedules(p) {
+        const body=`<div class="p-schedule-row"><time>18:00–19:00</time><div><h3>Smart Dispatch</h3><span class="p-badge good">Force Charge</span><p>From Octopus · rounded to complete half-hour slots · target SOC 80%</p></div></div><div class="p-schedule-row"><time>23:30–00:00<br>00:00–05:30</time><div><h3>Weekly overnight charge</h3><span class="p-badge">Force Charge</span><p>Two hardware periods across midnight · target SOC 100%</p></div></div><div class="p-schedule-row"><time>16:00–18:00</time><div><h3>Scheduled export</h3><span class="p-badge">Force Discharge</span><p>Ends before Smart Dispatch · minimum SOC 20%</p></div></div>`;
+        const inspector=`<dl class="p-facts"><div><dt>Source</dt><dd>${p.mode==='web'?'Browser automation':'Pi worker'}</dd></div><div><dt>Latest Octopus check</dt><dd>18:14:02</dd></div><div><dt>FoxESS readback</dt><dd>18:14:06</dd></div><div><dt>Hardware periods</dt><dd>4 / 5</dd></div></dl><hr class="p-rule"><div class="p-info good">${icon('shield-check')}<div>Schedule confirmed<p>Command acceptance alone is not enough; the written schedule must match an official REST readback.</p></div></div>`;
+        return heading('Plan & confirmation','Schedules','See what Octopus requested and what FoxESS confirmed.',button('Hardware limits','limits'))+healthBanner()+`<div class="p-split">${panel('FoxESS mode schedule','calendar-clock',body)}${panel('Readback & safety','list-checks',inspector)}</div><div class="p-actionbar"><div><strong>Changes start with the rules</strong><p>Review proposed changes before applying them.</p></div>${button('Edit automations','rules','main')}</div>`;
+      }
+      function toggle(p,key,title,description) { return `<label class="p-toggle-row"><span><h3>${title}</h3><p>${description}</p></span><input type="checkbox" data-rule="${key}" ${p.rules[key]?'checked':''} aria-label="${title}"></label>`; }
+      function rules(p) {
+        const charge=toggle(p,'dispatch','Follow Smart Dispatch','Apply new Octopus windows as soon as they are detected.')+`<div class="p-field-row" style="margin-top:15px">${field('Dispatch target SOC',p.form.soc,{type:'number',prefix:p.key,field:'soc',help:'Applies to Smart Dispatch only.'})}${field('Weekly target SOC',p.form.weeklySoc,{type:'number',prefix:p.key,field:'weeklySoc'})}</div>`+toggle(p,'weekly','Weekly forced charge','23:30–05:30 · every day · split at midnight.')+toggle(p,'price','Charge below an import price','Use import prices, independently of the SEG export price.');
+        const discharge=toggle(p,'discharge','Smart Discharging','Scheduled export or SEG price rules.')+toggle(p,'guard','Pause during Smart Dispatch','Recommended safeguard: EV charging protection wins.')+`<div class="p-info">${icon('info')}<div>One conflict-resolved schedule<p>Charging and discharging never occupy the same minute. Auto-Resume does not cancel an active dispatch.</p></div></div>`;
+        return heading('Review before applying','Automations','Keep everyday charging rules separate from advanced hardware limits.',button('Hardware limits','limits'))+`<div class="p-split"><div class="p-stack">${panel('Smart Charging','plug-zap',charge)}${panel('Smart Discharging','arrow-up-right',discharge)}</div>${panel('What happens next','list-checks',`<div class="p-inspector-item">${icon('list-filter')}<div><strong>Resolve conflicts</strong><p>Protect Smart Dispatch and merge compatible periods.</p></div></div><div class="p-inspector-item">${icon('upload')}<div><strong>Write the schedule</strong><p>Respect the inverter's five-period capacity.</p></div></div><div class="p-inspector-item">${icon('shield-check')}<div><strong>Verify with FoxESS</strong><p>Show a pending state until the official REST readback matches.</p></div></div>`)}</div><div class="p-actionbar"><div><strong>${p.dirty?'You have unapplied changes':'Your saved rules are active'}</strong><p>${p.dirty?'Review the resulting schedule before sending it.':'Changing a field does not immediately command the inverter.'}</p></div><div class="p-actions">${button('Discard','discard')}${button('Review & apply','review','main')}</div></div>`;
+      }
+      function connections(p) {
+        if(p.mode==='mobile') return mobileSettings(p);
+        const tabs=['octopus','foxess','telemetry'].map(t=>`<button type="button" class="cursor-interaction ${p.tab===t?'selected':''}" data-connection-tab="${t}" aria-pressed="${p.tab===t}">${t==='octopus'?'Octopus':t==='foxess'?'FoxESS':'Live telemetry'}</button>`).join('');
+        let form='';
+        if(p.tab==='octopus') form=field('Account number','A-EXAMPLE',{prefix:p.key,help:'Example account · never copied from your real setup.'})+field('Octopus API key','DEMO-ONLY-OCTOPUS',{secret:true,prefix:p.key,help:p.mode==='web'?'Encrypted browser storage on this device.':'Stored in the Pi’s encrypted configuration.'});
+        if(p.tab==='foxess') form=field('Inverter serial number','DEMO-INVERTER',{prefix:p.key})+field('FoxESS API token','DEMO-ONLY-FOXESS',{secret:true,prefix:p.key})+(p.mode==='web'?field('Google Apps Script relay URL','',{prefix:p.key,help:'Required for the standalone HTML edition.'}):'<div class="p-info good">'+icon('shield-check')+'<div>Pi relay ready<p>No Google Apps Script required.</p></div></div>');
+        if(p.tab==='telemetry') form=p.mode==='web'?'<div class="p-info">'+icon('radio')+'<div>Official REST telemetry<p>Live WebSocket telemetry is available through the Pi edition.</p></div></div>':`<label class="p-field">Telemetry policy<select class="p-input"><option>Live WS on demand</option><option>Always Live WS · REST fallback</option><option>Official REST only</option></select><small>On demand connects while an Octopus dynamic charge is active.</small></label>`+field('FoxESS web-login email','owner@example.com',{prefix:p.key})+field('FoxESS web-login password','DEMO-ONLY-PASSWORD',{secret:true,prefix:p.key,help:'Only needed for optional read-only Live WS telemetry.'});
+        const inspector=`<div class="p-inspector-item">${icon('check')}<div><strong>Octopus API connected</strong><p>Latest dispatch fetched · 18:14:02</p></div></div><div class="p-inspector-item">${icon('check')}<div><strong>FoxESS REST connected</strong><p>Schedule readback confirmed · 18:14:06</p></div></div><div class="p-inspector-item">${icon(p.mode==='web'?'monitor':'cpu')}<div><strong>${p.mode==='web'?'Browser automation':'Pi worker running'}</strong><p>${p.mode==='web'?'Keep the browser open and awake.':'Supervised service · resumes after reboot.'}</p></div></div><hr class="p-rule"><div class="p-muted p-small">${p.mode==='web'?'This edition uses your browser and configured relay.':'Phones use the Pi relay. Service API credentials remain managed here on the Pi.'}</div>`;
+        const lan=p.mode==='pi'?panel('Local access','wifi',field('LAN dashboard','http://192.168.1.24:8787',{readonly:true,prefix:p.key})+'<label class="p-check"><input type="checkbox" checked><span>Require a LAN access code<small>Remote access always uses its own separate key.</small></span></label>'):'';
+        return heading('Your integrations','Connections','One place for credentials, telemetry policy, and connection health.')+`<div class="p-split"><div class="p-stack">${panel('Integration settings','plug-zap',`<div class="p-tabs" aria-label="Integration">${tabs}</div>${form}<label class="p-check"><input type="checkbox" data-action="show-secrets"><span>Show example credentials</span></label>`, '<span class="p-badge good">Connected</span>')}${lan}</div>${panel('Connection health','activity',inspector)}</div><div class="p-actionbar"><div><strong>${p.mode==='web'?'Save on this device':'Save on the Pi'}</strong><p>Review credentials and connection results together.</p></div><div class="p-actions">${button('Test connection','test')}${button('Save configuration','save-config','main')}</div></div>`;
+      }
+      function remote(p) {
+        const linkPanel=`<div class="p-row" style="margin-bottom:12px"><span class="p-badge good">Tunnel running</span><span class="p-muted p-small">Quick Tunnel</span></div><label class="p-field" for="${p.key}-remote-url">Public URL</label><div class="p-copy-row"><input id="${p.key}-remote-url" class="p-input" readonly value="${demoUrl}" aria-label="Example public URL">${button(icon('copy')+'Copy URL','copy-url')}</div><p class="p-muted p-small">Stays the same while the tunnel runs. A reboot, app update, or tunnel restart generates a new URL.</p><hr class="p-rule"><label class="p-field" for="${p.key}-remote-key">Remote Access Key</label><div class="p-copy-row"><input id="${p.key}-remote-key" class="p-input" readonly type="${p.showKey?'text':'password'}" value="${demoKey}" aria-label="Demo remote key">${button(icon('copy')+'Copy actual key','copy-key')}</div><div class="p-row">${button(icon(p.showKey?'eye-off':'eye')+(p.showKey?'Hide demo key':'Show demo key'),'show-key','quiet')}<span class="p-muted p-small">Separate from the LAN code</span></div><p class="p-muted p-small" style="margin-top:10px">The key does not expire automatically. Replacing it revokes access on every remote device.</p>${p.copyStep?`<div class="p-info good" style="margin-top:14px">${icon('clipboard-check')}<div>Actual key copied to Pi clipboard <span class="p-small">(demo)</span><p>Using Pi Connect? Now choose <strong>Copy from remote</strong> in its top toolbar, then paste on your other device. Do not copy the masked field.</p></div></div>`:''}<hr class="p-rule"><div class="p-actions">${button('Open mobile setup','pairing','main')}${button('Replace key','rotate')}${button('Stop tunnel','stop','danger')}</div>`;
+        const facts=`<div class="p-inspector-item">${icon('link')}<div><strong>URL: tied to this tunnel</strong><p>Closing the dashboard does not change it. A new tunnel means a new address.</p></div></div><div class="p-inspector-item">${icon('clock')}<div><strong>Browser login: up to 12 hours</strong><p>If signed out, enter the same key again. The tunnel and key do not expire at that time.</p></div></div><div class="p-inspector-item">${icon('key-round')}<div><strong>Key: valid until replaced</strong><p>Copy the actual key with the dedicated button, even while the field stays hidden.</p></div></div><div class="p-info warn">${icon('smartphone')}<div>Home-screen shortcuts save this URL<p>If the random URL changes, that shortcut must be updated. A stable domain is needed for a lasting shortcut.</p></div></div>`;
+        const more=`<details><summary>Email and stable-link options</summary><p class="p-muted" style="margin-top:10px">Proposed setup choices. No email is configured or sent in this preview.</p><label class="p-check"><input type="checkbox" data-action="email-option"><span>Email me when the URL changes<small>Requires a configured sending domain or SMTP account. Send the URL only; keep the reusable key separately.</small></span></label><div class="p-info">${icon('mail')}<div>Email login PINs are different<p>A Cloudflare login PIN verifies your email address. It does not retrieve this URL or the app’s key.</p></div></div><p class="p-muted p-small" style="margin-top:12px">Stable shortcut option: a named Cloudflare Tunnel with your own domain.</p></details>`;
+        return heading('Access from your own devices','Remote access','A clear path from the Pi to your phone, without copying hidden characters.')+`<div class="p-split">${panel('Your remote connection','globe',linkPanel)}<div class="p-stack">${panel('Three different lifetimes','info',facts)}${panel('Optional next steps','settings',more)}</div></div>`;
+      }
+      function mobileSettings(p) {
+        return heading('Connected to your Pi','Settings','The Pi manages credentials and runs the automation.')+`<div class="p-stack">${panel('Connection','wifi',`<dl class="p-facts"><div><dt>Server</dt><dd>Pi5</dd></div><div><dt>Access</dt><dd>Quick Tunnel</dd></div><div><dt>Login</dt><dd>Key protected</dd></div><div><dt>Session remaining</dt><dd>11 hours 42 min</dd></div></dl><hr class="p-rule"><p class="p-muted">After the login expires, use the same remote key. The Pi keeps working.</p><div class="p-actions" style="margin-top:15px">${button('Sign out of this phone','signout')}${button('Home-screen setup','home-screen','quiet')}</div>`) }${panel('Display','sliders-horizontal',`<label class="p-check"><input type="checkbox" checked><span>Show live power flow</span></label><label class="p-check"><input type="checkbox" checked><span>Show electricity tariffs</span></label><label class="p-check"><input type="checkbox"><span>Show advanced discharge controls</span></label>`)}${panel('About this app','info',`<p class="p-muted">Smart Charging · SCKC<br>Independent of Octopus Energy and FoxESS.<br>GPL-3.0-or-later</p><div style="margin-top:12px">${button('About & licenses','about','quiet')}</div>`)}</div>`;
+      }
+      function about() {
+        return `<div class="p-about"><div class="p-about-brand"><span class="p-brand-mark">${icon('plug-zap')}</span><div><h1>Smart Charging</h1><p>Intelligent Octopus Go × FoxESS</p></div></div><div class="p-panel"><div class="p-panel-body"><dl class="p-facts"><div><dt>Version</dt><dd>Design preview</dd></div><div><dt>Current release reference</dt><dd>2026.10.26.5</dd></div><div><dt>Developer</dt><dd>SCKC</dd></div><div><dt>License</dt><dd>GPL-3.0-or-later</dd></div></dl><hr class="p-rule"><p>Copyright (C) 2026 SCKC</p><p>This is independent software. It is not affiliated with, endorsed by, or supported by Octopus Energy or FoxESS.</p><details><summary>GNU General Public License</summary><p>You may redistribute and modify this program under GNU GPL version 3 or, at your option, any later version. The program is distributed without warranty, including implied merchantability or fitness for a particular purpose.</p><p>The full license remains included with the application and standalone HTML.</p></details><details><summary>Third-party acknowledgements</summary><p>Chart.js, CryptoJS, ws, FoxESS signature integration, and optional cloudflared retain their respective notices. The production app includes full license details.</p></details></div></div></div>`;
+      }
+      function login(p) {
+        return `<div class="p-login"><span class="p-brand-mark">${icon('plug-zap')}</span><span class="p-eyebrow" style="margin-top:22px">Your Pi. On your phone.</span><h1>Connect to your dashboard</h1><p class="p-muted">Enter the Remote Access Key from your Pi. Your Octopus and FoxESS passwords are not needed here.</p><label class="p-field" for="${p.key}-login-key"><span>Remote Access Key</span><input class="p-input" id="${p.key}-login-key" type="password" placeholder="Paste the remote key" autocomplete="off"><small>Preview only. Use example text, not a real key.</small></label>${button('Connect securely'+icon('arrow-right'),'signin','main')}<div class="p-info" style="margin-top:20px">${icon('clock')}<div>Signed in for up to 12 hours<p>The same key can be reused after expiry. The Pi’s automation keeps running.</p></div></div><div style="margin-top:16px">${button('Where do I find my key?','find-key','quiet')}</div></div>`;
+      }
+      function modal(p) {
+        if(!p.modal) return '';
+        const close=button('Back','close'); let title='',body='',action='';
+        if(p.modal==='review') {title='Review automation changes';body=`<p>Check the effective rules before applying. This preview sends no inverter commands.</p><ul><li>Smart Dispatch: <strong>${p.rules.dispatch?'enabled':'disabled'}</strong> · target ${escape(p.form.soc)}%</li><li>Weekly overnight charge: <strong>${p.rules.weekly?'enabled':'disabled'}</strong></li><li>Smart Discharging: <strong>${p.rules.discharge?'enabled':'disabled'}</strong></li><li>Dispatch protection: <strong>${p.rules.guard?'enabled':'disabled'}</strong></li></ul><div class="p-info">${icon('shield-check')}<div>Confirmation stays separate<p>In the actual app, changes remain pending until FoxESS REST readback matches.</p></div></div>`;action=button('Apply preview','apply','main');}
+        if(p.modal==='limits') {title='Hardware limits';body=`<p>Advanced inverter limits, kept separate from everyday charging rules.</p><div class="p-field-row" style="margin-top:18px">${field('Minimum grid SOC',p.form.minSoc,{type:'number',prefix:p.key,field:'minSoc',help:'Percent'})}${field('Discharge power',p.form.fdPwr,{type:'number',prefix:p.key,field:'fdPwr',help:'Watts'})}</div><p>FoxESS supports at most five active schedule periods. Smart Dispatch has priority if capacity is exceeded.</p>`;action=button('Keep demo limits','close','main');}
+        if(p.modal==='pairing'||p.modal==='find-key') {title='Connect your phone';body=`<ol><li>On the Pi, choose <strong>Copy actual key</strong>. It copies real characters while the field stays hidden.</li><li>In Pi Connect, choose <strong>Copy from remote</strong> to transfer that clipboard text.</li><li>Open the public URL on your phone and paste the key into the login screen.</li><li>Once connected in Safari, use Share → Add to Home Screen.</li></ol><div class="p-info warn">${icon('link')}<div>A shortcut saves the current URL<p>Quick Tunnel addresses change after a tunnel restart. A lasting shortcut requires a stable hostname.</p></div></div>`;action=button('Done','close','main');}
+        if(p.modal==='home-screen') {title='Add to your Home Screen';body=`<ol><li>Open the dashboard in Safari and sign in.</li><li>Tap Share, then Add to Home Screen.</li><li>Give the shortcut a name such as “Home Energy”.</li></ol><div class="p-info warn">${icon('info')}<div>This shortcut saves today’s URL<p>A Quick Tunnel restart produces a new URL. The email login PIN does not update an existing shortcut.</p></div></div>`;action=button('Understood','close','main');}
+        if(p.modal==='rotate') {title='Replace the remote key?';body='<p>In the real app, this revokes the old key and signs out every remote browser. The URL stays tied to the running tunnel.</p><p style="margin-top:12px">This is a design demonstration. Your actual key is not accessed or changed.</p>';action=button('Preview replacement','confirm-rotate','danger');}
+        if(p.modal==='stop') {title='Stop remote access?';body='<p>The real app would close the public tunnel. The Pi worker and local dashboard would keep running. Starting another Quick Tunnel would generate a different URL.</p>';action=button('Preview stop','confirm-stop','danger');}
+        if(p.modal==='save-config') {title='Save connection settings';body='<p>In the Pi edition, credentials are saved in the Pi’s encrypted configuration. In standalone HTML, the browser stores its own setup.</p><p style="margin-top:12px">This preview uses example values and does not save credentials.</p>';action=button('Save preview','saved-config','main');}
+        return `<div class="p-modal-layer"><section class="p-modal" role="dialog" aria-modal="true" aria-label="${title}"><h2>${title}</h2>${body}<div class="p-modal-actions">${close}${action}</div></section></div>`;
+      }
+      function render(p) {
+        const pageNames={overview:'Overview',schedules:'Schedules',rules:'Automations',connections:'Connections',remote:'Remote access',about:'About & licenses',settings:'Settings',login:'Connect'};
+        const nav=[['overview','Overview','house'],['schedules','Schedules','calendar-clock'],['rules','Automations','sliders-horizontal'],['connections','Connections','plug-zap']];
+        if(p.mode==='pi') nav.push(['remote','Remote access','globe']);
+        let body=p.page==='overview'?overview(p):p.page==='schedules'?schedules(p):p.page==='rules'?rules(p):p.page==='connections'?connections(p):p.page==='remote'?remote(p):p.page==='about'?about():p.page==='settings'?mobileSettings(p):login(p);
+        const mobile=p.mode==='mobile';
+        const rail=`<aside class="p-rail"><div class="p-brand"><span class="p-brand-mark">${icon('plug-zap')}</span><div><strong>Smart Charging</strong><small>Octopus × FoxESS</small></div></div><nav class="p-nav" aria-label="Main navigation">${nav.map(([route,label,symbol])=>routeButton(label,route,symbol,p.page===route)).join('')}</nav><div class="p-rail-bottom"><nav class="p-nav">${routeButton('About & licenses','about','info',p.page==='about')}</nav><div class="p-rail-note"><span class="p-dot"></span>${p.mode==='web'?'Browser workspace':'Pi worker running'}<br><span style="display:block;margin-top:7px">A project by SCKC</span></div></div></aside>`;
+        const mobileHead=`<header class="p-mobile-head"><div class="p-phone-time"><span>18:14</span><span>Sample connection ${icon('wifi')}</span></div><div class="p-mobile-brand"><div><strong>Smart Charging</strong><small>Octopus × FoxESS · Pi5</small></div><span class="p-badge ${p.page==='login'?'':'good'}">${icon('lock-keyhole')}${p.page==='login'?'Sign in':'Connected'}</span></div></header>`;
+        p.element.style.colorScheme=design.appearance==='System'?'light dark':design.appearance.toLowerCase();
+        p.element.classList.toggle('dense',design.density==='Compact');
+        p.element.innerHTML=`<div class="p-chrome"><span class="p-window">${icon(p.mode==='web'?'globe':'monitor')}${p.edition}</span><span>Design preview</span></div>${mobile?mobileHead:''}${mobile&&p.page==='login'?body:`<div class="p-layout">${rail}<div class="p-content"><div class="p-appbar"><span class="p-crumb">Smart Charging <span style="margin:0 9px">/</span><b>${pageNames[p.page]}</b></span><div class="p-appbar-actions"><span class="p-badge ${p.mode==='web'?'wait':'good'}">${p.mode==='web'?'Browser must stay awake':'Always-on Pi worker'}</span>${button(icon('moon'),'appearance','quiet')}</div></div><main class="p-main">${body}${p.notice?`<div class="p-feedback" role="status">${escape(p.notice)}</div>`:''}</main></div></div>`}${mobile&&p.page!=='login'?`<nav class="p-bottom-nav" aria-label="Mobile navigation">${[['overview','Home','house'],['schedules','Schedule','calendar-clock'],['rules','Rules','sliders-horizontal'],['settings','Settings','settings']].map(([r,l,i])=>routeButton(l,r,i,p.page===r)).join('')}</nav>`:''}<footer class="p-foot"><span><span class="p-dot"></span>${p.mode==='web'?'Browser edition · local setup':'Pi services · sample status'}</span><span>Independent software · GPL-3.0-or-later</span></footer>${modal(p)}`;
+        if(globalThis.lucide) globalThis.lucide.createIcons({attrs:{width:16,height:16}});
+      }
+      function saveState() {
+        if(!window.openai?.setWidgetState) return;
+        window.openai.setWidgetState({modelContent:{design, screens:profiles.map(p=>({platform:p.key,page:p.page}))},privateContent:null}).catch(()=>{});
+      }
+      function renderAll() { profiles.forEach(render); }
+      root.addEventListener('click',event=>{
+        const app=event.target.closest('.p-app'); if(!app) return;
+        const p=profiles.find(item=>item.key===app.dataset.profile); if(!p) return;
+        const route=event.target.closest('[data-route]');
+        if(route) {p.page=route.dataset.route;p.notice='';p.modal=null;render(p);saveState();return;}
+        const tab=event.target.closest('[data-connection-tab]');
+        if(tab) {p.tab=tab.dataset.connectionTab;render(p);saveState();return;}
+        const control=event.target.closest('[data-action]'); if(!control) return;
+        const action=control.dataset.action;
+        if(['show-secrets','email-option'].includes(action)) return;
+        p.notice='';
+        if(action==='refresh') p.notice='Preview refreshed. All values are sample data.';
+        else if(action==='retry') {design.protection='Confirmed';renderAll();saveState();return;}
+        else if(action==='schedule') p.page='schedules';
+        else if(action==='rules') p.page='rules';
+        else if(action==='about') p.page='about';
+        else if(action==='appearance') {design.appearance=design.appearance==='Dark'?'Light':'Dark';renderAll();saveState();return;}
+        else if(['review','limits','pairing','home-screen','find-key','rotate','stop','save-config'].includes(action)) p.modal=action;
+        else if(action==='close') p.modal=null;
+        else if(action==='apply') {p.modal=null;p.dirty=false;p.notice='Preview applied. No inverter commands were sent.';}
+        else if(action==='discard') {p.rules={dispatch:true,weekly:true,price:false,discharge:true,guard:true};p.form={soc:80,weeklySoc:100,minSoc:11,fdPwr:5000};p.dirty=false;p.notice='Demo changes discarded.';}
+        else if(action==='copy-key') p.copyStep=1;
+        else if(action==='copy-url') p.notice='Preview: this would copy the current public URL. Your clipboard was not changed.';
+        else if(action==='show-key') p.showKey=!p.showKey;
+        else if(action==='test') p.notice='Example connection test passed. No real API was contacted.';
+        else if(action==='saved-config') {p.modal=null;p.notice='Example configuration reviewed. Nothing was saved to your Pi or browser.';}
+        else if(action==='confirm-rotate') {p.modal=null;p.notice='Replacement preview complete. Your real key was not accessed or changed.';}
+        else if(action==='confirm-stop') {p.modal=null;p.notice='Stop preview complete. Your real tunnel is still running.';}
+        else if(action==='signout') {p.page='login';p.notice='';}
+        else if(action==='signin') {p.page='overview';p.notice='Demo connection ready. No credentials were stored or transmitted.';}
+        render(p);saveState();
+      });
+      root.addEventListener('change',event=>{
+        const app=event.target.closest('.p-app'); if(!app) return;
+        const p=profiles.find(item=>item.key===app.dataset.profile); if(!p) return;
+        if(event.target.dataset.rule) {p.rules[event.target.dataset.rule]=event.target.checked;p.dirty=true;render(p);saveState();}
+        else if(event.target.dataset.field) {p.form[event.target.dataset.field]=event.target.value;p.dirty=true;render(p);}
+        else if(event.target.dataset.action==='show-secrets') {app.querySelectorAll('.p-panel input[type=password],.p-panel input[data-demo-revealed]').forEach(input=>{input.type=event.target.checked?'text':'password';input.dataset.demoRevealed='true';});}
+        else if(event.target.dataset.action==='email-option') {p.notice='Design option only: email notifications need a sending provider and target address. No email was sent.';render(p);}
+      });
+      const saved=window.openai?.widgetState?.modelContent;
+      if(saved?.design) Object.assign(design,saved.design);
+      if(saved?.screens) saved.screens.forEach(s=>{const p=profiles.find(item=>item.key===s.platform);if(p&&['overview','schedules','rules','connections','remote','about','settings','login'].includes(s.page))p.page=s.page;});
+      renderAll();
+      window.addEventListener('openai:set_globals',event=>{
+        const state=event.detail?.globals?.widgetState?.modelContent;
+        if(state?.design) {Object.assign(design,state.design);renderAll();}
+      });
+      if(globalThis.Tweak) {
+        const tweak=new Tweak({container:root,onChange:()=>{renderAll();saveState();}});
+        tweak.addSelect(design,'appearance',{label:'Appearance',options:['System','Light','Dark']});
+        tweak.addSelect(design,'density',{label:'Spacing',options:['Comfortable','Compact']});
+        tweak.addSelect(design,'protection',{label:'Protection state',options:['Confirmed','Syncing','Connection problem']});
+      }
+    })();
+  </script>
+</div>

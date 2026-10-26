@@ -1,0 +1,48 @@
+import assert from 'node:assert/strict';
+import { mkdtemp, readFile, readdir, rm, writeFile } from 'node:fs/promises';
+import os from 'node:os';
+import path from 'node:path';
+import { CompactHistory } from '../linux/history.mjs';
+
+const directory = await mkdtemp(path.join(os.tmpdir(), 'octopus-history-'));
+let clock = Date.parse('2026-10-26T12:00:00Z');
+const make = () => new CompactHistory({ directory, now: () => clock });
+const sample = (values, at = clock) => ({ updatedAt: new Date(at).toISOString(), values });
+try {
+  let history = make();
+  assert.equal(await history.record(sample({ loadsPower: 2, SoC: 50 })), true);
+  assert.equal(await history.record(sample({ loadsPower: 100 })), false, 'Cached/duplicate readings do not inflate the average');
+  clock += 60_000;
+  await history.record(sample({ loadsPower: 4, pvPower: 0, SoC: 60 }));
+  let report = await history.readMonth('2026-10');
+  assert.equal(report.points[0].values.loadsPower, 3);
+  assert.equal(report.points[0].values.SoC, 55);
+  assert.equal(report.points[0].values.pvPower, 0, 'A real zero remains a zero');
+  assert.equal(report.points[0].values.feedinPower, null, 'Missing fields are not invented as zeros');
+  assert.equal(report.points[0].samples.loadsPower, 2);
+  await history.close();
+  history = make();
+  assert.equal(await history.record(sample({ loadsPower: 9 })), false, 'Restart retains the last accepted sample minute');
+  clock += 30 * 60_000;
+  assert.equal(await history.record(sample({ loadsPower: 1 }, clock - 5 * 60_000)), false, 'Stale data is not re-dated');
+  await history.record(sample({ loadsPower: 1 }));
+  report = await history.readMonth('2026-10');
+  assert.equal(report.points.length, 2, 'Downtime stays a gap, without synthetic intervals');
+  assert.equal(report.points[1].at, '2026-10-26T12:30:00.000Z');
+  await history.close();
+  const archive = path.join(directory, '2026-10.jsonl');
+  const firstRow = (await readFile(archive, 'utf8')).trim();
+  await writeFile(archive, `${firstRow}\n${firstRow}\n{incomplete\n`);
+  history = make();
+  assert.equal((await history.readMonth('2026-10')).points.length, 2, 'Duplicate crash appends and incomplete rows are handled');
+  await assert.rejects(history.readMonth('../../config'), { statusCode:400 });
+  await assert.rejects(history.readMonth('2026-13'), { statusCode:400 });
+  await writeFile(path.join(directory, '2024-09.jsonl'), `${firstRow}\n`);
+  await writeFile(path.join(directory, '2024-10.jsonl'), `${firstRow}\n`);
+  await history.readMonth('2026-10');
+  assert.ok(!(await readdir(directory)).includes('2024-09.jsonl'), 'Expired month archives are deleted');
+  clock = Date.parse('2028-11-01T00:00:00Z');
+  assert.equal((await history.readMonth('2026-10')).points.length, 0, 'Data older than 24 calendar months is unavailable');
+  assert.ok(!(await readdir(directory)).includes('2026-10.jsonl'));
+  console.log('History averages, missing values, cache deduplication, restart persistence, outage gaps, crash recovery, query validation, and 24-month retention passed.');
+} finally { await rm(directory, { recursive:true, force:true }); }

@@ -1,3 +1,10 @@
+## v2026.10.26.6 — Pi DEV (2026-10-26, not released)
+
+- Add a separate Octopus-coloured Pi DEV dashboard with navigation, real service data, explicit automation review, and an original-dashboard fallback. The unattended scheduler remains the existing worker.
+- Store compact 15-minute telemetry averages for 24 months, reusing existing readings without extra upstream calls. Add authenticated month queries, History charts, disk-usage reporting and CSV export. No historical backfill or billing-grade energy totals.
+- Add a pinned DEV installer with encrypted-configuration backup, health check, original runtime rollback and a separate desktop shortcut. No Pages deployment or release tag.
+- Verify with the full mock-based suite, history retention/restart/outage tests, authenticated endpoint checks and local browser checks. Live Pi verification is recorded in dev/README.md after deployment.
+
 ## v2026.10.26.5 — 2026-10-26
 
 - Clarify the Remote Access window by separating tunnel status, temporary URL lifetime, browser login duration, and key validity.
