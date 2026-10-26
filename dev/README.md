@@ -181,6 +181,11 @@ All three services stayed active.
 History collection continued through the interface updates.
 The final Pi build passed its branding and asset checks before installation.
 
+Icon revision `1adfb50` was installed on 26 October 2026.
+It restores the plug and vehicle charge-port shape in the app and taskbar.
+The live remote app matched the embedded source icon.
+All three services remained active.
+
 The [feature review](../docs/FEATURE-PARITY.md) records browser checks and release work.
 The [maintenance guide](../docs/ARCHITECTURE.md) defines module boundaries.
 The [writing guide](../docs/WRITING.md) defines the documentation method.
