@@ -50,3 +50,9 @@ assert.equal(vm.runInContext('window.nextOctoTime',context),123,'Visible clients
 vm.runInContext("window.linuxRole='worker';requestWorkerDataRefresh()",context);
 assert.ok(vm.runInContext('window.nextOctoTime',context)>123);
 console.log('Integration incident retention, recovery, explicit acknowledgement, restart, stale-ack protection, zero/missing power, and coalesced web/Pi refresh passed.');
+
+const {readRuntimeReport}=await import('../linux/inspect-runtime.mjs');
+const report=await readRuntimeReport(async()=>({ok:true,json:async()=>({version:'2.0.0',key:'private-key',credentials:{api:'secret-api'},values:{SoC:50},url:'https://example.trycloudflare.com',services:{octopus:{state:'ok',lastError:'secret-api'},foxess:{state:'ok'}}})}));
+assert.equal(JSON.stringify(report).includes('private-key'),false);
+assert.equal(JSON.stringify(report).includes('secret-api'),false);
+assert.equal(report.telemetry.values.SoC,50);

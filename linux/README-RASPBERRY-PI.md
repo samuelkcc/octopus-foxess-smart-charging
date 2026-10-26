@@ -319,3 +319,16 @@ The app does not remove unrelated files.
 **Clear all history** removes saved readings, activity, and unsaved readings after confirmation.
 It retains account settings, automation rules, and history preferences.
 These deletion actions cannot restore erased records.
+
+## Read a local status report
+
+1. Open a Pi terminal.
+2. Run this command:
+
+```bash
+node /opt/octopus-foxess/current/inspect-runtime.mjs
+```
+
+The report includes connection states, dispatch confirmation, readings, history storage, and the public URL.
+It uses read-only requests.
+It excludes service credentials and the Remote Access Key.
