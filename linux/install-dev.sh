@@ -20,6 +20,7 @@ cd "$TEMP_DEV/source"
 node scripts/build.mjs
 node scripts/build-linux.mjs
 OCTOPUS_UI_COMMIT="$DEV_COMMIT" node scripts/build-dev.mjs
+node scripts/test-dev-build.mjs
 node --check linux/server.mjs
 node --check linux/history.mjs
 node --check dev/ui.js

@@ -11,7 +11,7 @@ TEMP_UI="$(mktemp -d)"
 trap 'rm -rf "$TEMP_UI"' EXIT INT TERM
 mkdir -p "$TEMP_UI/dist" "$TEMP_UI/dev" "$TEMP_UI/scripts" "$TEMP_UI/linux" "$TEMP_UI/src/icons"
 cp "$ACTIVE_DEV/web/index.html" "$TEMP_UI/dist/Octopus_IGO_Smart_Charging_Detector.html"
-for file in dev/ui.css dev/ui.js dev/about.js dev/setup.js dev/views.js dev/settings.js dev/default-route.js dev/site.webmanifest linux/octopus-foxess.svg src/icons/icon-192.png src/icons/icon-512.png src/icons/apple-touch-icon.png scripts/build-dev.mjs package.json; do
+for file in dev/ui.css dev/ui.js dev/about.js dev/setup.js dev/views.js dev/settings.js dev/default-route.js dev/site.webmanifest linux/octopus-foxess.svg src/icons/icon-192.png src/icons/icon-512.png src/icons/apple-touch-icon.png scripts/build-dev.mjs scripts/test-dev-build.mjs package.json; do
   curl --connect-timeout 15 --max-time 60 --proto '=https' --tlsv1.2 -fsSL "https://raw.githubusercontent.com/samuelkcc/octopus-foxess-smart-charging/$DEV_UI_COMMIT/$file" -o "$TEMP_UI/$file"
 done
 cd "$TEMP_UI"
@@ -22,6 +22,7 @@ node --check dev/views.js
 node --check dev/settings.js
 node --check dev/default-route.js
 OCTOPUS_UI_COMMIT="$DEV_UI_COMMIT" node scripts/build-dev.mjs
+node scripts/test-dev-build.mjs
 cp -p "$ACTIVE_DEV/web/dev/index.html" "$ACTIVE_DEV/web/dev/index.previous.html"
 install -d -m 0755 "$ACTIVE_DEV/web/app"
 if [ -f "$ACTIVE_DEV/web/app/index.html" ]; then
@@ -31,6 +32,7 @@ install -m 0644 dist/pi-dev.html "$ACTIVE_DEV/web/app/index.html"
 install -m 0644 dist/linux-package/octopus-foxess/web/dev/index.html "$ACTIVE_DEV/web/dev/index.html"
 cp -p "$ACTIVE_DEV/web/index.html" "$ACTIVE_DEV/web/index.previous.html"
 install -m 0644 dist/linux-package/octopus-foxess/web/index.html "$ACTIVE_DEV/web/index.html"
+install -m 0644 linux/octopus-foxess.svg "$ACTIVE_DEV/web/octopus-foxess.svg"
 install -m 0644 dist/linux-package/octopus-foxess/web/app/site.webmanifest "$ACTIVE_DEV/web/app/site.webmanifest"
 install -m 0644 dist/linux-package/octopus-foxess/web/dev/site.webmanifest "$ACTIVE_DEV/web/dev/site.webmanifest"
 install -d -m 0755 "$ACTIVE_DEV/web/app/icons"

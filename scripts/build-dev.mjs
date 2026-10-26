@@ -32,9 +32,9 @@ let output = base.replace('<head>', `<head>\n${pi ? '<base href="/">' : ''}\n<me
   .replace(/href="\.\/site\.webmanifest[^\"]*"/, 'href="/app/site.webmanifest"')
   .replace(/<link rel="icon"[^>]*>/, `<link rel="icon" href="data:image/svg+xml;base64,${Buffer.from(icon).toString('base64')}" type="image/svg+xml">`)
   .replace(/<link rel="apple-touch-icon"[^>]*>/, `<link rel="apple-touch-icon" sizes="180x180" href="data:image/png;base64,${touchIcon.toString('base64')}">`)
-  .replace('src="/octopus-foxess.svg"', `src="data:image/svg+xml;base64,${Buffer.from(icon).toString('base64')}"`)
   .replace('</head>', `<style>${css}</style></head>`)
-  .replace('</body>', `<script>${js}\n${about}\n${setup}\n${views}\n${settings}</script></body>`);
+  .replace('</body>', `<script>${js}\n${about}\n${setup}\n${views}\n${settings}</script></body>`)
+  .replaceAll('src="/octopus-foxess.svg"', `src="data:image/svg+xml;base64,${Buffer.from(icon).toString('base64')}"`);
 if (!pi) output = output.replace('href="/app/site.webmanifest"', 'href="./site.webmanifest"')
   .replace('src="/octopus-foxess.svg"', `src="data:image/svg+xml;base64,${Buffer.from(icon).toString('base64')}"`);
 return output;
