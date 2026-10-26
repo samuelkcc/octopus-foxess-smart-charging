@@ -163,6 +163,23 @@ The folder is under `~/.local/share/octopus-foxess/removed-desktop-shortcuts/`.
 The standalone HTML login was checked with local mock account data.
 The current UI-only update does not restart the tunnel.
 
+The unified interface was installed on 26 October 2026.
+Its UI commit is `b8063da`.
+The native client and icons use commit `b4fe9af`.
+The public root and old client links opened `/app/index.html` through Cloudflare.
+The app title and visible pages had no DEV label.
+All six pages kept the same frame and content width in the desktop browser check.
+The frame measured 1280 pixels; the content area measured 1048 pixels.
+No horizontal overflow or duplicate element IDs were found.
+Phone layouts were checked at 320 and 390 pixels.
+Settings appearance, panel visibility, and access help worked with mock data.
+The standalone login retained its separate account and Google relay fields.
+The complete GPL text and component notices remained available.
+The live Pi reported healthy Octopus and FoxESS REST connections.
+All three services stayed active.
+History collection continued through the interface updates.
+The final Pi build passed its branding and asset checks before installation.
+
 The [feature review](../docs/FEATURE-PARITY.md) records browser checks and release work.
 The [maintenance guide](../docs/ARCHITECTURE.md) defines module boundaries.
 The [writing guide](../docs/WRITING.md) defines the documentation method.
