@@ -84,7 +84,7 @@
   manualBody.append(manualActions);manualDetails.append(manualBody);manual.append(manualDetails);schedules.append(manual);
 
   const rules=grid('rules');
-  const charging=adoptId('section-smart-charging',panel('Charging rules',true));
+  const charging=adoptId('section-smart-charging',panel('Charging rules'));
   const chargeBody=adoptId('block-unified-auto',make('div','next-rule-body'));
   chargeBody.append(toggle('toggle-auto-dispatch','Follow Smart Dispatch','Apply valid Octopus charging windows as soon as detected.'));
   chargeBody.append(group(toggle('toggle-dispatch-soc-limit','Set dispatch charge limit'),field('dispatch-soc-limit','Dispatch target SOC (%)')));
@@ -95,18 +95,18 @@
   chargeBody.append(toggle('toggle-auto-resume','Auto-Resume Self-Use','End an ordinary charge at its target. Keep an active Smart Dispatch.'));
   charging.append(chargeBody);
   const chargeActions=make('div','next-actions');chargeActions.append(button('Hardware limits',()=>{byId('adv-v3-modal').style.display='flex';},true),byId('btn-save-unified'));charging.append(chargeActions);rules.append(charging);
-  const discharging=adoptId('section-smart-discharging',panel('Discharging rules',true));
+  const discharging=adoptId('section-smart-discharging',panel('Discharging rules'));
   const dischargeBody=adoptId('block-discharge-auto',make('div','next-rule-body'));
   dischargeBody.append(toggle('toggle-auto-export','Discharge at an export price'),field('export-threshold','Minimum export price (p/kWh)'),byId('export-target-times'));
   dischargeBody.append(toggle('toggle-weekly-discharge','Weekly discharge schedule'),group(field('weekly-discharge-start','Start time'),field('weekly-discharge-end','End time')),days('weekly-discharge-day'));
   dischargeBody.append(toggle('toggle-discharge-pause-dispatch','Pause during Smart Dispatch','Keep EV charging protection active.'),toggle('toggle-discharge-overrides-charge','Replace overlapping ordinary charging','Do not charge and discharge in the same minute.'));
   discharging.append(dischargeBody,byId('btn-save-discharge'));rules.append(discharging);
-  for(const node of [charging,discharging,programmed]) {const hint=make('p','dev-hidden-panel-hint','This panel is hidden. Enable it in Menu → Dashboard blocks.');node.after(hint);}
+  for(const node of [charging,discharging,programmed]) {const hint=make('p','dev-hidden-panel-hint','This panel is hidden. Show it in Settings → Visible panels.');node.after(hint);}
 
   const connections=grid('connections');
-  const account=adoptId('section-device-settings',panel('Connected accounts and device',true));
+  const account=adoptId('section-device-settings',panel('Account and device'));
   account.append(byId('ui-device-status'),byId('ui-account-details'),byId('ui-device-prefs'));connections.append(account);
-  const service=panel(pi?'Pi connection state':'Browser connection state',true);
+  const service=panel(pi?'Service connections':'Browser connections');
   for(const [label,badge] of [['Octopus API','octo-api-badge'],['FoxESS REST / telemetry','fox-api-badge']]) {const row=make('div','next-service-row');row.append(make('strong','',label),byId(badge));service.append(row);}
   const tracking=make('p','next-muted');tracking.append(make('span','','FoxESS API calls today: '),byId('fox-api-counter'));service.append(tracking);
   const intervals=make('details');intervals.append(make('summary','','Refresh intervals'));
@@ -115,7 +115,7 @@
   // The existing worker state fields remain live. They appear once, in Connections.
   const inspector=parking.querySelector('.dev-inspector');if(inspector)service.append(inspector);
   connections.append(service);
-  parking.querySelectorAll('.dev-integrations').forEach(node=>connections.append(node));
+  parking.querySelectorAll('.dev-integrations').forEach(node=>{node.className='next-panel wide';node.querySelector('h2')?.classList.add('next-panel-title');connections.append(node);});
 
   // A separate sign-in screen has one heading and no dashboard navigation.
   const login=byId('login-layout');[...login.children].forEach(node=>parking.append(node));
@@ -141,9 +141,9 @@
   const syncAuth = () => {
     const connected=dashboard.classList.contains('visible');shell.classList.toggle('dev-auth-mode',!connected);
     if(previousConnectionState!==connected) { window.scrollTo({top:0,left:0});previousConnectionState=connected; }
-    byId('dev-menu').hidden=!connected;
+    byId('dev-theme').hidden=connected;
     byId('dev-page-name').textContent=connected?shell.querySelector('.dev-page:not([hidden]) h1')?.textContent || 'Overview':'Sign in';
-    shell.querySelector('.dev-service').textContent=pi?(connected?'Pi service':'Pi DEV'):(connected?'Browser must stay awake':'Web DEV');
+    shell.querySelector('.dev-service').textContent=pi?(connected?'Pi service':'Pi dashboard'):(connected?'Browser must stay awake':'Web edition');
     session.textContent=pi?(window.linuxRemoteAccess?'Browser login lasts up to 12 hours. Use the same remote key after expiry.':'Your Pi stores the account setup and runs the automation.'):'Keep this browser open and awake while automation runs.';
   };
   new MutationObserver(syncAuth).observe(dashboard,{attributes:true,attributeFilter:['class']});

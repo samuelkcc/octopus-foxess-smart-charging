@@ -9,7 +9,7 @@ This branch does not publish GitHub Pages or create a release tag.
 | Build file | Use |
 |---|---|
 | `dist/pi-dev.html` | Pi dashboard with real service data. |
-| `dist/Smart_Charging_UI_DEV.html` | Standalone web interface with its own account setup. |
+| `dist/Smart_Charging.html` | Standalone web interface with its own account setup. |
 
 Both builds use the existing scheduler engine and element IDs.
 The visible views use new markup.
@@ -17,6 +17,13 @@ Sign-in hides dashboard navigation until connection.
 Unused legacy elements remain hidden for shared-engine compatibility.
 The Pi build always runs as a dashboard client.
 The web build retains browser automation.
+
+All pages use the same frame and content width.
+Settings is part of the main navigation.
+The phone layout uses navigation at the bottom.
+Settings contains appearance, visible panels, telemetry, access, and help.
+The app title, icon, and address have no DEV label.
+The Pi remains a development installation.
 
 About & License opens in a side panel.
 The panel includes the complete GPL text and component notices.
@@ -50,12 +57,13 @@ It does not create another worker.
 
 The taskbar charger menu provides **Open Desktop Client**.
 The installer does not create desktop shortcuts.
-The DEV route is `/dev/index.html?client=1`.
+The Pi route is `/app/index.html?client=1`.
+The old `/dev/index.html` address redirects to that route.
 The Pi exposes one client interface.
 Previous root dashboard links also open the new design.
-The remote-access window includes the DEV path in its public URL.
-The same DEV address provides the responsive phone interface.
-The bare tunnel address opens the new DEV interface.
+The remote-access window includes the application path in its public URL.
+The same application address provides the responsive phone interface.
+The bare tunnel address opens the new interface.
 The worker URL continues to open its existing engine.
 
 A service restart creates a new Quick Tunnel address.

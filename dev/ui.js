@@ -15,36 +15,44 @@
   const overview = dashboard.querySelector('.energy-overview-card');
   const shell = document.createElement('div');
   shell.id = 'dev-shell';
-  shell.innerHTML = `<aside class="dev-rail"><div class="dev-brand"><img src="/octopus-foxess.svg" alt="" width="38" height="38"><div><strong>Smart Charging</strong><small>for Octopus Energy &amp; FoxESS</small></div></div><span class="dev-tag">PI DEV · REAL DATA</span><nav aria-label="Main navigation"><button data-page="overview">Overview</button><button data-page="schedules">Schedules</button><button data-page="rules">Automations</button><button data-page="history">History</button><button data-page="connections">Connections</button></nav><div class="dev-rail-bottom"><button id="dev-about">About &amp; licenses</button>${piEdition ? '' : '<a href="https://samuelkcc.github.io/octopus-foxess-smart-charging/">Open public web app ↗</a>'}<small>Independent software by SCKC</small></div></aside><div class="dev-workspace"><header class="dev-appbar"><div>Smart Charging <span>/</span> <strong id="dev-page-name">Overview</strong></div><div class="dev-app-actions"><span class="dev-service">Existing Pi worker</span><button id="dev-theme" aria-label="Toggle light and dark appearance">◐</button><button id="dev-menu">Menu</button></div></header><div class="dev-announcement">DEV interface · connected to your real Pi · existing automation worker remains in control.</div><div id="dev-content"></div></div>`;
+  const navIcons = {
+    overview:'<path d="m3 10 9-7 9 7v10a1 1 0 0 1-1 1h-5v-7H9v7H4a1 1 0 0 1-1-1z"/>',
+    schedules:'<rect x="3" y="5" width="18" height="16" rx="3"/><path d="M7 3v4m10-4v4M3 11h18m-13 4h2m4 0h2"/>',
+    rules:'<path d="m13 2-9 12h7l-1 8 10-12h-7z"/>',
+    history:'<path d="M4 4v16h17M8 15l4-5 4 3 5-8"/>',
+    connections:'<path d="m9 15 6-6m-7 9-1 1a4 4 0 0 1-6-6l5-5a4 4 0 0 1 6 0m0 8a4 4 0 0 0 6 0l5-5a4 4 0 0 0-6-6l-1 1"/>',
+    settings:'<path d="M4 7h16M4 17h16"/><circle cx="9" cy="7" r="3"/><circle cx="15" cy="17" r="3"/>'
+  };
+  const nav = Object.entries({overview:'Overview',schedules:'Schedules',rules:'Automations',history:'History',connections:'Connections',settings:'Settings'}).map(([page,label]) => `<button type="button" data-page="${page}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${navIcons[page]}</svg><span>${label}</span></button>`).join('');
+  shell.innerHTML = `<aside class="dev-rail"><div class="dev-brand"><img src="/octopus-foxess.svg" alt="" width="42" height="42"><div><strong>Smart Charging</strong><small>for Octopus Energy &amp; FoxESS</small></div></div><span class="dev-tag">HOME ENERGY</span><nav aria-label="Main navigation">${nav}</nav><div class="dev-rail-bottom"><button id="dev-about">About &amp; licences</button><small>Independent software by SCKC</small></div></aside><div class="dev-workspace"><header class="dev-appbar"><div><span class="dev-breadcrumb">Smart Charging</span><span aria-hidden="true">/</span><strong id="dev-page-name">Overview</strong></div><div class="dev-app-actions"><span class="dev-service">Pi service</span><button id="dev-theme" aria-label="Toggle light and dark appearance">◐</button></div></header><div class="dev-announcement">Automation runs on your Pi. You can close this dashboard.</div><div id="dev-content"></div></div>`;
   wrapper.before(shell);
   shell.querySelector('#dev-content').append(wrapper);
   if (!piEdition) {
-    shell.querySelector('.dev-tag').textContent = 'WEB DEV · BROWSER EDITION';
+    shell.querySelector('.dev-tag').textContent = 'HOME ENERGY';
     shell.querySelector('.dev-service').textContent = 'Browser must stay awake';
-    shell.querySelector('.dev-announcement').textContent = 'Web DEV · automation runs in this browser · keep it open and awake · Google relay required for FoxESS.';
+    shell.querySelector('.dev-announcement').textContent = 'Automation runs in this browser. Keep it open and awake.';
     shell.querySelector('[data-page="history"]').hidden = true;
-    const fallback = shell.querySelector('.dev-rail-bottom a');
-    fallback.href = 'https://samuelkcc.github.io/octopus-foxess-smart-charging/';
-    fallback.target = '_blank'; fallback.rel = 'noopener noreferrer';
   }
   const sections = {};
-  const titles = { overview:'Overview', schedules:'Schedules', rules:'Automations', history:'History', connections:'Connections' };
+  const titles = { overview:'Overview', schedules:'Schedules', rules:'Automations', history:'History', connections:'Connections', settings:'Settings' };
   const descriptions = {
     overview:'Your current power flow, dispatch windows, and FoxESS confirmation.',
     schedules:'The current inverter schedule and manual controls. Actions here affect real hardware.',
     rules:'Review charging and discharging preferences before applying them to the Pi worker.',
     history:'Browse compact 15-minute averages retained on this Pi for up to 24 months.',
-    connections:'Live connection status. Manage service credentials in the Pi taskbar’s Server Configuration.'
+    connections:'Account, device and service connection status.',
+    settings:'Appearance, visible panels, telemetry and access on this device.'
   };
   for (const name of Object.keys(titles)) {
     const section = document.createElement('section');
     section.className = 'dev-page';
     section.dataset.page = name;
-    section.innerHTML = `<header class="dev-page-heading"><span>HOME ENERGY · ${piEdition ? 'PI' : 'WEB'} DEV</span><h1>${titles[name]}</h1><p>${descriptions[name]}</p></header><div class="dev-page-grid"></div>`;
+    section.innerHTML = `<header class="dev-page-heading"><h1>${titles[name]}</h1><p>${descriptions[name]}</p></header><div class="dev-page-grid"></div>`;
     dashboard.append(section);
     sections[name] = section;
   }
   if (!piEdition) {
+    sections.settings.querySelector('header p').textContent = 'Appearance, visible panels, configuration backups and browser data.';
     sections.connections.querySelector('header p').textContent = 'Account setup, Google relay, saved configuration and browser requirements.';
     sections.overview.querySelector('header p').textContent = 'Current power flow, Octopus dispatches and FoxESS schedules in this browser.';
     sections.rules.querySelector('header p').textContent = 'Review charging and discharging preferences before sending changes through your Google relay.';
@@ -63,25 +71,26 @@
   move(inspector, 'overview');
   if (!piEdition) {
     inspector.querySelector('h2').textContent = 'Browser automation & safety';
+    inspector.querySelector('dl').hidden = true;
     inspector.querySelector('p').textContent = 'The browser must remain open and awake to detect dispatches and maintain automation. Use the Pi edition for unattended operation.';
   }
   const integrations = document.createElement('section');
   integrations.className = 'card dev-integrations';
-  integrations.innerHTML = `<h2>Pi connection settings</h2><p>The Pi manages Octopus and FoxESS credentials. Use its charger icon → <strong>Server Configuration…</strong> to edit them.</p><h3>Remote access</h3><p>Use the charger icon → <strong>Remote Access…</strong> for the current public URL and key.</p><ul><li>The URL stays the same while the tunnel runs. Reboots, app updates, or tunnel restarts generate a new address.</li><li>Remote browser login lasts up to 12 hours. Sign in again with the same key.</li><li>The remote key remains valid until you replace it.</li></ul><h3>Copying through Pi Connect</h3><p>First press the app’s <strong>Copy Key</strong> button; then choose Pi Connect’s <strong>Copy from remote</strong>. Copying the hidden field can give you dots.</p><h3>iPhone Home Screen</h3><p>In Safari, use Share → Add to Home Screen. The shortcut saves this URL; update it after a Quick Tunnel URL changes.</p><button id="dev-connection-menu">Telemetry &amp; display settings</button>`;
+  integrations.innerHTML = '<h2>Pi administration</h2><p>Use the charger icon in the Pi taskbar to manage Octopus and FoxESS accounts, remote access and application updates.</p><p>This browser uses the settings stored on your Pi.</p><button id="dev-connection-menu">Open Settings</button>';
   move(integrations, 'connections');
   if (piEdition) {
     const updateInfo = document.createElement('section');
     updateInfo.className = 'card dev-integrations';
-    updateInfo.innerHTML = '<h2>Updates &amp; recovery</h2><p>The existing graphical updater remains in the Pi taskbar → <strong>Server Configuration… → Update Raspberry Pi Edition</strong>. It installs the latest public GitHub release.</p><p><strong>DEV channel:</strong> the public updater installs the latest published release. Until this redesign is published, that action can replace DEV with the previous public interface. DEV updates use a separate process.</p><p>Updates preserve encrypted configuration. History stays in the Pi data directory.</p>';
-    move(updateInfo, 'connections');
+    updateInfo.innerHTML = '<h2>Updates &amp; recovery</h2><p>The existing graphical updater remains in the Pi taskbar → <strong>Server Configuration… → Update Raspberry Pi Edition</strong>. It installs the latest public GitHub release.</p><p>The current public update installs an earlier interface. This Pi receives updates separately while you review the new design.</p><p>Updates preserve encrypted configuration. History stays in the Pi data directory.</p>';
+    move(updateInfo, 'settings');
   } else {
-    integrations.innerHTML = '<h2>Web connection setup</h2><p>This edition needs your Octopus account number/API key, FoxESS inverter serial/API token, and your own Google Apps Script relay URL. Credentials are encrypted in this browser; they are not stored on GitHub Pages.</p><div class="dev-connection-actions"><button id="dev-edit-web-setup">Edit account setup</button><button id="dev-web-guide">Open web setup guide</button></div><h3>Saved configuration</h3><p>Use Menu → Save Config to download an encrypted backup. Load Config on the setup screen restores it. Wipe Local Data and Remove Access Code remain separate edition-specific actions.</p><h3>Updates</h3><p>The hosted web app updates when the approved GitHub Pages version is published. Downloaded HTML files must be replaced with a newer download. Export an encrypted backup before moving to another browser or device.</p><h3>History</h3><p>The 24-month history store belongs to the Pi service. Standalone web mode does not collect history when the browser is closed.</p><button id="dev-connection-menu">Display &amp; configuration menu</button>';
+    integrations.innerHTML = '<h2>Account setup</h2><p>The web edition uses account details stored in this browser and your Google Apps Script relay for FoxESS.</p><div class="next-settings-actions"><button id="dev-edit-web-setup">Edit account setup</button><button id="dev-web-guide">Open web setup guide</button></div><h3>Browser operation</h3><p>Keep this browser open and awake. Use Settings to manage configuration backups, display preferences and saved browser data.</p><button id="dev-connection-menu">Open Settings</button>';
     document.getElementById('dev-edit-web-setup').addEventListener('click', () => { const url = new URL(location.href); url.searchParams.set('setup', '1'); location.assign(url); });
     document.getElementById('dev-web-guide').addEventListener('click', () => toggleDrawer('setup-guide-panel'));
   }
   const historyPanel = document.createElement('section');
   historyPanel.className = 'card dev-history';
-  historyPanel.innerHTML = `<div class="dev-history-controls"><label>Month<input type="month" id="dev-history-month"></label><label>Measure<select id="dev-history-metric"><option value="loadsPower">Home demand</option><option value="pvPower">Solar generation</option><option value="gridConsumptionPower">Grid import</option><option value="feedinPower">Grid export</option><option value="batChargePower">Battery charge</option><option value="batDischargePower">Battery discharge</option><option value="SoC">Battery charge level</option></select></label><button id="dev-history-refresh">Refresh history</button><button id="dev-history-export">Download month CSV</button></div><p id="dev-history-status" role="status">History is collected by the Pi from existing telemetry. Open this page to load it.</p><div class="dev-history-chart"><canvas id="dev-history-chart" role="img" aria-label="Historical telemetry averages for the selected month and measure"></canvas></div><p class="dev-muted">Observed averages, not billing-grade energy totals. Missing readings stay as gaps. Data begins when this DEV version is installed.</p>`;
+  historyPanel.innerHTML = `<div class="dev-history-controls"><label>Month<input type="month" id="dev-history-month"></label><label>Measure<select id="dev-history-metric"><option value="loadsPower">Home demand</option><option value="pvPower">Solar generation</option><option value="gridConsumptionPower">Grid import</option><option value="feedinPower">Grid export</option><option value="batChargePower">Battery charge</option><option value="batDischargePower">Battery discharge</option><option value="SoC">Battery charge level</option></select></label><button id="dev-history-refresh">Refresh history</button><button id="dev-history-export">Download month CSV</button></div><p id="dev-history-status" role="status">History is collected by the Pi from existing telemetry. Open this page to load it.</p><div class="dev-history-chart"><canvas id="dev-history-chart" role="img" aria-label="Historical telemetry averages for the selected month and measure"></canvas></div><p class="dev-muted">Observed averages, not billing-grade energy totals. Missing readings stay as gaps. Recording starts when history storage is installed.</p>`;
   move(historyPanel, 'history');
   // Apply uses the unchanged scheduler engine, after an explicit review step.
   const reviewDialog = document.createElement('dialog');
@@ -133,6 +142,8 @@
     if (!piEdition && name === 'history') name = 'connections';
     if (!sections[name]) return;
     currentPage = name;
+    closeAllDrawers();
+    window.scrollTo({top:0,left:0});
     Object.entries(sections).forEach(([key, section]) => { section.hidden = key !== name; });
     shell.querySelectorAll('[data-page]').forEach(button => {
       if (button.tagName !== 'BUTTON') return;
@@ -148,8 +159,9 @@
   shell.querySelectorAll('nav button[data-page]').forEach(button => button.addEventListener('click', () => navigate(button.dataset.page)));
   document.getElementById('dev-inspect-schedules').addEventListener('click', () => navigate('schedules'));
   document.getElementById('dev-theme').addEventListener('click', toggleDarkMode);
-  document.getElementById('dev-menu').addEventListener('click', toggleAppMenu);
-  document.getElementById('dev-connection-menu').addEventListener('click', toggleAppMenu);
+  // Legacy controls use the same Settings page instead of a second menu.
+  toggleAppMenu = () => navigate('settings');
+  document.getElementById('dev-connection-menu').addEventListener('click', () => navigate('settings'));
   document.getElementById('dev-about').addEventListener('click', () => openLicenseModal(false));
   function updateWorkerView() {
     const snapshot = window.linuxDispatchSnapshot;
@@ -185,6 +197,8 @@
     const monthEnd = Date.UTC(monthDate.getUTCFullYear(), monthDate.getUTCMonth() + 1, 1);
     const byTime = new Map(points.map(point => [Date.parse(point.at), point.values[metric]]));
     const times = [...byTime.keys()];
+    const chartStart = times.length ? Math.max(monthStart, times[0] - 15 * 60_000) : monthStart;
+    const chartEnd = times.length ? Math.min(monthEnd - 1, times[times.length - 1] + 15 * 60_000) : monthEnd - 1;
     const values = [];
     if (times.length) {
       for (let time = times[0]; time <= times[times.length - 1]; time += 15 * 60_000) {
@@ -197,7 +211,7 @@
       type:'line', data:{ datasets:[{ label:metricName, data:values, borderColor:style.getPropertyValue('--accent').trim(), borderWidth:2, pointRadius:values.length < 3 ? 3 : 0, spanGaps:false }] },
       options:{ responsive:true, maintainAspectRatio:false, animation:false, parsing:false,
         interaction:{mode:'nearest',intersect:false}, plugins:{legend:{display:false}, tooltip:{callbacks:{title:items=>items.length?new Date(items[0].parsed.x).toLocaleString():''}}},
-        scales:{ x:{type:'linear',min:monthStart,max:monthEnd-1,ticks:{maxTicksLimit:7,color:style.getPropertyValue('--text-muted'),callback:value=>new Date(value).toLocaleDateString(undefined,{day:'numeric',month:'short'})}},
+        scales:{ x:{type:'linear',min:chartStart,max:chartEnd,ticks:{maxTicksLimit:7,color:style.getPropertyValue('--text-muted'),callback:value=>chartEnd-chartStart<=3*86400000?new Date(value).toLocaleTimeString(undefined,{hour:'2-digit',minute:'2-digit'}):new Date(value).toLocaleDateString(undefined,{day:'numeric',month:'short'})}},
           y:{beginAtZero:true,max:metric==='SoC'?100:undefined,title:{display:true,text:metric==='SoC'?'Charge level (%)':'Average power (kW)',color:style.getPropertyValue('--text-muted')},ticks:{color:style.getPropertyValue('--text-muted')}} }
       }
     });

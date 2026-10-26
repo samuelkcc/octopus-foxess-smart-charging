@@ -1,8 +1,8 @@
 [Desktop Entry]
 Type=Application
 Version=1.0
-Name=Octopus FoxESS Dashboard
-Comment=Open the LAN dashboard client using its access code
+Name=Smart Charging
+Comment=Open the home energy dashboard
 Exec=/usr/local/bin/octopus-foxess-dashboard
 Icon=/usr/share/icons/hicolor/scalable/apps/octopus-foxess.svg
 Terminal=false

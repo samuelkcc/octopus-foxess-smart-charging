@@ -57,7 +57,7 @@ Browser clients do not receive the service API keys or FoxCloud passwords.
 
 An example address is `http://192.168.1.42:8787`.
 A valid LAN code remains saved on that browser.
-**Menu → Remove Access Code** removes that saved code.
+**Settings → Access on this device** removes that saved code.
 
 The Pi administrator can disable LAN code protection for a trusted network.
 Remote tunnel access always requires its separate key.
@@ -76,7 +76,7 @@ The Pi supports three telemetry modes.
 2. Enable **FoxESS Live WS telemetry**.
 3. Enter the FoxCloud web-login details.
 4. Save the settings.
-5. Open **Menu → FoxESS telemetry** in the dashboard.
+5. Open **Settings → FoxESS telemetry** in the dashboard.
 6. Select the required mode.
 
 **Save & Test Live WS** checks a fresh live frame.

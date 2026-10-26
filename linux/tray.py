@@ -47,8 +47,8 @@ ICONS = {
 }
 
 
-def dev_interface_available():
-    return os.path.isfile("/opt/octopus-foxess/current/web/dev/index.html")
+def new_interface_available():
+    return os.path.isfile("/opt/octopus-foxess/current/web/app/index.html")
 
 
 def api_json(path, method="GET", payload=None, timeout=5):
@@ -124,7 +124,7 @@ def run_in_background(work, on_success, on_error):
 
 class ServerConfigurationWindow(Gtk.Window):
     def __init__(self, controller):
-        super().__init__(title="Octopus FoxESS Server Configuration")
+        super().__init__(title="Smart Charging — Pi Settings")
         self.controller = controller
         self.config_loaded = False
         self.config_refresh_in_progress = False
@@ -566,7 +566,7 @@ class ServerConfigurationWindow(Gtk.Window):
 
 class RemoteAccessWindow(Gtk.Window):
     def __init__(self):
-        super().__init__(title="Remote Access — Octopus FoxESS")
+        super().__init__(title="Smart Charging — Remote Access")
         self.set_default_size(740, 500)
         self.connect("delete-event", lambda window, _event: window.hide() or True)
         root = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=12, margin=20)
@@ -651,10 +651,10 @@ class RemoteAccessWindow(Gtk.Window):
         self.enabled = data.get("enabled", False)
         self.key.set_text(data.get("key", ""))
         public_url = data.get("url") or ""
-        is_dev = dev_interface_available()
-        if public_url and is_dev:
-            public_url = public_url.rstrip("/") + "/dev/index.html?client=1&view=overview"
-        self.url_label.set_text("Public DEV dashboard URL (temporary)" if is_dev else "Public dashboard URL (temporary)")
+        new_interface = new_interface_available()
+        if public_url and new_interface:
+            public_url = public_url.rstrip("/") + "/app/index.html?client=1&view=overview"
+        self.url_label.set_text("Public dashboard URL (temporary)")
         self.url.set_text(public_url)
         self.status.set_text(data.get("error") or f"Tunnel status: {data.get('state', 'disabled')}")
         return False
@@ -674,7 +674,7 @@ class TrayController:
         )
         self.indicator.set_icon_theme_path(ICON_ROOT)
         self.indicator.set_status(AyatanaAppIndicator3.IndicatorStatus.ACTIVE)
-        self.indicator.set_title("Octopus FoxESS Server")
+        self.indicator.set_title("Smart Charging")
 
         self.menu = Gtk.Menu()
         self.summary_item = self.add_status_item("Server: checking…")
@@ -736,7 +736,8 @@ class TrayController:
 
     def show_about(self, _item):
         dialog = Gtk.AboutDialog(transient_for=self.window, modal=True)
-        dialog.set_program_name("Intelligent Octopus Go & FoxESS Smart Charging Detector")
+        dialog.set_program_name("Smart Charging")
+        dialog.set_logo_icon_name("octopus-foxess")
         try:
             dialog.set_version(api_json("/api/health").get("version", "Development"))
         except Exception:

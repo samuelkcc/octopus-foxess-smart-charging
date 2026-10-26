@@ -12,15 +12,15 @@ function route(path) {
   return destination && new URL(destination);
 }
 
-for (const path of ['/', '/index.html', '/?client=1', '/?view=history#month', '/?original=1&client=1']) {
+for (const path of ['/', '/index.html', '/?client=1', '/?view=history#month', '/?original=1&client=1', '/dev/index.html?client=1']) {
   const target = route(path);
-  assert.equal(target.pathname, '/dev/index.html');
+  assert.equal(target.pathname, '/app/index.html');
   assert.equal(target.searchParams.get('client'), '1');
   assert.equal(target.searchParams.has('original'), false);
 }
 assert.equal(route('/?view=history#month').hash, '#month');
 assert.equal(route('/?view=history').searchParams.get('view'), 'history');
-for (const path of ['/?worker=1', '/?worker=1&client=1', '/dev/index.html', '/api/runtime']) {
+for (const path of ['/?worker=1', '/?worker=1&client=1', '/app/index.html', '/api/runtime']) {
   assert.equal(route(path), null, `Do not redirect ${path}`);
 }
 assert.equal(route('/?worker=0').searchParams.has('worker'), false);

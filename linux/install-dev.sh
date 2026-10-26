@@ -62,6 +62,6 @@ EOF
 chmod 0700 "$APP_ROOT/rollback-dev.sh"
 echo "DEV installed: $DEV_COMMIT"
 echo 'Use the taskbar charger menu to open the desktop client. Restart the status icon after this installation.'
-echo 'DEV dashboard: http://127.0.0.1:8787/dev/index.html?client=1'
+echo 'Dashboard: http://127.0.0.1:8787/app/index.html?client=1'
 echo 'Rollback: sudo /opt/octopus-foxess/rollback-dev.sh'
 echo 'The existing remote key is preserved. The restarted tunnel receives a new URL.'

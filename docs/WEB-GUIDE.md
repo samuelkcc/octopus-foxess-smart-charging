@@ -78,8 +78,8 @@ Automation stops when the browser closes or the device sleeps.
 
 ## Save a backup
 
-1. Open **Menu**.
-2. Select **Save Config**.
+1. Open **Settings**.
+2. Select **Save configuration**.
 3. Enter a backup passphrase.
 4. Save the encrypted file.
 5. Keep the passphrase in a private location.
@@ -97,8 +97,8 @@ The passphrase protects that exported copy.
 
 ## Remove saved browser data
 
-1. Open **Menu**.
-2. Select **Wipe Local Data**.
+1. Open **Settings**.
+2. Select **Wipe saved data**.
 3. Confirm **Yes, Wipe Data**.
 
 This action clears this browser's local storage, session storage, and app IndexedDB data.

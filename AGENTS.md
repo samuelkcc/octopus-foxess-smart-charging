@@ -34,6 +34,7 @@ This repository builds the standalone HTML/GitHub Pages edition and the Raspberr
 - Keep history storage separate from service authentication and telemetry transport.
 - Keep About and licence code in `dev/about.js`.
 - Keep login and setup code in `dev/setup.js`.
+- Keep preference controls in `dev/settings.js`.
 - Keep the visible-view adapter in `dev/views.js`.
 - Check that required engine IDs exist once after a view change.
 - Preserve original element IDs when a new layout uses `src/app.js`.

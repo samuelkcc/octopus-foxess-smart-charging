@@ -1,13 +1,13 @@
 {
-  "name": "Smart Charging · Pi DEV",
-  "short_name": "Charging DEV",
-  "start_url": "/dev/index.html?client=1",
-  "scope": "/dev/",
+  "name": "Smart Charging",
+  "short_name": "Smart Charging",
+  "start_url": "/app/index.html?client=1",
+  "scope": "/app/",
   "display": "standalone",
   "background_color": "#10002b",
   "theme_color": "#f300c5",
   "icons": [
-    { "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png" },
-    { "src": "/icons/icon-512.png", "sizes": "512x512", "type": "image/png" }
+    { "src": "/app/icons/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "/app/icons/icon-512.png", "sizes": "512x512", "type": "image/png" }
   ]
 }

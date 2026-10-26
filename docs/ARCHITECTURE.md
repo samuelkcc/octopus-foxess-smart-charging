@@ -22,6 +22,7 @@ A development commit does not publish GitHub Pages or create a release.
 | `dev/ui.js` | Development navigation, control layout, review, and History view. |
 | `dev/about.js` | About panel and complete licence notices. |
 | `dev/setup.js` | Edition-specific login and setup guide. |
+| `dev/settings.js` | Settings cards and existing preference controls. |
 | `dev/views.js` | New visible views and the shared-engine element adapter. |
 | `dev/ui.css` | Appearance of the development interface. |
 | `scripts/build-dev.mjs` | Separate Pi and web development builds. |
@@ -86,7 +87,7 @@ The history directory is inside that configuration directory.
 
 The public updater currently installs v2026.10.26.5.
 On DEV, that action returns the Pi to the public edition.
-The DEV interface states this difference in Connections.
+The DEV interface states this difference in Settings.
 
 The DEV installer accepts a complete Git commit ID.
 It creates a private configuration backup before the service change.

@@ -15,7 +15,7 @@ The existing public interface remains available.
 | Price and weekly rules | Retains original inputs and handlers. | Shared tests pass. |
 | Auto-Resume | Retains the existing Smart Dispatch safeguard. | Shared safety tests pass. |
 | Manual schedules and deletion | Retains original controls and handlers. | Controls remain present. No live command test was performed. |
-| Dashboard-block visibility | Retains saved preferences. | The DEV visibility override was removed. |
+| Dashboard-block visibility | Retains saved preferences in Settings. | The DEV visibility override was removed. |
 | Theme, fullscreen, and screen saver | Retains original handlers. | Source review completed. |
 | About and licences | Adds a side panel with tabs. | Full GPL and component text appear in the browser. |
 
@@ -25,7 +25,7 @@ The existing public interface remains available.
 |---|---|---|
 | LAN and remote login | Uses the original authentication flow. | Authentication tests pass. |
 | Credential editing | Remains in native Server Configuration. | Service credentials remain outside browser clients. |
-| Live WS policies | Retains the existing menu and service. | Live WS and fallback tests pass. |
+| Live WS policies | Moves the existing policy control into Settings. | Live WS and fallback tests pass. |
 | Remote-key management | Remains in the native settings app. | Key preservation was checked on the Pi. |
 | Background worker | Retains one worker. | Live services were active after installation. |
 | Graphical public updater | Retains the installed native action. | Source and installed-path checks apply. It was not run against DEV. |
@@ -37,7 +37,7 @@ The existing public interface remains available.
 
 The public updater installs the latest published GitHub release.
 Before publication of this interface, that action can replace DEV with the previous public interface.
-The Connections page identifies this difference.
+The Settings page identifies this difference.
 
 ## Web functions
 

@@ -1,16 +1,15 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Octopus and FoxESS smart charging">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Smart Charging home EV charger">
   <defs>
-    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0" stop-color="#e11d48"/>
-      <stop offset="1" stop-color="#f97316"/>
-    </linearGradient>
+    <linearGradient id="surface" x2="1" y2="1"><stop stop-color="#29104c"/><stop offset="1" stop-color="#10002b"/></linearGradient>
+    <linearGradient id="energy" x2="0" y2="1"><stop stop-color="#ff44d3"/><stop offset="1" stop-color="#f000b8"/></linearGradient>
   </defs>
-  <rect width="512" height="512" fill="url(#bg)"/>
-  <path d="M180 174 199 73l61 72zM332 174 313 73l-61 72z" fill="#fff"/>
-  <path d="m198 134 9-42 27 38zM314 134l-9-42-27 38z" fill="#fb7185"/>
-  <path d="M167 238c0-62 40-110 89-110s89 48 89 110v42c0 18 15 32 33 32 15 0 27-12 27-27v-18c0-13 11-24 24-24s24 11 24 24v24c0 49-36 86-81 86-12 0-24-3-34-8-12 33-43 55-82 55s-70-22-82-55c-10 5-22 8-34 8-45 0-81-37-81-86v-24c0-13 11-24 24-24s24 11 24 24v18c0 15 12 27 27 27 18 0 33-14 33-32z" fill="#fff"/>
-  <circle cx="218" cy="225" r="13" fill="#9f1239"/>
-  <circle cx="294" cy="225" r="13" fill="#9f1239"/>
-  <path d="M217 283c22 20 56 20 78 0" fill="none" stroke="#9f1239" stroke-linecap="round" stroke-width="14"/>
-  <path d="M278 72 211 199h56l-28 94 79-132h-58z" fill="#fde047" stroke="#fff" stroke-linejoin="round" stroke-width="8"/>
+  <rect width="512" height="512" rx="112" fill="url(#surface)"/>
+  <path d="M295 318c0 63 104 88 104 11v-53" fill="none" stroke="#fff" stroke-width="24" stroke-linecap="round"/>
+  <rect x="117" y="84" width="204" height="298" rx="38" fill="#fff"/>
+  <rect x="145" y="112" width="148" height="166" rx="18" fill="#200b3b"/>
+  <path d="m229 133-62 83h48l-12 49 70-91h-48z" fill="url(#energy)" stroke-linejoin="round"/>
+  <rect x="179" y="312" width="80" height="12" rx="6" fill="#ef02b7"/>
+  <path d="M374 190v27m39-27v27" stroke="#fff" stroke-width="14" stroke-linecap="round"/>
+  <rect x="359" y="211" width="69" height="75" rx="19" fill="#fff"/>
+  <path d="M151 418h138" stroke="#ff36cb" stroke-width="13" stroke-linecap="round"/>
 </svg>

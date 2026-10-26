@@ -11,8 +11,8 @@ CLIENT_PROFILE="${XDG_CONFIG_HOME:-$HOME/.config}/octopus-foxess-dashboard"
 mkdir -p "$CLIENT_PROFILE"
 chmod 0700 "$CLIENT_PROFILE"
 DASHBOARD_PATH='/?client=1'
-if [ -f /opt/octopus-foxess/current/web/dev/index.html ]; then
-  DASHBOARD_PATH='/dev/index.html?client=1&view=overview'
+if [ -f /opt/octopus-foxess/current/web/app/index.html ]; then
+  DASHBOARD_PATH='/app/index.html?client=1&view=overview'
 fi
 
 exec /usr/bin/chromium \

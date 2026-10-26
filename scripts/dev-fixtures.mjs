@@ -21,9 +21,10 @@ http.createServer(async (request,response) => {
     if (url.pathname === '/test/viewport') {
       const requested=Number(url.searchParams.get('width'));
       const width=[320,390,768,1024].includes(requested)?requested:390;
-      const route=web?'/web/index.html?setup=1':'/dev/index.html?client=1&locked=1';
+      const view=['overview','schedules','rules','history','connections','settings'].includes(url.searchParams.get('view'))?url.searchParams.get('view'):'overview';
+      const route=web?'/web/index.html?setup=1':`/dev/index.html?client=1&view=${view}${url.searchParams.get('connected')==='1'?'':'&locked=1'}`;
       response.writeHead(200,{'Content-Type':'text/html','Cache-Control':'no-store'});
-      return response.end(`<main><p>Local responsive fixture: ${width}px</p><iframe title="Responsive app test" src="${route}" style="display:block;width:${width}px;height:1100px;border:0"></iframe></main>`);
+      return response.end(`<main><p>Local responsive fixture: ${width}px</p><iframe title="Responsive app test" src="${route}" style="display:block;width:${width}px;height:650px;border:0"></iframe></main>`);
     }
     if (url.pathname === '/test/state') return json({mock:true,schedulerWrites:writes});
     if (url.pathname === '/api/runtime') {
@@ -57,7 +58,7 @@ http.createServer(async (request,response) => {
         : {value:'SelfUse'};
       return json({errno:0,result});
     }
-    if (url.pathname === '/dev/index.html' || url.pathname === '/web/index.html') {
+    if (url.pathname === '/dev/index.html' || url.pathname === '/app/index.html' || url.pathname === '/web/index.html') {
       let html = await readFile(path.join(root,'dist',web?'Smart_Charging_UI_DEV.html':'pi-dev.html'),'utf8');
       if (web) html = html.replaceAll('https://api.octopus.energy',`${origin}/mock-octopus`);
       html = html.replace('<head>','<head><script>localStorage.setItem("licenseAccepted","true");</script>')
