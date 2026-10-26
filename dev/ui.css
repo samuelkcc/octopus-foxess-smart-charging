@@ -258,3 +258,6 @@ body>#proxy-modal>div {max-width:850px!important;}
 [data-theme=dark] .next-visible-state[data-on=true] {color:#4ade80;}
 #dev-shell .next-toggle input[id^="show-section-"] {background:#64748b!important;border-color:#64748b!important;}
 #dev-shell .next-toggle input[id^="show-section-"]:checked {background:#15803d!important;border-color:#15803d!important;}
+/* Keep the paused state visible while browsing long pages. */
+.next-pause-banner {position:sticky;top:0;z-index:20;}
+#dev-shell .next-pause-banner strong,#dev-shell .next-pause-banner p {color:white!important;}
