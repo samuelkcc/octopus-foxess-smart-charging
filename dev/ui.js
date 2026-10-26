@@ -163,10 +163,10 @@
       }
     });
     const bytes = historyData.storageBytes;
-    historyStatus.textContent = `${points.length} recorded intervals in ${historyData.month} · ${bytes < 1024 * 1024 ? (bytes / 1024).toFixed(1)+' KB' : (bytes / 1024 / 1024).toFixed(2)+' MB'} used on Pi · 24-month retention` + (points.length ? '' : ' · No readings recorded for this month yet.');
+    historyStatus.textContent = `${points.length} recorded ${points.length === 1 ? 'interval' : 'intervals'} in ${historyData.month} · ${bytes < 1024 * 1024 ? (bytes / 1024).toFixed(1)+' KB' : (bytes / 1024 / 1024).toFixed(2)+' MB'} used on Pi · 24-month retention` + (points.length ? '' : ' · No readings recorded for this month yet.');
   }
   async function loadHistory() {
-    if (historyLoading || !window.linuxRuntime) return;
+    if (historyLoading || !window.linuxRuntime || !dashboard.classList.contains('visible')) return;
     historyLoading = true;
     historyStatus.textContent = 'Loading recorded telemetry…';
     try {
@@ -188,5 +188,6 @@
   });
   new MutationObserver(() => { if (currentPage === 'history') drawHistory(); }).observe(document.documentElement, {attributes:true,attributeFilter:['data-theme']});
   updateWorkerView(); setInterval(updateWorkerView, 5000);
-  navigate(new URLSearchParams(location.search).get('view') || 'overview');
+  const initialView = new URLSearchParams(location.search).get('view');
+  navigate(Object.hasOwn(titles, initialView) ? initialView : 'overview');
 })();
