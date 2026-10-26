@@ -24,7 +24,7 @@ node --check linux/server.mjs
 node --check linux/history.mjs
 node --check dev/ui.js
 [ ! -e "$DEV_ROOT" ] || { echo 'This DEV commit is already installed.' >&2; exit 1; }
-mkdir -p "$DEV_ROOT"
+install -d -m 0755 "$APP_ROOT/dev" "$DEV_ROOT"
 cp -R dist/linux-package/octopus-foxess/. "$DEV_ROOT/"
 chmod -R u=rwX,go=rX "$DEV_ROOT"
 BACKUP_ROOT="/var/backups/octopus-foxess-before-dev-$(date -u +%Y%m%dT%H%M%SZ)"
@@ -36,7 +36,7 @@ done
 printf '%s\n' "$PREVIOUS" > "$BACKUP_ROOT/previous-runtime"
 chmod -R go-rwx "$BACKUP_ROOT"
 ln -sfn "$DEV_ROOT" "$APP_ROOT/current"
-systemctl start octopus-foxess octopus-foxess-worker
+systemctl start octopus-foxess
 DEV_READY=0
 for attempt in $(seq 1 40); do
   if curl -fsS http://127.0.0.1:8787/api/health >/dev/null; then DEV_READY=1; break; fi
@@ -48,6 +48,7 @@ if [ "$DEV_READY" -ne 1 ]; then
   echo 'DEV failed health check; restored previous runtime.' >&2
   exit 1
 fi
+systemctl start octopus-foxess-worker
 cat > "$APP_ROOT/rollback-dev.sh" <<EOF
 #!/bin/sh
 set -eu
