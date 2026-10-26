@@ -200,3 +200,28 @@ Hovered button text was white in light and dark browser checks.
 The [feature review](../docs/FEATURE-PARITY.md) records browser checks and release work.
 The [maintenance guide](../docs/ARCHITECTURE.md) defines module boundaries.
 The [writing guide](../docs/WRITING.md) defines the documentation method.
+
+## Pause and control update verification
+
+Version 2026.10.26.7 was installed on 26 October 2026.
+The runtime commit is `ecc3dabdd97ebcea32df845ffcdc315116a46d59`.
+The final interface commit is `3efcd991e596785c136c2fd1d7162570007d98ca`.
+The interface update retained the restarted tunnel address.
+The live Pi Overview displayed **Pause automation**.
+All three services were active after installation.
+Octopus and FoxESS REST both reported healthy connections.
+The Pi pause state was off.
+History used the new 12-month default.
+The public page reported the installed version and interface commit.
+No remote key or account credential was printed during verification.
+
+Mock checks covered timed pause, indefinite pause, manual resume, and activity display.
+They also covered command blocking, in-flight ordering, expiry, restart recovery, and failed history writes.
+Both editions retained the shared scheduler safety checks.
+Hardware-limit Cancel restored the previous value in the browser check.
+Primary rule buttons used pink fills and white text.
+Visible-panel switches used green for On and grey for Off.
+The phone Settings view was checked at 390 pixels.
+The standalone web login and local pause activity were checked with dummy accounts.
+The full check suite and both interface builds passed.
+Live pause and inverter writes were not used as test actions.
