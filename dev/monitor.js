@@ -22,10 +22,10 @@
     const card=make('section','','overview-update-card');
     const refresh=action('',async()=>{await refreshOverviewNow();render();});refresh.className='overview-service-refresh';
     const ring=make('span','','overview-api-ring');ring.setAttribute('aria-hidden','true');
-    ring.innerHTML='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 7v5h-5M4 17v-5h5"/><path d="M6.1 7a7 7 0 0 1 11.6-1L20 9M4 15l2.3 3A7 7 0 0 0 17.9 17"/></svg>';
+    ring.innerHTML='<svg class="overview-api-clock" viewBox="0 0 24 24" fill="none"><circle class="overview-api-track" cx="12" cy="12" r="10"/><circle class="overview-api-progress" cx="12" cy="12" r="10" pathLength="100"/></svg><svg class="overview-api-symbol" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 7v5h-5M4 17v-5h5"/><path d="M6.1 7a7 7 0 0 1 11.6-1L20 9M4 15l2.3 3A7 7 0 0 0 17.9 17"/></svg>';
     refresh.append(ring,make('span',name==='octopus'?'Octopus':'FoxESS','overview-update-name'));
     const incident=action('!',()=>{selected=name;feedback.textContent='';render();dialog.showModal();});incident.className='overview-error-button';incident.hidden=true;
-    card.append(refresh,incident);grid.append(card);views[name]={title,refresh,ring,incident,card};
+    card.append(refresh,incident);grid.append(card);views[name]={title,refresh,ring,incident,card,progress:ring.querySelector('.overview-api-progress')};
   }
   document.querySelector('#dev-shell .dev-app-actions').append(panel);
   const formatTime=value=>value?new Date(value).toLocaleString():'No successful update recorded yet';
@@ -37,9 +37,16 @@
     const snapshot=window.integrationMonitor.snapshot();const timing=getOverviewRefreshStatus();
     for(const [name,view] of Object.entries(views)) {
       const info=summary(snapshot,name);
-      // Pi countdowns describe the worker, not frequent cached dashboard reads.
-      const running=Boolean(timing.workerTiming?timing.workerBusy[name]:snapshot.busy[name]);
+      // Manual reloads give immediate feedback; automatic activity follows the worker.
+      const running=Boolean(timing.running || (timing.workerTiming?timing.workerBusy[name]:snapshot.busy[name]));
       const stateText=info.active?'Connection problem':running?'Reading API':info.last?'Connected':'Waiting';
+      const nextAt=timing[name==='octopus'?'octopusNextAt':'foxessNextAt'];
+      const interval=name==='octopus'?getEffectiveOctopusRefreshInterval():foxRefreshInterval;
+      const remaining=Number.isFinite(nextAt)?Math.max(0,Math.min(1,(nextAt-Date.now())/(interval*1000))):1;
+      const reset=nextAt!==view.nextAt;
+      view.progress.style.transition=reset?'none':'stroke-dashoffset 1s linear';
+      view.progress.style.strokeDashoffset=String(remaining*100);
+      view.nextAt=nextAt;
       view.refresh.disabled=timing.running;
       view.refresh.setAttribute('aria-busy',String(running));
       view.ring.dataset.state=info.active?'error':running?'updating':info.last?'ok':'waiting';

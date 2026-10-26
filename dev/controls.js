@@ -29,9 +29,8 @@
   const banner = make('section', '', 'next-pause-banner'); banner.hidden = true; banner.setAttribute('role', 'status');
   const bannerCopy = make('div'); banner.append(bannerCopy);
   shell.querySelector('.dev-appbar').after(banner);
-  const overviewHeading = shell.querySelector('[data-page="overview"] .dev-page-heading');
   const pauseButton = button('Pause automation', () => { duration.value = '6'; message.textContent = ''; pauseDialog.showModal(); });
-  pauseButton.className = 'next-button secondary'; overviewHeading.append(pauseButton);
+  pauseButton.className = 'next-button secondary next-header-pause'; shell.querySelector('.dev-app-actions').append(pauseButton);
   const pauseDialog = dialog('Pause automation', 'Pause all app schedule control. Monitoring continues. The current FoxESS schedule stays in place.');
   pauseDialog.append(make('p', 'After pausing, use the FoxESS app to set temporary charging. When automation resumes, saved app rules can replace those settings.'));
   const label = make('label', 'Pause for', 'next-field');

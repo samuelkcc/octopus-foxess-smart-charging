@@ -363,7 +363,9 @@ The runtime remains `214132d72ab06c9ea6696c14b645be4c90da7c6d`.
 
 The application header shows two equal API status buttons without countdown text.
 Green rings identify healthy connections.
-Circular icons rotate during API reads.
+The circular border moves continuously while connected.
+Its progress arc follows the next scheduled API refresh.
+The border moves faster during API reads.
 Selecting either badge reloads API data through the existing protected refresh path.
 Retained incidents use small red indicators in reserved positions.
 The indicator opens the existing review and acknowledgement dialog.
@@ -389,3 +391,32 @@ Selecting a badge requested an immediate refresh.
 The Pi fixture saved a 900-second FoxESS interval and restored it after page reload.
 A 390-pixel phone check confirmed visible circular icons and a fixed red alert indicator.
 The standalone setup screen and interval persistence unit tests passed.
+
+
+UI and shared browser engine commit `1e28da6dfb622c898fa26b20dfaef756a9a57f28` was installed on 26 October 2026.
+The pinned updater completed its build and interface checks on the Pi.
+Only the background worker restarted to load the new interval preference module.
+The server and tunnel stayed running.
+The public URL stayed unchanged.
+All three application services reported active after installation.
+The server runtime remains `214132d72ab06c9ea6696c14b645be4c90da7c6d`.
+
+The existing Safari session displayed two equal green API badges without countdown text.
+The retained Octopus recovery indicator stayed visible.
+Settings displayed the existing 60-second Octopus and 600-second FoxESS values.
+Live interval values were not changed during this check.
+Both real schedule cards remained visible with confirmed Smart Dispatch windows.
+The battery reported 9 percent and zero-kilowatt idle power during this check.
+This confirms schedule readback, not actual EV charging during the future windows.
+The standalone GAS contract checks used mock services, not a live GAS deployment.
+The full check suite and rebuilt Pi and standalone interfaces passed.
+
+Selecting a live API badge completed the refresh and retained both schedule cards.
+Manual reloads start the circular activity indicator immediately.
+
+Pause automation now sits beside the API badges in the shared application header.
+It remains available while browsing other pages.
+The red pause banner and confirmation dialogs are unchanged.
+
+The rotating border indicates scheduled polling, not an API request on each rotation.
+Green still means that the last connection check succeeded.

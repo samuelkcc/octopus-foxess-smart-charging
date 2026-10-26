@@ -1,6 +1,7 @@
 ## v2.0.0 — Major redesign under review
 
-- Replace header countdowns with two equal API status buttons. Animate their circular icons during reads and reload data on selection.
+- Replace header countdowns with two equal API status buttons. Animate their circular borders while connected and reload data on selection.
+- Move Pause automation into the shared application header. Keep the red pause banner and duration dialog.
 - Keep retained problem alerts in fixed-size red indicators. Remove the separate Update now action.
 - Move refresh intervals into Settings. Save browser values locally and Pi values in encrypted configuration for the worker.
 - Keep the Pi Smart Dispatch interval at 60 seconds or less. Retain confirmation before shorter API intervals.
@@ -10,9 +11,9 @@
 - Remove the repeated page footer. Keep developer credit, version, and licence information in About.
 
 - Place refresh controls in the top-right application header. Remove the connected edition label from Pi, desktop, and web views.
-- Keep countdown text and control widths stable during updates. Use worker activity for Pi status instead of frequent dashboard requests.
+- Keep control widths stable during updates. Use worker activity for Pi status instead of frequent dashboard requests.
 
-- Move API countdowns and Update now into a compact Overview header row. Keep retained problem buttons and both schedules visible.
+- Keep retained problem indicators compact and both schedule cards visible.
 
 Development Pi verification: version 2.0.0 is installed. Both APIs, REST schedule confirmation, power readings, retained history, and chart expansion were checked.
 Public release remains pending approval. See `dev/README.md` for the installed commit and verification limits.
@@ -27,7 +28,7 @@ Public release remains pending approval. See `dev/README.md` for the installed c
 - Remove competing battery display updates. Keep measured idle power at zero without alternating with unavailable data.
 
 - Request grid and battery power in the web edition. Show measured zero as zero and unavailable readings as missing.
-- Add shared Overview refresh countdowns, Update now, and retained red problem alerts for web, Pi, and mobile.
+- Add shared API health controls and retained red problem alerts for web, Pi, and mobile.
 - Use Pi worker timing across dashboard clients. A refresh request preserves worker ownership and an active pause.
 - Retain Pi alerts across restarts. Require recovery and an explicit acknowledgement before clearing an alert.
 - Verify failure, recovery, acknowledgement, protected worker timing, storage permissions, and GAS power fields with mocks.
