@@ -1,0 +1,125 @@
+# Maintenance guide
+
+## Versions
+
+The public release is v2026.10.26.5.
+The current development version is 2026.10.26.6.
+The development branch is `codex/ui-ux-preview`.
+A development commit does not publish GitHub Pages or create a release.
+
+## Code boundaries
+
+| File | Responsibility |
+|---|---|
+| `src/app.js` | Shared account, tariff, scheduler, storage, and dashboard behaviour. |
+| `src/index.html` | Shared interface elements and their stable IDs. |
+| `src/styles.css` | Existing interface appearance. |
+| `linux/server.mjs` | Authentication, protected APIs, credential storage, and service integration. |
+| `linux/foxess-live.mjs` | Live telemetry and REST fallback. |
+| `linux/remote-access.mjs` | Public tunnel, remote keys, and browser sessions. |
+| `linux/history.mjs` | Compact history files, averages, queries, and expiry. |
+| `linux/tray.py` | Native Pi settings, remote access, status icon, and graphical update action. |
+| `dev/ui.js` | Development navigation, control layout, review, and History view. |
+| `dev/about.js` | About panel and complete licence notices. |
+| `dev/setup.js` | Edition-specific login and setup guide. |
+| `dev/views.js` | New visible views and the shared-engine element adapter. |
+| `dev/ui.css` | Appearance of the development interface. |
+| `scripts/build-dev.mjs` | Separate Pi and web development builds. |
+
+## Shared interface contract
+
+The shared engine uses existing element IDs and event handlers.
+The new views reuse original controls instead of copying their state.
+The visible cards and sign-in screen use new markup.
+Unused presentation elements remain in one hidden host for engine compatibility.
+The adapter reports a missing required element as an error.
+A new interface must retain the original input IDs.
+The original engine remains responsible for validation, encryption, and scheduler commands.
+This adapter is a migration boundary.
+A later engine extraction must keep the same safety tests and behaviour.
+
+The Pi build always uses dashboard mode.
+It must never start a second unattended scheduler.
+The web build retains the original browser automation behaviour.
+It must not receive the Pi-only automatic-write restriction.
+
+The two editions have different login requirements.
+The web edition requires account credentials and a Google Apps Script relay.
+The Pi dashboard requires only the configured access code or remote key.
+Pi service credentials must remain in the native settings app.
+
+## History contract
+
+The history module accepts telemetry from the existing service requests.
+It does not make an upstream request.
+It accepts no more than one fresh observation in each minute.
+Each stored interval contains averages and observation counts.
+Missing data remains missing.
+
+History files use owner-only permissions.
+They contain no account credentials or remote keys.
+Records expire after 24 calendar months.
+The server keeps automation available if a history write fails.
+
+## Change a feature
+
+1. Read `AGENTS.md`.
+2. Identify the module that owns the behaviour.
+3. Read the related tests.
+4. Change the source files.
+5. Add a behaviour test if the change affects safety, authentication, storage, or recovery.
+6. Run `npm run check`.
+7. Run `npm run build:dev`.
+8. Check both editions in a browser.
+9. Update the current user guide.
+10. Record the verification limits.
+
+Do not change scheduler rules to solve a layout problem.
+Do not use a live inverter as a test fixture.
+Do not add a new dependency without a concrete need.
+
+## Updates
+
+The native updater installs the latest public GitHub release.
+It preserves the Pi configuration directory.
+The history directory is inside that configuration directory.
+
+The public updater currently installs v2026.10.26.5.
+On DEV, that action returns the Pi to the public edition.
+The DEV interface states this difference in Connections.
+
+The DEV installer accepts a complete Git commit ID.
+It creates a private configuration backup before the service change.
+It retains the previous runtime and creates a rollback command.
+The UI-only updater does not restart the service or the tunnel.
+The About panel shows the UI commit when the build receives that value.
+
+## Release checks
+
+The [feature review](FEATURE-PARITY.md) records completed checks and open release work.
+A successful mock test does not prove real inverter behaviour.
+A matching REST readback confirms the written schedule, not measured battery power.
+
+Before a public release, test an update from the last public version on a spare Pi.
+Check configuration, access settings, history files, launchers, and rollback.
+Publish the redesigned default interface only after the user approves it.
+
+## Browser fixtures
+
+The local fixtures do not forward requests to energy services.
+They use dummy account data.
+
+1. Build both DEV editions.
+2. Run `node scripts/dev-fixtures.mjs` for Pi checks.
+3. Run `node scripts/dev-fixtures.mjs --web` for web checks.
+4. Use the URLs printed by the fixture.
+5. Use dummy credentials only.
+
+The web relay test URL is `http://127.0.0.1:65524/mock-foxess`.
+The fixture path `/test/viewport?width=320` provides a narrow browser frame.
+Widths 390, 768, and 1024 are also available.
+The Pi frame uses the remote-key login mode.
+The path `/test/state` reports mock scheduler writes.
+
+Browser checks must include login, navigation, rule review, setup help, and the full licence text.
+The checks must also confirm that each required element ID exists once.

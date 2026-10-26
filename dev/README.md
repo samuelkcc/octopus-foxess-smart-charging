@@ -1,28 +1,144 @@
-# Pi DEV interface
+# DEV guide
 
-Development build **2026.10.26.6** on `codex/ui-ux-preview`; not a published release or replacement for GitHub Pages.
+The development version is **2026.10.26.6**.
+The source branch is `codex/ui-ux-preview`.
+This branch does not publish GitHub Pages or create a release tag.
 
-This is a real Pi dashboard, built from the existing HTML, JavaScript, authentication and scheduler engine. It rearranges the original controls into Overview, Schedules, Automations, History and Connections. It uses the current Octopus light/dark palette. It always runs as a dashboard client; it cannot become another automatic scheduler. Applying rules requires an explicit review step. Pi credentials and remote-key management remain in the native taskbar application.
+## Interface files
 
-The original dashboard remains at `/?client=1`. DEV lives at `/dev/index.html?client=1`. The installer adds a **Smart Charging DEV** desktop shortcut and a runtime rollback script, preserves the encrypted configuration and remote key, and restarts the existing server/worker. A tunnel restart produces a new public URL. No GitHub Pages deployment or release tag is involved.
+| Build file | Use |
+|---|---|
+| `dist/pi-dev.html` | Pi dashboard with real service data. |
+| `dist/Smart_Charging_UI_DEV.html` | Standalone web interface with its own account setup. |
 
-Build after `npm run check` with `npm run build:dev`. Install a pinned source commit on the Pi with `sudo sh linux/install-dev.sh FULL_40_CHARACTER_COMMIT`. The installer uses the installed runtime's `ws` dependency and does not install another browser worker. Roll back with `sudo /opt/octopus-foxess/rollback-dev.sh`; history remains on disk.
+Both builds use the existing scheduler engine and element IDs.
+The visible views use new markup.
+Sign-in hides dashboard navigation until connection.
+Unused legacy elements remain hidden for shared-engine compatibility.
+The Pi build always runs as a dashboard client.
+The web build retains browser automation.
 
-## Compact history
+About & License opens in a side panel.
+The panel includes the complete GPL text and component notices.
+The setup guide also opens from the side.
+Pi and web login fields remain different.
 
-- The server reuses `/api/foxess/live` readings already requested by the always-on worker. It adds no upstream FoxESS requests. Collection continues with dashboards closed while the worker is healthy.
-- At most one fresh observation per minute contributes to 15-minute averages. Missing fields remain null; stale cached readings and duplicate samples are ignored. Network outages remain gaps.
-- Seven fields: solar, home load, grid import/export, battery charge/discharge (kW), and state of charge (%). Counts accompany each field so missing coverage is visible in the API.
-- Monthly compact JSON-lines files plus a small five-minute checkpoint live in `/var/lib/octopus-foxess/history`, with owner-only permissions. No credentials, account numbers, URLs or API keys are recorded. Raw minute readings are not retained.
-- Rolling 24-calendar-month retention, with daily expiry cleanup during collection and on every history query. Old boundary-month records are removed as well as whole expired months.
-- Approximately 70,000 intervals across 24 months; expected storage is roughly 5–10 MB depending on numeric values and filesystem allocation. The History screen reports actual file bytes, not an assumed fixed size.
-- These are observed power averages, not billing-grade kWh totals. No backfill of past data is included. Collection starts with this DEV build. Up to five minutes of the current partial interval may be lost after sudden power loss; clean shutdown checkpoints it.
-- History is authenticated with the same LAN code/remote session as the dashboard. Only GET is permitted; the API is available through the existing protected tunnel. Month browsing, selectable measures and CSV export are provided.
+## Build DEV
 
-Verification uses mocks for scheduler, upstream APIs, remote authentication and history. No live inverter commands should be sent merely to test layout or data collection.
+1. Run `npm ci`.
+2. Run `npm run check`.
+3. Run `npm run build:dev`.
+4. Check both editions in a browser.
 
-## Live Pi verification — 26 October 2026
+## Install DEV on an existing Pi
 
-Installed DEV runtime commit `47fe62a` (version 2026.10.26.6). Corrected the new parent directory's permissions to 0755 after initial service startup failed under a restrictive umask; the installer fix is recorded in `285594b`. Server, worker and inhibitor are active. Octopus and FoxESS REST report healthy. The DEV page returns HTTP 200, the real overview renders, and the first recorded interval is available through History. Credentials, automation rules, LAN-protection setting and remote key were compared against the encrypted pre-DEV backup and were unchanged. The original dashboard, separate DEV desktop shortcut and rollback script remain available. No manual inverter command was sent for verification.
+The Pi must already have the public edition installed.
+The installer uses its existing `ws` dependency.
 
-`linux/update-dev-ui.sh FULL_COMMIT` updates only the DEV frontend without restarting services or changing the tunnel URL. DEV has its own home-screen manifest and supports a `view=history` (or overview/schedules/rules/connections) link. A persistent Home Screen shortcut still needs a stable hostname if the Quick Tunnel later restarts.
+1. Select the complete 40-character Git commit ID.
+2. Download `linux/install-dev.sh` from that commit.
+3. Run this command with the selected ID:
+
+```bash
+sudo sh linux/install-dev.sh FULL_40_CHARACTER_COMMIT
+```
+
+The installer creates a private configuration backup.
+It keeps the previous runtime for rollback.
+It restarts the existing server and worker.
+It does not create another worker.
+
+The desktop shortcut is **Smart Charging DEV**.
+The DEV route is `/dev/index.html?client=1`.
+The original dashboard remains at `/?client=1`.
+
+A service restart creates a new Quick Tunnel address.
+The existing Remote Access Key remains valid.
+
+## Update only the DEV interface
+
+1. Select the complete source commit ID.
+2. Download `linux/update-dev-ui.sh` from that commit.
+3. Run this command with the selected ID:
+
+```bash
+sudo sh linux/update-dev-ui.sh FULL_40_CHARACTER_COMMIT
+```
+
+This update does not restart the worker, service, or tunnel.
+The original dashboard remains unchanged.
+The About panel identifies the UI commit when the build receives that value.
+
+## Return to the previous runtime
+
+1. Run this command on the Pi:
+
+```bash
+sudo /opt/octopus-foxess/rollback-dev.sh
+```
+
+The command restores the previous runtime.
+It retains the history files.
+It restarts the service and worker.
+The tunnel receives a new address after that restart.
+
+## History storage
+
+The server reuses telemetry requests from the existing worker.
+It does not request extra FoxESS data.
+Collection continues with the dashboards closed if the worker remains healthy.
+
+One fresh observation in each minute can contribute to a 15-minute average.
+The stored interval contains averages and observation counts.
+The server does not retain the raw minute readings.
+Duplicate or stale cached readings do not become new observations.
+
+History contains seven measurements.
+
+- Solar power.
+- Home load.
+- Grid import power.
+- Grid export power.
+- Battery charge power.
+- Battery discharge power.
+- Battery state of charge.
+
+The files are in `/var/lib/octopus-foxess/history`.
+The directory and files have owner-only permissions.
+The files contain no account credentials, remote keys, or public URLs.
+
+Records expire after 24 calendar months.
+The server removes expired records during collection and history queries.
+Missing readings remain gaps.
+No earlier records are imported.
+
+Approximately 70,000 intervals fit within 24 months.
+Expected file storage is approximately 5–10 MB.
+The interface reports actual file bytes.
+Filesystem allocation can be larger.
+
+These values are observed power averages.
+They are not billing-grade energy totals.
+A sudden power loss can remove up to five minutes from the current partial interval.
+A clean service shutdown saves that interval.
+
+## Current verification
+
+Runtime commit `47fe62a` was installed on 26 October 2026.
+The initial startup found a parent-directory permission error.
+The directory permission was corrected to 0755.
+Commit `285594b` fixes the installer for later installations.
+
+The server, worker, and inhibitor were active after the correction.
+Octopus and FoxESS REST reported healthy connections.
+The new overview displayed real Pi data.
+History displayed its first recorded interval.
+
+The encrypted pre-DEV backup was compared with the active configuration.
+Credentials, automation rules, LAN protection, and the remote key were unchanged.
+The original dashboard, DEV shortcut, and rollback script were present.
+No manual inverter command was sent for these checks.
+
+The [feature review](../docs/FEATURE-PARITY.md) records browser checks and release work.
+The [maintenance guide](../docs/ARCHITECTURE.md) defines module boundaries.
+The [writing guide](../docs/WRITING.md) defines the documentation method.

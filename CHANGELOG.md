@@ -4,7 +4,9 @@
 
 ## v2026.10.26.6 — Pi DEV (2026-10-26, not released)
 
-- Add a separate Octopus-coloured Pi DEV dashboard with navigation, real service data, explicit automation review, and an original-dashboard fallback. The unattended scheduler remains the existing worker.
+- Add separate Pi and web DEV interfaces. Rebuild the visible views around the Octopus palette. Hide dashboard navigation during sign-in. Keep the shared engine and original-dashboard fallback.
+- Add edition-specific setup guides and a side panel for About, the complete GPL text, and component notices.
+- Add maintenance boundaries, a feature review, and current guides written toward ASD-STE100 Issue 9. Add structural documentation checks.
 - Store compact 15-minute telemetry averages for 24 months, reusing existing readings without extra upstream calls. Add authenticated month queries, History charts, disk-usage reporting and CSV export. No historical backfill or billing-grade energy totals.
 - Add a pinned DEV installer with encrypted-configuration backup, health check, original runtime rollback and a separate desktop shortcut. No Pages deployment or release tag.
 - Verify with the full mock-based suite, history retention/restart/outage tests, authenticated endpoint checks and local browser checks. Live Pi verification is recorded in dev/README.md after deployment.

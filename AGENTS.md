@@ -26,3 +26,32 @@ This repository builds the standalone HTML/GitHub Pages edition and the Raspberr
 - Browser sessions use Secure, HttpOnly, SameSite cookies with expiration, logout, and rotation/revocation. Protect mutations against cross-site requests and rate-limit login attempts.
 - Keep Pi administration, credentials, key management, and worker publication inaccessible through the tunnel. Dashboard configuration updates must use an explicit field allowlist.
 - Use a mock `cloudflared` in tests. Starting a real tunnel creates public access and must follow the user's authorization and tool confirmation requirements.
+
+## Long-term maintenance
+
+- Read `docs/ARCHITECTURE.md` before a structural change.
+- Keep the scheduler engine separate from interface changes.
+- Keep history storage separate from service authentication and telemetry transport.
+- Keep About and licence code in `dev/about.js`.
+- Keep login and setup code in `dev/setup.js`.
+- Keep the visible-view adapter in `dev/views.js`.
+- Check that required engine IDs exist once after a view change.
+- Preserve original element IDs when a new layout uses `src/app.js`.
+- Check Pi and web login separately after a shared interface change.
+- Run `npm run check`, then `npm run build:dev` before a DEV installation.
+- Record the exact installed UI commit and any verification limit.
+- Keep the public updater, existing asset names, configuration path, and history path compatible.
+- Use `docs/FEATURE-PARITY.md` as the release review record.
+- The user has approved Pi DEV use. Public release of the redesigned interface still requires the user's approval.
+
+## Documentation
+
+- Use ASD-STE100 Issue 9 as the writing reference.
+- Follow `docs/WRITING.md` and its project terminology list.
+- Use one instruction in each procedural sentence.
+- Use no more than 20 words in an instruction sentence.
+- Use no more than 25 words in a descriptive sentence.
+- Put each condition before the related action.
+- Keep each paragraph on one topic.
+- Preserve source code, commands, API names, GPL text, and third-party notices exactly.
+- Do not claim formal STE compliance from sentence-length checks alone.

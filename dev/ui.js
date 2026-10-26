@@ -1,9 +1,15 @@
 /* Copyright (C) 2026 SCKC. GPL-3.0-or-later. Pi DEV layout. */
 (() => {
   'use strict';
+  const piEdition = document.documentElement.dataset.devEdition !== 'web';
+  document.body.classList.add(piEdition ? 'dev-pi-edition' : 'dev-web-edition');
   // A DEV view must never acquire the worker's automatic-write role, even if
   // runtime detection fails. Deliberate Apply still uses the existing engine.
-  canRunAutomaticActions = () => false;
+  if (piEdition) canRunAutomaticActions = () => false;
+  else {
+    const originalAutoConnect = startAutoConnect;
+    startAutoConnect = () => { if (new URLSearchParams(location.search).get('setup') !== '1') originalAutoConnect(); };
+  }
   const wrapper = document.querySelector('.app-wrapper');
   const dashboard = document.getElementById('dashboard');
   const overview = dashboard.querySelector('.energy-overview-card');
@@ -12,6 +18,15 @@
   shell.innerHTML = `<aside class="dev-rail"><div class="dev-brand"><img src="/octopus-foxess.svg" alt="" width="38" height="38"><div><strong>Smart Charging</strong><small>for Octopus Energy &amp; FoxESS</small></div></div><span class="dev-tag">PI DEV · REAL DATA</span><nav aria-label="Main navigation"><button data-page="overview">Overview</button><button data-page="schedules">Schedules</button><button data-page="rules">Automations</button><button data-page="history">History</button><button data-page="connections">Connections</button></nav><div class="dev-rail-bottom"><button id="dev-about">About &amp; licenses</button><a href="/?client=1">Open original dashboard ↗</a><small>Independent software by SCKC</small></div></aside><div class="dev-workspace"><header class="dev-appbar"><div>Smart Charging <span>/</span> <strong id="dev-page-name">Overview</strong></div><div class="dev-app-actions"><span class="dev-service">Existing Pi worker</span><button id="dev-theme" aria-label="Toggle light and dark appearance">◐</button><button id="dev-menu">Menu</button></div></header><div class="dev-announcement">DEV interface · connected to your real Pi · existing automation worker remains in control.</div><div id="dev-content"></div></div>`;
   wrapper.before(shell);
   shell.querySelector('#dev-content').append(wrapper);
+  if (!piEdition) {
+    shell.querySelector('.dev-tag').textContent = 'WEB DEV · BROWSER EDITION';
+    shell.querySelector('.dev-service').textContent = 'Browser must stay awake';
+    shell.querySelector('.dev-announcement').textContent = 'Web DEV · automation runs in this browser · keep it open and awake · Google relay required for FoxESS.';
+    shell.querySelector('[data-page="history"]').hidden = true;
+    const fallback = shell.querySelector('.dev-rail-bottom a');
+    fallback.href = 'https://samuelkcc.github.io/octopus-foxess-smart-charging/';
+    fallback.target = '_blank'; fallback.rel = 'noopener noreferrer';
+  }
   const sections = {};
   const titles = { overview:'Overview', schedules:'Schedules', rules:'Automations', history:'History', connections:'Connections' };
   const descriptions = {
@@ -25,9 +40,14 @@
     const section = document.createElement('section');
     section.className = 'dev-page';
     section.dataset.page = name;
-    section.innerHTML = `<header class="dev-page-heading"><span>HOME ENERGY · PI DEV</span><h1>${titles[name]}</h1><p>${descriptions[name]}</p></header><div class="dev-page-grid"></div>`;
+    section.innerHTML = `<header class="dev-page-heading"><span>HOME ENERGY · ${piEdition ? 'PI' : 'WEB'} DEV</span><h1>${titles[name]}</h1><p>${descriptions[name]}</p></header><div class="dev-page-grid"></div>`;
     dashboard.append(section);
     sections[name] = section;
+  }
+  if (!piEdition) {
+    sections.connections.querySelector('header p').textContent = 'Account setup, Google relay, saved configuration and browser requirements.';
+    sections.overview.querySelector('header p').textContent = 'Current power flow, Octopus dispatches and FoxESS schedules in this browser.';
+    sections.rules.querySelector('header p').textContent = 'Review charging and discharging preferences before sending changes through your Google relay.';
   }
   const move = (element, page) => { if (element) sections[page].querySelector('.dev-page-grid').append(element); };
   move(overview, 'overview');
@@ -41,10 +61,24 @@
   inspector.className = 'dev-inspector card';
   inspector.innerHTML = `<h2>Worker &amp; safety</h2><div id="dev-worker-state" role="status">Waiting for the Pi worker…</div><dl><div><dt>Dispatch fetched</dt><dd id="dev-fetched">—</dd></div><div><dt>FoxESS confirmed</dt><dd id="dev-confirmed">—</dd></div><div><dt>Schedule periods</dt><dd id="dev-periods">—</dd></div><div><dt>Telemetry updated</dt><dd id="dev-telemetry-at">—</dd></div></dl><p>Smart Dispatch takes priority. The worker retains the last valid dispatch when an upstream check fails.</p><p>REST readback confirms schedule programming. Power readings show actual measured behaviour.</p><button id="dev-inspect-schedules">View schedules</button>`;
   move(inspector, 'overview');
+  if (!piEdition) {
+    inspector.querySelector('h2').textContent = 'Browser automation & safety';
+    inspector.querySelector('p').textContent = 'The browser must remain open and awake to detect dispatches and maintain automation. Use the Pi edition for unattended operation.';
+  }
   const integrations = document.createElement('section');
   integrations.className = 'card dev-integrations';
   integrations.innerHTML = `<h2>Pi connection settings</h2><p>The Pi manages Octopus and FoxESS credentials. Use its charger icon → <strong>Server Configuration…</strong> to edit them.</p><h3>Remote access</h3><p>Use the charger icon → <strong>Remote Access…</strong> for the current public URL and key.</p><ul><li>The URL stays the same while the tunnel runs. Reboots, app updates, or tunnel restarts generate a new address.</li><li>Remote browser login lasts up to 12 hours. Sign in again with the same key.</li><li>The remote key remains valid until you replace it.</li></ul><h3>Copying through Pi Connect</h3><p>First press the app’s <strong>Copy Key</strong> button; then choose Pi Connect’s <strong>Copy from remote</strong>. Copying the hidden field can give you dots.</p><h3>iPhone Home Screen</h3><p>In Safari, use Share → Add to Home Screen. The shortcut saves this URL; update it after a Quick Tunnel URL changes.</p><button id="dev-connection-menu">Telemetry &amp; display settings</button>`;
   move(integrations, 'connections');
+  if (piEdition) {
+    const updateInfo = document.createElement('section');
+    updateInfo.className = 'card dev-integrations';
+    updateInfo.innerHTML = '<h2>Updates &amp; recovery</h2><p>The existing graphical updater remains in the Pi taskbar → <strong>Server Configuration… → Update Raspberry Pi Edition</strong>. It installs the latest public GitHub release.</p><p><strong>DEV channel:</strong> the public updater installs the latest published release. Until this redesign is published, that action can replace DEV with the previous public interface. DEV updates use a separate process.</p><p>Your original dashboard remains available. Runtime rollback: <code>sudo /opt/octopus-foxess/rollback-dev.sh</code>. Updates preserve encrypted configuration; history stays in the Pi data directory.</p>';
+    move(updateInfo, 'connections');
+  } else {
+    integrations.innerHTML = '<h2>Web connection setup</h2><p>This edition needs your Octopus account number/API key, FoxESS inverter serial/API token, and your own Google Apps Script relay URL. Credentials are encrypted in this browser; they are not stored on GitHub Pages.</p><div class="dev-connection-actions"><button id="dev-edit-web-setup">Edit account setup</button><button id="dev-web-guide">Open web setup guide</button></div><h3>Saved configuration</h3><p>Use Menu → Save Config to download an encrypted backup. Load Config on the setup screen restores it. Wipe Local Data and Remove Access Code remain separate edition-specific actions.</p><h3>Updates</h3><p>The hosted web app updates when the approved GitHub Pages version is published. Downloaded HTML files must be replaced with a newer download. Export an encrypted backup before moving to another browser or device.</p><h3>History</h3><p>The 24-month history store belongs to the Pi service. Standalone web mode does not collect history when the browser is closed.</p><button id="dev-connection-menu">Display &amp; configuration menu</button>';
+    document.getElementById('dev-edit-web-setup').addEventListener('click', () => { const url = new URL(location.href); url.searchParams.set('setup', '1'); location.assign(url); });
+    document.getElementById('dev-web-guide').addEventListener('click', () => toggleDrawer('setup-guide-panel'));
+  }
   const historyPanel = document.createElement('section');
   historyPanel.className = 'card dev-history';
   historyPanel.innerHTML = `<div class="dev-history-controls"><label>Month<input type="month" id="dev-history-month"></label><label>Measure<select id="dev-history-metric"><option value="loadsPower">Home demand</option><option value="pvPower">Solar generation</option><option value="gridConsumptionPower">Grid import</option><option value="feedinPower">Grid export</option><option value="batChargePower">Battery charge</option><option value="batDischargePower">Battery discharge</option><option value="SoC">Battery charge level</option></select></label><button id="dev-history-refresh">Refresh history</button><button id="dev-history-export">Download month CSV</button></div><p id="dev-history-status" role="status">History is collected by the Pi from existing telemetry. Open this page to load it.</p><div class="dev-history-chart"><canvas id="dev-history-chart" role="img" aria-label="Historical telemetry averages for the selected month and measure"></canvas></div><p class="dev-muted">Observed averages, not billing-grade energy totals. Missing readings stay as gaps. Data begins when this DEV version is installed.</p>`;
@@ -54,6 +88,10 @@
   reviewDialog.className = 'dev-review-dialog';
   reviewDialog.innerHTML = `<h2>Apply automation changes?</h2><p>These are real Pi settings. Applying saves your rules and asks the existing worker to reconcile the inverter schedule.</p><dl id="dev-review-facts"></dl><p>Confirmation remains pending until the worker receives a matching official FoxESS REST readback.</p><div class="dev-dialog-actions"><button id="dev-review-cancel">Back</button><button id="dev-review-apply">Apply to Pi</button></div>`;
   document.body.append(reviewDialog);
+  if (!piEdition) {
+    reviewDialog.querySelector('p').textContent = 'These are real inverter settings. Applying saves your browser rules and sends the schedule through your configured Google relay.';
+    document.getElementById('dev-review-apply').textContent = 'Apply changes';
+  }
   let pendingApply = null;
   for (const id of ['btn-save-unified', 'btn-save-discharge']) {
     const button = document.getElementById(id);
@@ -61,7 +99,7 @@
     button.dataset.defaultLabel = 'Review & apply';
     button.textContent = 'Review & apply';
     button.addEventListener('click', () => {
-      if (!window.linuxRuntime || window.linuxRole !== 'dashboard') { showToast('Connect to the Pi dashboard before applying changes.'); return; }
+      if (!dashboard.classList.contains('visible') || (piEdition && (!window.linuxRuntime || window.linuxRole !== 'dashboard'))) { showToast('Connect to the dashboard before applying changes.'); return; }
       pendingApply = button;
       const facts = document.getElementById('dev-review-facts');
       facts.replaceChildren();
@@ -92,6 +130,7 @@
   });
   let currentPage = 'overview';
   function navigate(name) {
+    if (!piEdition && name === 'history') name = 'connections';
     if (!sections[name]) return;
     currentPage = name;
     Object.entries(sections).forEach(([key, section]) => { section.hidden = key !== name; });
@@ -103,7 +142,6 @@
     const viewUrl = new URL(location.href);
     viewUrl.searchParams.set('view', name);
     history.replaceState(null, '', viewUrl);
-    if (name === 'rules') document.getElementById('section-smart-discharging').classList.remove('dashboard-section-hidden');
     if (name === 'history') void loadHistory();
     schedulePriceChartResize();
   }
@@ -117,7 +155,9 @@
     const snapshot = window.linuxDispatchSnapshot;
     const state = document.getElementById('dev-worker-state');
     const messages = { waiting:'Waiting for worker', syncing:'Writing schedule · awaiting REST readback', confirmed:'Schedule confirmed by FoxESS REST', failed:'Schedule confirmation failed', disabled:'Dispatch sync disabled' };
-    state.textContent = snapshot ? (messages[snapshot.status] || 'Unknown worker state') : 'Waiting for authenticated Pi data';
+    state.textContent = piEdition
+      ? (snapshot ? (messages[snapshot.status] || 'Unknown worker state') : 'Waiting for authenticated Pi data')
+      : (dashboard.classList.contains('visible') ? 'Automation runs in this browser. Keep it open and awake.' : 'Connect your accounts to start.');
     state.dataset.status = snapshot?.status || 'waiting';
     if (snapshot?.error) state.textContent += `: ${snapshot.error}`;
     const format = value => value ? new Date(value).toLocaleString() : '—';
@@ -125,8 +165,7 @@
     document.getElementById('dev-confirmed').textContent = format(snapshot?.confirmedAt);
     document.getElementById('dev-periods').textContent = `${(window.activeFoxGroups || []).length} / 5`;
     document.getElementById('dev-telemetry-at').textContent = format(window.lastFoxTelemetryUpdate);
-    document.getElementById('section-smart-discharging').classList.toggle('dev-show-rules', currentPage === 'rules');
-    if (currentPage === 'history' && historyData === null && window.linuxRuntime) void loadHistory();
+    if (currentPage === 'history' && historyData === null && piEdition && window.linuxRuntime) void loadHistory();
   }
   let historyData = null;
   let historyChart = null;
@@ -166,7 +205,7 @@
     historyStatus.textContent = `${points.length} recorded ${points.length === 1 ? 'interval' : 'intervals'} in ${historyData.month} · ${bytes < 1024 * 1024 ? (bytes / 1024).toFixed(1)+' KB' : (bytes / 1024 / 1024).toFixed(2)+' MB'} used on Pi · 24-month retention` + (points.length ? '' : ' · No readings recorded for this month yet.');
   }
   async function loadHistory() {
-    if (historyLoading || !window.linuxRuntime || !dashboard.classList.contains('visible')) return;
+    if (historyLoading || !piEdition || !window.linuxRuntime || !dashboard.classList.contains('visible')) return;
     historyLoading = true;
     historyStatus.textContent = 'Loading recorded telemetry…';
     try {
