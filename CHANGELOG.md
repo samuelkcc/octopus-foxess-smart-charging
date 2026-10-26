@@ -1,6 +1,6 @@
 ## v2.0.0 — Major redesign under review
 
-- Replace header countdowns with two equal API status buttons. Animate their circular borders while connected and reload data on selection.
+- Replace header countdowns with two equal API status buttons. Synchronize their circular progress with each API interval and reload data on selection.
 - Move Pause automation into the shared application header. Keep the red pause banner and duration dialog.
 - Keep retained problem alerts in fixed-size red indicators. Remove the separate Update now action.
 - Move refresh intervals into Settings. Save browser values locally and Pi values in encrypted configuration for the worker.

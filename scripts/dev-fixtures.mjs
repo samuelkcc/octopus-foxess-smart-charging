@@ -51,7 +51,9 @@ http.createServer(async (request,response) => {
         if(payload.action==='refresh') refreshRequestId=Date.now();
         else health.acknowledge(payload.service,payload.alertId);
       }
-      return json({...health.snapshot(),refreshRequestId,worker:{updatedAt:Date.now(),octopusNextAt:(refreshRequestId||workerStartedAt)+300000,foxessNextAt:(refreshRequestId||workerStartedAt)+600000,octopusBusy:false,foxessBusy:process.env.OCTOPUS_FIXTURE_BUSY_CYCLE==='1' && Date.now()%4000<2000}});
+      const now=Date.now(),epoch=refreshRequestId||workerStartedAt;
+      const nextDeadline=seconds=>epoch+(Math.floor((now-epoch)/(seconds*1000))+1)*seconds*1000;
+      return json({...health.snapshot(),refreshRequestId,worker:{updatedAt:now,octopusNextAt:nextDeadline(config.automations.refreshIntervals?.octopus || 60),foxessNextAt:nextDeadline(config.automations.refreshIntervals?.foxess || 600),octopusBusy:false,foxessBusy:process.env.OCTOPUS_FIXTURE_BUSY_CYCLE==='1' && now%4000<2000}});
     }
     if (url.pathname === '/test/state') return json({mock:true,schedulerWrites:gasRelay?.stats.writes ?? writes,relay:gasRelay?.stats});
     if (url.pathname === '/api/runtime') {

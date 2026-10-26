@@ -434,3 +434,15 @@ No live pause, schedule, or history-clear action was submitted.
 
 The live Octopus alert detail reported one Load failed event and subsequent recovery.
 The check did not clear retained incidents.
+
+
+## Interval-synchronized API circles
+
+The circular progress uses the next API refresh deadline and its configured interval.
+A 60-second Octopus interval completes one circle in 60 seconds.
+A 600-second FoxESS interval completes one circle in 600 seconds.
+The fixed-speed decorative rotation is removed.
+Green means that the latest recorded read succeeded.
+The circle itself does not prove a new successful response.
+Selecting either badge still requests both API updates through the existing refresh path.
+Selecting the red indicator opens the retained error details.
