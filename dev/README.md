@@ -247,9 +247,8 @@ No live inverter command was used as a test action.
 
 The standalone test file is `dist/Smart_Charging_v2.0.0.html`.
 The full check suite and both interface builds passed.
-Version 2.0.0 has not yet been installed on the live Pi.
-The live Pi still uses the runtime and interface commits recorded above.
-A full runtime update is required for shared server alerts and worker timing.
+Version 2.0.0 is installed on the live Pi.
+The installation and read-only checks are recorded below.
 The new public interface remains pending user approval.
 
 ## History storage redesign checks
@@ -271,3 +270,47 @@ Its raw rows used 3.70 MB.
 Its monthly gzip archives used 1.34 MB, or 1.37 MB with simulated 4 KB allocation blocks.
 This example excludes activity files and depends on the measurement values.
 A 10 MB history allowance provides a conservative planning margin.
+
+
+## Pi installation verification for 2.0.0
+
+Runtime and interface commit `214132d72ab06c9ea6696c14b645be4c90da7c6d` was installed on 26 October 2026.
+The installer backed up existing configuration and history before the update.
+The server and worker were active after installation.
+The taskbar process was restarted separately.
+The desktop launcher opened the new interface.
+
+At 18:39 UTC, both API states were healthy.
+The worker supplied its update timing.
+Operator pause was inactive.
+FoxESS confirmed the dispatch schedule at 18:38:52 UTC through official REST readback.
+The next dispatch windows were 23:30–03:00 and 05:00–05:30.
+These future windows do not confirm measured charging behaviour.
+
+Live readings included solar, home demand, grid import, grid export, battery charge, battery discharge, and battery level.
+The battery displayed 0.00 kW idle at 10% charge.
+No missing directional power field was replaced with a false zero.
+History retained 31 intervals and displayed the new chart overview.
+The Solar and home demand chart expanded and closed correctly.
+
+History used 1,722 logical bytes and 8,192 allocated bytes at the check.
+Free disk space was 16,451,153,920 bytes.
+Retention remained 12 months.
+The save interval was 60 minutes, with one interval buffered in RAM.
+The low-storage warning was inactive.
+No live history was cleared or removed to test low-space behaviour.
+
+The existing tunnel restarted with a new public URL.
+An unauthenticated browser reached the new interface and reported version 2.0.0 and the installed UI commit.
+The existing Remote Access Key was preserved.
+Authenticated access through the replacement public URL was not tested.
+
+The installed diagnostic helper requires this command through the runtime symlink:
+
+```bash
+node --preserve-symlinks-main /opt/octopus-foxess/current/inspect-runtime.mjs
+```
+
+Commit `6aa9b081636d506ca725875070488b264a95d761` removes that command-line requirement for future installations.
+This helper-only correction was not installed on the Pi during these checks.
+Public Pages and release publication remain pending approval.

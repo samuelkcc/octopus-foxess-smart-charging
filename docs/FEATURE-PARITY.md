@@ -33,11 +33,11 @@ The existing public interface remains available.
 | Graphical public updater | Retains the installed native action. | Source and installed-path checks apply. It was not run against DEV. |
 | DEV installer | Adds a pinned source installation. | Live installation passed after the permission correction. |
 | Runtime rollback | Retains the previous runtime. | The rollback script exists. A live rollback was not run. |
-| Shared Pi update status | Worker timing, refresh requests, and persistent alerts. | Mock restart, authentication, CSRF, worker isolation, and owner-only storage checks pass. Live installation remains pending. |
+| Shared Pi update status | Worker timing, refresh requests, and persistent alerts. | Mock restart, authentication, CSRF, worker isolation, and owner-only storage checks pass. Live worker timing and healthy API states were verified. |
 | History storage | Hourly RAM batches, gzip archives, disk usage, low-space cleanup, and explicit clear. | Buffer loss, timer saves, migration, compression, low-space preservation, and clear isolation tests pass with temporary data. |
 | Compact history | Default 12 months, configurable from 1 to 24. | Retention, restart, gap, expiry, and authentication tests pass. |
 | Pause automation | Blocks every app schedule command. | Timers, restart persistence, write barriers, activity, and authentication tests pass. |
-| History charts | Shows all measurements in four charts with Expand actions. | Earlier live intervals appeared. The four-chart redesign uses mock browser checks before installation. |
+| History charts | Shows all measurements in four charts with Expand actions. | Desktop and phone mock checks pass. Retained live Pi intervals appeared in the new overview. Chart expansion and closing were verified. |
 | History CSV | Adds a month export action. | The data path is separate from credentials and account setup. |
 
 The public updater installs the latest published GitHub release.
@@ -102,3 +102,18 @@ Required engine element IDs remained unique.
 Setup stages share one intrinsic grid height.
 Inactive stages stay hidden and cannot receive focus.
 Browser measurements confirmed identical card, heading, action, footer, and scroll positions across all three stages.
+
+
+## Live Pi verification for 2.0.0
+
+Commit `214132d72ab06c9ea6696c14b645be4c90da7c6d` is installed on the development Pi.
+Both APIs were healthy after installation.
+The worker published timing and confirmed the future Smart Dispatch schedule through official REST readback.
+All requested power fields were present, including measured zero battery power.
+History retained existing intervals and displayed its storage and hourly save status.
+The new chart overview and Expand action worked with live stored readings.
+
+The full mock suite passed before installation.
+No live hardware command, pause change, or history deletion was used as a test action.
+No authenticated login test was performed through the replacement tunnel URL.
+The spare-Pi update and rollback checks remain release requirements.

@@ -1,5 +1,8 @@
 ## v2.0.0 — Major redesign under review
 
+Development Pi verification: version 2.0.0 is installed. Both APIs, REST schedule confirmation, power readings, retained history, and chart expansion were checked.
+Public release remains pending approval. See `dev/README.md` for the installed commit and verification limits.
+
 - Buffer history readings in memory. Save compressed monthly archives every hour by default, with a 30-minute option.
 - Show history disk use, free space, unsaved intervals, and the last save time.
 - Below 4 GB free space, show an Overview warning and remove oldest history early. Preserve the newest 24 hours.
