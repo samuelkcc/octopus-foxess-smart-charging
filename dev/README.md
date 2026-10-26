@@ -325,3 +325,11 @@ Both schedule cards follow the power readings without an intervening update pane
 Desktop and 390-pixel phone layouts were checked with mock data.
 Recovered alert acknowledgement was checked for both services.
 The full check suite and both interface builds passed.
+
+
+UI commit `9ba43d1fbbed4f6054a64eafb3857708627b36f9` was installed on 26 October 2026.
+The interface-only updater preserved the running worker, configuration, history, and tunnel.
+The existing authenticated Safari session loaded the new header through the same public URL.
+Both countdowns displayed healthy status.
+The two real dispatch windows and the confirmed FoxESS schedule remained visible below the power readings.
+The installed runtime remains `214132d72ab06c9ea6696c14b645be4c90da7c6d`.
