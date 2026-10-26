@@ -482,6 +482,17 @@ The 390-pixel phone check retained vertical scrolling without horizontal overflo
 History activity pagination and chart expansion passed browser checks.
 Mock pause controls preserved the red banner without extending the desktop page.
 Pi login and standalone setup were checked separately.
-Standalone setup connected to a local GAS mock; no live GAS deployment was used.
+Standalone setup connected to a local GAS mock.
+No live GAS deployment was used.
 No real pause, inverter, history-clear, or credential change was submitted.
 The full check suite and both interface builds passed.
+
+UI commit `5537aaf05f4843445a97edaab6ff5f4da3b7a9d6` was installed on the Pi on 26 October 2026.
+The installer completed its pinned source build and interface checks.
+The update did not restart the server, worker, or tunnel.
+The existing public URL and authenticated Safari session remained available.
+Safari displayed all four live history charts, storage information, and activity within one screen.
+The page accessibility tree no longer reported a vertical scrollbar.
+The full-height navigation rail and content edges remained aligned.
+The Pi retained 43 recorded history intervals and its hourly save policy during verification.
+The server runtime remains `214132d72ab06c9ea6696c14b645be4c90da7c6d`.
