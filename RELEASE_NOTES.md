@@ -1,5 +1,6 @@
 ## v2.0.0 — Major redesign under review
 
+- Add a branded welcome screen with setup and restore actions. Use guided web account setup and direct Pi key access.
 - Use MAJOR.MINOR.PATCH version numbers, matching the convention in Script Bridge. Preserve legacy calendar release history and existing update asset names.
 - Include the redesigned Pi, desktop-browser, mobile and standalone HTML interfaces, with the shared automation safeguards, pause controls and history features.
 - Rename the native settings window and heading to Configuration. Remove its duplicate Open Dashboard Client button. Keep the taskbar dashboard action.

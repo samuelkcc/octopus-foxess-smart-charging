@@ -117,25 +117,8 @@
   connections.append(service);
   parking.querySelectorAll('.dev-integrations').forEach(node=>{node.className='next-panel wide';node.querySelector('h2')?.classList.add('next-panel-title');connections.append(node);});
 
-  // A separate sign-in screen has one heading and no dashboard navigation.
-  const login=byId('login-layout');[...login.children].forEach(node=>parking.append(node));
-  login.className='next-login';
-  const auth=make('section','next-auth-card');
-  auth.append(make('span','next-kicker',pi?'PI DASHBOARD':'STANDALONE WEB EDITION'),make('h1','',pi?'Connect to your Pi':'Connect your energy accounts'));
-  auth.append(make('p','next-auth-copy',pi?'Use the dashboard access key from your Pi.':'Use your own Octopus and FoxESS accounts and Google relay.'));
-  auth.append(byId('error'));
-  if(pi) auth.append(document.querySelector('.linux-access-group'));
-  else {
-    for(const [title,fields] of [['Octopus Energy',[['acc','Account number'],['api','API key']]],['FoxESS',[['fox-sn','Inverter serial number'],['fox-token','API token']]],['Google relay',[['gas-url','Google Apps Script Web App URL']]]]) {
-      const section=make('section','next-auth-group');section.append(make('h2','',title));
-      for(const [id,label]of fields) {const entry=field(id,label);if(id==='acc')entry.append(byId('octopus-account-toggle'));section.append(entry);}auth.append(section);
-    }
-  }
-  const session=make('p','next-session-note');session.id='next-session-copy';auth.append(session,byId('btn'));
-  const authActions=make('div','next-auth-actions');
-  authActions.append(button(pi?'Access help':'Setup guide',()=>toggleDrawer('setup-guide-panel'),true),button('About & License',()=>openLicenseModal(false),true));
-  if(!pi)authActions.append(button('Load Config',()=>byId('import-file').click(),true),button('Wipe saved data',()=>{byId('wipe-modal').style.display='flex';},true));
-  auth.append(authActions);login.append(auth);
+  // Edition-specific launch presentation preserves the shared engine controls.
+  const { session } = window.installLaunchScreen({ pi, login: byId('login-layout'), parking, byId, make, button });
   parking.querySelectorAll('label[for]').forEach(label=>label.removeAttribute('for'));
   let previousConnectionState=null;
   const syncAuth = () => {
@@ -144,6 +127,7 @@
     byId('dev-theme').hidden=connected;
     byId('dev-page-name').textContent=connected?shell.querySelector('.dev-page:not([hidden]) h1')?.textContent || 'Overview':'Sign in';
     shell.querySelector('.dev-service').textContent=pi?(connected?'Pi service':'Pi dashboard'):(connected?'Browser must stay awake':'Web edition');
+    if(pi) byId('login-layout').querySelector('.launch-setup>.next-auth-copy').textContent=window.linuxRemoteAccess?'Enter the separate Remote Access Key shown in your Pi Configuration.':'Enter your LAN access code if protection is enabled.';
     session.textContent=pi?(window.linuxRemoteAccess?'Browser login lasts up to 12 hours. Use the same remote key after expiry.':'Your Pi stores the account setup and runs the automation.'):'Keep this browser open and awake while automation runs.';
   };
   new MutationObserver(syncAuth).observe(dashboard,{attributes:true,attributeFilter:['class']});

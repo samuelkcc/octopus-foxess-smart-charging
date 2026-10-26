@@ -47,16 +47,17 @@ It forwards the signed FoxESS requests from this app.
 ## Connect the app
 
 1. Open the hosted app or the downloaded HTML file.
-2. Enter your Octopus account number.
-3. Enter your Octopus API key.
-4. Enter your FoxESS inverter serial number.
-5. Enter your FoxESS API token.
-6. Paste the Web App URL into **Google Apps Script Relay URL**.
-7. Select **CONNECT**.
-8. Check the Octopus connection state.
-9. Check the FoxESS connection state.
+2. Select **Set up Smart Charging**.
+3. Enter your Octopus account number and API key.
+4. Select **Continue**.
+5. Enter your FoxESS inverter serial number and API token.
+6. Select **Continue**.
+7. Paste the Web App URL into **Google Apps Script Web App URL**.
+8. Select **CONNECT**.
+9. Check both connection states.
 
-The DEV interface groups these fields into three setup sections.
+Version 2.0.0 groups these fields into three setup stages.
+**Restore a saved setup** opens the existing encrypted import flow.
 Its setup guide opens from the side of the screen.
 The public interface retains its existing layout until approval.
 

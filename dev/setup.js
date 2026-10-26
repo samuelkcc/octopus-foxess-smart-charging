@@ -47,3 +47,105 @@
   guideButton.addEventListener('click', () => { closeAllDrawers(); toggleDrawer('setup-guide-panel'); });
   menu.querySelector('div').append(guideButton);
 })();
+
+// Launch presentation. Keep the engine-owned inputs and connect handler intact.
+window.installLaunchScreen = ({ pi, login, parking, byId, make, button }) => {
+  [...login.children].forEach(node => parking.append(node));
+  login.className = 'next-login launch-screen';
+  login.dataset.mode = pi ? 'setup' : 'welcome';
+  const welcome = make('section', 'launch-welcome');
+  const brand = document.querySelector('.dev-brand img').cloneNode(true);
+  brand.width = 58; brand.height = 58; brand.alt = '';
+  welcome.append(brand, make('span', 'launch-eyebrow', 'SMART CHARGING · VERSION ' + document.querySelector('meta[name="smart-charging-version"]').content));
+  const heading = make('h1', '', 'Your EV, charging.');
+  heading.append(make('br'), make('span', '', 'Your home, protected.'));
+  welcome.append(heading, make('p', 'launch-intro', 'Connect Octopus charging windows to your FoxESS battery. Keep your energy controls in one place.'));
+  const welcomeActions = make('div', 'launch-actions');
+  const start = button(pi ? 'Open dashboard' : 'Set up Smart Charging', () => openSetup());
+  start.className = 'next-button'; welcomeActions.append(start);
+  if (!pi) welcomeActions.append(button('Restore a saved setup', () => byId('import-file').click(), true));
+  welcome.append(welcomeActions);
+  const flow = make('div', 'launch-flow'); flow.setAttribute('aria-label', 'How Smart Charging works');
+  for (const [index, title, text] of [[1, 'Octopus Energy', 'Find your EV charging windows'], [2, 'Smart Charging', 'Check your rules and safeguards'], [3, 'FoxESS', 'Set and confirm the battery schedule']]) {
+    const node = make('div', 'launch-flow-item');
+    node.append(make('span', 'launch-flow-number', String(index)));
+    const copy = make('div'); copy.append(make('strong', '', title), make('small', '', text)); node.append(copy); flow.append(node);
+  }
+  welcome.append(flow);
+  const operation = make('p', 'launch-operation', pi ? 'Your Pi runs the automation. You can close this dashboard.' : 'Automation runs in this browser. Keep it open and awake.');
+  welcome.append(operation);
+  const welcomeTools = make('div', 'launch-links');
+  welcomeTools.append(button(pi ? 'Access guide' : 'Setup guide', () => toggleDrawer('setup-guide-panel'), true), button('About & licences', () => openLicenseModal(false), true));
+  welcome.append(welcomeTools);
+
+  const introArt = make('section', 'launch-art'); introArt.setAttribute('aria-label', 'EV and home battery protection');
+  introArt.innerHTML = '<span class="launch-eyebrow">YOUR HOME ENERGY, CONNECTED</span><div class="launch-art-orbit"><svg viewBox="0 0 320 230" fill="none" aria-hidden="true"><path class="launch-wire" d="M65 80h190v95H65z"/><rect x="20" y="48" width="90" height="65" rx="14"/><path d="m38 87 14-22h27l14 22M39 87h53M45 100h7m28 0h7"/><circle cx="47" cy="86" r="2"/><circle cx="84" cy="86" r="2"/><path d="m215 160 40-35 40 35v42h-80zM245 202v-30h20v30"/><rect x="137" y="102" width="46" height="62" rx="12"/><path class="launch-bolt" d="m164 115-12 20h16l-12 20"/></svg><span class="launch-art-pill">Charging windows → Battery protection</span></div><div class="launch-art-note"><strong>One clear view of your energy.</strong><p>Review schedules, follow Smart Dispatch, and pause app control when you need a temporary setting.</p></div>';
+
+  const auth = make('section', 'next-auth-card launch-setup');
+  auth.append(make('span', 'launch-eyebrow', pi ? 'PI DASHBOARD ACCESS' : 'CONNECT YOUR ACCOUNTS'), make('h2', '', pi ? 'Open your dashboard' : 'A few details. Then you’re connected.'));
+  auth.append(make('p', 'next-auth-copy', pi ? 'Use your LAN access code or the separate Remote Access Key.' : 'Your Octopus account, FoxESS device, and Google relay work together here.'));
+  const error = byId('error'); error.setAttribute('role', 'alert'); auth.append(error);
+  const sections = [];
+  const steps = make('nav', 'launch-steps'); steps.setAttribute('aria-label', 'Account setup steps');
+  let currentStep = 0;
+  const stepButtons = [];
+  if (pi) auth.append(document.querySelector('.linux-access-group'));
+  else {
+    const fields = [
+      ['Octopus Energy', 'Read EV charging windows and electricity prices.', [['acc', 'Account number'], ['api', 'API key']]],
+      ['FoxESS', 'Connect the inverter and home battery.', [['fox-sn', 'Inverter serial number'], ['fox-token', 'API token']]],
+      ['Google relay', 'Use your own deployed Google Apps Script Web App.', [['gas-url', 'Google Apps Script Web App URL']]]
+    ];
+    auth.append(steps);
+    fields.forEach(([title, description, inputs], index) => {
+      const section = make('section', 'launch-step'); section.hidden = index !== 0;
+      const titleNode = make('h3', '', title); titleNode.tabIndex = -1;
+      section.append(titleNode, make('p', 'next-auth-copy', description));
+      for (const [id, label] of inputs) {
+        const row = make('div', 'next-field'); const caption = make('label', '', label); caption.htmlFor = id;
+        const control = make('div', 'launch-input'); control.append(byId(id));
+        if (id === 'acc') control.append(byId('octopus-account-toggle'));
+        row.append(caption, control); section.append(row);
+      }
+      if (index === 2) section.append(button('How to create the relay', () => { closeAllDrawers(); byId('proxy-modal').style.display = 'flex'; }, true));
+      auth.append(section); sections.push(section);
+      const step = button(`${index + 1}. ${title}`, () => showStep(index)); step.className = 'launch-step-tab'; steps.append(step); stepButtons.push(step);
+    });
+  }
+  const session = make('p', 'next-session-note'); session.id = 'next-session-copy'; auth.append(session);
+  const actions = make('div', 'launch-setup-actions');
+  const back = button('Back', () => currentStep ? showStep(currentStep - 1) : closeSetup(), true);
+  const next = button('Continue', () => {
+    const required = currentStep === 0 ? ['acc', 'api'] : [];
+    for (const id of required) {
+      const input = byId(id);
+      if (!input.value.trim()) { input.setCustomValidity('Complete this field to continue.'); input.reportValidity(); input.setCustomValidity(''); return; }
+    }
+    showStep(currentStep + 1);
+  });
+  const connect = byId('btn');
+  actions.append(back, next, connect); auth.append(actions);
+  const tools = make('div', 'launch-links');
+  tools.append(button(pi ? 'Access help' : 'Setup guide', () => toggleDrawer('setup-guide-panel'), true), button('About & licences', () => openLicenseModal(false), true));
+  if (!pi) tools.append(button('Load saved setup', () => byId('import-file').click(), true), button('Manage saved data', () => { byId('wipe-modal').style.display = 'flex'; }, true));
+  auth.append(tools); login.append(welcome, introArt, auth);
+
+  function showStep(index, focus = true) {
+    currentStep = Math.max(0, Math.min(2, index));
+    sections.forEach((section, step) => { section.hidden = currentStep !== step; });
+    stepButtons.forEach((step, index) => step.setAttribute('aria-current', index === currentStep ? 'step' : 'false'));
+    next.hidden = pi || currentStep === 2; connect.hidden = !pi && currentStep !== 2; back.hidden = pi;
+    if (focus) sections[currentStep]?.querySelector('h3').focus({ preventScroll: true });
+  }
+  function openSetup() {
+    login.dataset.mode = 'setup';
+    requestAnimationFrame(() => window.scrollTo({ top: 0, left: 0 }));
+    if (!pi) showStep(currentStep);
+    else byId('local-access-key').focus({ preventScroll: true });
+  }
+  function closeSetup() { login.dataset.mode = 'welcome'; start.focus({ preventScroll: true }); }
+  if (!pi) showStep(0, false);
+  else { next.hidden = true; back.hidden = true; }
+  new MutationObserver(() => { if (error.style.display === 'block' && !pi) openSetup(); }).observe(error, { attributes: true, attributeFilter: ['style'] });
+  return { session };
+};

@@ -19,6 +19,10 @@ for (const html of [pi, web]) {
   assert(html.includes('history-retention'));
   assert(html.includes('automationControl'));
   assert(html.includes('next-visible-state'));
+  assert(html.includes('window.installLaunchScreen'));
+  assert(html.includes('meta name="smart-charging-version"'));
+  assert(html.includes('Your EV, charging.'));
+  assert(html.includes('Set up Smart Charging'));
   assert(html.includes('One Settings view.'), 'Both editions need the Settings adapter.');
 }
 const pkg=JSON.parse(await read('package.json'));

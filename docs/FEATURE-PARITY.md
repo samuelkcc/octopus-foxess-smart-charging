@@ -44,7 +44,7 @@ The Settings page identifies this difference.
 
 | Function | DEV treatment | Verification |
 |---|---|---|
-| Account setup | Groups the original five inputs into three sections. | Dummy-account login passed with a local mock relay. |
+| Account setup | Welcome screen and three guided setup stages. | Dummy-account login passed with a cross-origin GAS mock. |
 | Google Apps Script guide | Retains the original relay instructions. | Bundled code and guide match. The documented handler passed the relay tests. |
 | GAS transport | Retains signed FoxESS requests. | Cross-origin POST, redirect, write, readback, rejection, and pause checks pass with mocks. |
 | Account storage | Uses original encryption and storage functions. | Shared storage tests pass. |
@@ -86,3 +86,11 @@ Pause blocked the browser schedule request before it reached the relay.
 No real GAS deployment or live inverter was used.
 The current public Pages workflow still selects the previous interface.
 The redesigned standalone HTML is available for user testing before release approval.
+
+The version 2.0.0 welcome screen follows the recent Script Bridge layout approach.
+It retains the Octopus colours and the charging-plug icon.
+Setup and restore actions precede the three web account stages.
+The Pi edition retains direct access-key login.
+A 390-pixel phone welcome view was checked.
+The guided web flow connected through the cross-origin GAS mock.
+Required engine element IDs remained unique.

@@ -261,3 +261,71 @@ body>#proxy-modal>div {max-width:850px!important;}
 /* Keep the paused state visible while browsing long pages. */
 .next-pause-banner {position:sticky;top:0;z-index:20;}
 #dev-shell .next-pause-banner strong,#dev-shell .next-pause-banner p {color:white!important;}
+/* Welcome and guided setup use the same visual language as the workspace. */
+#dev-shell .launch-screen {max-width:1120px;margin:40px auto 32px;display:grid;grid-template-columns:minmax(0,1.05fr) minmax(0,1fr);gap:48px;align-items:center;}
+.launch-welcome {min-width:0;padding:12px 0;}
+.launch-welcome>img {display:block;width:58px;height:58px;border-radius:14px;margin-bottom:24px;}
+.launch-eyebrow {display:block;color:var(--accent);font-size:10px;font-weight:650;letter-spacing:1.5px;line-height:1.7;}
+.launch-welcome h1 {font-size:clamp(32px,3.4vw,46px);line-height:1.12;letter-spacing:-1.5px;margin:18px 0 22px;font-weight:650;}
+.launch-welcome h1>span {color:var(--accent);}
+.launch-intro {font-size:14px;line-height:1.85;color:var(--text-muted);max-width:460px;}
+.launch-actions {display:flex;flex-wrap:wrap;gap:10px;margin:28px 0;}
+#dev-shell .launch-actions button {width:auto;min-height:44px;padding:12px 18px;}
+.launch-flow {display:grid;gap:0;margin:24px 0;max-width:440px;}
+.launch-flow-item {display:flex;align-items:center;gap:14px;padding:12px 0;}
+.launch-flow-number {width:28px;height:28px;display:grid;place-items:center;border:1px solid var(--border);border-radius:8px;color:var(--accent);font-size:11px;flex-shrink:0;background:var(--card-bg);}
+.launch-flow-item strong {display:block;font-size:12px;font-weight:600;}
+.launch-flow-item small {display:block;margin-top:2px;font-size:11px;color:var(--text-muted);}
+.launch-operation {padding-left:15px;border-left:3px solid #15803d;color:var(--text-muted);font-size:12px;line-height:1.8;}
+.launch-links {display:flex;gap:8px;flex-wrap:wrap;margin-top:22px;}
+#dev-shell .launch-links button {width:auto;min-height:36px;background:transparent;border:1px solid var(--border);color:var(--text-muted);font-size:11px;padding:8px 12px;border-radius:8px;}
+.launch-art {border:1px solid var(--border);border-radius:24px;padding:34px;background:linear-gradient(150deg,color-mix(in srgb,var(--accent) 6%,var(--card-bg)),var(--card-bg));box-shadow:0 24px 70px #0001;}
+.launch-art>.launch-eyebrow {text-align:center;color:var(--text-muted);font-size:9px;}
+.launch-art-orbit {padding:20px 0 28px;text-align:center;}
+.launch-art svg {width:100%;max-width:350px;stroke:var(--text-main);stroke-width:2;stroke-linecap:round;stroke-linejoin:round;}
+.launch-art .launch-wire {stroke:var(--accent);stroke-dasharray:4 7;opacity:.6;}
+.launch-art .launch-bolt {stroke:var(--accent);stroke-width:4;}
+.launch-art-pill {display:inline-block;padding:8px 12px;border:1px solid var(--border);border-radius:40px;background:var(--bg);font-size:10px;color:var(--text-muted);}
+.launch-art-note {border-top:1px solid var(--border);padding-top:24px;}
+.launch-art-note strong {font-size:15px;}
+.launch-art-note p {font-size:12px;color:var(--text-muted);line-height:1.8;margin-bottom:0;}
+.launch-setup {align-self:center;padding:30px;min-width:0;}
+.launch-setup>h2 {margin:12px 0;font-size:23px;font-weight:600;letter-spacing:-.5px;line-height:1.25;}
+.launch-screen [hidden] {display:none!important;}
+.launch-screen[data-mode=welcome] .launch-setup {display:none;}
+.launch-screen[data-mode=setup] .launch-art {display:none;}
+.launch-screen[data-mode=setup] .launch-welcome .launch-actions {display:none;}
+.launch-screen[data-mode=setup] .launch-welcome h1 {font-size:38px;}
+.launch-steps {display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;margin:24px 0 26px;}
+#dev-shell .launch-step-tab {min-width:0;width:100%;padding:10px 6px;min-height:40px;text-align:center;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text-muted);font-size:10px;}
+#dev-shell .launch-step-tab[aria-current=step] {background:var(--button-fill);border-color:var(--button-fill);color:white;}
+.launch-step h3 {font-size:16px;margin:0 0 8px;font-weight:600;}
+.launch-step h3:focus {outline:none;}
+.launch-step {min-height:228px;}
+#dev-shell .launch-step .next-field {margin:16px 0;}
+.launch-input {position:relative;display:flex;gap:8px;}
+#dev-shell .launch-input #octopus-account-toggle {min-height:44px;flex-shrink:0;width:48px;margin:0;border:1px solid var(--border);background:var(--bg);border-radius:8px;text-align:center;color:var(--text-main);}
+.launch-setup-actions {display:flex;align-items:center;gap:10px;margin-top:22px;}
+#dev-shell .launch-setup-actions>button {width:auto;min-height:44px;flex:1;}
+#dev-shell .launch-setup-actions>#btn {margin:0;}
+.launch-screen[data-mode=setup] .launch-welcome .launch-links {display:none;}
+@media(max-width:1000px) {
+  #dev-shell .launch-screen {gap:28px;}
+  .launch-welcome h1,.launch-screen[data-mode=setup] .launch-welcome h1 {font-size:34px;}
+  .launch-setup {padding:24px;}
+}
+@media(max-width:760px) {
+  #dev-shell.dev-auth-mode .app-wrapper {padding:24px 20px;}
+  #dev-shell .launch-screen {grid-template-columns:minmax(0,1fr);gap:24px;margin:8px auto;max-width:560px;}
+  .launch-welcome {padding:0;}
+  .launch-welcome h1 {font-size:36px;}
+  .launch-welcome>img {width:48px;height:48px;margin-bottom:18px;}
+  .launch-art {padding:24px;}
+  .launch-art svg {max-width:240px;}
+  .launch-screen[data-mode=setup] .launch-welcome h1,.launch-screen[data-mode=setup] .launch-welcome .launch-intro,.launch-screen[data-mode=setup] .launch-welcome .launch-flow,.launch-screen[data-mode=setup] .launch-welcome .launch-operation {display:none;}
+  .launch-screen[data-mode=setup] .launch-welcome {display:flex;align-items:center;gap:14px;}
+  .launch-screen[data-mode=setup] .launch-welcome>img {margin:0;width:38px;height:38px;}
+  .launch-setup {padding:24px 20px;}
+  .launch-step {min-height:0;}
+}
+.launch-screen {overflow-anchor:none;}

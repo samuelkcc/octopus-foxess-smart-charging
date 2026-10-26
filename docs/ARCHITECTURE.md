@@ -26,7 +26,7 @@ A development commit does not publish GitHub Pages or create a release.
 | `linux/tray.py` | Native Pi settings, remote access, status icon, and graphical update action. |
 | `dev/ui.js` | Development navigation, control layout, review, and History view. |
 | `dev/about.js` | About panel and complete licence notices. |
-| `dev/setup.js` | Edition-specific login and setup guide. |
+| `dev/setup.js` | Edition-specific welcome, guided login, and setup guide. |
 | `dev/settings.js` | Settings cards and existing preference controls. |
 | `dev/views.js` | New visible views and the shared-engine element adapter. |
 | `dev/ui.css` | Appearance of the development interface. |

@@ -27,7 +27,7 @@ if (devUrl.searchParams.get('client') !== '1' || devUrl.searchParams.has('worker
 </script>`;
 function render(edition) {
 const pi = edition === 'pi';
-let output = base.replace('<head>', `<head>\n${pi ? '<base href="/">' : ''}\n<meta name="smart-charging-ui-revision" content="${revision}">\n<script>document.documentElement.dataset.devEdition='${edition}';</script>\n${pi ? clientGuard : ''}`)
+let output = base.replace('<head>', `<head>\n${pi ? '<base href="/">' : ''}\n<meta name="smart-charging-ui-revision" content="${revision}">\n<meta name="smart-charging-version" content="${JSON.parse(packageText).version}">\n<script>document.documentElement.dataset.devEdition='${edition}';</script>\n${pi ? clientGuard : ''}`)
   .replace('<title>Smart Charging Detector</title>', '<title>Smart Charging</title>')
   .replace('content="Octopus FoxESS"', 'content="Smart Charging"')
   .replace(/href="\.\/site\.webmanifest[^\"]*"/, 'href="/app/site.webmanifest"')
