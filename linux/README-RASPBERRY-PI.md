@@ -81,13 +81,19 @@ requires authentication, even if LAN protection is disabled.
 
 The key contains 256 bits of cryptographic randomness and is encrypted with the
 Pi configuration at rest. Browser login exchanges it for a Secure, HttpOnly,
-SameSite session cookie, valid for 12 hours; the app never saves the remote key
+SameSite session cookie, valid for up to 12 hours; the app never saves the remote key
 in browser local storage. Keep the key private and never put it in a URL.
-**New Key / Revoke Sessions** invalidates the previous key and all sessions.
-**Sign Out** ends the current browser session. **Stop** closes public access.
+**New Key / Sign Out All** invalidates the previous key and all sessions.
+**Sign Out** ends the current browser session. After a session expires, sign in
+again with the same key. The 12-hour browser-login limit does not stop the
+tunnel or expire the key. The key remains valid until replaced. **Stop** closes
+public access.
 
 The tunnel resumes after a service restart if previously enabled, with a new
-random URL shown in this window. Disconnections retry automatically. Cloudflare
+random URL shown in this window. The address remains the same while that
+tunnel process keeps running. A Pi reboot, app update, Stop/Start, or automatic
+tunnel-process restart creates a new address; closing your browser does not.
+Disconnections retry automatically. Cloudflare
 Quick Tunnels are intended for testing/development, have no uptime guarantee,
 allow at most 200 concurrent requests, and do not support SSE. This dashboard
 uses ordinary HTTP polling. See [Cloudflare's limitations](https://developers.cloudflare.com/tunnel/get-started/quick-tunnels/).

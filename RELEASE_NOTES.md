@@ -1,3 +1,9 @@
+## v2026.10.26.5 — 2026-10-26
+
+- Clarify the Remote Access window by separating tunnel status, temporary URL lifetime, browser login duration, and key validity.
+- Explain that a browser login lasts up to 12 hours and can be renewed with the same key; the tunnel and key do not expire at that limit.
+- Identify the events that generate a new URL and clarify that closing a browser does not change it. Rename key rotation to New Key / Sign Out All.
+
 ## v2026.10.26.4 — 2026-10-26
 
 - Replace the Pi taskbar wall-box artwork with a charging-plug-and-socket silhouette based on the supplied visual reference, rendered as scalable vectors in green, orange, and red.

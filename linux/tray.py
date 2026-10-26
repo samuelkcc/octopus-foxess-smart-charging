@@ -563,13 +563,12 @@ class ServerConfigurationWindow(Gtk.Window):
 class RemoteAccessWindow(Gtk.Window):
     def __init__(self):
         super().__init__(title="Remote Access — Octopus FoxESS")
-        self.set_default_size(680, 400)
+        self.set_default_size(740, 500)
         self.connect("delete-event", lambda window, _event: window.hide() or True)
         root = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=12, margin=20)
         self.add(root)
-        note = Gtk.Label(label="Create a free random HTTPS URL with Cloudflare Quick Tunnel. "
-                         "Remote access always requires its own 256-bit key; your LAN code is not used. "
-                         "The URL changes after a restart. Cloudflare provides no uptime guarantee.", xalign=0)
+        note = Gtk.Label(label="Access your Pi dashboard over the internet using a free Cloudflare Quick Tunnel. "
+                         "Sign in with the separate Remote Access Key below; your LAN code is not used.", xalign=0)
         note.set_line_wrap(True)
         root.pack_start(note, False, False, 0)
         self.status = Gtk.Label(label="Loading…", xalign=0)
@@ -578,13 +577,33 @@ class RemoteAccessWindow(Gtk.Window):
         self.url = Gtk.Entry()
         self.url.set_editable(False)
         self.url.set_placeholder_text("Start a tunnel to generate the URL")
-        root.pack_start(Gtk.Label(label="Public URL", xalign=0), False, False, 0)
+        root.pack_start(Gtk.Label(label="Public URL (temporary)", xalign=0), False, False, 0)
         root.pack_start(self.url, False, False, 0)
+        url_note = Gtk.Label(
+            label="This URL stays the same while the tunnel keeps running. A Pi reboot, app update, "
+                  "Stop/Start, or automatic tunnel restart creates a new URL. Closing your browser does not change it.",
+            xalign=0,
+        )
+        url_note.set_line_wrap(True)
+        root.pack_start(url_note, False, False, 0)
+        login_note = Gtk.Label(
+            label="Browser login: up to 12 hours. If signed out, sign in again with the same key. "
+                  "The 12-hour limit does not stop the tunnel or expire your key.",
+            xalign=0,
+        )
+        login_note.set_line_wrap(True)
+        root.pack_start(login_note, False, False, 0)
         self.key = Gtk.Entry()
         self.key.set_editable(False)
         self.key.set_visibility(False)
         root.pack_start(Gtk.Label(label="Remote Access Key (keep private)", xalign=0), False, False, 0)
         root.pack_start(self.key, False, False, 0)
+        key_note = Gtk.Label(
+            label="Your key does not expire automatically. New Key replaces it and signs out all remote browsers.",
+            xalign=0,
+        )
+        key_note.set_line_wrap(True)
+        root.pack_start(key_note, False, False, 0)
         reveal = Gtk.CheckButton(label="Show remote key")
         reveal.connect("toggled", lambda button: self.key.set_visibility(button.get_active()))
         root.pack_start(reveal, False, False, 0)
@@ -593,13 +612,16 @@ class RemoteAccessWindow(Gtk.Window):
         for label, callback in [
             ("Start Quick Tunnel", lambda _button: self.change(True)),
             ("Stop", lambda _button: self.change(False)),
-            ("New Key / Revoke Sessions", lambda _button: self.change(self.enabled, True)),
+            ("New Key / Sign Out All", lambda _button: self.change(self.enabled, True)),
             ("Copy Key", lambda _button: Gtk.Clipboard.get_default(self.get_display()).set_text(self.key.get_text(), -1)),
             ("Refresh", lambda _button: self.refresh()),
         ]:
             button = Gtk.Button(label=label)
             button.connect("clicked", callback)
             buttons.pack_start(button, False, False, 0)
+        availability_note = Gtk.Label(label="Cloudflare Quick Tunnel availability is not guaranteed.", xalign=0)
+        availability_note.set_line_wrap(True)
+        root.pack_start(availability_note, False, False, 0)
         self.enabled = False
         GLib.timeout_add_seconds(3, self.poll)
 
@@ -624,7 +646,7 @@ class RemoteAccessWindow(Gtk.Window):
         self.enabled = data.get("enabled", False)
         self.key.set_text(data.get("key", ""))
         self.url.set_text(data.get("url") or "")
-        self.status.set_text(data.get("error") or f"Tunnel: {data.get('state', 'disabled')}. Sessions expire after 12 hours; a new key revokes all sessions.")
+        self.status.set_text(data.get("error") or f"Tunnel status: {data.get('state', 'disabled')}")
         return False
 
     def failed(self, error):
