@@ -189,6 +189,12 @@ It restores the plug and vehicle charge-port shape in the app and taskbar.
 The live remote app matched the embedded source icon.
 All three services remained active.
 
+Notice and button revision `c6ba1be` was installed on 26 October 2026.
+The live public page returned this UI revision.
+The first-use action was checked without accepting the notice.
+The returning About action was **Close**.
+Hovered button text was white in light and dark browser checks.
+
 The [feature review](../docs/FEATURE-PARITY.md) records browser checks and release work.
 The [maintenance guide](../docs/ARCHITECTURE.md) defines module boundaries.
 The [writing guide](../docs/WRITING.md) defines the documentation method.
