@@ -9,7 +9,7 @@ on:
       tag:
         description: Release tag
         required: true
-        default: v2026.10.26.7
+        default: v2.0.0
 
 permissions:
   contents: write
@@ -44,7 +44,7 @@ jobs:
       - run: npm run check
       - name: Verify tag matches package version
         run: |
-          test "$RELEASE_TAG" = "v$(node -p "const [year, month, day, ...rest] = require('./package.json').version.split('.'); [year, month.padStart(2, '0'), day.padStart(2, '0'), ...rest].join('.')")"
+          test "$RELEASE_TAG" = "v$(node -p "require('./package.json').version")"
       - name: Create release and upload both editions
         env:
           GH_TOKEN: ${{ github.token }}

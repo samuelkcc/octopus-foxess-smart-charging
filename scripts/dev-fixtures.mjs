@@ -3,11 +3,14 @@
 import http from 'node:http';
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
+import { createGasRelay } from './fixtures/gas-relay.mjs';
 const web = process.argv.includes('--web');
 const port = web ? 65524 : 65523;
 const origin = `http://127.0.0.1:${port}`;
 const root = process.cwd();
 let writes = 0;
+const gasRelay = web ? await createGasRelay() : null;
+if (gasRelay) http.createServer((request,response) => { void gasRelay.handle(request,response); }).listen(65525,'127.0.0.1');
 const readings = { pvPower:0.4, loadsPower:0.6, gridConsumptionPower:0.2, feedinPower:0, batChargePower:0, batDischargePower:0, SoC:64 };
 let pauseState = { paused:false, until:null, revision:0 };
 let retentionMonths = 12;
@@ -29,7 +32,7 @@ http.createServer(async (request,response) => {
       response.writeHead(200,{'Content-Type':'text/html','Cache-Control':'no-store'});
       return response.end(`<main><p>Local responsive fixture: ${width}px</p><iframe title="Responsive app test" src="${route}" style="display:block;width:${width}px;height:650px;border:0"></iframe></main>`);
     }
-    if (url.pathname === '/test/state') return json({mock:true,schedulerWrites:writes});
+    if (url.pathname === '/test/state') return json({mock:true,schedulerWrites:gasRelay?.stats.writes ?? writes,relay:gasRelay?.stats});
     if (url.pathname === '/api/runtime') {
       if (web) return json({error:'No Pi runtime in the web fixture'},404);
       const locked=String(request.headers.referer || '').includes('locked=1');
@@ -69,7 +72,7 @@ http.createServer(async (request,response) => {
         : {value:'SelfUse'};
       return json({errno:0,result});
     }
-    if (url.pathname === '/dev/index.html' || url.pathname === '/app/index.html' || url.pathname === '/web/index.html') {
+    if (url.pathname === '/dev/index.html' || url.pathname === '/app/index.html' || url.pathname === '/web/index.html' || url.pathname === '/octopus-foxess-smart-charging/index.html') {
       let html = await readFile(path.join(root,'dist',web?'Smart_Charging_UI_DEV.html':'pi-dev.html'),'utf8');
       if (web) html = html.replaceAll('https://api.octopus.energy',`${origin}/mock-octopus`);
       const noticeFixture = url.searchParams.get('firstUse') === '1'
@@ -85,4 +88,4 @@ http.createServer(async (request,response) => {
     if (url.pathname.endsWith('site.webmanifest')) return json({});
     return json({error:'Mock route not found'},404);
   } catch { json({error:'Invalid fixture request'},400); }
-}).listen(port,'127.0.0.1',()=>console.log(`Local ${web?'web':'Pi'} fixture: ${origin}/${web?'web':'dev'}/index.html${web?'?setup=1':'?client=1'}`));
+}).listen(port,'127.0.0.1',()=>console.log(`Local ${web?'web':'Pi'} fixture: ${origin}/${web?'web':'dev'}/index.html${web?'?setup=1':'?client=1'}${web?' · Cross-origin GAS mock: http://127.0.0.1:65525/exec':''}`));

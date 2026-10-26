@@ -1,6 +1,6 @@
 # Feature review
 
-This review applies to development version 2026.10.26.7.
+This review applies to development version 2.0.0.
 It is not approval for a public release.
 The existing public interface remains available.
 
@@ -45,13 +45,14 @@ The Settings page identifies this difference.
 | Function | DEV treatment | Verification |
 |---|---|---|
 | Account setup | Groups the original five inputs into three sections. | Dummy-account login passed with a local mock relay. |
-| Google Apps Script guide | Retains the original relay instructions. | The web-specific side panel opened. |
+| Google Apps Script guide | Retains the original relay instructions. | Bundled code and guide match. The documented handler passed the relay tests. |
+| GAS transport | Retains signed FoxESS requests. | Cross-origin POST, redirect, write, readback, rejection, and pause checks pass with mocks. |
 | Account storage | Uses original encryption and storage functions. | Shared storage tests pass. |
 | Automatic operation | Retains browser automation. | The Pi-only write restriction does not apply. |
 | Backup and import | Retains original dialogs and handlers. | Controls remain present. No real credential file was used. |
 | Wipe Local Data | Retains the original operation. | The original storage tests apply. |
 | Web updates | Retains hosted and downloaded-file behaviour. | No public deployment was performed. |
-| Pi history | Does not appear as a web feature. | The web navigation omits History. |
+| History | Browser pause activity only. Pi power archives remain separate. | Local pause and resume records appear in History. |
 
 ## Required checks before public release
 
@@ -71,3 +72,17 @@ The Settings page identifies this difference.
 The current GitHub Pages workflow still builds the existing public interface.
 The release workflow does not yet select the redesigned interface as the default.
 Those changes belong to the approved release step.
+
+## Standalone GAS verification
+
+The redesigned standalone file was checked on 26 October 2026.
+The fixture used the repository Pages path and a separate relay origin.
+The relay executed the bundled GAS `doPost` code with mock FoxESS responses.
+Signed reads and schedule writes passed.
+The browser followed the relay redirect without a CORS preflight.
+A weekly schedule appeared after a matching fresh readback.
+The shared safety suite covered Smart Dispatch priority and failed readback.
+Pause blocked the browser schedule request before it reached the relay.
+No real GAS deployment or live inverter was used.
+The current public Pages workflow still selects the previous interface.
+The redesigned standalone HTML is available for user testing before release approval.

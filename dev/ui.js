@@ -82,7 +82,7 @@
   if (piEdition) {
     const updateInfo = document.createElement('section');
     updateInfo.className = 'card dev-integrations';
-    updateInfo.innerHTML = '<h2>Updates &amp; recovery</h2><p>The existing graphical updater remains in the Pi taskbar → <strong>Server Configuration… → Update Raspberry Pi Edition</strong>. It installs the latest public GitHub release.</p><p>The current public update installs an earlier interface. This Pi receives updates separately while you review the new design.</p><p>Updates preserve encrypted configuration. History stays in the Pi data directory.</p>';
+    updateInfo.innerHTML = '<h2>Updates &amp; recovery</h2><p>The existing graphical updater remains in the Pi taskbar → <strong>Configuration… → Update Raspberry Pi Edition</strong>. It installs the latest public GitHub release.</p><p>The current public update installs an earlier interface. This Pi receives updates separately while you review the new design.</p><p>Updates preserve encrypted configuration. History stays in the Pi data directory.</p>';
     move(updateInfo, 'settings');
   } else {
     integrations.innerHTML = '<h2>Account setup</h2><p>The web edition uses account details stored in this browser and your Google Apps Script relay for FoxESS.</p><div class="next-settings-actions"><button id="dev-edit-web-setup">Edit account setup</button><button id="dev-web-guide">Open web setup guide</button></div><h3>Browser operation</h3><p>Keep this browser open and awake. Use Settings to manage configuration backups, display preferences and saved browser data.</p><button id="dev-connection-menu">Open Settings</button>';
@@ -103,6 +103,7 @@
   document.body.append(reviewDialog);
   if (!piEdition) {
     reviewDialog.querySelector('p').textContent = 'These are real inverter settings. Applying saves your browser rules and sends the schedule through your configured Google relay.';
+    reviewDialog.querySelectorAll('p')[1].textContent = 'Confirmation remains pending until this browser receives a matching FoxESS REST readback through your Google relay.';
     document.getElementById('dev-review-apply').textContent = 'Apply changes';
   }
   let pendingApply = null;

@@ -5,6 +5,7 @@ import json
 import fcntl
 import os
 import subprocess
+import sys
 import threading
 import urllib.error
 import urllib.request
@@ -124,7 +125,7 @@ def run_in_background(work, on_success, on_error):
 
 class ServerConfigurationWindow(Gtk.Window):
     def __init__(self, controller):
-        super().__init__(title="Smart Charging — Pi Settings")
+        super().__init__(title="Configuration")
         self.controller = controller
         self.config_loaded = False
         self.config_refresh_in_progress = False
@@ -140,7 +141,7 @@ class ServerConfigurationWindow(Gtk.Window):
         root.pack_start(header, False, False, 0)
 
         heading = Gtk.Label()
-        heading.set_markup("<span size='x-large' weight='bold'>Octopus FoxESS Server</span>")
+        heading.set_markup("<span size='x-large' weight='bold'>Configuration</span>")
         heading.set_xalign(0)
         heading.set_hexpand(True)
         header.pack_start(heading, True, True, 0)
@@ -291,10 +292,6 @@ class ServerConfigurationWindow(Gtk.Window):
         buttons.set_layout(Gtk.ButtonBoxStyle.END)
         buttons.set_spacing(8)
         root.pack_end(buttons, False, False, 0)
-
-        dashboard = Gtk.Button(label="Open Dashboard Client")
-        dashboard.connect("clicked", lambda _button: run_detached(["/usr/local/bin/octopus-foxess-dashboard"]))
-        buttons.add(dashboard)
 
         self.refresh_button = Gtk.Button(label="Refresh")
         self.refresh_button.connect("clicked", self.refresh_all)
@@ -683,7 +680,7 @@ class TrayController:
         self.fox_live_item = self.add_status_item("FoxESS Live WS: checking…")
         self.menu.append(Gtk.SeparatorMenuItem())
 
-        configure = Gtk.MenuItem(label="Server Configuration…")
+        configure = Gtk.MenuItem(label="Configuration…")
         configure.connect("activate", lambda _item: self.window.show_window())
         self.menu.append(configure)
         self.remote_window = RemoteAccessWindow()
@@ -806,5 +803,7 @@ class TrayController:
 
 
 if __name__ == "__main__":
-    TrayController()
+    controller = TrayController()
+    if "--configure" in sys.argv[1:]:
+        controller.window.show_window()
     Gtk.main()

@@ -1,6 +1,6 @@
 # DEV guide
 
-The development version is **2026.10.26.7**.
+The development version is **2.0.0**.
 The source branch is `codex/ui-ux-preview`.
 This branch does not publish GitHub Pages or create a release tag.
 

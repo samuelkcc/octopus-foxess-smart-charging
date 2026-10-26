@@ -4,8 +4,8 @@ This repository builds the standalone HTML/GitHub Pages edition and the Raspberr
 
 ## Release and verification
 
-- Preserve the established calendar version format: `YYYY.M.D.revision` in package metadata; Git tags pad month/day, e.g. `v2026.10.26.1`.
-- Run `npm run version:set -- YYYY.M.D.revision` to update package metadata, cache identifiers, About/footer text, and the release workflow default together.
+- Use `MAJOR.MINOR.PATCH` for new versions, starting with 2.0.0. Keep legacy calendar release references unchanged.
+- Run `npm run version:set -- MAJOR.MINOR.PATCH` to update package metadata, cache identifiers, About/footer text, and the release workflow default together.
 - Update `CHANGELOG.md` and `RELEASE_NOTES.md` with actual changes and verification limits.
 - Run `npm run check` before packaging or publishing. It tests shared scheduler behavior, Pi integration, live telemetry, and remote authentication, then builds both artifacts. Localhost tests need socket permissions. Also parse `linux/tray.py` with Python's `ast` and run `sh -n` on changed shell files.
 - Preserve GPL-3.0-or-later, SCKC attribution, complete license text, third-party notices, and independent-software disclaimers in both editions.

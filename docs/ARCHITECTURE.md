@@ -3,7 +3,9 @@
 ## Versions
 
 The public release is v2026.10.26.5.
-The current development version is 2026.10.26.7.
+The current development version is 2.0.0.
+New versions use MAJOR.MINOR.PATCH.
+Legacy calendar versions remain in the release history.
 The development branch is `codex/ui-ux-preview`.
 A development commit does not publish GitHub Pages or create a release.
 
@@ -147,3 +149,12 @@ History retries must not duplicate the activity entry.
 The web edition stores its pause and activity in the current browser.
 Its activity limit is 12 months or 2,000 entries.
 Use only one active automation browser.
+
+## GAS relay regression checks
+
+`test-web-relay.mjs` runs the shared browser transport against the bundled GAS handler.
+The mock handler returns in-memory FoxESS data.
+It never sends an upstream request.
+The browser fixture uses separate site and relay origins.
+It includes a ContentService-style redirect before the JSON response.
+These checks cannot prove the permissions or quota of a user deployment.

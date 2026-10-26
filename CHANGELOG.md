@@ -1,3 +1,11 @@
+## v2.0.0 — Major redesign under review
+
+- Use MAJOR.MINOR.PATCH version numbers, matching the convention in Script Bridge. Preserve legacy calendar release history and existing update asset names.
+- Include the redesigned Pi, desktop-browser, mobile and standalone HTML interfaces, with the shared automation safeguards, pause controls and history features.
+- Rename the native settings window and heading to Configuration. Remove its duplicate Open Dashboard Client button. Keep the taskbar dashboard action.
+- Verify the standalone GAS contract with signed reads, schedule writes, fresh readback, response redirects, rejection handling and pause blocking against mock responses.
+- Create a versioned standalone HTML file for user testing. Keep public Pages and release publication pending approval.
+
 ## v2026.10.26.7 — Pi development update (not a public release)
 
 - Add Overview pause control for 6, 12, 24 hours, or until manual resume. Show a red banner on every connected page.

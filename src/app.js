@@ -244,7 +244,7 @@ async function detectLinuxRuntime() {
         document.body.classList.add('linux-runtime', `linux-role-${runtime.role}`);
         if (window.linuxRemoteAccess) {
             document.querySelector('.linux-access-group label').textContent = '🔐 Remote Access Key';
-            document.getElementById('local-access-key').placeholder = 'Paste the remote key from Pi Server Configuration';
+            document.getElementById('local-access-key').placeholder = 'Paste the remote key from Pi Configuration';
             document.querySelector('.linux-access-group small').textContent = 'Use your remote key. Your LAN access code is not needed.';
             document.querySelector('.linux-client-note strong').textContent = 'Secure remote dashboard';
             document.querySelector('.access-protected-copy').textContent = 'Enter the separate Remote Access Key shown on your Pi.';
@@ -453,11 +453,11 @@ function renderLiveWsMenuState(state = {}, status = null) {
         selector.dataset.savedPolicy = policy;
         selector.title = liveWsEnabled
             ? 'Choose how this client asks the Pi to obtain FoxESS telemetry.'
-            : 'Enable Live WS in the Pi Server Configuration window to use a live mode.';
+            : 'Enable Live WS in the Pi Configuration window to use a live mode.';
     }
     if (!label) return;
     if (!liveWsEnabled) {
-        label.textContent = 'Live WS disabled in Server Configuration · official REST only';
+        label.textContent = 'Live WS disabled in Configuration · official REST only';
     } else if (policy === 'rest') {
         label.textContent = 'Off · official REST only';
     } else if (status?.source === 'live-ws' && status?.state === 'live') {
@@ -477,7 +477,7 @@ async function setLiveWsPolicy(policy) {
     if (!['on-demand', 'always', 'rest'].includes(policy)) return;
     if (policy !== 'rest' && !window.linuxLiveWsEnabled) {
         if (selector) selector.value = 'rest';
-        showToast('Enable Live WS and enter the FoxESS web-login credentials in Pi Server Configuration first.');
+        showToast('Enable Live WS and enter the FoxESS web-login credentials in Pi Configuration first.');
         return;
     }
     if (selector) selector.disabled = true;
@@ -489,7 +489,7 @@ async function setLiveWsPolicy(policy) {
         renderFoxLiveStatus(status);
         renderProtectionOverview();
         showToast(policy !== 'rest' && status.mode === 'rest'
-            ? 'Live WS is disabled in Pi Server Configuration. Enable it there before selecting a live mode.'
+            ? 'Live WS is disabled in Pi Configuration. Enable it there before selecting a live mode.'
             : (policy === 'always'
                 ? 'Always Live WS selected. Official REST remains available as automatic fallback.'
                 : (policy === 'on-demand'
@@ -957,7 +957,7 @@ async function handleConnectClick() {
                     ? { ...state.credentials, gasUrl: '/api/foxess' }
                     : null;
                 if (!activeCredentials?.acc || !activeCredentials?.api) {
-                    throw new Error('Complete the integration setup from the Pi taskbar Server Configuration first.');
+                    throw new Error('Complete the integration setup from the Pi taskbar Configuration first.');
                 }
             }
             await initDashboard();

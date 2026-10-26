@@ -1,20 +1,21 @@
 import { readFile, writeFile } from 'node:fs/promises';
 const version = process.argv[2];
-if (!/^\d{4}\.\d{1,2}\.\d{1,2}\.[1-9]\d*$/.test(version || '')) throw new Error('Use YYYY.M.D.revision, e.g. 2026.10.26.2');
-const [year, month, day, revision] = version.split('.').map(Number);
-const date = new Date(Date.UTC(year, month - 1, day));
-if (date.getUTCFullYear() !== year || date.getUTCMonth() !== month - 1 || date.getUTCDate() !== day) throw new Error('Invalid release date');
-const normalized = [year, month, day, revision].join('.');
-const tag = `v${year}.${String(month).padStart(2, '0')}.${String(day).padStart(2, '0')}.${revision}`;
+if (!/^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/.test(version || '')) {
+  throw new Error('Use MAJOR.MINOR.PATCH, e.g. 2.0.0');
+}
+const tag = `v${version}`;
 const pkg = JSON.parse(await readFile('package.json', 'utf8'));
-pkg.version = normalized;
+pkg.version = version;
 await writeFile('package.json', JSON.stringify(pkg, null, 2) + '\n');
 const lock = JSON.parse(await readFile('package-lock.json', 'utf8'));
-lock.version = normalized;
-lock.packages[''].version = normalized;
+lock.version = version;
+lock.packages[''].version = version;
 await writeFile('package-lock.json', JSON.stringify(lock, null, 2) + '\n');
+// Match both legacy calendar labels and the new three-part version.
 const markup = await readFile('src/index.html', 'utf8');
-await writeFile('src/index.html', markup.replace(/\?v=\d+(?:\.\d+){3}/g, `?v=${normalized}`).replace(/Build v\d+(?:\.\d+){3}/g, `Build ${tag}`).replace(/(data-app-version>)\d+(?:\.\d+){3}/, `$1${normalized}`));
+await writeFile('src/index.html', markup.replace(/\?v=\d+(?:\.\d+){2,3}/g, `?v=${version}`)
+  .replace(/Build v\d+(?:\.\d+){2,3}/g, `Build ${tag}`)
+  .replace(/(data-app-version>)\d+(?:\.\d+){2,3}/, `$1${version}`));
 const workflow = await readFile('.github/workflows/release.yml', 'utf8');
-await writeFile('.github/workflows/release.yml', workflow.replace(/default: v\d+(?:\.\d+){3}/, `default: ${tag}`));
-console.log(`Version ${normalized}; release tag ${tag}. Update CHANGELOG.md and RELEASE_NOTES.md, then run npm run check.`);
+await writeFile('.github/workflows/release.yml', workflow.replace(/default: v\d+(?:\.\d+){2,3}/, `default: ${tag}`));
+console.log(`Version ${version}; release tag ${tag}. Update CHANGELOG.md and RELEASE_NOTES.md, then run npm run check.`);

@@ -51,6 +51,7 @@ await writeFile(path.join(root, 'dist/linux-package/octopus-foxess/web/index.htm
 await writeFile(path.join(root, 'dist/pi-dev.html'), output);
 await writeFile(path.join(root, 'dist/Smart_Charging_UI_DEV.html'), render('web'));
 await writeFile(path.join(root, 'dist/Smart_Charging.html'), render('web'));
+await writeFile(path.join(root, `dist/Smart_Charging_v${JSON.parse(packageText).version}.html`), render('web'));
 await writeFile(path.join(root, 'dist/linux-package/octopus-foxess/web/app/site.webmanifest'), await readFile(path.join(root, 'dev/site.webmanifest')));
 await writeFile(path.join(root, 'dist/linux-package/octopus-foxess/web/dev/site.webmanifest'), await readFile(path.join(root, 'dev/site.webmanifest')));
 await mkdir(path.join(root, 'dist/linux-package/octopus-foxess/web/app/icons'), {recursive:true});

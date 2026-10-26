@@ -142,3 +142,11 @@ History shows pause and resume activity from this browser.
 The Pi edition also stores power history.
 A timed pause resumes when this browser is open and awake.
 The Pi timer runs without an open dashboard.
+
+## Test the redesigned file
+
+The current test file is `Smart_Charging_v2.0.0.html`.
+It uses your existing GAS Web App URL.
+It includes no account credentials.
+The file requires an internet connection for APIs and external script libraries.
+The hosted public edition remains unchanged until release approval.

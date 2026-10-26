@@ -32,7 +32,7 @@ The default LAN port is `8787`.
 ## Configure accounts
 
 1. Select the charger icon in the Pi taskbar.
-2. Select **Server Configuration…**.
+2. Select **Configuration…**.
 3. Enter the Octopus account number and API key.
 4. Enter the FoxESS serial number and API token.
 5. Save the settings.
@@ -51,7 +51,7 @@ Browser clients do not receive the service API keys or FoxCloud passwords.
 
 ## Open the LAN dashboard
 
-1. Find the LAN address in **Server Configuration…**.
+1. Find the LAN address in **Configuration…**.
 2. Open that address on a device in the same network.
 3. If access-code protection is enabled, enter the LAN access code.
 
@@ -72,7 +72,7 @@ The Pi supports three telemetry modes.
 | Always Live WebSocket | Uses Live WS continuously. Uses REST if the live connection fails. |
 | Official REST only | Uses the official FoxESS REST API. |
 
-1. To enable Live WS, open **Server Configuration…**.
+1. To enable Live WS, open **Configuration…**.
 2. Enable **FoxESS Live WS telemetry**.
 3. Enter the FoxCloud web-login details.
 4. Save the settings.
@@ -167,7 +167,7 @@ A matching schedule readback does not prove measured battery power.
 
 ## Use DEV history
 
-History is available in the 2026.10.26.7 development version.
+History is available in version 2.0.0 under review.
 It is not in public v2026.10.26.5.
 
 1. Select **Open Desktop Client** from the taskbar charger menu.
@@ -198,7 +198,7 @@ The files contain no account credentials or remote keys.
 
 ## Update the Pi
 
-1. Open **Server Configuration…**.
+1. Open **Configuration…**.
 2. Select **Update Raspberry Pi Edition**.
 3. Approve the Pi OS administrator prompt.
 4. Wait for the services to restart.

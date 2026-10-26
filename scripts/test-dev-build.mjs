@@ -21,6 +21,8 @@ for (const html of [pi, web]) {
   assert(html.includes('next-visible-state'));
   assert(html.includes('One Settings view.'), 'Both editions need the Settings adapter.');
 }
+const pkg=JSON.parse(await read('package.json'));
+assert.equal(await read(`dist/Smart_Charging_v${pkg.version}.html`),web);
 assert.equal(app, pi);
 assert(pi.includes('DEV is always a dashboard'));
 assert(!web.includes('DEV is always a dashboard'), 'Standalone automation must not receive the Pi client guard.');
