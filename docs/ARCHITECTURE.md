@@ -22,6 +22,9 @@ A development commit does not publish GitHub Pages or create a release.
 | `src/automation-control.js` | Shared pause transport and browser command guard. |
 | `linux/automation-pause.mjs` | Persistent pause state, command barrier, expiry, and activity journal. |
 | `dev/controls.js` | Pause controls, hardware-limit dialog, and history retention interface. |
+| `linux/integration-state.mjs` | Shared service health, retained alerts, and acknowledgement rules. |
+| `src/integration-monitor.js` | Browser health storage, Pi status polling, and worker refresh requests. |
+| `dev/monitor.js` | Shared Overview countdowns, manual refresh, and problem dialogs. |
 | `linux/history.mjs` | Compact history files, averages, queries, and expiry. |
 | `linux/tray.py` | Native Pi settings, remote access, status icon, and graphical update action. |
 | `dev/ui.js` | Development navigation, control layout, review, and History view. |
@@ -158,3 +161,29 @@ It never sends an upstream request.
 The browser fixture uses separate site and relay origins.
 It includes a ContentService-style redirect before the JSON response.
 These checks cannot prove the permissions or quota of a user deployment.
+
+## Service updates and retained alerts
+
+The shared monitor separates service health from a retained problem alert.
+A failed channel remains unhealthy until that channel succeeds.
+A successful tariff request must not hide a failed dispatch request.
+Recovery keeps the alert until the user acknowledges it.
+An active failure cannot be acknowledged as healthy.
+The acknowledgement includes an alert ID to protect a newer incident.
+
+The Pi stores alerts in `integration-status.json` with owner-only permissions.
+It stores only sanitised problem text, timestamps, and channel state.
+The web edition stores its alerts in the current browser.
+Pi dashboards combine local transport problems with shared server alerts.
+
+Only the loopback worker can publish authoritative refresh timing.
+Dashboard refresh requests advance a server request ID.
+The worker receives that request during its normal status exchange.
+It then uses the existing refresh and reconciliation path.
+A visible client does not become an unattended scheduler.
+The pause command barrier remains active during data refresh.
+
+The web telemetry request includes grid import/export and battery charge/discharge power.
+Measured zero is valid data.
+Missing directional measurements remain unavailable.
+Tests use mock upstream responses for outages, recovery, restart persistence, and GAS transport.

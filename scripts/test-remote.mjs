@@ -65,7 +65,7 @@ try {
   assert.equal((await call(remote, '/api/history', { headers: sessionHeaders })).status, 200);
   assert.equal((await call(remote, '/api/history?month=../../config', { headers: sessionHeaders })).status, 400);
   assert.equal((await call(remote, '/api/history', { method:'DELETE', headers:sessionHeaders })).status, 405);
-  for (const route of ['/api/history/settings', '/api/automation/pause']) {
+  for (const route of ['/api/history/settings', '/api/automation/pause', '/api/integration-status']) {
     assert.equal((await call(remote, route)).status,401,'New controls require authentication');
     assert.equal((await call(remote, route, { ...put(route.includes('history') ? {retentionMonths:6} : {action:'pause',hours:6}), headers:{...sessionHeaders,Origin:'https://attacker.invalid'} })).status,403);
     assert.equal((await call(remote, route, { method:'DELETE',headers:sessionHeaders })).status,405);
@@ -86,6 +86,14 @@ try {
   assert.equal((await call(remote,'/api/automation/pause',{...put({action:'resume'}),headers:sessionHeaders})).status,200);
   const activity = await call(remote,'/api/history',{headers:sessionHeaders}).then(r=>r.json());
   assert.deepEqual(activity.events.map(event=>event.type).sort(),['automation_paused','automation_resumed']);
+  assert.equal((await call(remote,'/api/integration-status',{...put({action:'refresh'}),headers:sessionHeaders})).status,202);
+  const requestedRefresh = await call(remote,'/api/integration-status',{headers:sessionHeaders}).then(r=>r.json());
+  assert.ok(requestedRefresh.refreshRequestId>0);
+  assert.equal((await call(remote,'/api/integration-status',{method:'POST',headers:{...keyHeaders,'X-Octopus-Worker':'1'},body:JSON.stringify({requestSeen:0,octopusNextAt:null,foxessNextAt:null,octopusBusy:false,foxessBusy:false})})).status,403,'Remote callers cannot publish worker timing');
+  const integrationStatus = await call(remote,'/api/integration-status',{headers:sessionHeaders}).then(r=>r.json());
+  assert.ok(integrationStatus.services.octopus && integrationStatus.services.foxess);
+  assert.equal(JSON.stringify(integrationStatus).includes('mock-token'),false,'Integration status must not disclose service tokens');
+  assert.equal((await call(remote,'/api/integration-status',{...put({service:'foxess',alertId:999}),headers:sessionHeaders})).status,409);
   const publicConfig = await call(remote, '/api/config', { headers: sessionHeaders }).then(r => r.json());
   assert.equal(publicConfig.remoteAccess, undefined, 'Remote key must never leak in dashboard state');
   assert.equal(publicConfig.credentials.api, '');

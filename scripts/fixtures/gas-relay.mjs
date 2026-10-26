@@ -29,7 +29,7 @@ export async function createGasRelay() {
       if (target.pathname.endsWith('/scheduler/enable')) { stats.writes++; groups = body.groups || []; result = {}; }
       else if (target.pathname.endsWith('/scheduler/get')) result = {groups:readbackMismatch?[]:groups};
       else if (target.pathname.endsWith('/setting/get')) result = {value:'SelfUse'};
-      else result = [{datas:Object.entries(readings).map(([variable,value])=>({variable,value}))}];
+      else result = [{datas:Object.entries(readings).filter(([variable])=>body.variables?.includes(variable)).map(([variable,value])=>({variable,value}))}];
       return {getContentText:()=>JSON.stringify({errno:0,result})};
     }}
   });

@@ -18,6 +18,7 @@ await Promise.all([
   cp(path.join(root, 'linux', 'remote-access.mjs'), path.join(packageRoot, 'remote-access.mjs')),
   cp(path.join(root, 'linux', 'server.mjs'), path.join(packageRoot, 'server.mjs')),
   cp(path.join(root, 'linux', 'automation-pause.mjs'), path.join(packageRoot, 'automation-pause.mjs')),
+  cp(path.join(root, 'linux', 'integration-state.mjs'), path.join(packageRoot, 'integration-state.mjs')),
   cp(path.join(root, 'linux', 'history.mjs'), path.join(packageRoot, 'history.mjs')),
   cp(path.join(root, 'linux', 'foxess-live.mjs'), path.join(packageRoot, 'foxess-live.mjs')),
   cp(path.join(root, 'linux', 'foxess-web-signature.mjs'), path.join(packageRoot, 'foxess-web-signature.mjs')),

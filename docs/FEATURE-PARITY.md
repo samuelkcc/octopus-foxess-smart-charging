@@ -16,6 +16,8 @@ The existing public interface remains available.
 | Auto-Resume | Retains the existing Smart Dispatch safeguard. | Shared safety tests pass. |
 | Manual schedules and deletion | Retains original controls and handlers. | Controls remain present. No live command test was performed. |
 | Dashboard-block visibility | Retains saved preferences in Settings. | The DEV visibility override was removed. |
+| Overview data updates | Shared countdowns, Update now, and retained red service alerts. | Mock browser failure, recovery, and separate acknowledgement checks pass. |
+| Grid and battery power | Requests all directional power fields. | GAS mock honours the requested variables; measured zero and missing data tests pass. |
 | Theme, fullscreen, and screen saver | Retains original handlers. | Source review completed. |
 | About and licences | Adds a side panel with tabs. | Full GPL and component text appear in the browser. |
 
@@ -31,6 +33,7 @@ The existing public interface remains available.
 | Graphical public updater | Retains the installed native action. | Source and installed-path checks apply. It was not run against DEV. |
 | DEV installer | Adds a pinned source installation. | Live installation passed after the permission correction. |
 | Runtime rollback | Retains the previous runtime. | The rollback script exists. A live rollback was not run. |
+| Shared Pi update status | Worker timing, refresh requests, and persistent alerts. | Mock restart, authentication, CSRF, worker isolation, and owner-only storage checks pass. Live installation remains pending. |
 | Compact history | Default 12 months, configurable from 1 to 24. | Retention, restart, gap, expiry, and authentication tests pass. |
 | Pause automation | Blocks every app schedule command. | Timers, restart persistence, write barriers, activity, and authentication tests pass. |
 | History charts | Adds month and measurement selection. | A real Pi interval appeared in the interface. |

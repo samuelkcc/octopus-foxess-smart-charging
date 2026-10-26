@@ -133,9 +133,6 @@
   new MutationObserver(syncAuth).observe(dashboard,{attributes:true,attributeFilter:['class']});
   syncAuth();
   const refreshView=()=>{
-    const telemetry=window.lastFoxTelemetry || {};
-    if(formatTelemetryNumber(telemetry.batChargePower)!=='--' && formatTelemetryNumber(telemetry.batDischargePower)!=='--'
-      && Number(telemetry.batChargePower)===0 && Number(telemetry.batDischargePower)===0) byId('overview-battery-power').textContent='0.00 kW · idle';
     const importPrice=window.currentLivePrice;
     byId('next-import-price').textContent=Number.isFinite(importPrice)?Number(importPrice).toFixed(2):'—';
     const exportRate=getRateAtTime(window.exportRates || [],Date.now());

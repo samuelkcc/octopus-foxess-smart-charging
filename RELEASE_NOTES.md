@@ -1,5 +1,11 @@
 ## v2.0.0 — Major redesign under review
 
+- Request grid and battery power in the web edition. Show measured zero as zero and unavailable readings as missing.
+- Add shared Overview refresh countdowns, Update now, and retained red problem alerts for web, Pi, and mobile.
+- Use Pi worker timing across dashboard clients. A refresh request preserves worker ownership and an active pause.
+- Retain Pi alerts across restarts. Require recovery and an explicit acknowledgement before clearing an alert.
+- Verify failure, recovery, acknowledgement, protected worker timing, storage permissions, and GAS power fields with mocks.
+
 - Keep guided setup height and button spacing stable when switching between Octopus, FoxESS and GAS.
 
 - Add a branded welcome screen with setup and restore actions. Use guided web account setup and direct Pi key access.

@@ -148,6 +148,20 @@ async function fetchJson(url, options = {}, timeoutMs = REQUEST_TIMEOUT_MS) {
 async function fetchJsonUnblocked(url, options = {}, timeoutMs = REQUEST_TIMEOUT_MS) {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+    let service = null;
+    let channel = 'api';
+    try {
+        const address = String(url);
+        const payload = typeof options.body === 'string' ? JSON.parse(options.body) : {};
+        const target = payload?.url || address;
+        if (address.startsWith('/api/octopus') || target.includes('api.octopus.energy')) service = 'octopus';
+        if (address.startsWith('/api/foxess') || target.includes('www.foxesscloud.com')) service = 'foxess';
+        if (service) {
+            channel = new URL(target, window.location.href).pathname;
+            if (service === 'octopus') channel = channel.includes('/graphql') ? 'graphql' : channel.includes('/accounts/') ? 'account' : channel.includes('electricity-tariffs') ? 'tariff-request' : 'api';
+        }
+    } catch { /* Other request bodies are not integration requests. */ }
+    const finish = service ? window.integrationMonitor?.start(service) : null;
     try {
         const linuxHeaders = window.linuxRuntime && String(url).startsWith('/api/')
             ? { 'X-Octopus-Access-Key': getLinuxAccessKey() }
@@ -158,13 +172,22 @@ async function fetchJsonUnblocked(url, options = {}, timeoutMs = REQUEST_TIMEOUT
             signal: controller.signal
         });
         if (response.status === 401 && window.linuxRemoteAccess) window.location.reload();
-        if (!response.ok) throw new Error(`HTTP ${response.status} from ${new URL(url, window.location.href).hostname}`);
-        return await response.json();
+        if (!response.ok) throw Object.assign(new Error(`HTTP ${response.status} from ${new URL(url, window.location.href).hostname}`), {statusCode:response.status});
+        const result = await response.json();
+        if (service) {
+            const rejected = result?.errno !== undefined && result.errno !== 0;
+            const graphError = Array.isArray(result?.errors) ? result.errors.length > 0 : Boolean(result?.errors);
+            if (rejected || graphError) window.integrationMonitor?.failure(service, channel, rejected ? `API rejected the request (code ${result.errno}).` : 'The API rejected the data request.');
+            else window.integrationMonitor?.success(service, channel);
+        }
+        return result;
     } catch (error) {
+        if (service && error.statusCode !== 423) window.integrationMonitor?.failure(service, channel, error.name === 'AbortError' ? 'The service request timed out.' : error);
         if (error.name === 'AbortError') throw new Error(`Request timed out after ${Math.round(timeoutMs / 1000)} seconds`);
         throw error;
     } finally {
         clearTimeout(timeoutId);
+        finish?.();
     }
 }
 
@@ -1409,6 +1432,7 @@ async function initDashboard(isAutoRefresh = false, retryCount = 1) {
             });
         }
         const gqlResult = assertValidOctopusGraphqlResponse(gqlData, { requireDispatches: shouldFetchDispatches });
+        window.integrationMonitor?.success('octopus', 'dashboard-data');
         const device = gqlResult.registeredKrakenflexDevice;
         const prefs = gqlResult.vehicleChargingPreferences;
         let dispatches = gqlResult.plannedDispatches || [];
@@ -1492,12 +1516,16 @@ async function initDashboard(isAutoRefresh = false, retryCount = 1) {
 
             if (importResult.status === 'fulfilled') {
                 importRates = importResult.value;
+                window.integrationMonitor?.success('octopus', 'import-tariff');
             } else {
+                window.integrationMonitor?.failure('octopus', 'import-tariff', importResult.reason);
                 console.warn('Failed import tariff rate fetch', importResult.reason);
             }
             if (exportResult.status === 'fulfilled') {
                 exportRates = exportResult.value;
+                window.integrationMonitor?.success('octopus', 'export-tariff');
             } else {
+                window.integrationMonitor?.failure('octopus', 'export-tariff', exportResult.reason);
                 console.warn('Failed export tariff rate fetch', exportResult.reason);
             }
 
@@ -1647,6 +1675,7 @@ async function initDashboard(isAutoRefresh = false, retryCount = 1) {
         }
 
     } catch (err) {
+        window.integrationMonitor?.failure('octopus', 'dashboard-data', err);
         if (window.linuxRuntime && window.linuxRole === 'worker' && refreshTimerId === null) {
             // A transient Octopus error during boot must not strand the worker.
             // Load the saved rules and keep the conservative retry loop alive
@@ -1731,6 +1760,10 @@ function getFoxHeaders(apiPath) {
 function applyFoxTelemetry(values = {}, source = 'rest', updatedAt = null) {
     window.lastFoxTelemetry = { ...(window.lastFoxTelemetry || {}), ...values };
     const telemetry = window.lastFoxTelemetry;
+    const powerFields = ['gridConsumptionPower','feedinPower','batChargePower','batDischargePower'];
+    if (powerFields.some(key => values[key] === null || values[key] === undefined || values[key] === '' || !Number.isFinite(Number(values[key])))) {
+        window.integrationMonitor?.failure('foxess', 'power-readings', 'Grid or battery power is unavailable in the latest FoxESS reading. Last valid values may still be shown.');
+    } else window.integrationMonitor?.success('foxess', 'power-readings');
     const findVal = name => telemetry[name] ?? '--';
     const batterySoc = findVal('SoC');
     if (updatedAt) window.lastFoxTelemetryUpdate = updatedAt;
@@ -1783,11 +1816,12 @@ function applyFoxTelemetry(values = {}, source = 'rest', updatedAt = null) {
     return batterySoc;
 }
 
-async function fetchLinuxLiveTelemetry() {
+async function fetchLinuxLiveTelemetry(force = false) {
     if (!window.linuxRuntime || !globalFoxSN || linuxLiveTelemetryBusy) return;
     linuxLiveTelemetryBusy = true;
+    window.nextLinuxTelemetryAt = Date.now() + 5000;
     try {
-        const telemetry = await fetchJson(LINUX_FOX_LIVE_ENDPOINT, {}, 25000);
+        const telemetry = await fetchJson(`${LINUX_FOX_LIVE_ENDPOINT}${force === true ? '?refresh=1' : ''}`, {}, 25000);
         renderFoxLiveStatus(telemetry);
         applyFoxTelemetry(telemetry.values || {}, telemetry.source, telemetry.updatedAt);
         if (!telemetry.cached && telemetry.source !== 'live-ws') incrementFoxApi();
@@ -1814,7 +1848,7 @@ async function fetchLinuxLiveTelemetry() {
 function startLinuxLiveTelemetryPoll() {
     if (!window.linuxRuntime || linuxLiveTelemetryPollId !== null) return;
     void fetchLinuxLiveTelemetry();
-    linuxLiveTelemetryPollId = setInterval(fetchLinuxLiveTelemetry, 5000);
+    linuxLiveTelemetryPollId = setInterval(() => { void fetchLinuxLiveTelemetry(); }, 5000);
 }
 
 async function pollLinuxDispatchSnapshot() {
@@ -1847,7 +1881,7 @@ async function fetchCurrentWorkMode(forceModeUpdate = false) {
     const realPath = '/op/v0/device/real/query';
     try {
         const payload = { url: `https://www.foxesscloud.com${path}`, headers: getFoxHeaders(path), body: { sn: globalFoxSN, key: "WorkMode" } };
-        const socPayload = { url: `https://www.foxesscloud.com${realPath}`, headers: getFoxHeaders(realPath), body: { sn: globalFoxSN, variables: ["SoC", "pvPower", "loadsPower", "batTemperature", "ambientTemperation"] } };
+        const socPayload = { url: `https://www.foxesscloud.com${realPath}`, headers: getFoxHeaders(realPath), body: { sn: globalFoxSN, variables: ["SoC", "pvPower", "loadsPower", "gridConsumptionPower", "feedinPower", "batChargePower", "batDischargePower", "batTemperature", "ambientTemperation"] } };
         
         let data = { errno: -1 };
         const nowMs = Date.now();
@@ -1867,6 +1901,8 @@ async function fetchCurrentWorkMode(forceModeUpdate = false) {
         incrementFoxApi(); // Always count telemetry call
         const socData = await fetchJson(globalGasUrl, { method: 'POST', body: JSON.stringify(socPayload) });
         
+        if (data.errno !== 0 || !data.result) throw new Error(`FoxESS mode request failed (code ${data.errno}).`);
+        if (socData.errno !== 0 || !Array.isArray(socData.result?.[0]?.datas)) throw new Error(`FoxESS telemetry request failed (code ${socData.errno}).`);
         let batterySoc = null;
         if (socData.errno === 0 && socData.result && socData.result[0] && socData.result[0].datas) {
             const d = socData.result[0].datas;
@@ -1883,9 +1919,10 @@ async function fetchCurrentWorkMode(forceModeUpdate = false) {
             const fbText = document.getElementById('fox-api-text');
             if (fbText) fbText.textContent = "🟢 API CONNECTED";
             if (fbBadge) fbBadge.className = "badge off-peak countdown-border";
+            window.integrationMonitor?.success('foxess', 'mode-data');
             return localWorkModeState;
         }
-    } catch (e) { console.warn("Fox API Error", e); }
+    } catch (e) { window.integrationMonitor?.failure('foxess', 'mode-data', e); console.warn("Fox API Error", e); }
     return null;
 }
 
@@ -1938,6 +1975,14 @@ function renderDispatchScheduleList(dispatches = window.currentDispatches || [])
         </div>
         ${dispatchHtml}
     `;
+}
+
+function getDirectionalPower(positive, negative, positiveLabel, negativeLabel, zeroLabel) {
+    const valid = value => value !== null && value !== undefined && value !== '' && Number.isFinite(Number(value)) && Number(value) >= 0;
+    if (valid(positive) && Number(positive) > 0) return {power:Number(positive),direction:positiveLabel};
+    if (valid(negative) && Number(negative) > 0) return {power:Number(negative),direction:negativeLabel};
+    if (valid(positive) && valid(negative)) return {power:0,direction:zeroLabel};
+    return {power:null,direction:''};
 }
 
 function renderProtectionOverview(now = new Date()) {
@@ -2030,16 +2075,10 @@ function renderProtectionOverview(now = new Date()) {
     };
     setMetric('overview-solar-power', telemetry.pvPower, ' kW');
     setMetric('overview-home-load', telemetry.loadsPower, ' kW');
-    const gridImport = Number(telemetry.gridConsumptionPower || 0);
-    const gridExport = Number(telemetry.feedinPower || 0);
-    const gridPower = gridImport > 0 ? gridImport : (gridExport > 0 ? gridExport : null);
-    const gridDirection = gridImport > 0 ? ' import' : (gridExport > 0 ? ' export' : '');
-    setMetric('overview-grid-power', gridPower, ` kW${gridDirection}`);
-    const batteryCharge = Number(telemetry.batChargePower || 0);
-    const batteryDischarge = Number(telemetry.batDischargePower || 0);
-    const batteryPower = batteryCharge > 0 ? batteryCharge : (batteryDischarge > 0 ? batteryDischarge : null);
-    const batteryDirection = batteryCharge > 0 ? ' charge' : (batteryDischarge > 0 ? ' discharge' : '');
-    setMetric('overview-battery-power', batteryPower, ` kW${batteryDirection}`);
+    const grid = getDirectionalPower(telemetry.gridConsumptionPower, telemetry.feedinPower, 'import', 'export', 'balanced');
+    setMetric('overview-grid-power', grid.power, ` kW ${grid.direction}`);
+    const battery = getDirectionalPower(telemetry.batChargePower, telemetry.batDischargePower, 'charge', 'discharge', 'idle');
+    setMetric('overview-battery-power', battery.power, ` kW ${battery.direction}`);
     setMetric('overview-battery-soc', telemetry.SoC, '%');
 }
 
@@ -2118,7 +2157,7 @@ function scheduleFingerprint(groups) {
         .join('|');
 }
 
-async function fetchFoxSchedules({ expectedGroups = null, attempts = 1 } = {}) {
+async function fetchFoxSchedules({ expectedGroups = null, attempts = 1, refreshMode = true } = {}) {
     if (!globalGasUrl || !globalFoxSN) return [];
     const path = '/op/v3/device/scheduler/get';
     const expectedFingerprint = expectedGroups ? scheduleFingerprint(expectedGroups) : null;
@@ -2195,12 +2234,14 @@ async function fetchFoxSchedules({ expectedGroups = null, attempts = 1 } = {}) {
             const schedulesMatch = expectedFingerprint === null || scheduleFingerprint(window.activeFoxGroups) === expectedFingerprint;
             if (!schedulesMatch && attempt === attempts) throw new Error('FoxESS did not confirm the updated schedules');
             if (schedulesMatch) {
-                await fetchCurrentWorkMode(true);
+                window.integrationMonitor?.success('foxess', 'schedule-readback');
+                if (refreshMode) await fetchCurrentWorkMode(true);
                 return window.activeFoxGroups;
             }
         } catch (e) {
             console.warn(`Fetch Schedule Error (attempt ${attempt}/${attempts})`, e);
             if (attempt === attempts) {
+                window.integrationMonitor?.failure('foxess', 'schedule-readback', e);
                 if (expectedGroups !== null) throw e;
                 return window.activeFoxGroups;
             }
@@ -3238,3 +3279,47 @@ window.addEventListener('automation-resumed', () => {
             .catch(error => console.warn('Automation resume refresh failed; the next normal check will retry.', error));
     }
 });
+
+// Manual data refresh follows the same transport as the active edition.
+let overviewRefreshPromise = null;
+function getOverviewRefreshStatus() {
+    const remoteWorker = window.linuxRuntime && window.linuxRole !== 'worker' ? window.integrationMonitor?.snapshot().remote?.worker : null;
+    const fresh = remoteWorker && Date.now() - remoteWorker.updatedAt < 15000;
+    return { octopusNextAt: fresh ? remoteWorker.octopusNextAt : window.nextOctoTime || null,
+        foxessNextAt: fresh ? remoteWorker.foxessNextAt : window.nextFoxTime || null,
+        foxessScheduleNextAt: window.nextFoxTime || null,
+        workerTiming: Boolean(fresh),
+        workerBusy: fresh ? {octopus:remoteWorker.octopusBusy,foxess:remoteWorker.foxessBusy} : {},
+        running: overviewRefreshPromise !== null };
+}
+function refreshOverviewNow() {
+    if (overviewRefreshPromise) return overviewRefreshPromise;
+    const now = Date.now();
+    window.nextOctoTime = now + getEffectiveOctopusRefreshInterval() * 1000;
+    window.nextFoxTime = now + foxRefreshInterval * 1000;
+    overviewRefreshPromise = (async () => {
+        if (window.linuxRuntime && window.linuxRole !== 'worker') {
+            try {
+                await fetchJson('/api/integration-status', {method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'refresh'})});
+                window.integrationMonitor?.success('octopus', 'worker-refresh');
+                window.integrationMonitor?.success('foxess', 'worker-refresh');
+            } catch (error) {
+                for (const service of ['octopus', 'foxess']) window.integrationMonitor?.failure(service, 'worker-refresh', error);
+            }
+        }
+        const jobs = [initDashboard(true, 0)];
+        if (globalFoxSN && globalGasUrl) {
+            jobs.push(fetchFoxSchedules({ refreshMode: false }), fetchCurrentWorkMode(true));
+            if (window.linuxRuntime) jobs.push(fetchLinuxLiveTelemetry(true));
+        }
+        await Promise.allSettled(jobs);
+        await window.integrationMonitor?.pollPi();
+    })().finally(() => { overviewRefreshPromise = null; });
+    return overviewRefreshPromise;
+}
+
+function requestWorkerDataRefresh() {
+    if (!window.linuxRuntime || window.linuxRole !== 'worker') return;
+    window.nextOctoTime = Date.now();
+    window.nextFoxTime = Date.now();
+}

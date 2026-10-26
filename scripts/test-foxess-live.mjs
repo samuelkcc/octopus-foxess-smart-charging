@@ -75,6 +75,8 @@ assert.equal(fallbackTelemetry.values.SoC, 61);
 assert.equal(fallbackTelemetry.cached, false);
 assert.equal((await fallbackService.getTelemetry()).cached, true);
 assert.equal(restCalls, 1);
+assert.equal((await fallbackService.getTelemetry({forceRest:true})).cached,false,'Explicit refresh bypasses the REST cache');
+assert.equal(restCalls,2);
 fallbackService.stop();
 
 let liveFramesRequested = 0;

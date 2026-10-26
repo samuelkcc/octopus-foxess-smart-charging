@@ -151,3 +151,25 @@ It uses your existing GAS Web App URL.
 It includes no account credentials.
 The file requires an internet connection for APIs and external script libraries.
 The hosted public edition remains unchanged until release approval.
+
+## Check data updates
+
+1. Open **Overview**.
+2. Find **Data updates** below the power readings.
+3. Check the Octopus and FoxESS countdowns.
+4. To request fresh data, select **Update now**.
+5. If a red problem button appears, select it.
+6. Read the reported problem.
+7. After recovery, select **Clear alert**.
+
+The red button remains after recovery until you clear it.
+An active failure cannot be cleared as healthy.
+The last successful update time remains visible during a failure.
+A power value of `0.00 kW` means measured zero.
+A value of `--` means the required measurement is unavailable.
+Data refresh does not cancel an automation pause.
+
+FoxESS power data passes through your configured GAS relay.
+Grid and battery power require their corresponding variables in the FoxESS response.
+The new file requests those variables with solar, home power, and charge level.
+The browser must remain open and awake for countdowns and automation.

@@ -225,3 +225,29 @@ The phone Settings view was checked at 390 pixels.
 The standalone web login and local pause activity were checked with dummy accounts.
 The full check suite and both interface builds passed.
 Live pause and inverter writes were not used as test actions.
+
+## Overview update verification for 2.0.0
+
+The shared Overview adds Octopus and FoxESS countdowns and **Update now**.
+Desktop and 390-pixel phone browser checks used local mock services.
+Both checks displayed grid power and measured zero battery power.
+Forced failures produced retained red problem buttons.
+After recovery, each alert required a separate acknowledgement.
+An active failure could not be cleared as healthy.
+
+The GAS mock returns only requested telemetry variables.
+This test detected and verifies the missing grid and battery variable fix.
+The Pi server tests cover alert persistence across restarts and owner-only storage.
+They also cover authentication, cross-site rejection, and protected worker timing.
+Only the loopback worker can publish refresh timing.
+A remote client can request a refresh through the existing worker path.
+An explicit refresh also bypasses the REST telemetry cache.
+Pause and scheduler safeguards passed with mocked commands.
+No live inverter command was used as a test action.
+
+The standalone test file is `dist/Smart_Charging_v2.0.0.html`.
+The full check suite and both interface builds passed.
+Version 2.0.0 has not yet been installed on the live Pi.
+The live Pi still uses the runtime and interface commits recorded above.
+A full runtime update is required for shared server alerts and worker timing.
+The new public interface remains pending user approval.

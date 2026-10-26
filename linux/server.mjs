@@ -11,6 +11,7 @@ import { QuickTunnel, RemoteSessions, createRemoteKey, matchesRemoteKey, remoteC
 import { FoxessLiveTelemetry } from './foxess-live.mjs';
 import { CompactHistory } from './history.mjs';
 import { AutomationPause } from './automation-pause.mjs';
+import { IntegrationState } from './integration-state.mjs';
 
 const appRoot = path.dirname(fileURLToPath(import.meta.url));
 const webRoot = process.env.OCTOPUS_WEB_ROOT || path.join(appRoot, 'web');
@@ -140,20 +141,56 @@ function sendEmpty(response, statusCode = 204) {
   response.end();
 }
 
-function markIntegrationSuccess(name) {
-  integrationStatus[name] = {
-    ...integrationStatus[name],
-    lastSuccessAt: new Date().toISOString(),
-    lastError: null
-  };
+const integrationFile = path.join(stateRoot, 'integration-status.json');
+let savedIntegrationState;
+try { savedIntegrationState = JSON.parse(await readFile(integrationFile, 'utf8')); }
+catch (error) { if (error.code !== 'ENOENT') console.error('Saved integration alerts could not be loaded.'); }
+let integrationHealth;
+try { integrationHealth = new IntegrationState(savedIntegrationState); }
+catch { integrationHealth = new IntegrationState(); }
+let integrationSaveQueue = Promise.resolve();
+let integrationStorageError = false;
+let integrationLastSave = 0;
+function saveIntegrationHealth(force = false) {
+  if (!force && Date.now() - integrationLastSave < 60_000) return Promise.resolve();
+  integrationLastSave = Date.now();
+  const data = JSON.stringify(integrationHealth.data);
+  const task = integrationSaveQueue.then(async () => {
+    await writeFile(`${integrationFile}.tmp`, data, { mode: 0o600 });
+    await rename(`${integrationFile}.tmp`, integrationFile);
+    await chmod(integrationFile, 0o600);
+    integrationStorageError = false;
+  });
+  integrationSaveQueue = task.catch(() => { integrationStorageError = true; });
+  return task;
 }
-
-function markIntegrationError(name, error) {
-  integrationStatus[name] = {
-    ...integrationStatus[name],
-    lastErrorAt: new Date().toISOString(),
-    lastError: String(error?.message || error || 'Connection failed').slice(0, 240)
-  };
+let integrationRefreshRequestId = 0;
+let integrationWorker = null;
+function integrationSnapshot() { return { ...integrationHealth.snapshot(), storageError: integrationStorageError, refreshRequestId: integrationRefreshRequestId, worker: integrationWorker }; }
+function publicProblem(error) {
+  const text = String(error?.message || error || '');
+  const http = text.match(/HTTP (\d{3})/);
+  if (http) return `Request failed (HTTP ${http[1]}).`;
+  const code = text.match(/\((\d+)\)\s*$/);
+  if (code) return `The service rejected the request (code ${code[1]}).`;
+  if (/timed? ?out|timeout|abort/i.test(text)) return 'The service request timed out.';
+  if (/auth|credential|token|API key/i.test(text)) return 'Authentication failed. Check the configured credentials.';
+  return 'The service request failed. Check the connection and configuration.';
+}
+function markIntegrationSuccess(name, channel = 'api') {
+  integrationStatus[name] = { ...integrationStatus[name], lastSuccessAt: new Date().toISOString(), lastError: null };
+  const service = name === 'foxRest' ? 'foxess' : 'octopus';
+  const previous = integrationHealth.service(service).channels;
+  const recovered = previous[channel]?.ok === false || previous.api?.ok === false;
+  integrationHealth.success(service, channel);
+  integrationHealth.success(service, 'api');
+  if (recovered) void saveIntegrationHealth(true).catch(() => {});
+}
+function markIntegrationError(name, error, channel = 'api') {
+  integrationStatus[name] = { ...integrationStatus[name], lastErrorAt: new Date().toISOString(), lastError: String(error?.message || error || 'Connection failed').slice(0, 240) };
+  const revision = integrationHealth.data.revision;
+  integrationHealth.failure(name === 'foxRest' ? 'foxess' : 'octopus', channel, publicProblem(error));
+  void saveIntegrationHealth(integrationHealth.data.revision !== revision).catch(() => {});
 }
 
 function publicIntegrationStatus(name, configured) {
@@ -336,9 +373,9 @@ async function proxyFoxRequest(request, response) {
   const upstream = await requestFoxOpenApi(state, target.pathname, payload.body || {});
   const upstreamData = await upstream.clone().json().catch(() => null);
   if (upstream.ok && upstreamData?.errno === 0) {
-    markIntegrationSuccess('foxRest');
+    markIntegrationSuccess('foxRest', target.pathname);
   } else {
-    markIntegrationError('foxRest', `FoxESS REST rejected ${target.pathname} (${upstreamData?.errno ?? upstream.status})`);
+    markIntegrationError('foxRest', `FoxESS REST rejected ${target.pathname} (${upstreamData?.errno ?? upstream.status})`, target.pathname);
   }
   return relayUpstreamResponse(upstream, response);
 }
@@ -380,10 +417,10 @@ async function foxOpenApiJson(state, pathname, body) {
     if (data.errno !== 0) {
       throw new Error(`FoxESS Open API rejected ${pathname} (${data.errno ?? 'unknown'})`);
     }
-    markIntegrationSuccess('foxRest');
+    markIntegrationSuccess('foxRest', pathname);
     return data;
   } catch (error) {
-    markIntegrationError('foxRest', error);
+    if (error.statusCode !== 423) markIntegrationError('foxRest', error, pathname);
     throw error;
   }
 }
@@ -426,9 +463,10 @@ async function proxyOctopusRequest(request, response) {
       const authData = await authResponse.json();
       token = authData.data?.obtainKrakenToken?.token;
       if (!authResponse.ok || !token) {
-        markIntegrationError('octopus', authData.errors?.[0]?.message || `Octopus authentication returned HTTP ${authResponse.status}`);
+        markIntegrationError('octopus', authData.errors?.[0]?.message || `Octopus authentication returned HTTP ${authResponse.status}`, 'auth');
         return sendJson(response, authResponse.ok ? 401 : authResponse.status, authData);
       }
+      markIntegrationSuccess('octopus', 'auth');
       octopusTokenCache = {
         apiKeyFingerprint,
         token,
@@ -468,10 +506,14 @@ async function proxyOctopusRequest(request, response) {
   }
 
   const upstreamData = await upstream.clone().json().catch(() => null);
-  if (upstream.ok && !upstreamData?.errors) {
-    markIntegrationSuccess('octopus');
+  const dispatchQuery = payload.authMode === 'graphql' && /\bplannedDispatches\b/.test(payload.body?.query || '');
+  const channel = dispatchQuery ? 'dispatch-data' : 'account-data';
+  const validData = payload.authMode !== 'graphql' || (upstreamData?.data && (!dispatchQuery || Array.isArray(upstreamData.data.plannedDispatches)));
+  if (upstream.ok && !upstreamData?.errors && validData) {
+    markIntegrationSuccess('octopus', channel);
+    if (payload.authMode === 'graphql') markIntegrationSuccess('octopus', 'auth');
   } else {
-    markIntegrationError('octopus', upstreamData?.errors?.[0]?.message || `Octopus API returned HTTP ${upstream.status}`);
+    markIntegrationError('octopus', upstreamData?.errors?.[0]?.message || `Octopus data request failed (HTTP ${upstream.status})`, channel);
   }
   return relayUpstreamResponse(upstream, response);
 }
@@ -535,7 +577,7 @@ async function handleRequest(request, response) {
       response.setHeader('X-Frame-Options', 'DENY');
       const remote = (await loadState()).remoteAccess;
       if (!remote?.enabled) return sendJson(response, 503, { error: 'Remote access is disabled' });
-      const permitted = new Set(['/api/runtime', '/api/auth', '/api/logout', '/api/config', '/api/dispatch-snapshot', '/api/foxess', '/api/octopus', '/api/foxess/live', '/api/foxess/live/status', '/api/history', '/api/history/settings', '/api/automation/pause']);
+      const permitted = new Set(['/api/runtime', '/api/auth', '/api/logout', '/api/config', '/api/dispatch-snapshot', '/api/foxess', '/api/octopus', '/api/foxess/live', '/api/foxess/live/status', '/api/history', '/api/history/settings', '/api/automation/pause', '/api/integration-status']);
       if (pathname.startsWith('/api/') && !permitted.has(pathname)) return sendJson(response, 403, { error: 'This endpoint is only available on the Raspberry Pi' });
       if (!['GET', 'HEAD'].includes(request.method)) {
         const origin = request.headers.origin;
@@ -736,7 +778,7 @@ async function handleRequest(request, response) {
     }
 
     const protectedApi = ['/api/config', '/api/dispatch-snapshot', '/api/foxess', '/api/octopus', '/api/history'];
-    const isProtected = pathname === '/api/automation/pause' || protectedApi.includes(pathname) || pathname === '/api/history/settings' || pathname.startsWith('/api/foxess/live');
+    const isProtected = pathname === '/api/integration-status' || pathname === '/api/automation/pause' || protectedApi.includes(pathname) || pathname === '/api/history/settings' || pathname.startsWith('/api/foxess/live');
     if (isProtected && !(await isAuthorized(request))) {
       return sendJson(response, 401, { error: 'Invalid LAN access code' });
     }
@@ -837,6 +879,8 @@ async function handleRequest(request, response) {
         revision: Date.now()
       };
       await saveState({ ...current, dispatchSnapshot: snapshot });
+      if (snapshot.status === 'failed') markIntegrationError('foxRest', 'The Pi worker schedule was not confirmed.', 'schedule-confirmation');
+      if (['confirmed', 'disabled'].includes(snapshot.status)) markIntegrationSuccess('foxRest', 'schedule-confirmation');
       return sendJson(response, 200, { saved: true, ...snapshot });
     }
     if (pathname === '/api/octopus' && request.method === 'POST') {
@@ -851,7 +895,7 @@ async function handleRequest(request, response) {
       try {
         return await proxyFoxRequest(request, response);
       } catch (error) {
-        markIntegrationError('foxRest', error);
+        if (error.statusCode !== 423) markIntegrationError('foxRest', error);
         throw error;
       }
     }
@@ -860,7 +904,7 @@ async function handleRequest(request, response) {
       return sendJson(response, 200, foxessLive.getPublicStatus());
     }
     if (pathname === '/api/foxess/live' && request.method === 'GET') {
-      const telemetry = await foxessLive.getTelemetry();
+      const telemetry = await foxessLive.getTelemetry({ forceRest: requestUrl.searchParams.get('refresh') === '1' });
       // Reuse the worker's existing readings. History must not add API calls or
       // prevent live telemetry/automation if the storage device is unavailable.
       void history.record(telemetry).then(() => { historyErrorReported = false; }).catch(() => {
@@ -872,6 +916,33 @@ async function handleRequest(request, response) {
     if (pathname === '/api/history') {
       if (request.method !== 'GET') return sendJson(response, 405, { error: 'History is read-only' });
       return sendJson(response, 200, await history.readMonth(requestUrl.searchParams.get('month') || undefined));
+    }
+    if (pathname === '/api/integration-status') {
+      if (request.method === 'GET') return sendJson(response, 200, integrationSnapshot());
+      if (request.method === 'POST') {
+        if (!isLoopback(request) || !isExplicitWorkerRequest(request)) return sendJson(response, 403, {error:'Only the Pi worker can publish refresh timing'});
+        const update = await readJsonBody(request);
+        const fields = ['requestSeen','octopusNextAt','foxessNextAt','octopusBusy','foxessBusy'];
+        if (!update || Object.keys(update).some(key=>!fields.includes(key)) || !Number.isSafeInteger(update.requestSeen)
+            || update.requestSeen < 0 || typeof update.octopusBusy !== 'boolean' || typeof update.foxessBusy !== 'boolean'
+            || !['octopusNextAt','foxessNextAt'].every(key=>update[key]===null || (Number.isFinite(update[key]) && update[key] > 0 && update[key] < Date.now() + 86400_000))) return sendJson(response,400,{error:'Invalid worker timing'});
+        integrationWorker = { ...update, updatedAt: Date.now() };
+        return sendJson(response,200,integrationSnapshot());
+      }
+      if (request.method !== 'PUT') return sendJson(response, 405, { error: 'Use GET or PUT for integration status' });
+      const expectedOrigin = `${remoteRequests.has(request) ? 'https' : 'http'}://${request.headers.host}`;
+      if (request.headers['sec-fetch-site'] === 'cross-site' || (request.headers.origin && request.headers.origin !== expectedOrigin)) return sendJson(response, 403, { error: 'Cross-site request rejected' });
+      const update = await readJsonBody(request);
+      if (update && Object.keys(update).length === 1 && update.action === 'refresh') {
+        integrationRefreshRequestId = Math.max(Date.now(), integrationRefreshRequestId + 1);
+        return sendJson(response,202,integrationSnapshot());
+      }
+      if (!update || Array.isArray(update) || Object.keys(update).length !== 2 || !Object.hasOwn(update, 'service') || !Number.isSafeInteger(update.alertId)) return sendJson(response, 400, { error: 'Specify service and alertId' });
+      const previous = structuredClone(integrationHealth.data);
+      integrationHealth.acknowledge(update.service, update.alertId);
+      try { await saveIntegrationHealth(true); }
+      catch (error) { if(integrationHealth.data.revision === previous.revision) integrationHealth.data = previous; throw error; }
+      return sendJson(response, 200, integrationSnapshot());
     }
     if (pathname === '/api/automation/pause') {
       if (request.method === 'GET') return sendJson(response, 200, await automationPause.getState());
@@ -948,6 +1019,7 @@ for (const signal of ['SIGINT', 'SIGTERM']) {
     remoteServer.close();
     server.close(async () => {
       await history.close().catch(() => {});
+      await integrationSaveQueue;
       process.exit(0);
     });
   });

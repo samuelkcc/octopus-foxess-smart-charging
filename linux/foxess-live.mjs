@@ -516,7 +516,7 @@ export class FoxessLiveTelemetry {
     return this.getPublicStatus();
   }
 
-  async getTelemetry() {
+  async getTelemetry({ forceRest = false } = {}) {
     await this.reconcile();
     if (this.status.state === 'live' && (this.now() - this.latestAt) <= LIVE_STALE_MS) {
       return {
@@ -534,7 +534,7 @@ export class FoxessLiveTelemetry {
     const officialRest = policy === FOX_LIVE_POLICY_REST
       || (policy === FOX_LIVE_POLICY_ON_DEMAND && !isLiveDemandActive(state, this.now()));
     const cacheFresh = this.restCache && (this.now() - this.restCache.updatedAt) < REST_CACHE_MS;
-    if (cacheFresh) {
+    if (cacheFresh && !forceRest) {
       return {
         ...this.getPublicStatus(),
         source: officialRest ? 'rest' : 'rest-fallback',

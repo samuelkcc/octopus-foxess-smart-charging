@@ -261,3 +261,27 @@ The pause survives a reboot.
 A timed pause resumes automatically at the displayed time.
 After resume, saved app rules can replace your temporary FoxESS settings.
 History records pause, manual resume, and timed expiry.
+
+## Check data updates
+
+1. Open **Overview**.
+2. Find **Data updates** below the power readings.
+3. Check the Octopus and FoxESS countdowns.
+4. To request fresh data, select **Update now**.
+5. If a red problem button appears, select it.
+6. Read the reported problem.
+7. After recovery, select **Clear alert**.
+
+The red button remains after recovery until you clear it.
+An active failure cannot be cleared as healthy.
+The last successful update time remains visible during a failure.
+A power value of `0.00 kW` means measured zero.
+A value of `--` means the required measurement is unavailable.
+Data refresh does not cancel an automation pause.
+
+The same controls appear on desktop and mobile dashboards.
+The countdowns use the Pi worker timing when it is available.
+**Update now** also requests a worker refresh.
+The worker retains control of automatic schedule changes.
+Server problem alerts survive a service restart.
+Clearing a server alert clears it for all connected Pi dashboards.

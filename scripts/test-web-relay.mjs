@@ -26,6 +26,9 @@ try {
   assert.equal(vm.runInContext('canRunAutomaticActions()',context),true,'Standalone retains browser automation');
   assert.equal((await vm.runInContext('fetchFoxSchedules()',context)).length,0);
   assert.equal(await vm.runInContext('fetchCurrentWorkMode(true)',context),'SelfUse');
+  const fields=vm.runInContext('window.lastFoxTelemetry',context);
+  assert.equal(fields.gridConsumptionPower,0.2,'Standalone must request grid flow');
+  assert.equal(fields.batDischargePower,0,'Standalone must request measured battery power, including zero');
   const group={enable:1,startHour:17,startMinute:0,endHour:18,endMinute:0,workMode:'ForceCharge',extraParam:{minSocOnGrid:11,fdSoc:80,fdPwr:5000}};
   context.mockGroup=group;
   const result=await vm.runInContext('pushGroupsToFoxESS([mockGroup],1)',context);
