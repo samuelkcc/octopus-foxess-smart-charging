@@ -1,8 +1,10 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" role="img" aria-label="Home EV charger: connection problem">
-  <rect x="1" y="1" width="30" height="30" rx="8" fill="#dc2626"/>
-  <path d="M18 21c0 6 8 7 8 0v-4" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round"/>
-  <rect x="7" y="5" width="13" height="22" rx="3" fill="#fff"/>
-  <path d="m15 9-5 7h4l-1 6 6-9h-4z" fill="#dc2626"/>
-  <path d="M24 11v3m4-3v3" stroke="#fff" stroke-width="1.6" stroke-linecap="round"/>
-  <rect x="23" y="13" width="6" height="6" rx="1.6" fill="#fff"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 20 200 160" role="img" aria-label="EV charging plug and vehicle charge port: connection problem">
+  <path d="M102 55v-7q0-9-10-9H24q-10 0-10 10v70q0 10 10 10h19" fill="none" stroke="#dc2626" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="m139 31 34-3q17-2 17 17v82q0 16-16 14l-37-4q-15-2-15-17V50q0-16 17-19z" fill="#dc2626"/>
+  <ellipse cx="158" cy="85" rx="25" ry="43" fill="#fff"/>
+  <ellipse cx="158" cy="85" rx="19" ry="35" fill="#dc2626"/>
+  <path d="M153 63h11q9 0 9 12v24q0 13-13 13h-7z" fill="#dc2626" stroke="#fff" stroke-width="6" stroke-linejoin="round"/>
+  <path d="M114 57h36q14 0 14 14v32q0 14-14 14h-37q-11 0-17 10l-11 17H58q-9 0-6-12l11-42q10-33 51-33z" fill="#dc2626" stroke="#fff" stroke-width="7" stroke-linejoin="round"/>
+  <path d="m58 148-9 26h19l8-26zm38-21h16q-4 12-19 12h-4z" fill="#dc2626"/>
+  <path d="m119 73-10 13h12l-11 15" fill="none" stroke="#fff" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
 </svg>

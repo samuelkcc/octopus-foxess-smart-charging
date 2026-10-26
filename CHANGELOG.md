@@ -5,7 +5,7 @@
 ## v2026.10.26.6 — Pi DEV (2026-10-26, not released)
 
 - Keep a stable app frame across all pages. Move the old Menu controls into Settings. Add phone navigation and consistent cards, buttons, fields and switches.
-- Use a new charger icon for the application and health indicators. Remove visible DEV labels. Use `/app/index.html` with redirects from old links.
+- Use the charging-plug and vehicle charge-port shape for the app and health indicators. Remove visible DEV labels. Use `/app/index.html` with redirects from old links.
 - Fit History charts to the recorded period so sparse new data stays readable.
 - Add separate Pi and web DEV interfaces. Rebuild the visible views around the Octopus palette. Hide dashboard navigation during sign-in. Keep the shared engine.
 - Add edition-specific setup guides and a side panel for About, the complete GPL text, and component notices.
