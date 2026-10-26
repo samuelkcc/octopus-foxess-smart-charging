@@ -49,10 +49,10 @@ It restarts the existing server and worker.
 It does not create another worker.
 
 The taskbar charger menu provides **Open Desktop Client (DEV)**.
-**Open Original Dashboard** opens the previous interface.
 The installer does not create desktop shortcuts.
 The DEV route is `/dev/index.html?client=1`.
-The original dashboard remains at `/?client=1&original=1`.
+The Pi exposes one client interface.
+Previous root dashboard links also open the new design.
 The remote-access window includes the DEV path in its public URL.
 The same DEV address provides the responsive phone interface.
 The bare tunnel address opens the new DEV interface.
@@ -72,7 +72,7 @@ sudo sh linux/update-dev-ui.sh FULL_40_CHARACTER_COMMIT
 ```
 
 This update does not restart the worker, service, or tunnel.
-The original dashboard remains unchanged.
+The internal worker engine remains unchanged.
 The About panel identifies the UI commit when the build receives that value.
 
 ## Return to the previous runtime

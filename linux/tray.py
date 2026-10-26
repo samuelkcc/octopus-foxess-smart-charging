@@ -697,10 +697,6 @@ class TrayController:
         dashboard = Gtk.MenuItem(label="Open Desktop Client (DEV)" if dev_interface_available() else "Open Desktop Client")
         dashboard.connect("activate", lambda _item: self.open_dashboard())
         self.menu.append(dashboard)
-        if dev_interface_available():
-            original = Gtk.MenuItem(label="Open Original Dashboard")
-            original.connect("activate", lambda _item: self.open_dashboard(original=True))
-            self.menu.append(original)
 
         self.menu.append(Gtk.SeparatorMenuItem())
         quit_item = Gtk.MenuItem(label="Quit Status Icon")
@@ -713,14 +709,12 @@ class TrayController:
         GLib.timeout_add_seconds(10, self.refresh)
         self.refresh()
 
-    def open_dashboard(self, original=False):
+    def open_dashboard(self):
         try:
             log_root = os.path.join(os.environ.get("XDG_STATE_HOME") or os.path.expanduser("~/.local/state"), "octopus-foxess")
             os.makedirs(log_root, mode=0o700, exist_ok=True)
             log_path = os.path.join(log_root, "dashboard-launch.log")
             command = ["/usr/local/bin/octopus-foxess-dashboard"]
-            if original:
-                command.append("--original")
             with open(log_path, "w", encoding="utf-8") as log:
                 process = subprocess.Popen(command, stdin=subprocess.DEVNULL, stdout=log, stderr=log, start_new_session=True)
 
