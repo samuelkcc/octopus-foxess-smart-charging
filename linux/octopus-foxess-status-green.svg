@@ -1,15 +1,9 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="EV charger: healthy">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Home EV wall charger: healthy">
   <rect x="2" y="2" width="60" height="60" rx="13" fill="#16a34a" stroke="#fff" stroke-width="2"/>
-  <g fill="#fff">
-    <rect x="39" y="12" width="13" height="38" rx="3"/>
-    <rect x="42" y="17" width="7" height="13" rx="1" fill="#16a34a"/>
-    <path d="m46 17-3 7h3l-1 6 5-9h-3z"/>
-    <path d="m10 35 4-11h17l5 11v12H10z"/>
-    <path d="m16 28-2 7h18l-3-7z" fill="#16a34a"/>
-    <rect x="11" y="44" width="6" height="8" rx="2"/>
-    <rect x="29" y="44" width="6" height="8" rx="2"/>
-    <circle cx="16" cy="41" r="2" fill="#16a34a"/>
-    <circle cx="30" cy="41" r="2" fill="#16a34a"/>
-  </g>
-  <path d="M52 22h2c5 0 6 18 1 18h-3" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round"/>
+  <rect x="11" y="8" width="30" height="44" rx="11" fill="#fff"/>
+  <rect x="22" y="14" width="9" height="3" rx="1.5" fill="#16a34a"/>
+  <path d="m27 26-10 13h8l-3 10 13-17h-9l3-6z" fill="#16a34a"/>
+  <path d="M41 21h5c8 0 11 6 11 14v10c0 11-13 11-13 1v-6" fill="none" stroke="#fff" stroke-width="4" stroke-linecap="round"/>
+  <rect x="42" y="32" width="8" height="11" rx="2" fill="#fff"/>
+  <path d="M44 32v-4m4 4v-4" stroke="#fff" stroke-width="2" stroke-linecap="round"/>
 </svg>

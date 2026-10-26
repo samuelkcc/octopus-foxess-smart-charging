@@ -8,7 +8,7 @@ Protect a FoxESS home battery from discharging into an EV during Intelligent
 Octopus Go charging slots. The app follows Octopus dispatches and electricity
 prices, then manages the FoxESS schedule automatically.
 
-Current release: **v2026.10.26.2**. Both editions share the Smart Dispatch safety engine. See [Codex maintenance instructions](AGENTS.md) and the [changelog](CHANGELOG.md).
+Current release: **v2026.10.26.3**. Both editions share the Smart Dispatch safety engine. See [Codex maintenance instructions](AGENTS.md) and the [changelog](CHANGELOG.md).
 
 ## Use the web version now
 

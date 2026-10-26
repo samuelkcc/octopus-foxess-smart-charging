@@ -1,3 +1,7 @@
+## v2026.10.26.3 — 2026-10-26
+
+- Refine the Raspberry Pi taskbar symbol to a home EV wall charger with a lightning bolt, cable, and plug, retaining green/orange/red health states.
+
 ## v2026.10.26.2 — 2026-10-26
 
 - Replace the Raspberry Pi taskbar tick/warning/cross status badges with an EV car-and-charger icon. Green indicates healthy connections, orange indicates waiting or fallback, and red indicates a configuration or connection problem.

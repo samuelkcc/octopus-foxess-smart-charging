@@ -13,7 +13,7 @@ services:
 All three services restart automatically after failure or reboot.
 
 The server binds to port `8787` on the local network. Configuration is encrypted
-at rest on the Pi. A native **Octopus FoxESS Server** EV car-and-charger taskbar icon starts with
+at rest on the Pi. A native **Octopus FoxESS Server** home EV wall-charger taskbar icon starts with
 the desktop session and shows the server, Octopus API, FoxESS REST, and FoxESS
 Live WS states. Green indicates healthy, amber indicates a waiting or intentional
 fallback state, and red indicates a configuration or connection problem.
