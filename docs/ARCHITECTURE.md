@@ -3,7 +3,7 @@
 ## Versions
 
 The public release is v2026.10.26.5.
-The current development version is 2026.10.26.6.
+The current development version is 2026.10.26.7.
 The development branch is `codex/ui-ux-preview`.
 A development commit does not publish GitHub Pages or create a release.
 
@@ -17,6 +17,9 @@ A development commit does not publish GitHub Pages or create a release.
 | `linux/server.mjs` | Authentication, protected APIs, credential storage, and service integration. |
 | `linux/foxess-live.mjs` | Live telemetry and REST fallback. |
 | `linux/remote-access.mjs` | Public tunnel, remote keys, and browser sessions. |
+| `src/automation-control.js` | Shared pause transport and browser command guard. |
+| `linux/automation-pause.mjs` | Persistent pause state, command barrier, expiry, and activity journal. |
+| `dev/controls.js` | Pause controls, hardware-limit dialog, and history retention interface. |
 | `linux/history.mjs` | Compact history files, averages, queries, and expiry. |
 | `linux/tray.py` | Native Pi settings, remote access, status icon, and graphical update action. |
 | `dev/ui.js` | Development navigation, control layout, review, and History view. |
@@ -59,7 +62,9 @@ Missing data remains missing.
 
 History files use owner-only permissions.
 They contain no account credentials or remote keys.
-Records expire after 24 calendar months.
+Records expire after 12 calendar months by default.
+The administrator can select 1 to 24 months in dashboard Settings.
+The service erases expired records every hour and when history is read.
 The server keeps automation available if a history write fails.
 
 ## Change a feature
@@ -124,3 +129,21 @@ The path `/test/state` reports mock scheduler writes.
 
 Browser checks must include login, navigation, rule review, setup help, and the full licence text.
 The checks must also confirm that each required element ID exists once.
+
+## Operator pause
+
+Pause is an explicit exception to automatic dispatch reconciliation.
+The server blocks every FoxESS schedule mutation while paused.
+The block applies to the worker and manual dashboard requests.
+Pause waits for an already-sent command before it reports completion.
+It does not erase the existing inverter schedule.
+The user can change that schedule through the FoxESS app.
+Monitoring and compact history collection continue.
+Timed pauses expire after 6, 12, or 24 hours.
+An indefinite pause survives service and device restarts.
+After resume, the worker fetches current dispatches and schedules before reconciliation.
+The pause journal retains activity that a history write could not save.
+History retries must not duplicate the activity entry.
+The web edition stores its pause and activity in the current browser.
+Its activity limit is 12 months or 2,000 entries.
+Use only one active automation browser.

@@ -24,13 +24,13 @@
   const choices = make('div', 'next-segmented'); choices.setAttribute('aria-label', 'Appearance');
   for (const [value, label] of [['light', 'Light'], ['dark', 'Dark']]) {
     const button = action(label, () => {
-      if ((document.documentElement.dataset.theme || 'light') !== value) toggleDarkMode();
+      if ((document.documentElement.dataset.theme || 'dark') !== value) toggleDarkMode();
     });
     button.dataset.themeChoice = value; choices.append(button);
   }
   appearance.append(choices);
   const syncAppearance = () => choices.querySelectorAll('button').forEach(button => {
-    button.setAttribute('aria-pressed', String(button.dataset.themeChoice === (document.documentElement.dataset.theme || 'light')));
+    button.setAttribute('aria-pressed', String(button.dataset.themeChoice === (document.documentElement.dataset.theme || 'dark')));
   });
   new MutationObserver(syncAppearance).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
   syncAppearance();
@@ -38,6 +38,7 @@
   displayActions.append(action('Full screen', toggleFullScreen), action('Screen saver', toggleScreenSaver));
   appearance.append(displayActions);
 
+  const visibleStates = [];
   const visibility = card('Visible panels', 'Choose which panels to show on this device. This does not disable automation.');
   for (const [key, label] of [
     ['intelligentOctopus', 'Electricity prices'], ['foxessMode', 'Inverter schedule'],
@@ -45,8 +46,17 @@
   ]) {
     const input = document.getElementById(`show-section-${key}`);
     const row = make('label', 'next-toggle'); row.htmlFor = input.id;
-    row.append(make('span', '', label), input); visibility.append(row);
+    const state = make('span', 'next-visible-state'); state.setAttribute('aria-hidden', 'true');
+    const control = make('span', 'next-visible-control'); control.append(state, input);
+    const sync = () => { state.textContent = input.checked ? 'On' : 'Off'; state.dataset.on = String(input.checked); };
+    visibleStates.push(sync); input.addEventListener('change', sync);
+    row.append(make('span', '', label), control); visibility.append(row);
   }
+
+  const syncVisibleStates = () => visibleStates.forEach(sync => sync());
+  syncVisibleStates();
+  new MutationObserver(syncVisibleStates).observe(document.getElementById('dashboard'), { attributes: true, attributeFilter: ['class'] });
+  window.addEventListener('dashboard-visibility-change', syncVisibleStates);
 
   if (pi) {
     const telemetry = card('FoxESS telemetry', 'Select the power-data source. Inverter commands always use the official REST API.');

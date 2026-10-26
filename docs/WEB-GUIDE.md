@@ -127,3 +127,18 @@ A downloaded HTML file does not replace itself.
 
 The Pi-only history store is not part of the standalone web edition.
 The app's About & License panel contains the complete GPL and component notices.
+
+## Pause browser automation
+
+1. Open **Overview**.
+2. Select **Pause automation**.
+3. Select the required period.
+4. Confirm the pause.
+
+The browser saves the pause and shows a red banner.
+The existing FoxESS schedule stays in place.
+Use the FoxESS app to change temporary settings.
+History shows pause and resume activity from this browser.
+The Pi edition also stores power history.
+A timed pause resumes when this browser is open and awake.
+The Pi timer runs without an open dashboard.

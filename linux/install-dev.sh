@@ -23,6 +23,9 @@ OCTOPUS_UI_COMMIT="$DEV_COMMIT" node scripts/build-dev.mjs
 node scripts/test-dev-build.mjs
 node --check linux/server.mjs
 node --check linux/history.mjs
+node --check linux/automation-pause.mjs
+node --check src/automation-control.js
+node --check dev/controls.js
 node --check dev/ui.js
 [ ! -e "$DEV_ROOT" ] || { echo 'This DEV commit is already installed.' >&2; exit 1; }
 install -d -m 0755 "$APP_ROOT/dev" "$DEV_ROOT"
@@ -31,7 +34,7 @@ chmod -R u=rwX,go=rX "$DEV_ROOT"
 BACKUP_ROOT="/var/backups/octopus-foxess-before-dev-$(date -u +%Y%m%dT%H%M%SZ)"
 mkdir -m 0700 "$BACKUP_ROOT"
 systemctl stop octopus-foxess-worker octopus-foxess
-for name in config.enc config.key access.key; do
+for name in config.enc config.key access.key automation-pause.json; do
   if [ -f "/var/lib/octopus-foxess/$name" ]; then cp -p "/var/lib/octopus-foxess/$name" "$BACKUP_ROOT/"; fi
 done
 printf '%s\n' "$PREVIOUS" > "$BACKUP_ROOT/previous-runtime"

@@ -10,6 +10,8 @@ const make = () => new CompactHistory({ directory, now: () => clock });
 const sample = (values, at = clock) => ({ updatedAt: new Date(at).toISOString(), values });
 try {
   let history = make();
+  assert.equal((await history.getSettings()).retentionMonths,12);
+  for (const value of [0,25,1.5,'12',null]) await assert.rejects(history.setRetentionMonths(value),{statusCode:400});
   assert.equal(await history.record(sample({ loadsPower: 2, SoC: 50 })), true);
   assert.equal(await history.record(sample({ loadsPower: 100 })), false, 'Cached/duplicate readings do not inflate the average');
   clock += 60_000;
@@ -29,11 +31,15 @@ try {
   report = await history.readMonth('2026-10');
   assert.equal(report.points.length, 2, 'Downtime stays a gap, without synthetic intervals');
   assert.equal(report.points[1].at, '2026-10-26T12:30:00.000Z');
+  await history.recordEvent({at:new Date(clock).toISOString(),type:'automation_paused',until:null,revision:1});
+  assert.equal((await history.readMonth('2026-10')).events[0].type,'automation_paused');
+  await history.setRetentionMonths(24);
   await history.close();
   const archive = path.join(directory, '2026-10.jsonl');
   const firstRow = (await readFile(archive, 'utf8')).trim();
   await writeFile(archive, `${firstRow}\n${firstRow}\n{incomplete\n`);
   history = make();
+  assert.equal((await history.getSettings()).retentionMonths,24,'Retention survives restart');
   assert.equal((await history.readMonth('2026-10')).points.length, 2, 'Duplicate crash appends and incomplete rows are handled');
   await assert.rejects(history.readMonth('../../config'), { statusCode:400 });
   await assert.rejects(history.readMonth('2026-13'), { statusCode:400 });
@@ -44,5 +50,20 @@ try {
   clock = Date.parse('2028-11-01T00:00:00Z');
   assert.equal((await history.readMonth('2026-10')).points.length, 0, 'Data older than 24 calendar months is unavailable');
   assert.ok(!(await readdir(directory)).includes('2026-10.jsonl'));
+  assert.equal((await history.readMonth('2026-10')).events.length,0,'Expired activity is erased too');
+  clock = Date.parse('2028-03-31T12:00:00Z');
+  await history.setRetentionMonths(1);
+  assert.equal((await history.getSettings()).cutoff,'2028-02-29T12:00:00.000Z','Calendar month retention clamps leap days');
+  clock = Date.parse('2027-03-31T12:00:00Z');
+  assert.equal((await history.getSettings()).cutoff,'2027-02-28T12:00:00.000Z');
+  const before = [Math.floor(Date.parse('2027-02-27T12:00:00Z')/60000),...Array(7).fill(1000),...Array(7).fill(1)];
+  const after = [Math.floor(Date.parse('2027-03-01T12:00:00Z')/60000),...Array(7).fill(1000),...Array(7).fill(1)];
+  await history.setRetentionMonths(12);
+  await writeFile(path.join(directory,'2027-02.jsonl'),JSON.stringify(before)+'\n');
+  await writeFile(path.join(directory,'2027-03.jsonl'),JSON.stringify(after)+'\n');
+  await history.setRetentionMonths(1);
+  assert.equal((await history.readMonth('2027-02')).points.length,0,'Shorter policy erases boundary rows');
+  assert.equal((await history.readMonth('2027-03')).points.length,1,'Newer records survive shorter policy');
+  assert.equal((await readFile(path.join(directory,'2027-02.jsonl'),'utf8')).trim(),'');
   console.log('History averages, missing values, cache deduplication, restart persistence, outage gaps, crash recovery, query validation, and 24-month retention passed.');
 } finally { await rm(directory, { recursive:true, force:true }); }

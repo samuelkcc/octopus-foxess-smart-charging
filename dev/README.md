@@ -1,6 +1,6 @@
 # DEV guide
 
-The development version is **2026.10.26.6**.
+The development version is **2026.10.26.7**.
 The source branch is `codex/ui-ux-preview`.
 This branch does not publish GitHub Pages or create a release tag.
 
@@ -124,7 +124,9 @@ The files are in `/var/lib/octopus-foxess/history`.
 The directory and files have owner-only permissions.
 The files contain no account credentials, remote keys, or public URLs.
 
-Records expire after 24 calendar months.
+Records expire after 12 calendar months by default.
+The administrator can select 1 to 24 months in dashboard Settings.
+The service erases expired records every hour and when history is read.
 The server removes expired records during collection and history queries.
 Missing readings remain gaps.
 No earlier records are imported.

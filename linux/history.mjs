@@ -4,15 +4,23 @@ import { appendFile, chmod, mkdir, readFile, readdir, rename, stat, unlink, writ
 import path from 'node:path';
 
 export const HISTORY_FIELDS = ['pvPower', 'loadsPower', 'gridConsumptionPower', 'feedinPower', 'batChargePower', 'batDischargePower', 'SoC'];
+export const DEFAULT_RETENTION_MONTHS = 12;
+export function validateRetentionMonths(value) {
+  if (!Number.isInteger(value) || value < 1 || value > 24) {
+    throw Object.assign(new Error('Keep history for 1 to 24 whole months'), { statusCode: 400 });
+  }
+  return value;
+}
 const MINUTE = 60_000;
 const SLOT = 15;
 const MONTH_PATTERN = /^\d{4}-(0[1-9]|1[0-2])$/;
 const monthOf = time => new Date(time).toISOString().slice(0, 7);
-const cutoffAt = time => {
+const cutoffAt = (time, months) => {
   const date = new Date(time);
   // Calendar-month retention, including leap-year/day clamping.
-  const year = date.getUTCFullYear() - 2;
-  const month = date.getUTCMonth();
+  const target = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth() - months, 1));
+  const year = target.getUTCFullYear();
+  const month = target.getUTCMonth();
   const day = Math.min(date.getUTCDate(), new Date(Date.UTC(year, month + 1, 0)).getUTCDate());
   return Date.UTC(year, month, day, date.getUTCHours(), date.getUTCMinutes());
 };
@@ -26,11 +34,19 @@ export class CompactHistory {
     this.loaded = false;
     this.lastFlush = 0;
     this.lastPruneDay = '';
+    this.retentionMonths = DEFAULT_RETENTION_MONTHS;
+    this.cleanupPending = false;
+    this.lastCleanupAt = null;
   }
   async initialize() {
     if (this.loaded) return;
     await mkdir(this.directory, { recursive: true, mode: 0o700 });
     await chmod(this.directory, 0o700);
+    try {
+      const preferences = JSON.parse(await readFile(path.join(this.directory, 'preferences.json'), 'utf8'));
+      if (preferences?.v !== 1) throw new Error('Invalid history preferences');
+      this.retentionMonths = validateRetentionMonths(preferences.retentionMonths);
+    } catch (error) { if (error.code !== 'ENOENT') throw error; }
     try {
       const value = JSON.parse(await readFile(path.join(this.directory, 'current.json'), 'utf8'));
       if (value?.v !== 1 || !Number.isInteger(value.slot) || !Number.isInteger(value.lastMinute)
@@ -48,6 +64,32 @@ export class CompactHistory {
     const task = this.queue.then(operation);
     this.queue = task.catch(() => {});
     return task;
+  }
+  settings() {
+    return { retentionMonths: this.retentionMonths, defaultMonths: DEFAULT_RETENTION_MONTHS,
+      minimumMonths: 1, maximumMonths: 24, automaticCleanup: true,
+      cutoff: new Date(cutoffAt(this.now(), this.retentionMonths)).toISOString(),
+      lastCleanupAt: this.lastCleanupAt, cleanupPending: this.cleanupPending };
+  }
+  getSettings() {
+    return this.enqueue(async () => { await this.initialize(); return this.settings(); });
+  }
+  setRetentionMonths(value) {
+    return this.enqueue(async () => {
+      validateRetentionMonths(value);
+      await this.initialize();
+      const target = path.join(this.directory, 'preferences.json');
+      await writeFile(`${target}.tmp`, JSON.stringify({ v: 1, retentionMonths: value }), { mode: 0o600 });
+      await rename(`${target}.tmp`, target);
+      this.retentionMonths = value;
+      // Save policy before deleting data. A failed cleanup is retried by the service.
+      this.cleanupPending = true;
+      try { await this.prune(); } catch { /* The saved policy remains authoritative. */ }
+      return this.settings();
+    });
+  }
+  cleanup() {
+    return this.enqueue(async () => { await this.initialize(); await this.prune(); return this.settings(); });
   }
   record(telemetry) {
     return this.enqueue(async () => {
@@ -97,26 +139,48 @@ export class CompactHistory {
     await rename(temporary, path.join(this.directory, 'current.json'));
     this.lastFlush = this.now();
   }
+  recordEvent(event) {
+    return this.enqueue(async () => {
+      await this.initialize();
+      if (!['automation_paused', 'automation_resumed', 'pause_expired'].includes(event?.type)
+          || !Number.isFinite(Date.parse(event.at)) || !Number.isSafeInteger(event.revision)) throw new Error('Invalid activity event');
+      const row = [event.at, event.type, event.until || null, event.revision];
+      const file = path.join(this.directory, `${monthOf(Date.parse(event.at))}.events.jsonl`);
+      const encoded = JSON.stringify(row);
+      let existing = '';
+      try { existing = await readFile(file, 'utf8'); } catch (error) { if (error.code !== 'ENOENT') throw error; }
+      // The pause journal retries after a crash. Repeated events must not duplicate the activity log.
+      if (!existing.split('\n').includes(encoded)) await appendFile(file, `${existing && !existing.endsWith('\n') ? '\n' : ''}${encoded}\n`, { mode: 0o600 });
+      await this.prune();
+    });
+  }
   async prune() {
-    const cutoff = cutoffAt(this.now());
+    this.cleanupPending = true;
+    const cutoff = cutoffAt(this.now(), this.retentionMonths);
     const oldest = monthOf(cutoff);
     for (const name of await readdir(this.directory)) {
-      if (/^\d{4}-\d{2}\.jsonl$/.test(name) && name.slice(0, 7) < oldest) await unlink(path.join(this.directory, name));
-    }
-    const boundary = path.join(this.directory, `${oldest}.jsonl`);
-    try {
-      const data = await readFile(boundary, 'utf8');
+      if (!/^\d{4}-\d{2}(?:\.events)?\.jsonl$/.test(name)) continue;
+      const file = path.join(this.directory, name);
+      if (name.slice(0, 7) < oldest) { await unlink(file); continue; }
+      if (name.slice(0, 7) !== oldest) continue;
+      const data = await readFile(file, 'utf8');
       const kept = data.split('\n').filter(line => {
-        try { const row = JSON.parse(line); return Array.isArray(row) && row[0] * MINUTE >= cutoff; }
+        try { const row = JSON.parse(line); return Array.isArray(row) && (name.includes('.events.') ? Date.parse(row[0]) : row[0] * MINUTE) >= cutoff; }
         catch { return false; }
       }).join('\n');
       const next = kept ? `${kept}\n` : '';
       if (next !== data) {
-        await writeFile(`${boundary}.tmp`, next, { mode: 0o600 });
-        await rename(`${boundary}.tmp`, boundary);
+        await writeFile(`${file}.tmp`, next, { mode: 0o600 });
+        await rename(`${file}.tmp`, file);
       }
-    } catch (error) { if (error.code !== 'ENOENT') throw error; }
+    }
+    if (this.current && this.current.slot * MINUTE < cutoff) {
+      this.current = null;
+      await unlink(path.join(this.directory, 'current.json')).catch(error => { if (error.code !== 'ENOENT') throw error; });
+    }
     this.lastPruneDay = new Date(this.now()).toISOString().slice(0, 10);
+    this.lastCleanupAt = new Date(this.now()).toISOString();
+    this.cleanupPending = false;
   }
   readMonth(requestedMonth = monthOf(this.now())) {
     return this.enqueue(async () => {
@@ -124,7 +188,7 @@ export class CompactHistory {
       await this.initialize();
       await this.prune();
       const now = this.now();
-      const cutoff = cutoffAt(now);
+      const cutoff = cutoffAt(now, this.retentionMonths);
       const rows = new Map();
       try {
         const data = await readFile(path.join(this.directory, `${requestedMonth}.jsonl`), 'utf8');
@@ -149,13 +213,25 @@ export class CompactHistory {
       let storageBytes = 0;
       const months = [];
       for (const name of await readdir(this.directory)) {
-        if (name === 'current.json' || /^\d{4}-\d{2}\.jsonl$/.test(name)) storageBytes += (await stat(path.join(this.directory, name))).size;
-        if (/^\d{4}-\d{2}\.jsonl$/.test(name)) months.push(name.slice(0, 7));
+        if (['current.json', 'preferences.json'].includes(name) || /^\d{4}-\d{2}(?:\.events)?\.jsonl$/.test(name)) storageBytes += (await stat(path.join(this.directory, name))).size;
+        if (/^\d{4}-\d{2}(?:\.events)?\.jsonl$/.test(name)) months.push(name.slice(0, 7));
       }
       if (this.current) months.push(monthOf(this.current.slot * MINUTE));
-      return { version: 1, month: requestedMonth, intervalMinutes: 15, retentionMonths: 24, storageBytes,
+      const events = [];
+      try {
+        const data = await readFile(path.join(this.directory, `${requestedMonth}.events.jsonl`), 'utf8');
+        for (const line of data.split('\n')) {
+          try {
+            const [at, type, until, revision] = JSON.parse(line);
+            if (!['automation_paused', 'automation_resumed', 'pause_expired'].includes(type)) continue;
+            if (Date.parse(at) >= cutoff && Date.parse(at) <= now && monthOf(Date.parse(at)) === requestedMonth) events.push({ at, type, until, revision });
+          } catch { /* Ignore incomplete append. */ }
+        }
+      } catch (error) { if (error.code !== 'ENOENT') throw error; }
+      events.sort((a, b) => b.at.localeCompare(a.at));
+      return { version: 1, month: requestedMonth, intervalMinutes: 15, retentionMonths: this.retentionMonths, storageBytes,
         months: [...new Set(months)].filter(month => month >= monthOf(cutoff) && month <= monthOf(now)).sort().reverse(),
-        fields: HISTORY_FIELDS, units: { power: 'kW', SoC: '%' }, points,
+        events, fields: HISTORY_FIELDS, units: { power: 'kW', SoC: '%' }, points,
         note: 'Observed 15-minute averages. Missing readings remain gaps; these are not billing-grade energy totals.' };
     });
   }

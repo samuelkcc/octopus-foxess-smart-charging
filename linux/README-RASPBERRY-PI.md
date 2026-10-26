@@ -167,7 +167,7 @@ A matching schedule readback does not prove measured battery power.
 
 ## Use DEV history
 
-History is available in the 2026.10.26.6 development version.
+History is available in the 2026.10.26.7 development version.
 It is not in public v2026.10.26.5.
 
 1. Select **Open Desktop Client** from the taskbar charger menu.
@@ -176,7 +176,11 @@ It is not in public v2026.10.26.5.
 4. Select a measurement.
 5. To save the month, select **Download month CSV**.
 
-The Pi stores 15-minute averages for up to 24 months.
+The Pi stores 15-minute averages for 12 months by default.
+**Settings → History storage** selects a period from 1 to 24 months.
+The service automatically erases older power records and activity entries.
+A shorter period can permanently erase records.
+A longer period cannot restore erased records.
 It reuses existing worker telemetry requests.
 History adds no upstream API requests.
 It records solar, home load, grid import/export, battery charge/discharge, and state of charge.
@@ -239,3 +243,21 @@ Uninstallation removes the application, services, credentials, access code, and 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/samuelkcc/octopus-foxess-smart-charging/main/linux/uninstall.sh | sudo sh
 ```
+
+## Pause schedule control
+
+1. Open **Overview**.
+2. Select **Pause automation**.
+3. Select **6 hours**, **12 hours**, **24 hours**, or **Forever**.
+4. Select **Pause automation** in the dialog.
+5. Check the red **Automation paused** banner.
+6. Use the FoxESS app to set temporary charging.
+
+The existing inverter schedule stays in place when you pause.
+The app sends no schedule commands while paused.
+Monitoring continues.
+The pause survives a reboot.
+**Forever** stays active until you select **Resume automation**.
+A timed pause resumes automatically at the displayed time.
+After resume, saved app rules can replace your temporary FoxESS settings.
+History records pause, manual resume, and timed expiry.

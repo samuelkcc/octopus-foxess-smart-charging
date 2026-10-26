@@ -105,6 +105,7 @@ function applyDashboardSectionVisibility(visibility = getDashboardSectionVisibil
         const control = document.getElementById(`show-section-${key}`);
         if (control) control.checked = visible;
     });
+    window.dispatchEvent?.(new Event('dashboard-visibility-change'));
     schedulePriceChartResize();
 }
 
@@ -121,6 +122,7 @@ function markAutomationsDirty() {
         const button = document.getElementById(id);
         if (!button) return;
         button.disabled = false;
+        button.dataset.state = 'dirty';
         button.style.background = '#16a34a';
         button.style.cursor = 'pointer';
     });
@@ -137,6 +139,13 @@ function showToast(message) {
 }
 
 async function fetchJson(url, options = {}, timeoutMs = REQUEST_TIMEOUT_MS) {
+    let scheduleWrite = false;
+    try { scheduleWrite = JSON.parse(options.body || '{}').url?.endsWith('/op/v3/device/scheduler/enable'); } catch { /* Other request bodies are not FoxESS commands. */ }
+    const operation = () => fetchJsonUnblocked(url, options, timeoutMs);
+    return scheduleWrite && window.automationControl ? window.automationControl.write(operation) : operation();
+}
+
+async function fetchJsonUnblocked(url, options = {}, timeoutMs = REQUEST_TIMEOUT_MS) {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
     try {
@@ -302,6 +311,7 @@ async function loadLinuxState() {
     if (!response.ok) throw new Error(`Unable to load Raspberry Pi configuration (HTTP ${response.status})`);
     const state = await response.json();
     window.linuxRevision = state.revision || null;
+    window.automationControl?.accept(state.automationPause || { paused: false, until: null, revision: 0 });
     if (state.automations) {
         localStorage.setItem('foxAutomations', JSON.stringify(state.automations));
     }
@@ -599,7 +609,7 @@ function startLinuxWorkerConfigPoll() {
 }
 
 function canRunAutomaticActions() {
-    return !window.linuxRuntime || window.linuxRole === 'worker';
+    return !window.automationControl?.isPaused() && (!window.linuxRuntime || window.linuxRole === 'worker');
 }
 
 function populateCredentialInputs(credentials) {
@@ -1132,7 +1142,7 @@ function toggleDarkMode() {
 document.addEventListener("DOMContentLoaded", async () => {
     applyDashboardSectionVisibility();
     await detectLinuxRuntime();
-    const savedTheme = localStorage.getItem('theme') || 'light';
+    const savedTheme = localStorage.getItem('theme') === 'light' ? 'light' : 'dark';
     document.documentElement.setAttribute('data-theme', savedTheme);
     updateThemeButtons(savedTheme);
     if (!localStorage.getItem('licenseAccepted')) {
@@ -1945,7 +1955,10 @@ function renderProtectionOverview(now = new Date()) {
     const forceChargeActive = effectiveMode === 'ForceCharge';
     const sync = getDispatchSyncUiState();
 
-    if (sync?.status === 'waiting') {
+    if (window.automationControl?.isPaused()) {
+        stateBadge.textContent = 'PAUSED'; stateBadge.className = 'badge peak';
+        stateMessage.textContent = 'App schedule control is paused. Use the FoxESS app for temporary settings. Monitoring continues.';
+    } else if (sync?.status === 'waiting') {
         stateBadge.textContent = 'WAITING';
         stateBadge.className = 'badge neutral';
         stateMessage.textContent = 'Waiting for the Pi worker to publish and verify the authoritative Octopus Smart Dispatch schedule.';
@@ -2615,6 +2628,7 @@ function hasEnabledLocalAutomation() {
 
 function resetAutomationApplyButton(button) {
     if (!button) return;
+    button.dataset.state = 'ready';
     button.textContent = button.dataset.defaultLabel || 'Apply Automations';
     button.style.opacity = '1';
     button.disabled = false;
@@ -2623,6 +2637,7 @@ function resetAutomationApplyButton(button) {
 // RUNS TO PUSH SCHEDULES VIA V3 API INSTEAD OF V0 LIVE-TOGGLE
 async function evaluateLocalAutomations(btn = null, isStartup = false) {
     if (!globalFoxSN || !globalGasUrl) return;
+    if (window.automationControl?.isPaused()) { if (btn) showToast('Resume automation before applying schedules.'); return false; }
     if (!btn && !canRunAutomaticActions()) return false;
     if (isCurrentlyUpdatingMode) {
         pendingAutomationEvaluation = true;
@@ -2630,6 +2645,7 @@ async function evaluateLocalAutomations(btn = null, isStartup = false) {
     }
     
     if (btn) {
+        btn.dataset.state = "busy";
         btn.textContent = "Syncing...";
         btn.style.opacity = "0.7";
         btn.disabled = true;
@@ -2891,6 +2907,7 @@ async function evaluateLocalAutomations(btn = null, isStartup = false) {
         }
         showToast(`Automation schedules were not applied: ${error.message}`);
         if (btn) {
+            btn.dataset.state = 'failed';
             btn.textContent = '❌ Apply Failed';
             btn.style.background = '#ef4444';
             btn.style.opacity = '1';
@@ -2903,6 +2920,7 @@ async function evaluateLocalAutomations(btn = null, isStartup = false) {
     ['btn-save-unified', 'btn-save-discharge'].forEach(id => {
         const applyButton = document.getElementById(id);
         if (!applyButton) return;
+        applyButton.dataset.state = 'success';
         applyButton.textContent = '✅ Applied Automations';
         setTimeout(() => {
             resetAutomationApplyButton(applyButton);
@@ -3210,3 +3228,13 @@ function toggleScreenSaver() {
     const overlay = document.getElementById('screen-saver-overlay');
     overlay.style.display = (overlay.style.display === 'none') ? 'block' : 'none';
 }
+
+// A resume uses fresh dispatches and REST schedule data before reconciliation.
+window.addEventListener('automation-resumed', () => {
+    lastDispatchesStr = null;
+    window.fulfilledSchedule = null;
+    if ((!window.linuxRuntime || window.linuxRole === 'worker') && globalFoxSN && globalGasUrl) {
+        void (async () => { await fetchFoxSchedules(); await initDashboard(true); })()
+            .catch(error => console.warn('Automation resume refresh failed; the next normal check will retry.', error));
+    }
+});

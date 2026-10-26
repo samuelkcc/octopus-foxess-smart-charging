@@ -31,7 +31,7 @@
     shell.querySelector('.dev-tag').textContent = 'HOME ENERGY';
     shell.querySelector('.dev-service').textContent = 'Browser must stay awake';
     shell.querySelector('.dev-announcement').textContent = 'Automation runs in this browser. Keep it open and awake.';
-    shell.querySelector('[data-page="history"]').hidden = true;
+
   }
   const sections = {};
   const titles = { overview:'Overview', schedules:'Schedules', rules:'Automations', history:'History', connections:'Connections', settings:'Settings' };
@@ -39,7 +39,7 @@
     overview:'Your current power flow, dispatch windows, and FoxESS confirmation.',
     schedules:'The current inverter schedule and manual controls. Actions here affect real hardware.',
     rules:'Review charging and discharging preferences before applying them to the Pi worker.',
-    history:'Browse compact 15-minute averages retained on this Pi for up to 24 months.',
+    history:'Browse recorded power averages and automation activity. Manage retention in Settings.',
     connections:'Account, device and service connection status.',
     settings:'Appearance, visible panels, telemetry and access on this device.'
   };
@@ -52,6 +52,7 @@
     sections[name] = section;
   }
   if (!piEdition) {
+    sections.history.querySelector('header p').textContent = 'Pause and resume activity stored in this browser. The Pi edition also records power history.';
     sections.settings.querySelector('header p').textContent = 'Appearance, visible panels, configuration backups and browser data.';
     sections.connections.querySelector('header p').textContent = 'Account setup, Google relay, saved configuration and browser requirements.';
     sections.overview.querySelector('header p').textContent = 'Current power flow, Octopus dispatches and FoxESS schedules in this browser.';
@@ -91,11 +92,14 @@
   const historyPanel = document.createElement('section');
   historyPanel.className = 'card dev-history';
   historyPanel.innerHTML = `<div class="dev-history-controls"><label>Month<input type="month" id="dev-history-month"></label><label>Measure<select id="dev-history-metric"><option value="loadsPower">Home demand</option><option value="pvPower">Solar generation</option><option value="gridConsumptionPower">Grid import</option><option value="feedinPower">Grid export</option><option value="batChargePower">Battery charge</option><option value="batDischargePower">Battery discharge</option><option value="SoC">Battery charge level</option></select></label><button id="dev-history-refresh">Refresh history</button><button id="dev-history-export">Download month CSV</button></div><p id="dev-history-status" role="status">History is collected by the Pi from existing telemetry. Open this page to load it.</p><div class="dev-history-chart"><canvas id="dev-history-chart" role="img" aria-label="Historical telemetry averages for the selected month and measure"></canvas></div><p class="dev-muted">Observed averages, not billing-grade energy totals. Missing readings stay as gaps. Recording starts when history storage is installed.</p>`;
+  historyPanel.insertAdjacentHTML('beforeend', '<h2>Automation activity</h2><div id="history-activity" aria-live="polite"></div>');
+  if (!piEdition) { historyPanel.querySelector('.dev-history-chart').hidden = true; configureWebHistory(); }
+  function configureWebHistory() { historyPanel.querySelector('#dev-history-metric').closest('label').hidden = true; historyPanel.querySelector('.dev-muted').textContent = 'Activity is kept for 12 months, up to 2,000 entries. This browser must stay open and awake for automation.'; historyPanel.querySelector('#dev-history-export').hidden = true; }
   move(historyPanel, 'history');
   // Apply uses the unchanged scheduler engine, after an explicit review step.
   const reviewDialog = document.createElement('dialog');
   reviewDialog.className = 'dev-review-dialog';
-  reviewDialog.innerHTML = `<h2>Apply automation changes?</h2><p>These are real Pi settings. Applying saves your rules and asks the existing worker to reconcile the inverter schedule.</p><dl id="dev-review-facts"></dl><p>Confirmation remains pending until the worker receives a matching official FoxESS REST readback.</p><div class="dev-dialog-actions"><button id="dev-review-cancel">Back</button><button id="dev-review-apply">Apply to Pi</button></div>`;
+  reviewDialog.innerHTML = `<h2>Apply automation changes?</h2><p>These are real Pi settings. Applying saves your rules and asks the existing worker to reconcile the inverter schedule.</p><dl id="dev-review-facts"></dl><p>Confirmation remains pending until the worker receives a matching official FoxESS REST readback.</p><div class="dev-dialog-actions"><button id="dev-review-cancel">Cancel</button><button id="dev-review-apply">Apply to Pi</button></div>`;
   document.body.append(reviewDialog);
   if (!piEdition) {
     reviewDialog.querySelector('p').textContent = 'These are real inverter settings. Applying saves your browser rules and sends the schedule through your configured Google relay.';
@@ -109,6 +113,7 @@
     button.textContent = 'Review & apply';
     button.addEventListener('click', () => {
       if (!dashboard.classList.contains('visible') || (piEdition && (!window.linuxRuntime || window.linuxRole !== 'dashboard'))) { showToast('Connect to the dashboard before applying changes.'); return; }
+      if (window.automationControl?.isPaused()) { showToast('Resume automation before applying schedules.'); return; }
       pendingApply = button;
       const facts = document.getElementById('dev-review-facts');
       facts.replaceChildren();
@@ -120,7 +125,9 @@
         ['Target-price charge', read('toggle-auto-price').checked ? `At or below ${read('price-threshold').value} p/kWh` : 'Disabled'],
         ['Export-price discharge', read('toggle-auto-export').checked ? `At or above ${read('export-threshold').value} p/kWh` : 'Disabled'],
         ['Weekly discharge', read('toggle-weekly-discharge').checked ? `${read('weekly-discharge-start').value}–${read('weekly-discharge-end').value}` : 'Disabled'],
-        ['Dispatch discharge protection', read('toggle-discharge-pause-dispatch').checked ? 'Enabled' : 'Disabled']
+        ['Dispatch discharge protection', read('toggle-discharge-pause-dispatch').checked ? 'Enabled' : 'Disabled'],
+        ['Minimum charge level on grid', `${read('adv-min-soc').value}%`],
+        ['Maximum forced-mode power', `${read('adv-fd-pwr').value} W`]
       ];
       entries.forEach(([label, value]) => {
         const row = document.createElement('div'); const dt = document.createElement('dt'); const dd = document.createElement('dd');
@@ -139,7 +146,7 @@
   });
   let currentPage = 'overview';
   function navigate(name) {
-    if (!piEdition && name === 'history') name = 'connections';
+
     if (!sections[name]) return;
     currentPage = name;
     closeAllDrawers();
@@ -170,7 +177,8 @@
     state.textContent = piEdition
       ? (snapshot ? (messages[snapshot.status] || 'Unknown worker state') : 'Waiting for authenticated Pi data')
       : (dashboard.classList.contains('visible') ? 'Automation runs in this browser. Keep it open and awake.' : 'Connect your accounts to start.');
-    state.dataset.status = snapshot?.status || 'waiting';
+    if (window.automationControl?.isPaused()) state.textContent = 'App schedule control is paused or unavailable. Monitoring continues.';
+    state.dataset.status = window.automationControl?.isPaused() ? 'paused' : snapshot?.status || 'waiting';
     if (snapshot?.error) state.textContent += `: ${snapshot.error}`;
     const format = value => value ? new Date(value).toLocaleString() : '—';
     document.getElementById('dev-fetched').textContent = format(snapshot?.fetchedAt);
@@ -189,6 +197,14 @@
   const historyStatus = document.getElementById('dev-history-status');
   function drawHistory() {
     if (!historyData) return;
+    const activity = document.getElementById('history-activity'); activity.replaceChildren();
+    for (const event of historyData.events || []) {
+      const row = document.createElement('div'); row.className = 'next-activity-row';
+      const title = document.createElement('strong'); title.textContent = ({ automation_paused: 'Automation paused', automation_resumed: 'Automation resumed', pause_expired: 'Timed pause ended' })[event.type] || event.type;
+      const detail = document.createElement('p'); detail.textContent = `${new Date(event.at).toLocaleString()}${event.type === 'automation_paused' ? (event.until ? ` · Until ${new Date(event.until).toLocaleString()}` : ' · Until manually resumed') : ''}`; row.append(title, detail); activity.append(row);
+    }
+    if (!activity.children.length) activity.textContent = 'No automation activity recorded for this month.';
+    if (!piEdition) { historyStatus.textContent = 'Pause and resume activity on this browser · 12-month retention'; return; }
     const metric = metricInput.value;
     const metricName = metricInput.selectedOptions[0].textContent;
     const points = historyData.points;
@@ -216,18 +232,20 @@
       }
     });
     const bytes = historyData.storageBytes;
-    historyStatus.textContent = `${points.length} recorded ${points.length === 1 ? 'interval' : 'intervals'} in ${historyData.month} · ${bytes < 1024 * 1024 ? (bytes / 1024).toFixed(1)+' KB' : (bytes / 1024 / 1024).toFixed(2)+' MB'} used on Pi · 24-month retention` + (points.length ? '' : ' · No readings recorded for this month yet.');
+    historyStatus.textContent = `${points.length} recorded ${points.length === 1 ? 'interval' : 'intervals'} in ${historyData.month} · ${bytes < 1024 * 1024 ? (bytes / 1024).toFixed(1)+' KB' : (bytes / 1024 / 1024).toFixed(2)+' MB'} used on Pi · ${historyData.retentionMonths}-month retention` + (points.length ? '' : ' · No readings recorded for this month yet.');
   }
   async function loadHistory() {
-    if (historyLoading || !piEdition || !window.linuxRuntime || !dashboard.classList.contains('visible')) return;
+    if (historyLoading || (piEdition && !window.linuxRuntime) || !dashboard.classList.contains('visible')) return;
     historyLoading = true;
     historyStatus.textContent = 'Loading recorded telemetry…';
     try {
-      historyData = await fetchJson(`/api/history?month=${encodeURIComponent(monthInput.value)}`);
+      historyData = piEdition ? await fetchJson(`/api/history?month=${encodeURIComponent(monthInput.value)}`) : { events: window.automationControl.events().filter(event => event.at.slice(0, 7) === monthInput.value) };
       drawHistory();
     } catch (error) { historyStatus.textContent = `History unavailable: ${error.message}`; }
     finally { historyLoading = false; }
   }
+  window.addEventListener('history-settings-change', () => { historyData = null; if (currentPage === 'history') void loadHistory(); });
+  window.addEventListener('automation-control-change', () => { if (currentPage === 'history') void loadHistory(); });
   monthInput.addEventListener('change', loadHistory);
   metricInput.addEventListener('change', drawHistory);
   document.getElementById('dev-history-refresh').addEventListener('click', loadHistory);

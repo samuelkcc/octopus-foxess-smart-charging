@@ -9,6 +9,9 @@ const origin = `http://127.0.0.1:${port}`;
 const root = process.cwd();
 let writes = 0;
 const readings = { pvPower:0.4, loadsPower:0.6, gridConsumptionPower:0.2, feedinPower:0, batChargePower:0, batDischargePower:0, SoC:64 };
+let pauseState = { paused:false, until:null, revision:0 };
+let retentionMonths = 12;
+const activity = [];
 const config = { credentials:{ acc:'A-MOCK', api:'pi-managed', foxSN:'pi-managed', foxToken:'pi-managed' }, automations:{dispatchCheck:false}, liveWsEnabled:false, liveWsPolicy:'rest', revision:1 };
 const device = {status:'LIVE',vehicleMake:'Example',vehicleModel:'Mock EV'};
 http.createServer(async (request,response) => {
@@ -35,12 +38,20 @@ http.createServer(async (request,response) => {
     if (url.pathname === '/api/auth') { response.writeHead(204);return response.end(); }
     if (url.pathname === '/api/config') {
       if (request.method !== 'GET') return json({error:'Fixture configuration is read-only'},405);
-      return json(config);
+      return json({...config, automationPause:pauseState});
     }
     if (url.pathname === '/api/dispatch-snapshot') return json({dispatches:[],status:'confirmed',revision:1,fetchedAt:timestamp,confirmedAt:timestamp});
     if (url.pathname === '/api/foxess/live/status') return json({source:'rest',state:'standby',policy:'rest'});
     if (url.pathname === '/api/foxess/live') return json({source:'rest',updatedAt:timestamp,values:readings,cached:true});
-    if (url.pathname === '/api/history') return json({month:url.searchParams.get('month'),intervalMinutes:15,retentionMonths:24,storageBytes:150,fields:Object.keys(readings),points:[{at:timestamp,values:readings,samples:{}}]});
+    if (url.pathname === '/api/automation/pause') {
+      if (request.method === 'PUT') {
+        pauseState = { paused:payload.action === 'pause', until:payload.action === 'pause' && payload.hours !== null ? new Date(Date.now()+payload.hours*3600000).toISOString() : null, revision:pauseState.revision+1 };
+        activity.unshift({at:timestamp,type:pauseState.paused?'automation_paused':'automation_resumed',until:pauseState.until});
+      }
+      return json(pauseState);
+    }
+    if (url.pathname === '/api/history/settings') { if (request.method === 'PUT') retentionMonths = payload.retentionMonths; return json({retentionMonths,automaticCleanup:true}); }
+    if (url.pathname === '/api/history') return json({month:url.searchParams.get('month'),intervalMinutes:15,retentionMonths,events:activity,storageBytes:150,fields:Object.keys(readings),points:[{at:timestamp,values:readings,samples:{}}]});
     if (url.pathname.startsWith('/mock-octopus/') || url.pathname === '/api/octopus') {
       const target = url.pathname === '/api/octopus' ? payload.url : url.pathname;
       const data = url.pathname === '/api/octopus' ? payload.body || {} : payload;
@@ -52,7 +63,7 @@ http.createServer(async (request,response) => {
     }
     if (url.pathname === '/mock-foxess' || url.pathname === '/api/foxess') {
       const target = payload.url || '';
-      if (target.includes('scheduler/enable')) writes += 1;
+      if (target.includes('scheduler/enable')) { if (pauseState.paused && !web) return json({error:'Paused'},423); writes += 1; }
       const result = target.includes('scheduler/get') ? {groups:[]}
         : target.includes('/real/query') ? [{datas:Object.entries(readings).map(([variable,value])=>({variable,value}))}]
         : {value:'SelfUse'};

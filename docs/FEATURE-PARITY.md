@@ -1,6 +1,6 @@
 # Feature review
 
-This review applies to development version 2026.10.26.6.
+This review applies to development version 2026.10.26.7.
 It is not approval for a public release.
 The existing public interface remains available.
 
@@ -31,7 +31,8 @@ The existing public interface remains available.
 | Graphical public updater | Retains the installed native action. | Source and installed-path checks apply. It was not run against DEV. |
 | DEV installer | Adds a pinned source installation. | Live installation passed after the permission correction. |
 | Runtime rollback | Retains the previous runtime. | The rollback script exists. A live rollback was not run. |
-| Compact history | Adds a protected 24-month store. | Retention, restart, gap, and authentication tests pass. |
+| Compact history | Default 12 months, configurable from 1 to 24. | Retention, restart, gap, expiry, and authentication tests pass. |
+| Pause automation | Blocks every app schedule command. | Timers, restart persistence, write barriers, activity, and authentication tests pass. |
 | History charts | Adds month and measurement selection. | A real Pi interval appeared in the interface. |
 | History CSV | Adds a month export action. | The data path is separate from credentials and account setup. |
 

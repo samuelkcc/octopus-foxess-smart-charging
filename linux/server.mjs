@@ -10,6 +10,7 @@ import { QuickTunnel, RemoteSessions, createRemoteKey, matchesRemoteKey, remoteC
 
 import { FoxessLiveTelemetry } from './foxess-live.mjs';
 import { CompactHistory } from './history.mjs';
+import { AutomationPause } from './automation-pause.mjs';
 
 const appRoot = path.dirname(fileURLToPath(import.meta.url));
 const webRoot = process.env.OCTOPUS_WEB_ROOT || path.join(appRoot, 'web');
@@ -356,7 +357,7 @@ async function requestFoxOpenApi(state, pathname, requestedBody = {}) {
   const body = { ...requestedBody };
   if (Object.hasOwn(body, 'sn')) body.sn = foxSN;
   if (Object.hasOwn(body, 'deviceSN')) body.deviceSN = foxSN;
-  return fetch(`https://${allowedFoxHost}${pathname}`, {
+  const send = () => fetch(`https://${allowedFoxHost}${pathname}`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -368,6 +369,7 @@ async function requestFoxOpenApi(state, pathname, requestedBody = {}) {
     body: JSON.stringify(body),
     signal: AbortSignal.timeout(20_000)
   });
+  return pathname === '/op/v3/device/scheduler/enable' ? automationPause.runWrite(send) : send();
 }
 
 async function foxOpenApiJson(state, pathname, body) {
@@ -480,6 +482,16 @@ const foxessLive = new FoxessLiveTelemetry({
 });
 const history = new CompactHistory({ directory: path.join(stateRoot, 'history') });
 let historyErrorReported = false;
+// Expire records even when telemetry is unavailable and no dashboard is open.
+const automationPause = new AutomationPause({ file: path.join(stateRoot, 'automation-pause.json'), onEvent: event => history.recordEvent(event) });
+const pauseExpiryTimer = setInterval(() => { void automationPause.getState().catch(() => console.error('Pause state unavailable; schedule writes stay blocked.')); }, 5000);
+pauseExpiryTimer.unref();
+const cleanupHistory = () => history.cleanup().catch(() => {
+  console.error('History cleanup could not finish; it will retry automatically.');
+});
+const historyCleanupTimer = setInterval(cleanupHistory, 60 * 60_000);
+historyCleanupTimer.unref();
+void cleanupHistory();
 
 const contentTypes = {
   '.html': 'text/html; charset=utf-8',
@@ -523,7 +535,7 @@ async function handleRequest(request, response) {
       response.setHeader('X-Frame-Options', 'DENY');
       const remote = (await loadState()).remoteAccess;
       if (!remote?.enabled) return sendJson(response, 503, { error: 'Remote access is disabled' });
-      const permitted = new Set(['/api/runtime', '/api/auth', '/api/logout', '/api/config', '/api/dispatch-snapshot', '/api/foxess', '/api/octopus', '/api/foxess/live', '/api/foxess/live/status', '/api/history']);
+      const permitted = new Set(['/api/runtime', '/api/auth', '/api/logout', '/api/config', '/api/dispatch-snapshot', '/api/foxess', '/api/octopus', '/api/foxess/live', '/api/foxess/live/status', '/api/history', '/api/history/settings', '/api/automation/pause']);
       if (pathname.startsWith('/api/') && !permitted.has(pathname)) return sendJson(response, 403, { error: 'This endpoint is only available on the Raspberry Pi' });
       if (!['GET', 'HEAD'].includes(request.method)) {
         const origin = request.headers.origin;
@@ -724,14 +736,14 @@ async function handleRequest(request, response) {
     }
 
     const protectedApi = ['/api/config', '/api/dispatch-snapshot', '/api/foxess', '/api/octopus', '/api/history'];
-    const isProtected = protectedApi.includes(pathname) || pathname.startsWith('/api/foxess/live');
+    const isProtected = pathname === '/api/automation/pause' || protectedApi.includes(pathname) || pathname === '/api/history/settings' || pathname.startsWith('/api/foxess/live');
     if (isProtected && !(await isAuthorized(request))) {
       return sendJson(response, 401, { error: 'Invalid LAN access code' });
     }
 
     if (pathname === '/api/config' && request.method === 'GET') {
       const state = await loadState();
-      return sendJson(response, 200, getClientState(state));
+      return sendJson(response, 200, { ...getClientState(state), automationPause: await automationPause.getState() });
     }
     if (pathname === '/api/config' && request.method === 'PUT') {
       const update = await readJsonBody(request);
@@ -861,6 +873,29 @@ async function handleRequest(request, response) {
       if (request.method !== 'GET') return sendJson(response, 405, { error: 'History is read-only' });
       return sendJson(response, 200, await history.readMonth(requestUrl.searchParams.get('month') || undefined));
     }
+    if (pathname === '/api/automation/pause') {
+      if (request.method === 'GET') return sendJson(response, 200, await automationPause.getState());
+      if (request.method !== 'PUT') return sendJson(response, 405, { error: 'Use GET or PUT for pause control' });
+      const expectedOrigin = `${remoteRequests.has(request) ? 'https' : 'http'}://${request.headers.host}`;
+      if (request.headers['sec-fetch-site'] === 'cross-site' || (request.headers.origin && request.headers.origin !== expectedOrigin)) {
+        return sendJson(response, 403, { error: 'Cross-site request rejected' });
+      }
+      return sendJson(response, 200, await automationPause.update(await readJsonBody(request)));
+    }
+    if (pathname === '/api/history/settings') {
+      if (request.method === 'GET') return sendJson(response, 200, await history.getSettings());
+      if (request.method !== 'PUT') return sendJson(response, 405, { error: 'Use GET or PUT for history settings' });
+      const expectedOrigin = `${remoteRequests.has(request) ? 'https' : 'http'}://${request.headers.host}`;
+      if (request.headers['sec-fetch-site'] === 'cross-site' || (request.headers.origin && request.headers.origin !== expectedOrigin)) {
+        return sendJson(response, 403, { error: 'Cross-site request rejected' });
+      }
+      const update = await readJsonBody(request);
+      if (!update || Array.isArray(update) || Object.keys(update).length !== 1 || !Object.hasOwn(update, 'retentionMonths')) {
+        return sendJson(response, 400, { error: 'Specify only retentionMonths' });
+      }
+      const settings = await history.setRetentionMonths(update.retentionMonths);
+      return sendJson(response, settings.cleanupPending ? 202 : 200, { saved: true, ...settings });
+    }
     if (pathname === '/api/foxess/live/test' && request.method === 'POST') {
       if (!isLoopback(request)) {
         return sendJson(response, 403, { error: 'FoxESS live self-test can only run from the Raspberry Pi Settings app' });
@@ -906,6 +941,8 @@ server.listen(port, host, () => {
 
 for (const signal of ['SIGINT', 'SIGTERM']) {
   process.on(signal, () => {
+    clearInterval(historyCleanupTimer);
+    clearInterval(pauseExpiryTimer);
     foxessLive.stop();
     quickTunnel.stop();
     remoteServer.close();

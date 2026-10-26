@@ -65,9 +65,31 @@ try {
   assert.equal((await call(remote, '/api/history', { headers: sessionHeaders })).status, 200);
   assert.equal((await call(remote, '/api/history?month=../../config', { headers: sessionHeaders })).status, 400);
   assert.equal((await call(remote, '/api/history', { method:'DELETE', headers:sessionHeaders })).status, 405);
+  for (const route of ['/api/history/settings', '/api/automation/pause']) {
+    assert.equal((await call(remote, route)).status,401,'New controls require authentication');
+    assert.equal((await call(remote, route, { ...put(route.includes('history') ? {retentionMonths:6} : {action:'pause',hours:6}), headers:{...sessionHeaders,Origin:'https://attacker.invalid'} })).status,403);
+    assert.equal((await call(remote, route, { method:'DELETE',headers:sessionHeaders })).status,405);
+  }
+  assert.equal((await call(remote,'/api/history/settings',{headers:sessionHeaders})).status,200);
+  assert.equal((await call(remote,'/api/history/settings',{...put(null),headers:sessionHeaders})).status,400);
+  assert.equal((await call(remote,'/api/history/settings',{...put({retentionMonths:25}),headers:sessionHeaders})).status,400);
+  assert.equal((await call(remote,'/api/history/settings',{...put({retentionMonths:6}),headers:sessionHeaders})).status,200);
+  assert.equal((await call(remote,'/api/history/settings',{headers:sessionHeaders}).then(r=>r.json())).retentionMonths,6);
+  await call(local,'/api/native-config',put({accessRequired:false,credentials:{foxSN:'mock-device',foxToken:'mock-token'}}));
+  assert.equal((await call(remote,'/api/automation/pause',{...put({action:'pause',hours:null}),headers:sessionHeaders})).status,200);
+  assert.equal((await call(local,'/api/config').then(r=>r.json())).automationPause.paused,true,'Worker sees the same global pause');
+  const schedulerRequest = {url:'https://www.foxesscloud.com/op/v3/device/scheduler/enable',body:{deviceSN:'ignored',groups:[]}};
+  for (const headers of [sessionHeaders,{...keyHeaders,'X-Octopus-Worker':'1','X-Forwarded-For':'127.0.0.1'}]) {
+    assert.equal((await call(remote,'/api/foxess',{method:'POST',headers,body:JSON.stringify(schedulerRequest)})).status,423,'Remote/manual schedule writes cannot bypass pause');
+  }
+  assert.equal((await call(local,'/api/foxess',{method:'POST',headers:{'X-Octopus-Worker':'1'},body:JSON.stringify(schedulerRequest)})).status,423,'Worker schedule writes are blocked too');
+  assert.equal((await call(remote,'/api/automation/pause',{...put({action:'resume'}),headers:sessionHeaders})).status,200);
+  const activity = await call(remote,'/api/history',{headers:sessionHeaders}).then(r=>r.json());
+  assert.deepEqual(activity.events.map(event=>event.type).sort(),['automation_paused','automation_resumed']);
   const publicConfig = await call(remote, '/api/config', { headers: sessionHeaders }).then(r => r.json());
   assert.equal(publicConfig.remoteAccess, undefined, 'Remote key must never leak in dashboard state');
   assert.equal(publicConfig.credentials.api, '');
+  assert.equal(publicConfig.credentials.foxToken, 'pi-managed');
   assert.equal((await call(local, '/api/config')).status, 200, 'Local worker stays available');
   const proxyHostStatus = await new Promise((resolve, reject) => {
     http.get(local + '/api/native-config', { headers: { Host: 'public-tunnel.invalid' } }, response => {

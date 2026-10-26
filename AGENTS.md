@@ -13,7 +13,8 @@ This repository builds the standalone HTML/GitHub Pages edition and the Raspberr
 
 ## Automation invariants
 
-- Changed, valid Octopus dispatches trigger schedule reconciliation before tariff work. Invalid, null, or rate-limited responses must preserve the last valid dispatches.
+- An explicit operator pause blocks all app schedule writes. Monitoring continues. Resume uses fresh dispatch and REST schedule data.
+- Unless operator pause is active, changed, valid Octopus dispatches trigger schedule reconciliation before tariff work. Invalid, null, or rate-limited responses must preserve the last valid dispatches.
 - Smart Dispatch wins over ordinary charging and, by default, discharging. Auto-Resume must never cancel an active dispatch. Preserve overnight windows and half-hour outward rounding.
 - Queue revisions received during a FoxESS write. Require a fresh official REST readback before confirmation; cached data and command acceptance are insufficient.
 - Respect the five-period FoxESS hardware limit, retain Smart Dispatch priority, and never report a partial schedule as fully confirmed.

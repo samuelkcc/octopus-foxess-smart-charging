@@ -11,7 +11,7 @@ The app is independent software by SCKC.
 Octopus Energy and FoxESS do not endorse or support this project.
 
 The public release is **v2026.10.26.5**.
-This branch contains **2026.10.26.6 DEV**.
+This branch contains **2026.10.26.7 DEV**.
 The new interface is under review on the Pi.
 GitHub Pages still uses the public interface.
 
@@ -24,7 +24,7 @@ GitHub Pages still uses the public interface.
 | FoxESS relay | The Pi provides it. | Your Google Apps Script project provides it. |
 | Phone access | LAN code or separate remote key. | Account setup on each browser. |
 | Live telemetry | Live WS or official REST. | Official REST. |
-| History in DEV | 24 months on the Pi. | No background history store. |
+| History in DEV | 12 months by default, configurable up to 24. | Pause activity in this browser. |
 
 [Open the public web app](https://samuelkcc.github.io/octopus-foxess-smart-charging/).
 

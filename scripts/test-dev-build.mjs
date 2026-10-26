@@ -15,6 +15,10 @@ for (const html of [pi, web]) {
   assert(!html.includes('src="/octopus-foxess.svg"'), 'The brand icon must not depend on an old installed asset.');
   assert(html.includes('href="data:image/svg+xml;base64,'), 'The favicon must use the same embedded SVG.');
   assert(html.includes('href="data:image/png;base64,'), 'The phone icon must be included.');
+  assert(html.includes('Pause automation'));
+  assert(html.includes('history-retention'));
+  assert(html.includes('automationControl'));
+  assert(html.includes('next-visible-state'));
   assert(html.includes('One Settings view.'), 'Both editions need the Settings adapter.');
 }
 assert.equal(app, pi);

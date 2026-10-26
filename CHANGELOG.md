@@ -1,3 +1,13 @@
+## v2026.10.26.7 — Pi development update (not a public release)
+
+- Add Overview pause control for 6, 12, 24 hours, or until manual resume. Show a red banner on every connected page.
+- Persist Pi pause across restarts. Block all app schedule mutations while paused, including worker and manual requests. Leave the inverter schedule unchanged.
+- Keep monitoring active. Reconcile fresh dispatches and REST schedules after resume. Record pause, resume, and expiry in History with durable retry.
+- Add configurable history retention from 1 to 24 calendar months. Default to 12 months. Erase expired readings and activity automatically.
+- Use compact hardware-limit dialogs with Cancel and Done. Keep limits staged until rule review. Use pink primary buttons with white text.
+- Use green On and grey Off switches for panel visibility. Default new browsers to dark appearance and retain saved choices.
+- Validate command blocking, in-flight ordering, expiry, restart recovery, history cleanup, and protected APIs with mocks. Live inverter commands are not test fixtures.
+
 # Changelog
 
 ## Unreleased

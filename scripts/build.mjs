@@ -5,12 +5,14 @@ const root = process.cwd();
 const src = path.join(root, 'src');
 const dist = path.join(root, 'dist');
 
-const [html, css, js] = await Promise.all([
+const [html, css, app, pause] = await Promise.all([
   readFile(path.join(src, 'index.html'), 'utf8'),
   readFile(path.join(src, 'styles.css'), 'utf8'),
   readFile(path.join(src, 'app.js'), 'utf8'),
+  readFile(path.join(src, 'automation-control.js'), 'utf8'),
 ]);
 
+const js = `${pause}\n${app}`;
 const escapeText = text => text.replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;');
 const [license, notices] = await Promise.all(['LICENSE', 'THIRD_PARTY_NOTICES.md'].map(name => readFile(path.join(root, name), 'utf8')));
 const output = html
