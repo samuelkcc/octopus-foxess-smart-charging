@@ -20,3 +20,9 @@ Build after `npm run check` with `npm run build:dev`. Install a pinned source co
 - History is authenticated with the same LAN code/remote session as the dashboard. Only GET is permitted; the API is available through the existing protected tunnel. Month browsing, selectable measures and CSV export are provided.
 
 Verification uses mocks for scheduler, upstream APIs, remote authentication and history. No live inverter commands should be sent merely to test layout or data collection.
+
+## Live Pi verification — 26 October 2026
+
+Installed DEV runtime commit `47fe62a` (version 2026.10.26.6). Corrected the new parent directory's permissions to 0755 after initial service startup failed under a restrictive umask; the installer fix is recorded in `285594b`. Server, worker and inhibitor are active. Octopus and FoxESS REST report healthy. The DEV page returns HTTP 200, the real overview renders, and the first recorded interval is available through History. Credentials, automation rules, LAN-protection setting and remote key were compared against the encrypted pre-DEV backup and were unchanged. The original dashboard, separate DEV desktop shortcut and rollback script remain available. No manual inverter command was sent for verification.
+
+`linux/update-dev-ui.sh FULL_COMMIT` updates only the DEV frontend without restarting services or changing the tunnel URL. DEV has its own home-screen manifest and supports a `view=history` (or overview/schedules/rules/connections) link. A persistent Home Screen shortcut still needs a stable hostname if the Quick Tunnel later restarts.

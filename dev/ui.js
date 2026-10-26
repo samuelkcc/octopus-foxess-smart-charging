@@ -100,6 +100,9 @@
       button.setAttribute('aria-current', button.dataset.page === name ? 'page' : 'false');
     });
     document.getElementById('dev-page-name').textContent = titles[name];
+    const viewUrl = new URL(location.href);
+    viewUrl.searchParams.set('view', name);
+    history.replaceState(null, '', viewUrl);
     if (name === 'rules') document.getElementById('section-smart-discharging').classList.remove('dashboard-section-hidden');
     if (name === 'history') void loadHistory();
     schedulePriceChartResize();
@@ -123,8 +126,8 @@
     document.getElementById('dev-periods').textContent = `${(window.activeFoxGroups || []).length} / 5`;
     document.getElementById('dev-telemetry-at').textContent = format(window.lastFoxTelemetryUpdate);
     document.getElementById('section-smart-discharging').classList.toggle('dev-show-rules', currentPage === 'rules');
+    if (currentPage === 'history' && historyData === null && window.linuxRuntime) void loadHistory();
   }
-  updateWorkerView(); setInterval(updateWorkerView, 5000);
   let historyData = null;
   let historyChart = null;
   let historyLoading = false;
@@ -184,5 +187,6 @@
     setTimeout(() => URL.revokeObjectURL(url), 1000);
   });
   new MutationObserver(() => { if (currentPage === 'history') drawHistory(); }).observe(document.documentElement, {attributes:true,attributeFilter:['data-theme']});
-  navigate('overview');
+  updateWorkerView(); setInterval(updateWorkerView, 5000);
+  navigate(new URLSearchParams(location.search).get('view') || 'overview');
 })();
