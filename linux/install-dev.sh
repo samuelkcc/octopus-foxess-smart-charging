@@ -49,6 +49,8 @@ if [ "$DEV_READY" -ne 1 ]; then
   exit 1
 fi
 systemctl start octopus-foxess-worker
+install -m 0755 "$DEV_ROOT/open-dashboard.sh" /usr/local/bin/octopus-foxess-dashboard
+install -m 0755 "$DEV_ROOT/tray.py" /usr/local/bin/octopus-foxess-tray
 cat > "$APP_ROOT/rollback-dev.sh" <<EOF
 #!/bin/sh
 set -eu
@@ -58,24 +60,9 @@ systemctl start octopus-foxess octopus-foxess-worker
 echo 'Previous runtime restored; history files retained.'
 EOF
 chmod 0700 "$APP_ROOT/rollback-dev.sh"
-DESKTOP_USER="${SUDO_USER:-pi}"
-DESKTOP_HOME="$(getent passwd "$DESKTOP_USER" | cut -d: -f6)"
-if [ -d "$DESKTOP_HOME/Desktop" ]; then
-  cat > "$DESKTOP_HOME/Desktop/Smart Charging DEV.desktop" <<EOF
-[Desktop Entry]
-Type=Application
-Name=Smart Charging DEV
-Comment=New interface with real Pi data; original dashboard remains available
-Exec=/usr/bin/chromium --app=http://127.0.0.1:8787/dev/index.html?client=1 --class=octopus-foxess-dev --no-first-run --password-store=basic
-Icon=octopus-foxess
-Terminal=false
-Categories=Utility;
-EOF
-  chmod 0755 "$DESKTOP_HOME/Desktop/Smart Charging DEV.desktop"
-  chown "$DESKTOP_USER:$(id -gn "$DESKTOP_USER")" "$DESKTOP_HOME/Desktop/Smart Charging DEV.desktop"
-fi
 echo "DEV installed: $DEV_COMMIT"
+echo 'Use the taskbar charger menu to open the desktop client. Restart the status icon after this installation.'
 echo 'DEV dashboard: http://127.0.0.1:8787/dev/index.html?client=1'
-echo 'Original dashboard: http://127.0.0.1:8787/?client=1'
+echo 'Original dashboard: http://127.0.0.1:8787/?client=1&original=1'
 echo 'Rollback: sudo /opt/octopus-foxess/rollback-dev.sh'
 echo 'The existing remote key is preserved. The restarted tunnel receives a new URL.'

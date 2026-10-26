@@ -1,8 +1,8 @@
-// Build a separate real-data Pi dashboard. Never replaces the original index.
+// Build new Pi and standalone web views. Keep the original Pi view as a fallback.
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 const root = process.cwd();
-const [base, css, js, about, setup, views, packageText, icon] = await Promise.all([
+const [baseText, css, js, about, setup, views, packageText, icon, defaultRoute] = await Promise.all([
   readFile(path.join(root, 'dist/Octopus_IGO_Smart_Charging_Detector.html'), 'utf8'),
   readFile(path.join(root, 'dev/ui.css'), 'utf8'),
   readFile(path.join(root, 'dev/ui.js'), 'utf8'),
@@ -10,8 +10,11 @@ const [base, css, js, about, setup, views, packageText, icon] = await Promise.al
   readFile(path.join(root, 'dev/setup.js'), 'utf8'),
   readFile(path.join(root, 'dev/views.js'), 'utf8'),
   readFile(path.join(root, 'package.json'), 'utf8'),
-  readFile(path.join(root, 'linux/octopus-foxess.svg'), 'utf8')
+  readFile(path.join(root, 'linux/octopus-foxess.svg'), 'utf8'),
+  readFile(path.join(root, 'dev/default-route.js'), 'utf8')
 ]);
+// A UI-only update reads the installed root file. Never copy its Pi router into web builds.
+const base = baseText.replace(/<script id="dev-default-route">[\s\S]*?<\/script>\s*/g, '');
 const revision = /^[0-9a-f]{40}$/.test(process.env.OCTOPUS_UI_COMMIT || '') ? process.env.OCTOPUS_UI_COMMIT : 'local-development';
 const clientGuard = `<script>/* DEV is always a dashboard, never a second worker. */
 const devUrl = new URL(location.href);
@@ -35,6 +38,8 @@ return output;
 const output = render('pi');
 await mkdir(path.join(root, 'dist/linux-package/octopus-foxess/web/dev'), { recursive:true });
 await writeFile(path.join(root, 'dist/linux-package/octopus-foxess/web/dev/index.html'), output);
+await writeFile(path.join(root, 'dist/linux-package/octopus-foxess/web/index.html'),
+  base.replace('<head>', `<head>\n<script id="dev-default-route">${defaultRoute}</script>`));
 await writeFile(path.join(root, 'dist/pi-dev.html'), output);
 await writeFile(path.join(root, 'dist/Smart_Charging_UI_DEV.html'), render('web'));
 await writeFile(path.join(root, 'dist/linux-package/octopus-foxess/web/dev/site.webmanifest'), await readFile(path.join(root, 'dev/site.webmanifest')));

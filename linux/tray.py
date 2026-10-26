@@ -47,6 +47,10 @@ ICONS = {
 }
 
 
+def dev_interface_available():
+    return os.path.isfile("/opt/octopus-foxess/current/web/dev/index.html")
+
+
 def api_json(path, method="GET", payload=None, timeout=5):
     body = None if payload is None else json.dumps(payload).encode("utf-8")
     request = urllib.request.Request(
@@ -577,7 +581,8 @@ class RemoteAccessWindow(Gtk.Window):
         self.url = Gtk.Entry()
         self.url.set_editable(False)
         self.url.set_placeholder_text("Start a tunnel to generate the URL")
-        root.pack_start(Gtk.Label(label="Public URL (temporary)", xalign=0), False, False, 0)
+        self.url_label = Gtk.Label(label="Public dashboard URL (temporary)", xalign=0)
+        root.pack_start(self.url_label, False, False, 0)
         root.pack_start(self.url, False, False, 0)
         url_note = Gtk.Label(
             label="This URL stays the same while the tunnel keeps running. A Pi reboot, app update, "
@@ -645,7 +650,12 @@ class RemoteAccessWindow(Gtk.Window):
     def loaded(self, data):
         self.enabled = data.get("enabled", False)
         self.key.set_text(data.get("key", ""))
-        self.url.set_text(data.get("url") or "")
+        public_url = data.get("url") or ""
+        is_dev = dev_interface_available()
+        if public_url and is_dev:
+            public_url = public_url.rstrip("/") + "/dev/index.html?client=1&view=overview"
+        self.url_label.set_text("Public DEV dashboard URL (temporary)" if is_dev else "Public dashboard URL (temporary)")
+        self.url.set_text(public_url)
         self.status.set_text(data.get("error") or f"Tunnel status: {data.get('state', 'disabled')}")
         return False
 
@@ -684,9 +694,13 @@ class TrayController:
         about.connect("activate", self.show_about)
         self.menu.append(about)
 
-        dashboard = Gtk.MenuItem(label="Open Dashboard Client")
-        dashboard.connect("activate", lambda _item: run_detached(["/usr/local/bin/octopus-foxess-dashboard"]))
+        dashboard = Gtk.MenuItem(label="Open Desktop Client (DEV)" if dev_interface_available() else "Open Desktop Client")
+        dashboard.connect("activate", lambda _item: self.open_dashboard())
         self.menu.append(dashboard)
+        if dev_interface_available():
+            original = Gtk.MenuItem(label="Open Original Dashboard")
+            original.connect("activate", lambda _item: self.open_dashboard(original=True))
+            self.menu.append(original)
 
         self.menu.append(Gtk.SeparatorMenuItem())
         quit_item = Gtk.MenuItem(label="Quit Status Icon")
@@ -698,6 +712,33 @@ class TrayController:
         self.window = ServerConfigurationWindow(self)
         GLib.timeout_add_seconds(10, self.refresh)
         self.refresh()
+
+    def open_dashboard(self, original=False):
+        try:
+            log_root = os.path.join(os.environ.get("XDG_STATE_HOME") or os.path.expanduser("~/.local/state"), "octopus-foxess")
+            os.makedirs(log_root, mode=0o700, exist_ok=True)
+            log_path = os.path.join(log_root, "dashboard-launch.log")
+            command = ["/usr/local/bin/octopus-foxess-dashboard"]
+            if original:
+                command.append("--original")
+            with open(log_path, "w", encoding="utf-8") as log:
+                process = subprocess.Popen(command, stdin=subprocess.DEVNULL, stdout=log, stderr=log, start_new_session=True)
+
+            def check_launch():
+                if process.poll() not in (None, 0):
+                    self.launch_failed(log_path)
+                return False
+
+            GLib.timeout_add_seconds(3, check_launch)
+        except OSError as error:
+            self.launch_failed(str(error))
+
+    def launch_failed(self, detail):
+        dialog = Gtk.MessageDialog(transient_for=self.window, modal=True, message_type=Gtk.MessageType.ERROR,
+                                   buttons=Gtk.ButtonsType.CLOSE, text="The desktop client could not open.")
+        dialog.format_secondary_text("Check the launch details: " + detail)
+        dialog.run()
+        dialog.destroy()
 
     def show_about(self, _item):
         dialog = Gtk.AboutDialog(transient_for=self.window, modal=True)

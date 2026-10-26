@@ -170,7 +170,7 @@ A matching schedule readback does not prove measured battery power.
 History is available in the 2026.10.26.6 development version.
 It is not in public v2026.10.26.5.
 
-1. Open **Smart Charging DEV** on the Pi desktop.
+1. Select **Open Desktop Client (DEV)** from the taskbar charger menu.
 2. Select **History**.
 3. Select a month.
 4. Select a measurement.

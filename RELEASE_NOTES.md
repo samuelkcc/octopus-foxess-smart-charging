@@ -4,7 +4,8 @@
 - Add edition-specific setup guides and a side panel for About, the complete GPL text, and component notices.
 - Add maintenance boundaries, a feature review, and current guides written toward ASD-STE100 Issue 9. Add structural documentation checks.
 - Store compact 15-minute telemetry averages for 24 months, reusing existing readings without extra upstream calls. Add authenticated month queries, History charts, disk-usage reporting and CSV export. No historical backfill or billing-grade energy totals.
-- Add a pinned DEV installer with encrypted-configuration backup, health check, original runtime rollback and a separate desktop shortcut. No Pages deployment or release tag.
+- Add a pinned DEV installer with encrypted-configuration backup, health check, original runtime rollback and taskbar access without desktop shortcuts. No Pages deployment or release tag.
+- Open the new Pi design from the bare tunnel URL and taskbar menu. Keep the original view as an explicit fallback. Use a separate Chromium dashboard profile and show launch failures.
 - Verify with the full mock-based suite, history retention/restart/outage tests, authenticated endpoint checks and local browser checks. Live Pi verification is recorded in dev/README.md after deployment.
 
 ## v2026.10.26.5 — 2026-10-26

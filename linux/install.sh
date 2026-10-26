@@ -98,16 +98,10 @@ gtk-update-icon-cache -f -t /usr/share/icons/hicolor >/dev/null 2>&1 || true
 printf 'OCTOPUS_PORT=%s\n' "$PORT" > /etc/default/octopus-foxess
 chmod 0644 /etc/default/octopus-foxess
 
+# The taskbar menu and application menu provide access without desktop shortcuts.
 DESKTOP_USER="${SUDO_USER:-}"
-if [ -n "$DESKTOP_USER" ] && [ "$DESKTOP_USER" != "root" ] && id "$DESKTOP_USER" >/dev/null 2>&1; then
-  DESKTOP_HOME="$(getent passwd "$DESKTOP_USER" | cut -d: -f6)"
-  DESKTOP_GROUP="$(id -gn "$DESKTOP_USER")"
-  if [ -n "$DESKTOP_HOME" ] && [ -d "$DESKTOP_HOME/Desktop" ]; then
-    rm -f "$DESKTOP_HOME/Desktop/Octopus FoxESS Settings.desktop"
-    DESKTOP_SHORTCUT="$DESKTOP_HOME/Desktop/Octopus FoxESS Dashboard.desktop"
-    install -o "$DESKTOP_USER" -g "$DESKTOP_GROUP" -m 0755 "$RELEASE_ROOT/octopus-foxess.desktop" "$DESKTOP_SHORTCUT"
-    printf '%s\n' "$DESKTOP_SHORTCUT" > "$CONFIG_ROOT/desktop-shortcut.path"
-  fi
+if [ -n "$DESKTOP_USER" ] && ! id "$DESKTOP_USER" >/dev/null 2>&1; then
+  DESKTOP_USER=''
 fi
 rm -f /usr/local/bin/octopus-foxess-settings
 
@@ -209,7 +203,7 @@ LAN_IP="$(hostname -I 2>/dev/null | awk '{print $1}')"
 echo
 echo "Octopus FoxESS v$VERSION is installed and running."
 echo "The taskbar status icon starts automatically at the next desktop login."
-echo "Open 'Octopus FoxESS Dashboard' from the desktop or application menu."
+echo "Open the desktop client from the taskbar charger menu or application menu."
 echo "Mobile / LAN access: http://${LAN_IP:-raspberrypi.local}:$PORT"
 echo "LAN access code: $ACCESS_KEY"
 echo

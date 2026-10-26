@@ -39,7 +39,7 @@ assert.match(installerSource, /install -m 0755 "\$RELEASE_ROOT\/update\.sh" \/us
 assert.match(installerSource, /gir1\.2-ayatanaappindicator3-0\.1 pkexec/);
 assert.match(installerSource, /pkill -u "\$DESKTOP_UID" -f 'octopus-foxess-tray'/);
 assert.match(installerSource, /gir1\.2-ayatanaappindicator3-0\.1/);
-assert.match(installerSource, /Octopus FoxESS Dashboard\.desktop/);
+assert.doesNotMatch(installerSource, /Desktop\/Octopus FoxESS Dashboard\.desktop/);
 assert.match(installerSource, /OCTOPUS_ACCESS_KEY_FILE=\$ACCESS_KEY_FILE/);
 assert.match(uninstallerSource, /systemctl disable --now octopus-foxess-inhibit\.service octopus-foxess-worker\.service octopus-foxess\.service/);
 assert.match(uninstallerSource, /usr\/share\/applications\/octopus-foxess\.desktop/);

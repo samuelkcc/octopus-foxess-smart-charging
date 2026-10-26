@@ -48,9 +48,15 @@ It keeps the previous runtime for rollback.
 It restarts the existing server and worker.
 It does not create another worker.
 
-The desktop shortcut is **Smart Charging DEV**.
+The taskbar charger menu provides **Open Desktop Client (DEV)**.
+**Open Original Dashboard** opens the previous interface.
+The installer does not create desktop shortcuts.
 The DEV route is `/dev/index.html?client=1`.
-The original dashboard remains at `/?client=1`.
+The original dashboard remains at `/?client=1&original=1`.
+The remote-access window includes the DEV path in its public URL.
+The same DEV address provides the responsive phone interface.
+The bare tunnel address opens the new DEV interface.
+The worker URL continues to open its existing engine.
 
 A service restart creates a new Quick Tunnel address.
 The existing Remote Access Key remains valid.
@@ -136,7 +142,7 @@ History displayed its first recorded interval.
 
 The encrypted pre-DEV backup was compared with the active configuration.
 Credentials, automation rules, LAN protection, and the remote key were unchanged.
-The original dashboard, DEV shortcut, and rollback script were present.
+The original dashboard and rollback script were present.
 No manual inverter command was sent for these checks.
 
 The [feature review](../docs/FEATURE-PARITY.md) records browser checks and release work.
