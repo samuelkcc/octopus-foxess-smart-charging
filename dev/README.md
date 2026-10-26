@@ -145,6 +145,16 @@ Credentials, automation rules, LAN protection, and the remote key were unchanged
 The original dashboard and rollback script were present.
 No manual inverter command was sent for these checks.
 
+UI and native client commit `49ed9f0` was installed on 26 October 2026.
+The bare public URL opened the new sign-in interface through Cloudflare.
+The server, worker, and inhibitor stayed active.
+The taskbar launcher opened the new Pi interface with a separate browser profile.
+The first-use licence panel remained for the user to acknowledge.
+The two app desktop shortcuts were moved to a recovery folder.
+The folder is under `~/.local/share/octopus-foxess/removed-desktop-shortcuts/`.
+The standalone HTML login was checked with local mock account data.
+The current UI-only update does not restart the tunnel.
+
 The [feature review](../docs/FEATURE-PARITY.md) records browser checks and release work.
 The [maintenance guide](../docs/ARCHITECTURE.md) defines module boundaries.
 The [writing guide](../docs/WRITING.md) defines the documentation method.
