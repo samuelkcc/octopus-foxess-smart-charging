@@ -96,9 +96,10 @@ window.installLaunchScreen = ({ pi, login, parking, byId, make, button }) => {
       ['FoxESS', 'Connect the inverter and home battery.', [['fox-sn', 'Inverter serial number'], ['fox-token', 'API token']]],
       ['Google relay', 'Use your own deployed Google Apps Script Web App.', [['gas-url', 'Google Apps Script Web App URL']]]
     ];
-    auth.append(steps);
+    const stepStack = make('div', 'launch-step-stack');
+    auth.append(steps, stepStack);
     fields.forEach(([title, description, inputs], index) => {
-      const section = make('section', 'launch-step'); section.hidden = index !== 0;
+      const section = make('section', 'launch-step');
       const titleNode = make('h3', '', title); titleNode.tabIndex = -1;
       section.append(titleNode, make('p', 'next-auth-copy', description));
       for (const [id, label] of inputs) {
@@ -108,7 +109,7 @@ window.installLaunchScreen = ({ pi, login, parking, byId, make, button }) => {
         row.append(caption, control); section.append(row);
       }
       if (index === 2) section.append(button('How to create the relay', () => { closeAllDrawers(); byId('proxy-modal').style.display = 'flex'; }, true));
-      auth.append(section); sections.push(section);
+      stepStack.append(section); sections.push(section);
       const step = button(`${index + 1}. ${title}`, () => showStep(index)); step.className = 'launch-step-tab'; steps.append(step); stepButtons.push(step);
     });
   }
@@ -124,6 +125,7 @@ window.installLaunchScreen = ({ pi, login, parking, byId, make, button }) => {
     showStep(currentStep + 1);
   });
   const connect = byId('btn');
+  connect.style.removeProperty('margin-top');
   actions.append(back, next, connect); auth.append(actions);
   const tools = make('div', 'launch-links');
   tools.append(button(pi ? 'Access help' : 'Setup guide', () => toggleDrawer('setup-guide-panel'), true), button('About & licences', () => openLicenseModal(false), true));
@@ -132,7 +134,12 @@ window.installLaunchScreen = ({ pi, login, parking, byId, make, button }) => {
 
   function showStep(index, focus = true) {
     currentStep = Math.max(0, Math.min(2, index));
-    sections.forEach((section, step) => { section.hidden = currentStep !== step; });
+    sections.forEach((section, step) => {
+      const active = currentStep === step;
+      section.dataset.active = String(active);
+      section.inert = !active;
+      section.setAttribute('aria-hidden', String(!active));
+    });
     stepButtons.forEach((step, index) => step.setAttribute('aria-current', index === currentStep ? 'step' : 'false'));
     next.hidden = pi || currentStep === 2; connect.hidden = !pi && currentStep !== 2; back.hidden = pi;
     if (focus) sections[currentStep]?.querySelector('h3').focus({ preventScroll: true });

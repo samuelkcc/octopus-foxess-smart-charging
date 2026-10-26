@@ -301,12 +301,16 @@ body>#proxy-modal>div {max-width:850px!important;}
 #dev-shell .launch-step-tab[aria-current=step] {background:var(--button-fill);border-color:var(--button-fill);color:white;}
 .launch-step h3 {font-size:16px;margin:0 0 8px;font-weight:600;}
 .launch-step h3:focus {outline:none;}
-.launch-step {min-height:228px;}
+/* Stack every stage in one grid cell. The tallest stage determines the height,
+   including wrapped text, while inactive controls stay hidden and inert. */
+.launch-step-stack {display:grid;}
+.launch-step {grid-area:1 / 1;align-self:start;min-width:0;}
+.launch-step[data-active=false] {visibility:hidden;pointer-events:none;}
 #dev-shell .launch-step .next-field {margin:16px 0;}
 .launch-input {position:relative;display:flex;gap:8px;}
 #dev-shell .launch-input #octopus-account-toggle {min-height:44px;flex-shrink:0;width:48px;margin:0;border:1px solid var(--border);background:var(--bg);border-radius:8px;text-align:center;color:var(--text-main);}
 .launch-setup-actions {display:flex;align-items:center;gap:10px;margin-top:22px;}
-#dev-shell .launch-setup-actions>button {width:auto;min-height:44px;flex:1;}
+#dev-shell .launch-setup-actions>button,#dev-shell .launch-setup-actions>#btn {width:auto;height:46px!important;min-height:46px!important;padding:10px 14px!important;flex:1;}
 #dev-shell .launch-setup-actions>#btn {margin:0;}
 .launch-screen[data-mode=setup] .launch-welcome .launch-links {display:none;}
 @media(max-width:1000px) {

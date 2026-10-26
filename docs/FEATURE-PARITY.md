@@ -94,3 +94,7 @@ The Pi edition retains direct access-key login.
 A 390-pixel phone welcome view was checked.
 The guided web flow connected through the cross-origin GAS mock.
 Required engine element IDs remained unique.
+
+Setup stages share one intrinsic grid height.
+Inactive stages stay hidden and cannot receive focus.
+Browser measurements confirmed identical card, heading, action, footer, and scroll positions across all three stages.

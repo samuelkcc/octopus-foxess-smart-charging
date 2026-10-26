@@ -1,5 +1,7 @@
 ## v2.0.0 — Major redesign under review
 
+- Keep guided setup height and button spacing stable when switching between Octopus, FoxESS and GAS.
+
 - Add a branded welcome screen with setup and restore actions. Use guided web account setup and direct Pi key access.
 - Use MAJOR.MINOR.PATCH version numbers, matching the convention in Script Bridge. Preserve legacy calendar release history and existing update asset names.
 - Include the redesigned Pi, desktop-browser, mobile and standalone HTML interfaces, with the shared automation safeguards, pause controls and history features.
