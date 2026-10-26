@@ -458,7 +458,7 @@ The full check suite and both interface builds passed.
 ## Desktop viewport layout
 
 Desktop pages fit inside the available browser viewport.
-The navigation rail uses the full viewport height.
+The navigation rail follows the lower edge of the visible content.
 Content uses a common width and consistent outer margins.
 The interface scales content proportionally when a desktop page needs more room.
 The desktop target is a 2560-by-1440 landscape display.
@@ -496,3 +496,17 @@ The page accessibility tree no longer reported a vertical scrollbar.
 The full-height navigation rail and content edges remained aligned.
 The Pi retained 43 recorded history intervals and its hourly save policy during verification.
 The server runtime remains `214132d72ab06c9ea6696c14b645be4c90da7c6d`.
+
+
+## Dynamic navigation height
+
+The desktop menu follows the bottom of the last visible content row.
+Navigation, new data, and viewport changes trigger a new measurement.
+Short pages retain enough content height for all navigation controls.
+The menu does not remain at full screen height when the right side is shorter.
+Phone navigation and scrolling are unchanged.
+
+Browser measurements showed zero pixels between the menu and content lower edges after four navigation changes.
+History, Settings, Schedules, and Overview retained all navigation buttons without document overflow at 1280 by 720.
+The 2560-by-1320 History preview also showed matching lower edges at the original scale.
+The full check suite and both interface builds passed.

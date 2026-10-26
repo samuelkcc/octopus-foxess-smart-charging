@@ -6,6 +6,7 @@
   const shell=document.getElementById('dev-shell');
   const content=document.getElementById('dev-content');
   const wrapper=content.querySelector('.app-wrapper');
+  const rail=shell.querySelector('.dev-rail');
   const desktop=matchMedia('(min-width: 761px) and (hover: hover)');
   let frame=0;
   const fit=()=>{
@@ -13,14 +14,24 @@
     root.classList.toggle('desktop-viewport',desktop.matches);
     wrapper.style.removeProperty('zoom');
     wrapper.style.removeProperty('width');
+    rail.style.removeProperty('height');
+    shell.querySelectorAll('.dev-page-grid').forEach(grid=>grid.style.removeProperty('min-height'));
     delete content.dataset.fitScale;
     if(!desktop.matches)return;
     const height=content.clientHeight;
     if(!height)return;
+    const grid=shell.classList.contains('dev-auth-mode')?null:shell.querySelector('.dev-page:not([hidden]) .dev-page-grid');
+    const railBounds=rail.getBoundingClientRect();
+    const minimumBottom=railBounds.bottom;
     // Zoom adjusts layout and hit testing while percentage width keeps both edges aligned.
     const size=scale=>{
       wrapper.style.width='100%';
       wrapper.style.zoom=String(scale);
+      if(grid){
+        grid.style.minHeight='0px';
+        // Short pages must still leave room for every navigation control.
+        grid.style.minHeight=`${Math.max(0,(minimumBottom-grid.getBoundingClientRect().top)/scale)}px`;
+      }
       return wrapper.getBoundingClientRect().height;
     };
     let scale=1;
@@ -34,6 +45,7 @@
       size(scale);
     }
     content.dataset.fitScale=scale.toFixed(3);
+    if(grid)rail.style.height=`${grid.getBoundingClientRect().bottom-railBounds.top}px`;
     content.scrollTop=0;content.scrollLeft=0;
   };
   const schedule=()=>{if(!frame)frame=requestAnimationFrame(fit);};
