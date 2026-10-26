@@ -1,10 +1,20 @@
 // Copyright (C) 2026 SCKC. GPL-3.0-or-later.
 // Compact observed power averages, not billing-grade energy measurements.
-import { appendFile, chmod, mkdir, readFile, readdir, rename, stat, unlink, writeFile } from 'node:fs/promises';
+import { appendFile, chmod, mkdir, readFile, readdir, rename, stat, statfs, unlink, writeFile } from 'node:fs/promises';
 import path from 'node:path';
+import {gzip,gunzip} from 'node:zlib';
+import {promisify} from 'node:util';
+const compress=promisify(gzip),decompress=promisify(gunzip);
+const ARCHIVE_PATTERN=/^\d{4}-\d{2}(?:\.events)?\.jsonl(?:\.gz)?$/;
+export const LOW_STORAGE_BYTES=4_000_000_000;
 
 export const HISTORY_FIELDS = ['pvPower', 'loadsPower', 'gridConsumptionPower', 'feedinPower', 'batChargePower', 'batDischargePower', 'SoC'];
 export const DEFAULT_RETENTION_MONTHS = 12;
+export const DEFAULT_SAVE_INTERVAL_MINUTES = 60;
+export function validateSaveInterval(value) {
+  if (![30,60].includes(value)) throw Object.assign(new Error('Save history every 30 or 60 minutes'), {statusCode:400});
+  return value;
+}
 export function validateRetentionMonths(value) {
   if (!Number.isInteger(value) || value < 1 || value > 24) {
     throw Object.assign(new Error('Keep history for 1 to 24 whole months'), { statusCode: 400 });
@@ -26,13 +36,18 @@ const cutoffAt = (time, months) => {
 };
 
 export class CompactHistory {
-  constructor({ directory, now = Date.now }) {
+  constructor({ directory, now = Date.now, diskSpace = async directory => {const info=await statfs(directory);return {freeBytes:info.bavail*info.bsize,totalBytes:info.blocks*info.bsize};} }) {
     this.directory = directory;
+    this.diskSpace=diskSpace;this.space=null;this.lastSpaceCheck=0;this.lastSpaceCleanupAt=null;
     this.now = now;
     this.queue = Promise.resolve();
     this.current = null;
     this.loaded = false;
-    this.lastFlush = 0;
+    this.lastFlush = this.now();
+    this.lastSavedAt = null;
+    this.saveIntervalMinutes = DEFAULT_SAVE_INTERVAL_MINUTES;
+    this.pendingRows = new Map();
+    this.currentDirty = false;
     this.lastPruneDay = '';
     this.retentionMonths = DEFAULT_RETENTION_MONTHS;
     this.cleanupPending = false;
@@ -46,6 +61,7 @@ export class CompactHistory {
       const preferences = JSON.parse(await readFile(path.join(this.directory, 'preferences.json'), 'utf8'));
       if (preferences?.v !== 1) throw new Error('Invalid history preferences');
       this.retentionMonths = validateRetentionMonths(preferences.retentionMonths);
+      this.saveIntervalMinutes = validateSaveInterval(preferences.saveIntervalMinutes ?? DEFAULT_SAVE_INTERVAL_MINUTES);
     } catch (error) { if (error.code !== 'ENOENT') throw error; }
     try {
       const value = JSON.parse(await readFile(path.join(this.directory, 'current.json'), 'utf8'));
@@ -57,6 +73,7 @@ export class CompactHistory {
         throw new Error('Invalid history checkpoint');
       }
       this.current = value;
+      this.lastSavedAt = (await stat(path.join(this.directory, 'current.json'))).mtime.toISOString();
     } catch (error) { if (error.code !== 'ENOENT') throw error; }
     this.loaded = true;
   }
@@ -67,26 +84,41 @@ export class CompactHistory {
   }
   settings() {
     return { retentionMonths: this.retentionMonths, defaultMonths: DEFAULT_RETENTION_MONTHS,
+      saveIntervalMinutes: this.saveIntervalMinutes, defaultSaveIntervalMinutes: DEFAULT_SAVE_INTERVAL_MINUTES,
+      compression:'gzip', lowStorage:this.space?this.space.freeBytes<LOW_STORAGE_BYTES:false, freeBytes:this.space?.freeBytes ?? null, reserveBytes:LOW_STORAGE_BYTES, minimumHistoryHours:24, lastSpaceCleanupAt:this.lastSpaceCleanupAt,
+      lastSavedAt: this.lastSavedAt, bufferedIntervals: this.pendingRows.size + (this.currentDirty ? 1 : 0),
       minimumMonths: 1, maximumMonths: 24, automaticCleanup: true,
       cutoff: new Date(cutoffAt(this.now(), this.retentionMonths)).toISOString(),
       lastCleanupAt: this.lastCleanupAt, cleanupPending: this.cleanupPending };
   }
   getSettings() {
-    return this.enqueue(async () => { await this.initialize(); return this.settings(); });
+    return this.enqueue(async () => { await this.initialize(); if(!this.space || this.now()-this.lastSpaceCheck>=MINUTE)await this.manageDiskSpace(); return {...this.settings(),...await this.storage()}; });
   }
-  setRetentionMonths(value) {
+  setRetentionMonths(value) { return this.setSettings({retentionMonths:value}); }
+  setSettings(update) {
     return this.enqueue(async () => {
-      validateRetentionMonths(value);
       await this.initialize();
+      const retention = validateRetentionMonths(Object.hasOwn(update,'retentionMonths') ? update.retentionMonths : this.retentionMonths);
+      const interval = validateSaveInterval(Object.hasOwn(update,'saveIntervalMinutes') ? update.saveIntervalMinutes : this.saveIntervalMinutes);
       const target = path.join(this.directory, 'preferences.json');
-      await writeFile(`${target}.tmp`, JSON.stringify({ v: 1, retentionMonths: value }), { mode: 0o600 });
-      await rename(`${target}.tmp`, target);
-      this.retentionMonths = value;
-      // Save policy before deleting data. A failed cleanup is retried by the service.
-      this.cleanupPending = true;
-      try { await this.prune(); } catch { /* The saved policy remains authoritative. */ }
-      return this.settings();
+      await writeFile(`${target}.tmp`, JSON.stringify({ v:1, retentionMonths:retention, saveIntervalMinutes:interval }), {mode:0o600});
+      await rename(`${target}.tmp`,target);
+      this.retentionMonths=retention; this.saveIntervalMinutes=interval;
+      this.cleanupPending=true;
+      try { await this.prune(); } catch { /* Saved policy stays authoritative; cleanup retries. */ }
+      return {...this.settings(),...await this.storage()};
     });
+  }
+  async storage() {
+    let storageBytes=0,allocatedBytes=0;
+    for(const name of await readdir(this.directory)) {
+      if(!['current.json','preferences.json'].includes(name) && !ARCHIVE_PATTERN.test(name))continue;
+      const info=await stat(path.join(this.directory,name));storageBytes+=info.size;allocatedBytes+=(info.blocks ?? Math.ceil(info.size/512))*512;
+    }
+    return {storageBytes,allocatedBytes};
+  }
+  flushIfDue() {
+    return this.enqueue(async()=>{await this.initialize();await this.manageDiskSpace();if(this.now()-this.lastFlush>=this.saveIntervalMinutes*MINUTE)await this.flushCurrent();});
   }
   cleanup() {
     return this.enqueue(async () => { await this.initialize(); await this.prune(); return this.settings(); });
@@ -117,8 +149,9 @@ export class CompactHistory {
       values.forEach((value, index) => {
         if (value !== null) { this.current.sums[index] += value; this.current.counts[index] += 1; }
       });
-      // Checkpoint at most every five minutes; retain only one sample per minute.
-      if (now - this.lastFlush >= 5 * MINUTE) await this.flushCurrent();
+      this.currentDirty=true;
+      // Keep routine readings in RAM; batch file writes every 30 or 60 minutes.
+      if (now - this.lastFlush >= this.saveIntervalMinutes * MINUTE) await this.flushCurrent();
       if (new Date(now).toISOString().slice(0, 10) !== this.lastPruneDay) await this.prune();
       return true;
     });
@@ -127,17 +160,36 @@ export class CompactHistory {
     return [current.slot, ...current.sums.map((sum, index) => current.counts[index] ? Math.round(sum / current.counts[index]) : null), ...current.counts];
   }
   async archiveCurrent() {
-    if (!this.current || !this.current.counts.some(Boolean)) return;
-    const file = path.join(this.directory, `${monthOf(this.current.slot * MINUTE)}.jsonl`);
-    // A restart between append and checkpoint may duplicate a slot; reads collapse it.
-    await appendFile(file, `${JSON.stringify(this.row())}\n`, { mode: 0o600 });
+    if (this.current?.counts.some(Boolean)) this.pendingRows.set(this.current.slot,this.row());
   }
   async flushCurrent() {
-    if (!this.current) return;
-    const temporary = path.join(this.directory, 'current.json.tmp');
-    await writeFile(temporary, JSON.stringify(this.current), { mode: 0o600 });
-    await rename(temporary, path.join(this.directory, 'current.json'));
-    this.lastFlush = this.now();
+    if (!this.currentDirty && !this.pendingRows.size) return;
+    await this.manageDiskSpace();
+    if(this.space.freeBytes<16*1024*1024)throw new Error('Too little disk space to save history. Readings remain buffered.');
+    const batches=new Map();
+    for(const row of this.pendingRows.values()) {
+      const month=monthOf(row[0]*MINUTE);
+      if(!batches.has(month))batches.set(month,[]);
+      batches.get(month).push(row);
+    }
+    if(this.current) {
+      const month=monthOf(this.current.slot*MINUTE);
+      if(!batches.has(month))batches.set(month,[]);
+      batches.get(month).push(this.row());
+    }
+    // Replace each compressed month atomically. Old and pending rows merge by slot.
+    for(const [month,rows] of batches) {
+      const merged=await this.readArchive(month);
+      for(const row of rows)merged.set(row[0],row);
+      await this.writeArchive(month,[...merged.values()].sort((a,b)=>a[0]-b[0]));
+    }
+    if(this.current) {
+      const temporary=path.join(this.directory,'current.json.tmp');
+      await writeFile(temporary,JSON.stringify(this.current),{mode:0o600});
+      await rename(temporary,path.join(this.directory,'current.json'));
+    }
+    this.pendingRows.clear();this.currentDirty=false;
+    this.lastFlush=this.now();this.lastSavedAt=new Date(this.lastFlush).toISOString();
   }
   recordEvent(event) {
     return this.enqueue(async () => {
@@ -157,30 +209,71 @@ export class CompactHistory {
   async prune() {
     this.cleanupPending = true;
     const cutoff = cutoffAt(this.now(), this.retentionMonths);
-    const oldest = monthOf(cutoff);
-    for (const name of await readdir(this.directory)) {
-      if (!/^\d{4}-\d{2}(?:\.events)?\.jsonl$/.test(name)) continue;
-      const file = path.join(this.directory, name);
-      if (name.slice(0, 7) < oldest) { await unlink(file); continue; }
-      if (name.slice(0, 7) !== oldest) continue;
-      const data = await readFile(file, 'utf8');
-      const kept = data.split('\n').filter(line => {
-        try { const row = JSON.parse(line); return Array.isArray(row) && (name.includes('.events.') ? Date.parse(row[0]) : row[0] * MINUTE) >= cutoff; }
-        catch { return false; }
-      }).join('\n');
-      const next = kept ? `${kept}\n` : '';
-      if (next !== data) {
-        await writeFile(`${file}.tmp`, next, { mode: 0o600 });
-        await rename(`${file}.tmp`, file);
-      }
-    }
-    if (this.current && this.current.slot * MINUTE < cutoff) {
-      this.current = null;
-      await unlink(path.join(this.directory, 'current.json')).catch(error => { if (error.code !== 'ENOENT') throw error; });
-    }
+    await this.trimBefore(cutoff);
+    await this.manageDiskSpace();
     this.lastPruneDay = new Date(this.now()).toISOString().slice(0, 10);
     this.lastCleanupAt = new Date(this.now()).toISOString();
     this.cleanupPending = false;
+  }
+  async readArchive(month) {
+    const rows=new Map();
+    for(const suffix of ['.jsonl','.jsonl.gz']) {
+      let text;
+      try {const raw=await readFile(path.join(this.directory,month+suffix));text=(suffix.endsWith('.gz')?await decompress(raw):raw).toString();}
+      catch(error){if(error.code==='ENOENT')continue;throw error;}
+      for(const line of text.split('\n')) {
+        try {
+          const row=JSON.parse(line);
+          if(!Array.isArray(row) || row.length!==15 || !Number.isInteger(row[0]) || row.slice(1,8).some(n=>n!==null && !Number.isFinite(n)) || row.slice(8).some(n=>!Number.isInteger(n) || n<0 || n>15))continue;
+          if(monthOf(row[0]*MINUTE)===month)rows.set(row[0],row);
+        }catch{/* Ignore incomplete legacy appends. Compressed files use atomic replacement. */}
+      }
+    }
+    return rows;
+  }
+  async writeArchive(month,rows) {
+    const file=path.join(this.directory,`${month}.jsonl.gz`);
+    await writeFile(file+'.tmp',await compress(rows.map(row=>JSON.stringify(row)).join('\n')+'\n'),{mode:0o600});
+    await rename(file+'.tmp',file);
+    await unlink(path.join(this.directory,`${month}.jsonl`)).catch(error=>{if(error.code!=='ENOENT')throw error;});
+  }
+  async trimBefore(cutoff,{recoverSpace=false}={}) {
+    const oldest=monthOf(cutoff);
+    for(const name of (await readdir(this.directory)).filter(name=>ARCHIVE_PATTERN.test(name)).sort()) {
+      if(recoverSpace && (await this.diskSpace(this.directory)).freeBytes>=LOW_STORAGE_BYTES)break;
+      const file=path.join(this.directory,name);
+      if(name.slice(0,7)<oldest){await unlink(file);continue;}
+      if(name.slice(0,7)!==oldest)continue;
+      const raw=await readFile(file),text=(name.endsWith('.gz')?await decompress(raw):raw).toString();
+      const kept=text.split('\n').filter(line=>{try{const row=JSON.parse(line);return Array.isArray(row) && (name.includes('.events.')?Date.parse(row[0]):row[0]*MINUTE)>=cutoff;}catch{return false;}}).join('\n');
+      const next=kept?kept+'\n':'';
+      if(next!==text) {
+        if(!next && recoverSpace){await unlink(file);continue;}
+        await writeFile(file+'.tmp',name.endsWith('.gz')?await compress(next):next,{mode:0o600});await rename(file+'.tmp',file);
+      }
+    }
+    for(const slot of this.pendingRows.keys())if(slot*MINUTE<cutoff)this.pendingRows.delete(slot);
+    if(this.current && this.current.slot*MINUTE<cutoff) {
+      this.current=null;this.currentDirty=false;
+      await unlink(path.join(this.directory,'current.json')).catch(error=>{if(error.code!=='ENOENT')throw error;});
+    }
+  }
+  async manageDiskSpace() {
+    this.space=await this.diskSpace(this.directory);this.lastSpaceCheck=this.now();
+    if(this.space.freeBytes<LOW_STORAGE_BYTES) {
+      // A small history cannot resolve disk pressure caused by other files.
+      // Preserve the latest day and keep the warning active if space stays low.
+      await this.trimBefore(this.now()-24*60*MINUTE,{recoverSpace:true});
+      this.space=await this.diskSpace(this.directory);this.lastSpaceCleanupAt=new Date(this.now()).toISOString();
+    }
+  }
+  clearAll() {
+    return this.enqueue(async()=>{
+      await this.initialize();
+      for(const name of await readdir(this.directory))if(ARCHIVE_PATTERN.test(name) || /^\d{4}-\d{2}(?:\.events)?\.jsonl(?:\.gz)?\.tmp$/.test(name) || ['current.json','current.json.tmp'].includes(name))await unlink(path.join(this.directory,name));
+      this.current=null;this.currentDirty=false;this.pendingRows.clear();this.lastSavedAt=null;this.lastFlush=this.now();
+      await this.manageDiskSpace();return {...this.settings(),...await this.storage()};
+    });
   }
   readMonth(requestedMonth = monthOf(this.now())) {
     return this.enqueue(async () => {
@@ -189,20 +282,8 @@ export class CompactHistory {
       await this.prune();
       const now = this.now();
       const cutoff = cutoffAt(now, this.retentionMonths);
-      const rows = new Map();
-      try {
-        const data = await readFile(path.join(this.directory, `${requestedMonth}.jsonl`), 'utf8');
-        for (const line of data.split('\n')) {
-          if (!line) continue;
-          try {
-            const row = JSON.parse(line);
-            if (!Array.isArray(row) || row.length !== 15 || !Number.isInteger(row[0])
-                || row.slice(1, 8).some(n => n !== null && !Number.isFinite(n))
-                || row.slice(8).some(n => !Number.isInteger(n) || n < 0 || n > 15)) continue;
-            if (monthOf(row[0] * MINUTE) === requestedMonth) rows.set(row[0], row);
-          } catch { /* An incomplete final append is not a valid observation. */ }
-        }
-      } catch (error) { if (error.code !== 'ENOENT') throw error; }
+      const rows = await this.readArchive(requestedMonth);
+      for(const [slot,row] of this.pendingRows)if(monthOf(slot*MINUTE)===requestedMonth)rows.set(slot,row);
       if (this.current && monthOf(this.current.slot * MINUTE) === requestedMonth) rows.set(this.current.slot, this.row());
       const points = [...rows.values()].filter(row => row[0] * MINUTE >= cutoff && row[0] * MINUTE <= now)
         .sort((a, b) => a[0] - b[0]).map(row => ({
@@ -210,11 +291,10 @@ export class CompactHistory {
           values: Object.fromEntries(HISTORY_FIELDS.map((key, index) => [key, row[index + 1] === null ? null : row[index + 1] / (index === 6 ? 10 : 1000)])),
           samples: Object.fromEntries(HISTORY_FIELDS.map((key, index) => [key, row[index + 8]]))
         }));
-      let storageBytes = 0;
-      const months = [];
+      const storage = await this.storage();
+      const months = [...this.pendingRows.keys()].map(slot=>monthOf(slot*MINUTE));
       for (const name of await readdir(this.directory)) {
-        if (['current.json', 'preferences.json'].includes(name) || /^\d{4}-\d{2}(?:\.events)?\.jsonl$/.test(name)) storageBytes += (await stat(path.join(this.directory, name))).size;
-        if (/^\d{4}-\d{2}(?:\.events)?\.jsonl$/.test(name)) months.push(name.slice(0, 7));
+        if (ARCHIVE_PATTERN.test(name)) months.push(name.slice(0, 7));
       }
       if (this.current) months.push(monthOf(this.current.slot * MINUTE));
       const events = [];
@@ -229,7 +309,7 @@ export class CompactHistory {
         }
       } catch (error) { if (error.code !== 'ENOENT') throw error; }
       events.sort((a, b) => b.at.localeCompare(a.at));
-      return { version: 1, month: requestedMonth, intervalMinutes: 15, retentionMonths: this.retentionMonths, storageBytes,
+      return { version: 1, month: requestedMonth, intervalMinutes: 15, ...this.settings(), ...storage,
         months: [...new Set(months)].filter(month => month >= monthOf(cutoff) && month <= monthOf(now)).sort().reverse(),
         events, fields: HISTORY_FIELDS, units: { power: 'kW', SoC: '%' }, points,
         note: 'Observed 15-minute averages. Missing readings remain gaps; these are not billing-grade energy totals.' };

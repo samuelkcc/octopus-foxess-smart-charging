@@ -24,6 +24,7 @@ A development commit does not publish GitHub Pages or create a release.
 | `dev/controls.js` | Pause controls, hardware-limit dialog, and history retention interface. |
 | `linux/integration-state.mjs` | Shared service health, retained alerts, and acknowledgement rules. |
 | `src/integration-monitor.js` | Browser health storage, Pi status polling, and worker refresh requests. |
+| `dev/history.js` | History overview charts, expansion, month queries, CSV export, and activity. |
 | `dev/monitor.js` | Shared Overview countdowns, manual refresh, and problem dialogs. |
 | `linux/history.mjs` | Compact history files, averages, queries, and expiry. |
 | `linux/tray.py` | Native Pi settings, remote access, status icon, and graphical update action. |
@@ -64,6 +65,21 @@ It does not make an upstream request.
 It accepts no more than one fresh observation in each minute.
 Each stored interval contains averages and observation counts.
 Missing data remains missing.
+
+Routine observations stay in RAM until an hourly batch save.
+The user can select a 30-minute interval.
+Monthly power archives use atomic gzip replacement and merge records by interval.
+The current checkpoint retains sums and sample counts for restart recovery.
+The reader accepts previous plain JSONL archives.
+Normal shutdown saves the pending buffer.
+Sudden power loss can discard the unsaved buffer.
+Pause events and preference changes remain durable immediately.
+
+Below 4 GB free space, oldest history expires early.
+The newest 24 hours remain protected from automatic space cleanup.
+The warning remains active when history cleanup cannot resolve pressure from unrelated files.
+Explicit clear removes only recognised history files and buffered readings.
+It preserves preferences and unrelated files.
 
 History files use owner-only permissions.
 They contain no account credentials or remote keys.
@@ -187,3 +203,11 @@ The web telemetry request includes grid import/export and battery charge/dischar
 Measured zero is valid data.
 Missing directional measurements remain unavailable.
 Tests use mock upstream responses for outages, recovery, restart persistence, and GAS transport.
+
+## History format rollback
+
+The development installer backs up history before a runtime change.
+Older runtimes cannot read gzip archives.
+A runtime rollback retains the new files but may not display their archived readings.
+The private backup preserves the history format used before the update.
+Restoring that backup is a separate recovery action.

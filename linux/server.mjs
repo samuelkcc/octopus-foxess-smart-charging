@@ -533,6 +533,8 @@ const cleanupHistory = () => history.cleanup().catch(() => {
 });
 const historyCleanupTimer = setInterval(cleanupHistory, 60 * 60_000);
 historyCleanupTimer.unref();
+const historySaveTimer=setInterval(()=>{void history.flushIfDue().catch(()=>console.error('History batch save failed; buffered readings will retry.'));},60_000);
+historySaveTimer.unref();
 void cleanupHistory();
 
 const contentTypes = {
@@ -577,7 +579,7 @@ async function handleRequest(request, response) {
       response.setHeader('X-Frame-Options', 'DENY');
       const remote = (await loadState()).remoteAccess;
       if (!remote?.enabled) return sendJson(response, 503, { error: 'Remote access is disabled' });
-      const permitted = new Set(['/api/runtime', '/api/auth', '/api/logout', '/api/config', '/api/dispatch-snapshot', '/api/foxess', '/api/octopus', '/api/foxess/live', '/api/foxess/live/status', '/api/history', '/api/history/settings', '/api/automation/pause', '/api/integration-status']);
+      const permitted = new Set(['/api/runtime', '/api/auth', '/api/logout', '/api/config', '/api/dispatch-snapshot', '/api/foxess', '/api/octopus', '/api/foxess/live', '/api/foxess/live/status', '/api/history', '/api/history/settings', '/api/history/clear', '/api/automation/pause', '/api/integration-status']);
       if (pathname.startsWith('/api/') && !permitted.has(pathname)) return sendJson(response, 403, { error: 'This endpoint is only available on the Raspberry Pi' });
       if (!['GET', 'HEAD'].includes(request.method)) {
         const origin = request.headers.origin;
@@ -778,7 +780,7 @@ async function handleRequest(request, response) {
     }
 
     const protectedApi = ['/api/config', '/api/dispatch-snapshot', '/api/foxess', '/api/octopus', '/api/history'];
-    const isProtected = pathname === '/api/integration-status' || pathname === '/api/automation/pause' || protectedApi.includes(pathname) || pathname === '/api/history/settings' || pathname.startsWith('/api/foxess/live');
+    const isProtected = pathname === '/api/integration-status' || pathname === '/api/automation/pause' || protectedApi.includes(pathname) || pathname === '/api/history/settings' || pathname === '/api/history/clear' || pathname.startsWith('/api/foxess/live');
     if (isProtected && !(await isAuthorized(request))) {
       return sendJson(response, 401, { error: 'Invalid LAN access code' });
     }
@@ -953,6 +955,14 @@ async function handleRequest(request, response) {
       }
       return sendJson(response, 200, await automationPause.update(await readJsonBody(request)));
     }
+    if (pathname === '/api/history/clear') {
+      if(request.method!=='POST')return sendJson(response,405,{error:'Use POST to clear history'});
+      const expectedOrigin=`${remoteRequests.has(request)?'https':'http'}://${request.headers.host}`;
+      if(request.headers['sec-fetch-site']==='cross-site' || (request.headers.origin && request.headers.origin!==expectedOrigin))return sendJson(response,403,{error:'Cross-site request rejected'});
+      const update=await readJsonBody(request);
+      if(!update || Object.keys(update).length!==1 || update.action!=='clear')return sendJson(response,400,{error:'Specify the clear action'});
+      return sendJson(response,200,{cleared:true,...await history.clearAll()});
+    }
     if (pathname === '/api/history/settings') {
       if (request.method === 'GET') return sendJson(response, 200, await history.getSettings());
       if (request.method !== 'PUT') return sendJson(response, 405, { error: 'Use GET or PUT for history settings' });
@@ -961,10 +971,10 @@ async function handleRequest(request, response) {
         return sendJson(response, 403, { error: 'Cross-site request rejected' });
       }
       const update = await readJsonBody(request);
-      if (!update || Array.isArray(update) || Object.keys(update).length !== 1 || !Object.hasOwn(update, 'retentionMonths')) {
-        return sendJson(response, 400, { error: 'Specify only retentionMonths' });
+      if (!update || Array.isArray(update) || Object.keys(update).length === 0 || Object.keys(update).some(key=>!['retentionMonths','saveIntervalMinutes'].includes(key))) {
+        return sendJson(response, 400, { error: 'Specify retentionMonths or saveIntervalMinutes' });
       }
-      const settings = await history.setRetentionMonths(update.retentionMonths);
+      const settings = await history.setSettings(update);
       return sendJson(response, settings.cleanupPending ? 202 : 200, { saved: true, ...settings });
     }
     if (pathname === '/api/foxess/live/test' && request.method === 'POST') {
@@ -1013,6 +1023,7 @@ server.listen(port, host, () => {
 for (const signal of ['SIGINT', 'SIGTERM']) {
   process.on(signal, () => {
     clearInterval(historyCleanupTimer);
+    clearInterval(historySaveTimer);
     clearInterval(pauseExpiryTimer);
     foxessLive.stop();
     quickTunnel.stop();

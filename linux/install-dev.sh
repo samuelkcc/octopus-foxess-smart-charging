@@ -34,9 +34,10 @@ chmod -R u=rwX,go=rX "$DEV_ROOT"
 BACKUP_ROOT="/var/backups/octopus-foxess-before-dev-$(date -u +%Y%m%dT%H%M%SZ)"
 mkdir -m 0700 "$BACKUP_ROOT"
 systemctl stop octopus-foxess-worker octopus-foxess
-for name in config.enc config.key access.key automation-pause.json; do
+for name in config.enc config.key access.key automation-pause.json integration-status.json; do
   if [ -f "/var/lib/octopus-foxess/$name" ]; then cp -p "/var/lib/octopus-foxess/$name" "$BACKUP_ROOT/"; fi
 done
+if [ -d /var/lib/octopus-foxess/history ]; then cp -a /var/lib/octopus-foxess/history "$BACKUP_ROOT/history"; fi
 printf '%s\n' "$PREVIOUS" > "$BACKUP_ROOT/previous-runtime"
 chmod -R go-rwx "$BACKUP_ROOT"
 ln -sfn "$DEV_ROOT" "$APP_ROOT/current"

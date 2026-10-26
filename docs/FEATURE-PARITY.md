@@ -34,9 +34,10 @@ The existing public interface remains available.
 | DEV installer | Adds a pinned source installation. | Live installation passed after the permission correction. |
 | Runtime rollback | Retains the previous runtime. | The rollback script exists. A live rollback was not run. |
 | Shared Pi update status | Worker timing, refresh requests, and persistent alerts. | Mock restart, authentication, CSRF, worker isolation, and owner-only storage checks pass. Live installation remains pending. |
+| History storage | Hourly RAM batches, gzip archives, disk usage, low-space cleanup, and explicit clear. | Buffer loss, timer saves, migration, compression, low-space preservation, and clear isolation tests pass with temporary data. |
 | Compact history | Default 12 months, configurable from 1 to 24. | Retention, restart, gap, expiry, and authentication tests pass. |
 | Pause automation | Blocks every app schedule command. | Timers, restart persistence, write barriers, activity, and authentication tests pass. |
-| History charts | Adds month and measurement selection. | A real Pi interval appeared in the interface. |
+| History charts | Shows all measurements in four charts with Expand actions. | Earlier live intervals appeared. The four-chart redesign uses mock browser checks before installation. |
 | History CSV | Adds a month export action. | The data path is separate from credentials and account setup. |
 
 The public updater installs the latest published GitHub release.

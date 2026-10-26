@@ -19,6 +19,9 @@ if (gasRelay) http.createServer((request,response) => { void gasRelay.handle(req
 const readings = { pvPower:0.4, loadsPower:0.6, gridConsumptionPower:0.2, feedinPower:0, batChargePower:0, batDischargePower:0, SoC:64 };
 let pauseState = { paused:false, until:null, revision:0 };
 let retentionMonths = 12;
+let saveIntervalMinutes = 60;
+let lowStorage=false,historyCleared=false;
+const historyStats=()=>({retentionMonths,saveIntervalMinutes,storageBytes:historyCleared?0:150,allocatedBytes:historyCleared?0:4096,bufferedIntervals:historyCleared?0:1,lastSavedAt:null,freeBytes:lowStorage?3e9:16e9,reserveBytes:4e9,lowStorage,automaticCleanup:true});
 const activity = [];
 const config = { credentials:{ acc:'A-MOCK', api:'pi-managed', foxSN:'pi-managed', foxToken:'pi-managed' }, automations:{dispatchCheck:false}, liveWsEnabled:false, liveWsPolicy:'rest', revision:1 };
 const device = {status:'LIVE',vehicleMake:'Example',vehicleModel:'Mock EV'};
@@ -37,6 +40,8 @@ http.createServer(async (request,response) => {
       response.writeHead(200,{'Content-Type':'text/html','Cache-Control':'no-store'});
       return response.end(`<main><p>Local responsive fixture: ${width}px</p><iframe title="Responsive app test" src="${route}" style="display:block;width:${width}px;height:650px;border:0"></iframe></main>`);
     }
+    if(url.pathname==='/test/storage' && request.method==='PUT'){lowStorage=payload.low===true;return json(historyStats());}
+    if(url.pathname==='/api/history/clear' && request.method==='POST'){historyCleared=true;activity.length=0;return json({cleared:true,...historyStats()});}
     if (url.pathname === '/test/integration-fault' && request.method === 'PUT') {
       faults.octopus=payload.octopus===true;faults.foxess=payload.foxess===true;gasRelay?.reject(faults.foxess?'Mock FoxESS unavailable':null);
       return json({mock:true,faults});
@@ -70,8 +75,8 @@ http.createServer(async (request,response) => {
       }
       return json(pauseState);
     }
-    if (url.pathname === '/api/history/settings') { if (request.method === 'PUT') retentionMonths = payload.retentionMonths; return json({retentionMonths,automaticCleanup:true}); }
-    if (url.pathname === '/api/history') return json({month:url.searchParams.get('month'),intervalMinutes:15,retentionMonths,events:activity,storageBytes:150,fields:Object.keys(readings),points:[{at:timestamp,values:readings,samples:{}}]});
+    if (url.pathname === '/api/history/settings') { if (request.method === 'PUT') {retentionMonths = payload.retentionMonths ?? retentionMonths;saveIntervalMinutes=payload.saveIntervalMinutes ?? saveIntervalMinutes;} return json(historyStats()); }
+    if (url.pathname === '/api/history') return json({month:url.searchParams.get('month'),intervalMinutes:15,...historyStats(),events:activity,fields:Object.keys(readings),points:historyCleared?[]:[{at:timestamp,values:readings,samples:{}}]});
     if (url.pathname.startsWith('/mock-octopus/') || url.pathname === '/api/octopus') {
       if(faults.octopus){health.failure('octopus','api','Mock Octopus unavailable');return json({error:'Mock Octopus unavailable'},503);}
       health.success('octopus');

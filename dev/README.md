@@ -251,3 +251,23 @@ Version 2.0.0 has not yet been installed on the live Pi.
 The live Pi still uses the runtime and interface commits recorded above.
 A full runtime update is required for shared server alerts and worker timing.
 The new public interface remains pending user approval.
+
+## History storage redesign checks
+
+History now shows four measurement charts with separate Expand actions.
+Desktop and 390-pixel browser checks covered expansion and closing the chart.
+The month field and action buttons use the same height.
+The battery display uses one shared renderer for zero and missing values.
+
+Routine readings remain in RAM until an hourly save.
+The user can select a 30-minute interval.
+The test suite covers buffered reads, timed saves, sudden buffer loss, restart, and preference migration.
+It also covers gzip archives, legacy files, allocated disk bytes, low-space cleanup, and explicit clear isolation.
+The Overview warning and deletion confirmation dialogs were checked with local mock data.
+No live history was cleared as a test.
+
+A synthetic 24-month data set contained 70,080 intervals.
+Its raw rows used 3.70 MB.
+Its monthly gzip archives used 1.34 MB, or 1.37 MB with simulated 4 KB allocation blocks.
+This example excludes activity files and depends on the measurement values.
+A 10 MB history allowance provides a conservative planning margin.

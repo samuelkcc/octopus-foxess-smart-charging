@@ -75,6 +75,12 @@ try {
   assert.equal((await call(remote,'/api/history/settings',{...put({retentionMonths:25}),headers:sessionHeaders})).status,400);
   assert.equal((await call(remote,'/api/history/settings',{...put({retentionMonths:6}),headers:sessionHeaders})).status,200);
   assert.equal((await call(remote,'/api/history/settings',{headers:sessionHeaders}).then(r=>r.json())).retentionMonths,6);
+  assert.equal((await call(remote,'/api/history/settings',{...put({saveIntervalMinutes:30}),headers:sessionHeaders})).status,200);
+  assert.equal((await call(remote,'/api/history/settings',{...put({saveIntervalMinutes:5}),headers:sessionHeaders})).status,400);
+  assert.equal((await call(remote,'/api/history/clear',{method:'POST',body:JSON.stringify({action:'clear'})})).status,401);
+  assert.equal((await call(remote,'/api/history/clear',{method:'POST',headers:{...sessionHeaders,Origin:'https://evil.invalid'},body:JSON.stringify({action:'clear'})})).status,403);
+  assert.equal((await call(remote,'/api/history/clear',{method:'POST',headers:sessionHeaders,body:JSON.stringify({action:'invalid'})})).status,400);
+  assert.equal((await call(remote,'/api/history/clear',{method:'POST',headers:sessionHeaders,body:JSON.stringify({action:'clear'})})).status,200);
   await call(local,'/api/native-config',put({accessRequired:false,credentials:{foxSN:'mock-device',foxToken:'mock-token'}}));
   assert.equal((await call(remote,'/api/automation/pause',{...put({action:'pause',hours:null}),headers:sessionHeaders})).status,200);
   assert.equal((await call(local,'/api/config').then(r=>r.json())).automationPause.paused,true,'Worker sees the same global pause');

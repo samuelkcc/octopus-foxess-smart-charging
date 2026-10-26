@@ -354,3 +354,35 @@ body>#proxy-modal>div {max-width:850px!important;}
 .overview-incident-details section {border-bottom:1px solid var(--border);padding:16px 0;}
 .overview-incident-details strong {font-size:13px;overflow-wrap:anywhere;}
 @media(max-width:600px) {.overview-update-grid {grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;}.overview-update-card {padding:12px;}.overview-update-title {flex-direction:column;align-items:flex-start;gap:4px;}.overview-update-title h3 {font-size:12px;}.overview-update-clock {font-size:22px;}.overview-update-card p {font-size:10px;}.overview-updates-heading {align-items:start;}.overview-updates-heading>div {min-width:0;}}
+/* History uses one overview. Each plot can open in a large, keyboard-closeable dialog. */
+.dev-history-controls label {flex:0 1 280px;}
+#dev-shell .dev-history-controls input,#dev-shell .dev-history-controls button {height:44px;min-height:44px;}
+#dev-shell .dev-history-controls input {-webkit-appearance:none;appearance:none;line-height:22px;}
+.history-chart-grid {display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:20px;margin:24px 0;}
+.history-chart-card {min-width:0;border:1px solid var(--border);border-radius:12px;padding:20px;}
+.history-chart-header {display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:18px;}
+.history-chart-header h2 {font-size:14px;line-height:1.5;margin:0;font-weight:600;}
+#dev-shell .history-chart-header button {min-height:36px;width:auto;padding:7px 12px;font-size:11px;background:var(--bg);color:var(--text-main);border:1px solid var(--border);border-radius:8px;}
+#dev-shell .history-chart-header button:hover {background:var(--button-fill);border-color:var(--button-fill);color:white;}
+#dev-shell .history-chart-header button:disabled {opacity:.5;cursor:default;}
+.history-chart-card .dev-history-chart {height:260px;}
+.history-chart-caption {font-size:11px;color:var(--text-muted);margin:14px 0 0;}
+.dev-review-dialog.history-expanded {width:calc(100vw - 48px);max-width:1440px;height:min(820px,calc(100dvh - 48px));max-height:calc(100dvh - 48px);padding:28px;}
+.history-expanded[open] {display:flex;flex-direction:column;}
+.history-expanded-header {display:flex;align-items:start;justify-content:space-between;gap:20px;flex-shrink:0;}
+.history-expanded-header h2 {margin:0;font-size:20px;}
+.history-expanded-header p,.history-expanded>p {font-size:12px;color:var(--text-muted);}
+.history-expanded-header button {width:auto;min-height:42px;}
+.history-expanded-plot {position:relative;flex:1;min-height:0;margin-top:18px;}
+@media(max-width:900px) {.history-chart-grid {grid-template-columns:minmax(0,1fr);}.history-chart-card .dev-history-chart {height:280px;}}
+@media(max-width:600px) {.history-chart-grid {gap:16px;}.history-chart-card {padding:16px;}.dev-review-dialog.history-expanded {width:calc(100vw - 20px);height:calc(100dvh - 20px);max-height:calc(100dvh - 20px);padding:18px;}.history-expanded-header h2 {font-size:17px;}}
+.history-expanded-header>button {min-width:70px;padding:10px 14px;font-size:12px;line-height:1.4;}
+#dev-shell .next-field select {-webkit-appearance:none;appearance:none;height:44px;line-height:22px;padding-right:36px!important;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='m4 6 4 4 4-4' fill='none' stroke='%238b87a7' stroke-width='1.5'/%3E%3C/svg%3E")!important;background-repeat:no-repeat!important;background-size:16px!important;background-position:right 12px center!important;}
+#history-settings .next-field {margin-top:18px;}
+.history-save-status {font-size:12px;color:var(--text-muted);line-height:1.7;}
+.next-storage-warning {display:flex;align-items:center;justify-content:space-between;gap:20px;border:1px solid #dc2626;background:color-mix(in srgb,#b91c1c 14%,var(--card-bg));border-radius:12px;padding:18px 20px;}
+.next-storage-warning strong {color:var(--text-main);font-size:13px;}
+.next-storage-warning p {margin:5px 0 0;font-size:12px;line-height:1.6;color:var(--text-muted);}
+#dev-shell .next-storage-warning button {width:auto;min-height:40px;flex-shrink:0;padding:9px 14px;border:1px solid #b91c1c;background:#b91c1c;color:white;border-radius:8px;}
+#dev-shell #history-settings .history-clear-button {color:white;background:#b91c1c;border-color:#b91c1c;}
+@media(max-width:600px){.next-storage-warning{flex-direction:column;align-items:stretch;gap:12px;}}

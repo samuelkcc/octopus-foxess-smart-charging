@@ -173,8 +173,11 @@ It is not in public v2026.10.26.5.
 1. Select **Open Desktop Client** from the taskbar charger menu.
 2. Select **History**.
 3. Select a month.
-4. Select a measurement.
+4. To enlarge a chart, select its **Expand** button.
 5. To save the month, select **Download month CSV**.
+
+The overview shows solar, home demand, grid import/export, battery charge/discharge, and battery level.
+The expanded chart closes with **Close** or the Escape key.
 
 The Pi stores 15-minute averages for 12 months by default.
 **Settings → History storage** selects a period from 1 to 24 months.
@@ -190,9 +193,11 @@ Earlier records are not imported.
 Missing readings remain gaps.
 The values are observed averages, not billing-grade energy totals.
 
-Expected file storage is approximately 5–10 MB for 24 months.
-The History screen shows current file bytes.
-Filesystem allocation can be larger.
+Monthly power archives use gzip compression.
+Existing plain archives remain readable.
+An active archive converts during its next batch save.
+History and Settings show the allocated space for history files.
+Settings also shows free disk space and unsaved intervals.
 The history files have owner-only permissions.
 The files contain no account credentials or remote keys.
 
@@ -285,3 +290,32 @@ The countdowns use the Pi worker timing when it is available.
 The worker retains control of automatic schedule changes.
 Server problem alerts survive a service restart.
 Clearing a server alert clears it for all connected Pi dashboards.
+
+## Reduce history writes
+
+Routine readings stay in memory between saves.
+The default save interval is one hour.
+**Settings → History storage** also provides a 30-minute interval.
+A normal service shutdown saves pending readings.
+A sudden power failure can lose readings since the last save.
+The charts include unsaved readings while the service runs.
+Pause activity and preference changes save immediately.
+This policy controls history writes, not all operating-system writes.
+
+## Manage low storage
+
+Below 4 GB free space, Overview shows **Low storage**.
+The Pi removes the oldest saved history before the selected retention period.
+It preserves the newest 24 hours.
+If other files keep free space low, the warning remains visible.
+The app does not remove unrelated files.
+
+1. Open **Settings → History storage**.
+2. Check history disk use and free space.
+3. To reduce retention, select **Keep recent 3 months**.
+4. Read the confirmation.
+5. To apply that period, select **Save settings**.
+
+**Clear all history** removes saved readings, activity, and unsaved readings after confirmation.
+It retains account settings, automation rules, and history preferences.
+These deletion actions cannot restore erased records.

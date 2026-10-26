@@ -91,10 +91,8 @@
   }
   const historyPanel = document.createElement('section');
   historyPanel.className = 'card dev-history';
-  historyPanel.innerHTML = `<div class="dev-history-controls"><label>Month<input type="month" id="dev-history-month"></label><label>Measure<select id="dev-history-metric"><option value="loadsPower">Home demand</option><option value="pvPower">Solar generation</option><option value="gridConsumptionPower">Grid import</option><option value="feedinPower">Grid export</option><option value="batChargePower">Battery charge</option><option value="batDischargePower">Battery discharge</option><option value="SoC">Battery charge level</option></select></label><button id="dev-history-refresh">Refresh history</button><button id="dev-history-export">Download month CSV</button></div><p id="dev-history-status" role="status">History is collected by the Pi from existing telemetry. Open this page to load it.</p><div class="dev-history-chart"><canvas id="dev-history-chart" role="img" aria-label="Historical telemetry averages for the selected month and measure"></canvas></div><p class="dev-muted">Observed averages, not billing-grade energy totals. Missing readings stay as gaps. Recording starts when history storage is installed.</p>`;
-  historyPanel.insertAdjacentHTML('beforeend', '<h2>Automation activity</h2><div id="history-activity" aria-live="polite"></div>');
-  if (!piEdition) { historyPanel.querySelector('.dev-history-chart').hidden = true; configureWebHistory(); }
-  function configureWebHistory() { historyPanel.querySelector('#dev-history-metric').closest('label').hidden = true; historyPanel.querySelector('.dev-muted').textContent = 'Activity is kept for 12 months, up to 2,000 entries. This browser must stay open and awake for automation.'; historyPanel.querySelector('#dev-history-export').hidden = true; }
+  const historyView = window.installHistoryView(historyPanel, {piEdition,isVisible:()=>currentPage === 'history' && dashboard.classList.contains('visible')});
+  const loadHistory = () => historyView.load();
   move(historyPanel, 'history');
   // Apply uses the unchanged scheduler engine, after an explicit review step.
   const reviewDialog = document.createElement('dialog');
@@ -186,79 +184,8 @@
     document.getElementById('dev-confirmed').textContent = format(snapshot?.confirmedAt);
     document.getElementById('dev-periods').textContent = `${(window.activeFoxGroups || []).length} / 5`;
     document.getElementById('dev-telemetry-at').textContent = format(window.lastFoxTelemetryUpdate);
-    if (currentPage === 'history' && historyData === null && piEdition && window.linuxRuntime) void loadHistory();
+    if (currentPage === 'history' && historyView.needsLoad() && piEdition && window.linuxRuntime) void loadHistory();
   }
-  let historyData = null;
-  let historyChart = null;
-  let historyLoading = false;
-  const monthInput = document.getElementById('dev-history-month');
-  monthInput.value = new Date().toISOString().slice(0, 7);
-  monthInput.max = monthInput.value;
-  const metricInput = document.getElementById('dev-history-metric');
-  const historyStatus = document.getElementById('dev-history-status');
-  function drawHistory() {
-    if (!historyData) return;
-    const activity = document.getElementById('history-activity'); activity.replaceChildren();
-    for (const event of historyData.events || []) {
-      const row = document.createElement('div'); row.className = 'next-activity-row';
-      const title = document.createElement('strong'); title.textContent = ({ automation_paused: 'Automation paused', automation_resumed: 'Automation resumed', pause_expired: 'Timed pause ended' })[event.type] || event.type;
-      const detail = document.createElement('p'); detail.textContent = `${new Date(event.at).toLocaleString()}${event.type === 'automation_paused' ? (event.until ? ` · Until ${new Date(event.until).toLocaleString()}` : ' · Until manually resumed') : ''}`; row.append(title, detail); activity.append(row);
-    }
-    if (!activity.children.length) activity.textContent = 'No automation activity recorded for this month.';
-    if (!piEdition) { historyStatus.textContent = 'Pause and resume activity on this browser · 12-month retention'; return; }
-    const metric = metricInput.value;
-    const metricName = metricInput.selectedOptions[0].textContent;
-    const points = historyData.points;
-    const monthStart = Date.parse(`${historyData.month}-01T00:00:00Z`);
-    const monthDate = new Date(monthStart);
-    const monthEnd = Date.UTC(monthDate.getUTCFullYear(), monthDate.getUTCMonth() + 1, 1);
-    const byTime = new Map(points.map(point => [Date.parse(point.at), point.values[metric]]));
-    const times = [...byTime.keys()];
-    const chartStart = times.length ? Math.max(monthStart, times[0] - 15 * 60_000) : monthStart;
-    const chartEnd = times.length ? Math.min(monthEnd - 1, times[times.length - 1] + 15 * 60_000) : monthEnd - 1;
-    const values = [];
-    if (times.length) {
-      for (let time = times[0]; time <= times[times.length - 1]; time += 15 * 60_000) {
-        values.push({ x:time, y:byTime.get(time) ?? null });
-      }
-    }
-    const style = getComputedStyle(document.documentElement);
-    historyChart?.destroy();
-    historyChart = new Chart(document.getElementById('dev-history-chart'), {
-      type:'line', data:{ datasets:[{ label:metricName, data:values, borderColor:style.getPropertyValue('--accent').trim(), borderWidth:2, pointRadius:values.length < 3 ? 3 : 0, spanGaps:false }] },
-      options:{ responsive:true, maintainAspectRatio:false, animation:false, parsing:false,
-        interaction:{mode:'nearest',intersect:false}, plugins:{legend:{display:false}, tooltip:{callbacks:{title:items=>items.length?new Date(items[0].parsed.x).toLocaleString():''}}},
-        scales:{ x:{type:'linear',min:chartStart,max:chartEnd,ticks:{maxTicksLimit:7,color:style.getPropertyValue('--text-muted'),callback:value=>chartEnd-chartStart<=3*86400000?new Date(value).toLocaleTimeString(undefined,{hour:'2-digit',minute:'2-digit'}):new Date(value).toLocaleDateString(undefined,{day:'numeric',month:'short'})}},
-          y:{beginAtZero:true,max:metric==='SoC'?100:undefined,title:{display:true,text:metric==='SoC'?'Charge level (%)':'Average power (kW)',color:style.getPropertyValue('--text-muted')},ticks:{color:style.getPropertyValue('--text-muted')}} }
-      }
-    });
-    const bytes = historyData.storageBytes;
-    historyStatus.textContent = `${points.length} recorded ${points.length === 1 ? 'interval' : 'intervals'} in ${historyData.month} · ${bytes < 1024 * 1024 ? (bytes / 1024).toFixed(1)+' KB' : (bytes / 1024 / 1024).toFixed(2)+' MB'} used on Pi · ${historyData.retentionMonths}-month retention` + (points.length ? '' : ' · No readings recorded for this month yet.');
-  }
-  async function loadHistory() {
-    if (historyLoading || (piEdition && !window.linuxRuntime) || !dashboard.classList.contains('visible')) return;
-    historyLoading = true;
-    historyStatus.textContent = 'Loading recorded telemetry…';
-    try {
-      historyData = piEdition ? await fetchJson(`/api/history?month=${encodeURIComponent(monthInput.value)}`) : { events: window.automationControl.events().filter(event => event.at.slice(0, 7) === monthInput.value) };
-      drawHistory();
-    } catch (error) { historyStatus.textContent = `History unavailable: ${error.message}`; }
-    finally { historyLoading = false; }
-  }
-  window.addEventListener('history-settings-change', () => { historyData = null; if (currentPage === 'history') void loadHistory(); });
-  window.addEventListener('automation-control-change', () => { if (currentPage === 'history') void loadHistory(); });
-  monthInput.addEventListener('change', loadHistory);
-  metricInput.addEventListener('change', drawHistory);
-  document.getElementById('dev-history-refresh').addEventListener('click', loadHistory);
-  document.getElementById('dev-history-export').addEventListener('click', () => {
-    if (!historyData?.points.length) { historyStatus.textContent = 'Choose a month with recorded data before exporting.'; return; }
-    const fields = historyData.fields;
-    const csv = ['timestamp_utc,' + fields.map(field => field + (field === 'SoC' ? '_percent' : '_kW')).join(','), ...historyData.points.map(point => [point.at, ...fields.map(field => point.values[field] ?? '')].join(','))].join('\n');
-    const url = URL.createObjectURL(new Blob([csv], {type:'text/csv;charset=utf-8'}));
-    const link = document.createElement('a'); link.href = url; link.download = `home-energy-${historyData.month}.csv`; link.click();
-    setTimeout(() => URL.revokeObjectURL(url), 1000);
-  });
-  new MutationObserver(() => { if (currentPage === 'history') drawHistory(); }).observe(document.documentElement, {attributes:true,attributeFilter:['data-theme']});
   updateWorkerView(); setInterval(updateWorkerView, 5000);
   const initialView = new URLSearchParams(location.search).get('view');
   navigate(Object.hasOwn(titles, initialView) ? initialView : 'overview');

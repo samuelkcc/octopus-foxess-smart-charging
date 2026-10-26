@@ -1,5 +1,14 @@
 ## v2.0.0 — Major redesign under review
 
+- Buffer history readings in memory. Save compressed monthly archives every hour by default, with a 30-minute option.
+- Show history disk use, free space, unsaved intervals, and the last save time.
+- Below 4 GB free space, show an Overview warning and remove oldest history early. Preserve the newest 24 hours.
+- Add confirmed Clear all history and Keep recent 3 months actions. Retain account settings and automation rules.
+- Back up history before a full development update. Read existing plain archives and migrate active archives during a batch save.
+
+- Replace the History measurement selector with four overview charts and individual Expand actions. Align the month and action controls.
+- Remove competing battery display updates. Keep measured idle power at zero without alternating with unavailable data.
+
 - Request grid and battery power in the web edition. Show measured zero as zero and unavailable readings as missing.
 - Add shared Overview refresh countdowns, Update now, and retained red problem alerts for web, Pi, and mobile.
 - Use Pi worker timing across dashboard clients. A refresh request preserves worker ownership and an active pause.
