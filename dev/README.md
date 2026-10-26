@@ -533,3 +533,11 @@ The Pi Connections page retained account details and service status without the 
 The Settings page retained matching menu and content lower edges after theme changes.
 The full check suite and both interface builds passed.
 No real inverter or account setting was changed.
+
+UI commit `17d5136bccf3141401b984cea45d0881d2d361ba` was installed on the Pi on 26 October 2026.
+The installer completed its source build and interface checks without restarting services.
+Safari retained the existing authenticated session and public URL.
+Live Connections showed the light-theme charging icon, account details, and service status without the Pi administration card.
+Its menu and content lower edges matched after navigation from History.
+Live History retained all four charts and 44 recorded intervals.
+No real pause, inverter, credential, or history-clear action was submitted.
