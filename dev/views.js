@@ -118,7 +118,7 @@
 
   // Edition-specific launch presentation preserves the shared engine controls.
   let entered=false;
-  const { session, updateConnection } = window.installLaunchScreen({ pi, login: byId('login-layout'), parking, byId, make, button, onEnter:()=>{entered=true;syncAuth();} });
+  const { session, updateConnection } = window.installLaunchScreen({ pi, login: byId('login-layout'), parking, byId, make, button, onEnter:()=>{entered=true;syncAuth();requestAnimationFrame(()=>window.scrollTo({top:0,left:0}));} });
   parking.querySelectorAll('label[for]').forEach(label=>label.removeAttribute('for'));
   let previousConnectionState=null;
   const syncAuth = () => {
