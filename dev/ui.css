@@ -398,95 +398,160 @@ body>#proxy-modal>div {max-width:850px!important;}
 #dev-shell #history-settings .history-clear-button {color:white;background:#b91c1c;border-color:#b91c1c;}
 @media(max-width:600px){.next-storage-warning{flex-direction:column;align-items:stretch;gap:12px;}}
 
-/* Desktop pages occupy one viewport. Touch and phone layouts retain normal scrolling. */
+/* Native-size desktop typography. Flexible regions fill one common application frame. */
 html.desktop-viewport,html.desktop-viewport body {height:100%;min-height:0;overflow:hidden;}
-.desktop-viewport #dev-shell {height:100dvh;min-height:0;--ui-gap:16px;}
-.desktop-viewport .dev-rail {height:100%;position:static;min-height:0;align-self:stretch;}
+.desktop-viewport #dev-shell {height:100dvh;min-height:0;--ui-gap:16px;--workspace-text:14px;--workspace-small:13px;--workspace-pad:20px;}
+.desktop-viewport .dev-rail {height:100%;position:static;min-height:0;align-self:stretch;overflow:auto;}
+.desktop-viewport .dev-rail nav button,.desktop-viewport .dev-rail-bottom button {font-size:var(--workspace-text);}
 .desktop-viewport .dev-workspace {height:100%;min-height:0;display:flex;flex-direction:column;overflow:hidden;}
-.desktop-viewport .dev-appbar {flex:0 0 auto;min-height:64px;padding:12px 24px;}
+.desktop-viewport .dev-appbar {flex:0 0 auto;min-height:64px;padding:12px 24px;font-size:var(--workspace-text);}
 .desktop-viewport .next-pause-banner {position:static;flex:0 0 auto;padding:12px 24px;}
-.desktop-viewport #dev-content {flex:1;min-height:0;min-width:0;overflow:hidden;}
-.desktop-viewport #dev-shell .app-wrapper {max-width:none;min-height:0;padding:20px 24px;margin:0;overflow:visible;}
-.desktop-viewport .dev-page-heading {margin-bottom:18px;}
-.desktop-viewport .dev-page-heading h1 {font-size:26px;margin:0 0 6px;}
-.desktop-viewport #dev-shell .next-panel,.desktop-viewport #dev-shell .card {padding:18px;}
-.desktop-viewport .next-panel-title {margin-bottom:14px;}
-.desktop-viewport .next-power {grid-template-columns:repeat(4,minmax(0,1fr));}
-.desktop-viewport .next-power-item {min-height:108px;padding:16px 18px;gap:10px;}
-.desktop-viewport .next-price-row {gap:36px;margin-bottom:14px;}
-.desktop-viewport .next-price-row strong {font-size:26px;}
-.desktop-viewport .next-panel .tariff-chart-frame {height:clamp(160px,23dvh,280px);}
-.desktop-viewport .next-field-grid {gap:14px;margin:12px 0;}
+.desktop-viewport #dev-content {flex:1;min-height:0;min-width:0;overflow:hidden;background:var(--bg);}
+.desktop-viewport #dev-shell .app-wrapper {height:100%;max-width:none;min-height:0;padding:var(--workspace-pad);margin:0;}
+.desktop-viewport #dev-shell .app-content {height:100%;min-height:0;}
+.desktop-viewport #dev-shell .dashboard.visible {height:100%;min-height:0;display:flex;flex-direction:column;}
+.desktop-viewport #dev-shell .dev-page:not([hidden]) {height:100%;min-height:0;display:flex;flex-direction:column;}
+.desktop-viewport .dev-page-heading {flex:0 0 auto;margin-bottom:var(--ui-gap);}
+.desktop-viewport .dev-page-heading h1 {font-size:28px;margin:0 0 6px;}
+.desktop-viewport .dev-page-heading p {font-size:var(--workspace-text);}
+.desktop-viewport .dev-page-grid {flex:1;min-height:0;grid-template-columns:repeat(2,minmax(0,1fr));align-content:stretch;align-items:stretch;grid-auto-rows:minmax(0,1fr);}
+.desktop-viewport #dev-shell .next-panel,.desktop-viewport #dev-shell .card {padding:var(--workspace-pad);min-height:0;overflow:auto;}
+.desktop-viewport .next-panel-title {font-size:18px;margin:0 0 14px;}
+.desktop-viewport .next-panel h3 {font-size:var(--workspace-text);}
+.desktop-viewport .next-muted,.desktop-viewport .next-panel p,.desktop-viewport .next-panel li,.desktop-viewport .next-protection p,.desktop-viewport .next-field,.desktop-viewport .next-toggle,.desktop-viewport .next-panel summary,.desktop-viewport .next-mode-row,.desktop-viewport .next-service-row {font-size:var(--workspace-text);line-height:1.5;}
+.desktop-viewport .next-toggle small,.desktop-viewport .next-power-item small,.desktop-viewport .next-price-row small,.desktop-viewport .next-days label,.desktop-viewport #dev-shell .data-list li,.desktop-viewport #dev-shell .data-list .val,.desktop-viewport .dev-inspector dl>div,.desktop-viewport #dev-worker-state,.desktop-viewport .history-save-status,.desktop-viewport #dev-history-status,.desktop-viewport .history-data-note {font-size:var(--workspace-small);line-height:1.5;}
+.desktop-viewport .next-kicker {font-size:12px;}
+.desktop-viewport #dev-shell .badge {font-size:12px;}
+.desktop-viewport #dev-shell .next-panel button,.desktop-viewport #dev-shell .dev-history button,.desktop-viewport #dev-shell .next-button {display:inline-flex;align-items:center;justify-content:center;width:auto;height:42px;min-height:42px;padding:0 16px;margin:0;font-size:var(--workspace-text);font-weight:550;line-height:1.2;white-space:nowrap;}
+.desktop-viewport #dev-shell .next-field input,.desktop-viewport #dev-shell .next-field select,.desktop-viewport #dev-shell .dev-history-controls input {height:42px;min-height:42px;padding:8px 12px!important;font-size:var(--workspace-text)!important;}
 .desktop-viewport .next-toggle {padding:12px 0;}
+.desktop-viewport .next-toggle small {margin-top:4px;}
+.desktop-viewport .next-field-grid {gap:14px;margin:12px 0;}
 .desktop-viewport .next-days {margin:12px 0 16px;}
+.desktop-viewport .next-days label {padding:9px 2px;}
 .desktop-viewport .next-actions,.desktop-viewport .next-settings-actions {margin-top:14px;}
 .desktop-viewport .next-refresh-setting {margin:12px 0;}
-.desktop-viewport #dev-shell .data-list {margin:12px 0;}
-.desktop-viewport #dev-shell .data-list li {padding:9px 0;}
-.desktop-viewport .dev-page-grid {grid-template-columns:repeat(2,minmax(0,1fr));}
-.desktop-viewport .next-chart-grid {grid-template-columns:repeat(2,minmax(0,1fr));}
-.desktop-viewport .dev-history-controls {gap:12px;}
-.desktop-viewport #dev-history-status {margin:12px 0 4px;}
-.desktop-viewport .history-save-status {margin:0 0 10px;}
-.desktop-viewport .history-chart-grid {gap:14px;margin:12px 0;grid-template-columns:repeat(2,minmax(0,1fr));}
-.desktop-viewport .history-chart-card {padding:14px;}
-.desktop-viewport .history-chart-header {margin-bottom:10px;}
-.desktop-viewport .history-chart-card .dev-history-chart {height:clamp(160px,calc((100dvh - 700px)/2),340px);}
-.desktop-viewport .history-chart-caption {margin:8px 0 0;}
-.desktop-viewport .history-data-note {margin:10px 0;font-size:10px;}
-.history-activity-heading {display:flex;align-items:center;justify-content:space-between;gap:16px;margin:16px 0 10px;}
-#dev-shell .history-activity-heading h2 {margin:0;font-size:14px;}
-.history-activity-heading nav {display:flex;align-items:center;gap:10px;font-size:11px;color:var(--text-muted);}
-#dev-shell .history-activity-heading button {min-height:32px;padding:6px 10px;font-size:11px;}
-.desktop-viewport #history-activity {display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;font-size:12px;}
-.desktop-viewport .next-activity-row {margin:0;padding:10px 12px;min-width:0;}
-.desktop-viewport .next-activity-row p {margin:4px 0 0;}
+.desktop-viewport .dev-hidden-panel-hint {align-self:stretch;}
 
-  .desktop-viewport .dev-page[data-page=settings] .dev-page-grid {grid-template-columns:1.15fr 1fr 1fr;}
-  .desktop-viewport #history-settings {grid-column:1;grid-row:1/span 2;}
-  .desktop-viewport .dev-pi-edition [data-setting=appearance] {grid-column:2;grid-row:1;}
-  .desktop-viewport .dev-pi-edition [data-setting=api-refresh-intervals] {grid-column:2;grid-row:2;}
-  .desktop-viewport .dev-pi-edition [data-setting=visible-panels] {grid-column:3;grid-row:1/span 2;}
-  .desktop-viewport [data-setting=updates] {grid-column:1/-1;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px 24px;}
-  .desktop-viewport [data-setting=updates] h2 {grid-column:1/-1;margin:0;}
-  .desktop-viewport [data-setting=updates] p {margin:0;}
-@media(max-width:760px) {.history-activity-heading {align-items:flex-start;flex-direction:column;gap:10px;}}
+/* Overview: fixed summaries above two balanced schedule cards and a flexible price plot. */
+.desktop-viewport .dev-page[data-page=overview] .dev-page-grid {grid-template-rows:auto auto minmax(180px,1fr) minmax(230px,1fr);grid-auto-rows:auto;}
+.desktop-viewport .next-protection {padding:12px 16px;}
+.desktop-viewport .next-power {grid-template-columns:repeat(4,minmax(0,1fr));}
+.desktop-viewport .next-power-item {min-height:100px;padding:16px;gap:8px;}
+.desktop-viewport #dev-shell .next-power-item>strong {font-size:28px;}
+.desktop-viewport .next-schedule-summary {display:flex;flex-direction:column;}
+.desktop-viewport .next-schedule-summary>div {flex:1;min-height:0;overflow:auto;}
+.desktop-viewport #dev-shell .overview-schedule-item {font-size:var(--workspace-text);}
+.desktop-viewport #section-intelligent-octopus {display:grid;grid-template-columns:auto 1fr;grid-template-rows:auto minmax(0,1fr);gap:10px 28px;overflow:hidden;}
+.desktop-viewport #section-intelligent-octopus>.next-panel-title {align-self:center;margin:0;}
+.desktop-viewport .next-price-row {justify-content:flex-end;gap:32px;margin:0;}
+.desktop-viewport .next-price-row>div {display:grid;grid-template-columns:auto auto;gap:0 10px;align-items:baseline;}
+.desktop-viewport .next-price-row .next-kicker {grid-column:1/-1;}
+.desktop-viewport .next-price-row strong {font-size:26px;}
+.desktop-viewport .next-chart-grid {grid-column:1/-1;min-height:0;grid-template-columns:repeat(2,minmax(0,1fr));}
+.desktop-viewport .next-tariff {min-height:0;display:flex;flex-direction:column;}
+.desktop-viewport .next-tariff h3 {font-size:var(--workspace-small);margin:0 0 8px;}
+.desktop-viewport .next-panel .tariff-chart-frame {height:auto;flex:1;min-height:0;}
 
-/* One control size for comparable desktop actions, fields, chart and activity controls. */
-.desktop-viewport #dev-shell .next-panel button,.desktop-viewport #dev-shell .dev-history button,.desktop-viewport #dev-shell .next-button {display:inline-flex;align-items:center;justify-content:center;width:auto;height:40px;min-height:40px;padding:0 14px;margin:0;font-size:12px;font-weight:550;line-height:1.2;white-space:nowrap;}
-.desktop-viewport #dev-shell .next-field input,.desktop-viewport #dev-shell .next-field select,.desktop-viewport #dev-shell .dev-history-controls input {height:40px;min-height:40px;padding:8px 12px!important;font-size:13px!important;}
-.desktop-viewport #dev-shell .dev-history {display:block;}
-.desktop-viewport .history-metadata {display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:6px 24px;margin:12px 0;}
-.desktop-viewport #dev-history-status,.desktop-viewport .history-save-status {margin:0;}
-.history-activity-heading nav {flex-shrink:0;white-space:nowrap;}
-#dev-shell .history-activity-heading button {width:auto;flex-shrink:0;}
-.history-activity-heading nav span {white-space:nowrap;min-width:70px;text-align:center;}
-.dev-drawer-header button,.dev-setup-drawer h3 button {width:40px;height:40px;}
-.desktop-viewport .dev-page-grid {align-items:stretch;}
+/* Schedules: the current plan and temporary controls share the whole workspace. */
+.desktop-viewport .dev-page[data-page=schedules] .dev-page-grid {grid-template-columns:minmax(0,1.4fr) minmax(0,1fr);}
+.desktop-viewport .dev-page[data-page=schedules] .wide {grid-column:auto;}
+.desktop-viewport #section-foxess-mode,.desktop-viewport .next-manual-panel {display:flex;flex-direction:column;}
+.desktop-viewport #fox-active-schedules {flex:1;display:flex;flex-direction:column;min-height:0;}
+.desktop-viewport #dev-shell #fox-active-schedules>div {padding:22px 0!important;}
+.desktop-viewport #dev-shell #fox-active-schedules>div>span {font-size:var(--workspace-text);line-height:1.7;}
+.desktop-viewport #dev-shell #fox-active-schedules>div>span>span:last-child {font-size:var(--workspace-small)!important;}
+.desktop-viewport .next-manual-panel details {flex:1;display:flex;flex-direction:column;}
+.desktop-viewport .next-manual-panel .next-details-body {margin-top:24px;}
+
+/* Rules: full-height paired forms, with actions on the same baseline. */
 .desktop-viewport .dev-page[data-page=rules] .next-panel {display:flex;flex-direction:column;}
-.desktop-viewport .dev-page[data-page=rules] .next-rule-body {flex:1;}
-.desktop-viewport .dev-page[data-page=overview] .tariff-chart-frame {height:clamp(180px,calc(100dvh - 760px),500px);}
+.desktop-viewport .next-rule-body {flex:1;}
+.desktop-viewport .dev-page[data-page=rules] .next-rule-body {display:flex;flex-direction:column;justify-content:space-between;}
+.desktop-viewport .dev-page[data-page=rules] .next-rule-body>.next-field-grid {align-items:center;}
+.desktop-viewport .dev-page[data-page=rules] .next-rule-body>.next-toggle:first-child {border-top:0;}
 
-.desktop-viewport .dev-hidden-panel-hint {align-self:start;}
+/* Connections: readouts use the available height, without shrinking their text. */
+.desktop-viewport .dev-page[data-page=connections] .dev-page-grid {grid-auto-rows:minmax(0,1fr);}
+.desktop-viewport .dev-page[data-page=connections] .next-panel {display:flex;flex-direction:column;}
+.desktop-viewport #dev-shell #section-device-settings .data-list {flex:1;display:flex;flex-direction:column;justify-content:space-around;margin:12px 0;}
+.desktop-viewport #dev-shell .data-list li {padding:12px 0;}
+.desktop-viewport .dev-inspector {flex:1;display:flex;flex-direction:column;justify-content:space-around;}
 .desktop-viewport #dev-shell .dev-inspector>button {align-self:flex-start;}
-.desktop-viewport #dev-shell .next-pause-banner button {height:40px;min-height:40px;padding:0 14px;font-size:12px;}
 
-/* A single workspace frame, with the same dimensions on every desktop page. */
-.desktop-viewport .dev-rail {overflow:auto;}
-.desktop-viewport #dev-content {background:var(--bg);}
-.desktop-viewport .dev-page-grid {align-content:start;}
+/* History: four plots grow together, with a compact activity region below. */
+.desktop-viewport .dev-page[data-page=history] .dev-page-grid {grid-template-columns:minmax(0,1fr);}
+.desktop-viewport #dev-shell .dev-history {display:flex;flex-direction:column;overflow:hidden;}
+.desktop-viewport .dev-history-controls {gap:12px;flex-shrink:0;}
+.desktop-viewport .dev-history-controls label {font-size:var(--workspace-text);}
+.desktop-viewport .history-metadata {display:flex;flex-wrap:wrap;justify-content:space-between;gap:6px 24px;margin:12px 0;flex-shrink:0;}
+.desktop-viewport #dev-history-status,.desktop-viewport .history-save-status {margin:0;}
+.desktop-viewport .history-chart-grid {flex:1;min-height:0;grid-template-columns:repeat(2,minmax(0,1fr));grid-template-rows:repeat(2,minmax(0,1fr));gap:14px;margin:0;}
+.desktop-viewport .history-chart-card {min-height:0;padding:14px;display:flex;flex-direction:column;}
+.desktop-viewport .history-chart-header {flex-shrink:0;margin-bottom:10px;}
+.desktop-viewport .history-chart-header h2 {font-size:16px;}
+.desktop-viewport .history-chart-card .dev-history-chart {flex:1;min-height:0;height:auto;}
+.desktop-viewport .history-chart-caption {margin:6px 0 0;}
+.desktop-viewport .history-data-note {margin:10px 0 0;}
+.history-activity-heading {display:flex;align-items:center;justify-content:space-between;gap:16px;margin:12px 0 8px;}
+#dev-shell .history-activity-heading h2 {margin:0;font-size:16px;}
+.history-activity-heading nav {display:flex;align-items:center;gap:10px;font-size:13px;color:var(--text-muted);flex-shrink:0;white-space:nowrap;}
+.history-activity-heading nav span {white-space:nowrap;min-width:70px;text-align:center;}
+.desktop-viewport #history-activity {display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;font-size:var(--workspace-small);max-height:110px;overflow:auto;flex-shrink:0;}
+.desktop-viewport .next-activity-row {margin:0;padding:8px 12px;min-width:0;}
+.desktop-viewport .next-activity-row p {margin:4px 0 0;font-size:var(--workspace-small);}
+
+/* Settings: related controls share three columns with equal outer edges. */
+.desktop-viewport .dev-page[data-page=settings] .dev-page-grid {grid-template-columns:1.15fr 1fr 1fr;grid-template-rows:minmax(210px,1fr) minmax(300px,1.3fr) minmax(210px,1fr) minmax(116px,auto);overflow:auto;}
+.desktop-viewport #history-settings {grid-column:1;grid-row:1/span 3;}
+.desktop-viewport .dev-pi-edition [data-setting=appearance] {grid-column:2;grid-row:1;}
+.desktop-viewport .dev-pi-edition [data-setting=api-refresh-intervals] {grid-column:2;grid-row:2;}
+.desktop-viewport .dev-pi-edition [data-setting=visible-panels] {grid-column:3;grid-row:1/span 2;}
+.desktop-viewport [data-setting=updates] {grid-row:4;grid-column:2/-1;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px 24px;}
+.desktop-viewport [data-setting=updates] h2 {grid-column:1/-1;margin:0;}
+.desktop-viewport [data-setting=updates] p {margin:0;}
+.desktop-viewport [data-setting=help-and-application-information] {grid-row:4;grid-column:1;display:flex;flex-direction:column;align-items:flex-start;justify-content:space-between;gap:8px;}
+.desktop-viewport [data-setting=help-and-application-information] h2,.desktop-viewport [data-setting=help-and-application-information] p,.desktop-viewport [data-setting=help-and-application-information] .next-settings-actions {margin:0;}
+.desktop-viewport .dev-web-edition [data-setting=visible-panels] {grid-column:3;grid-row:1/span 2;}
+.desktop-viewport .dev-web-edition .dev-page[data-page=settings] .dev-page-grid {grid-template-rows:repeat(3,minmax(0,1fr)) auto;}
+
+/* Small windows retain readable type; only overflowing cards scroll. */
+@media (max-height:900px) {
+  .desktop-viewport #dev-shell {--ui-gap:12px;--workspace-pad:14px;}
+  .desktop-viewport .next-toggle {padding:8px 0;}
+  .desktop-viewport .next-field-grid {margin:8px 0;gap:10px;}
+  .desktop-viewport .next-days {margin:8px 0;}
+  .desktop-viewport .next-panel-title {margin-bottom:10px;}
+  .desktop-viewport .dev-page[data-page=overview] .dev-page-grid {grid-template-rows:auto auto minmax(130px,1fr) minmax(190px,1fr);}
+  .desktop-viewport .next-power-item {min-height:88px;padding:12px;}
+  .desktop-viewport #dev-shell .next-power-item>strong {font-size:24px;}
+  .desktop-viewport .dev-page-heading h1 {font-size:25px;}
+}
+@media (min-height:1100px) {
+  .desktop-viewport #dev-shell {--workspace-text:16px;--workspace-small:14px;--workspace-pad:24px;--ui-gap:20px;}
+  .desktop-viewport .next-panel-title {font-size:20px;}
+  .desktop-viewport .next-power-item {min-height:120px;}
+  .desktop-viewport #dev-shell .next-power-item>strong {font-size:34px;}
+}
+@media(max-width:760px) {.history-activity-heading {align-items:flex-start;flex-direction:column;gap:10px;}}
+.dev-drawer-header button,.dev-setup-drawer h3 button {width:40px;height:40px;}
+
+/* Welcome is always the entry screen, even when the engine restores a session. */
+#dev-shell.dev-auth-mode #dashboard {display:none!important;}
+#dev-shell.dev-auth-mode #login-layout {display:grid!important;}
+
 .desktop-viewport #dev-shell.dev-auth-mode .dev-appbar {position:absolute;top:0;right:0;width:55%;z-index:5;background:transparent;border:0;min-height:64px;}
 .desktop-viewport .dev-auth-mode .dev-appbar>div:first-child {visibility:hidden;}
 .desktop-viewport #dev-shell.dev-auth-mode .app-wrapper {padding:0;height:100%;}
 .desktop-viewport .dev-auth-mode .app-content {height:100%;}
-.desktop-viewport #dev-shell .launch-screen {width:100%;max-width:none;height:100%;min-height:1200px;margin:0;gap:0;grid-template-columns:minmax(0,.9fr) minmax(0,1.1fr);align-items:stretch;}
-.desktop-viewport .launch-welcome {padding:64px 64px 44px;background:#16052f;color:white;display:flex;flex-direction:column;justify-content:center;}
+.desktop-viewport #dev-shell .launch-screen {width:100%;max-width:none;height:100%;min-height:0;margin:0;gap:0;grid-template-columns:minmax(0,.9fr) minmax(0,1.1fr);align-items:stretch;}
+.desktop-viewport .launch-welcome {padding:32px clamp(28px,4vw,64px);overflow:auto;background:#16052f;color:white;display:flex;flex-direction:column;justify-content:safe center;}
 .desktop-viewport .launch-welcome>img {margin-bottom:38px;}
-.desktop-viewport .launch-welcome h1,.desktop-viewport .launch-screen[data-mode=setup] .launch-welcome h1 {font-size:48px;max-width:650px;}
+.desktop-viewport .launch-welcome h1,.desktop-viewport .launch-screen[data-mode=setup] .launch-welcome h1 {font-size:clamp(32px,3vw,54px);max-width:650px;}
 .desktop-viewport .launch-welcome .launch-intro,.desktop-viewport .launch-welcome .launch-flow-item small,.desktop-viewport .launch-welcome .launch-operation {color:#b7aecb;}
 .desktop-viewport .launch-welcome .launch-flow-number {background:#241140;border-color:#48305f;color:#ff4fce;}
 .desktop-viewport .launch-welcome .launch-eyebrow,.desktop-viewport .launch-welcome h1>span {color:#ff4fce;}
-.desktop-viewport .launch-art,.desktop-viewport .launch-setup {border:0;border-radius:0;box-shadow:none;background:var(--card-bg);align-self:stretch;display:flex;flex-direction:column;justify-content:center;padding:80px max(40px,8%);}
+.desktop-viewport .launch-art,.desktop-viewport .launch-setup {border:0;border-radius:0;box-shadow:none;background:var(--card-bg);align-self:stretch;display:flex;flex-direction:column;justify-content:safe center;padding:70px max(28px,7%) 32px;overflow:auto;}
 .desktop-viewport .launch-art h2 {font-size:30px;line-height:1.2;letter-spacing:-1px;margin:18px 0;}
 .desktop-viewport .launch-art>p {font-size:14px;color:var(--text-muted);line-height:1.8;}
 .desktop-viewport .launch-art>.launch-eyebrow {text-align:left;color:var(--accent);}
@@ -499,9 +564,37 @@ html.desktop-viewport,html.desktop-viewport body {height:100%;min-height:0;overf
 .desktop-viewport .launch-welcome .launch-art-pill {background:#241140;border-color:#48305f;color:#b7aecb;}
 .desktop-viewport .launch-welcome .launch-flow {margin:10px 0;}
 .desktop-viewport .launch-setup>h2 {font-size:30px;}
-.desktop-viewport .launch-step-stack {min-height:320px;}
+.desktop-viewport .launch-step-stack {min-height:280px;}
 .desktop-viewport .launch-setup .launch-links {margin-top:24px;}
 
 .launch-welcome .launch-art-orbit svg {width:100%;max-width:350px;stroke:#b7aecb;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;}
 .launch-welcome .launch-wire {stroke:var(--accent);stroke-dasharray:4 7;}
 .launch-welcome .launch-bolt {stroke:var(--accent);stroke-width:4;}
+
+.desktop-viewport .launch-intro,.desktop-viewport .launch-art>p,.desktop-viewport .next-auth-copy,.desktop-viewport .next-session-note,.desktop-viewport .launch-operation {font-size:var(--workspace-text);}
+.desktop-viewport .launch-flow-item strong,.desktop-viewport .launch-flow-item small,.desktop-viewport #dev-shell .launch-links button {font-size:var(--workspace-small);}
+@media(max-height:900px) {.desktop-viewport .launch-welcome .launch-art-orbit {max-width:240px;padding:0;margin:0;}.desktop-viewport .launch-welcome>img {margin-bottom:14px;}.desktop-viewport .launch-flow-item {padding:7px 0;}.desktop-viewport .launch-welcome h1 {margin:12px 0;}.desktop-viewport .launch-welcome .launch-art-orbit svg {max-height:145px;}.desktop-viewport .launch-step-stack {min-height:260px;}}
+
+.desktop-viewport .dev-pi-edition [data-setting=access-on-this-device] {grid-column:2;grid-row:3;}
+.desktop-viewport .dev-pi-edition [data-setting=foxess-telemetry] {grid-column:3;grid-row:3;}
+.desktop-viewport .next-schedule-summary .overview-schedule-row {padding:14px 0;flex:1;align-items:center;}
+.desktop-viewport .next-schedule-summary>div {display:flex;flex-direction:column;}
+.desktop-viewport .overview-schedule-row strong,.desktop-viewport .overview-empty {font-size:var(--workspace-text);}
+.desktop-viewport .overview-schedule-row small {font-size:var(--workspace-small);}
+.desktop-viewport .overview-schedule-tag {font-size:12px;}
+.desktop-viewport .dev-web-edition .dev-page[data-page=connections] .dev-page-grid {grid-template-rows:minmax(0,1fr) auto;}
+.desktop-viewport .dev-web-edition .dev-page[data-page=connections] .dev-integrations {display:grid;grid-template-columns:1fr 1fr;gap:8px 24px;}
+.desktop-viewport .dev-web-edition .dev-integrations h2 {grid-column:1/-1;}
+
+.desktop-viewport [data-setting=help-and-application-information]>p {display:none;}
+.desktop-viewport [data-setting=updates]>p {font-size:var(--workspace-small);}
+
+.desktop-viewport [data-setting=foxess-telemetry] .next-panel-title {margin-bottom:10px;}
+.desktop-viewport [data-setting=foxess-telemetry]>p {margin:0 0 8px;}
+.desktop-viewport [data-setting=foxess-telemetry] #live-ws-policy-state {margin-top:8px;font-size:var(--workspace-small);}
+.desktop-viewport [data-setting=updates] p {line-height:1.4;}
+.desktop-viewport .next-refresh-setting label {display:grid;grid-template-columns:minmax(0,1fr) 90px;align-items:center;gap:10px;}
+.desktop-viewport [data-setting=api-refresh-intervals]>p {margin:0 0 10px;}
+.desktop-viewport [data-setting=api-refresh-intervals] .next-refresh-setting {margin:10px 0;}
+.desktop-viewport [data-setting=appearance]>p {margin:0 0 10px;}
+.desktop-viewport [data-setting=appearance] .next-settings-actions {margin-top:10px;}

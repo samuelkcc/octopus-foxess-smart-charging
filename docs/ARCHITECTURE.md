@@ -34,7 +34,7 @@ A development commit does not publish GitHub Pages or create a release.
 | `dev/setup.js` | Edition-specific welcome, guided login, and setup guide. |
 | `dev/settings.js` | Settings cards and existing preference controls. |
 | `dev/views.js` | New visible views and the shared-engine element adapter. |
-| `dev/viewport.js` | Desktop viewport fitting. Keeps one desktop frame and one scale across pages without changing app state. |
+| `dev/viewport.js` | Desktop media selection. Native text sizes and flexible CSS regions fill one frame without page scaling. |
 | `dev/ui.css` | Appearance of the development interface. |
 | `scripts/build-dev.mjs` | Separate Pi and web development builds. |
 
@@ -213,3 +213,17 @@ Older runtimes cannot read gzip archives.
 A runtime rollback retains the new files but may not display their archived readings.
 The private backup preserves the history format used before the update.
 Restoring that backup is a separate recovery action.
+
+## Welcome and desktop layout
+
+Both editions show Welcome when a document opens, including restored sessions.
+The entry action changes presentation only.
+It does not start a second worker or change authentication.
+Desktop pages use native text sizes and flexible card regions.
+Small windows can scroll inside a card instead of shrinking its text.
+Phone pages retain document scrolling.
+
+Page exit can cancel a pending browser request.
+The monitor ignores failures after `pagehide` and resumes normal reporting after `pageshow`.
+It does not ignore failures while a page is merely in the background.
+Retained alerts identify browser requests separately from Pi service requests.

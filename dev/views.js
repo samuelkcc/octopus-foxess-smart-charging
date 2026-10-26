@@ -50,8 +50,8 @@
     cell.append(caption);power.append(cell);
   }
   overview.append(power);
-  const octopusSchedule=panel('Octopus charging windows');octopusSchedule.append(byId('overview-dynamic-schedules'));
-  const foxSchedule=panel('FoxESS programmed schedule');foxSchedule.append(byId('overview-fox-schedules'));
+  const octopusSchedule=panel('Octopus charging windows');octopusSchedule.classList.add('next-schedule-summary');octopusSchedule.append(byId('overview-dynamic-schedules'));
+  const foxSchedule=panel('FoxESS programmed schedule');foxSchedule.classList.add('next-schedule-summary');foxSchedule.append(byId('overview-fox-schedules'));
   overview.append(octopusSchedule,foxSchedule);
   const prices=adoptId('section-intelligent-octopus',panel('Electricity prices',true));
   const priceRow=make('div','next-price-row');
@@ -70,7 +70,8 @@
   const programmed=adoptId('section-foxess-mode',panel('Inverter mode and schedule',true));
   const modeRow=make('div','next-mode-row');modeRow.append(make('span','','Current mode'),byId('current-work-mode'),button('Refresh schedule',()=>void fetchFoxSchedules(),true));
   programmed.append(modeRow,byId('fox-error'),byId('fox-success'),byId('fox-active-schedules'));schedules.append(programmed);
-  const manual=panel('Manual controls',true);const manualDetails=make('details');
+  const manual=panel('Manual controls',true);manual.classList.add('next-manual-panel');const manualDetails=make('details');
+  if(matchMedia('(min-width:761px) and (hover:hover)').matches)manualDetails.open=true;
   manualDetails.append(make('summary','','Set a temporary mode'));
   const manualBody=make('div','next-details-body');manualBody.append(make('p','next-muted','These controls change the real inverter schedule.'));
   manualBody.append(group(field('v3-start','Start time'),field('v3-end','End time')));
@@ -116,16 +117,22 @@
   parking.querySelectorAll('.dev-integrations').forEach(node=>{node.className='next-panel wide';node.querySelector('h2')?.classList.add('next-panel-title');connections.append(node);});
 
   // Edition-specific launch presentation preserves the shared engine controls.
-  const { session } = window.installLaunchScreen({ pi, login: byId('login-layout'), parking, byId, make, button });
+  let entered=false;
+  const { session, updateConnection } = window.installLaunchScreen({ pi, login: byId('login-layout'), parking, byId, make, button, onEnter:()=>{entered=true;syncAuth();} });
   parking.querySelectorAll('label[for]').forEach(label=>label.removeAttribute('for'));
   let previousConnectionState=null;
   const syncAuth = () => {
-    const connected=dashboard.classList.contains('visible');shell.classList.toggle('dev-auth-mode',!connected);
+    const connected=dashboard.classList.contains('visible');
+    if(connected && previousConnectionState===false && byId('login-layout').dataset.mode==='setup')entered=true;
+    if(!connected)entered=false;
+    const viewing=connected && entered;
+    shell.classList.toggle('dev-auth-mode',!viewing);
+    updateConnection(connected);
     if(previousConnectionState!==connected) { window.scrollTo({top:0,left:0});previousConnectionState=connected; }
-    byId('dev-theme').hidden=connected;
+    byId('dev-theme').hidden=viewing;
     byId('dev-page-name').textContent=connected?shell.querySelector('.dev-page:not([hidden]) h1')?.textContent || 'Overview':'Sign in';
     const editionLabel=shell.querySelector('.dev-service');
-    editionLabel.hidden=pi || connected;
+    editionLabel.hidden=pi || viewing;
     editionLabel.textContent=pi?'':'Web edition';
     if(pi) byId('login-layout').querySelector('.launch-setup>.next-auth-copy').textContent=window.linuxRemoteAccess?'Enter the separate Remote Access Key shown in your Pi Configuration.':'Enter your LAN access code if protection is enabled.';
     session.textContent=pi?(window.linuxRemoteAccess?'Browser login lasts up to 12 hours. Use the same remote key after expiry.':'Your Pi stores the account setup and runs the automation.'):'Keep this browser open and awake while automation runs.';

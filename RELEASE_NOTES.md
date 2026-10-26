@@ -1,6 +1,8 @@
 ## v2.0.0 — Major redesign under review
 
-- Keep one full-height desktop frame and one content scale across all pages.
+- Use readable desktop text at the same size as the navigation menu. Fill the common frame with flexible cards and plots.
+- Keep Welcome as the entry screen in both editions, including restored sessions.
+- Ignore request cancellations after page exit. Keep real failures and show the source of each retained alert.
 - Use a connected two-panel welcome and sign-in layout with the Octopus palette.
 
 - Match the charging icon and browser-tab icon to the selected light or dark appearance.

@@ -56,3 +56,16 @@ const report=await readRuntimeReport(async()=>({ok:true,json:async()=>({version:
 assert.equal(JSON.stringify(report).includes('private-key'),false);
 assert.equal(JSON.stringify(report).includes('secret-api'),false);
 assert.equal(report.telemetry.values.SoC,50);
+
+// A page exit can abort an in-flight request. It is not an upstream outage.
+const lifecycleHandlers={};
+const lifecycleWindow={IntegrationState,addEventListener:(name,handler)=>{lifecycleHandlers[name]=handler;},dispatchEvent(){}};
+const lifecycle=vm.createContext({window:lifecycleWindow,document:{getElementById:()=>null},localStorage:{getItem:()=>null,setItem(){}},CustomEvent:class {},setInterval:()=>1,Date});
+vm.runInContext(await readFile(new URL('../src/integration-monitor.js',import.meta.url),'utf8'),lifecycle);
+lifecycleHandlers.pagehide();
+lifecycleWindow.integrationMonitor.failure('octopus','dispatch',new Error('Load failed'));
+assert.equal(lifecycleWindow.integrationMonitor.snapshot().local.services.octopus.alert,null,'Page-exit cancellation must not create an outage alert');
+lifecycleHandlers.pageshow();
+lifecycleWindow.integrationMonitor.failure('octopus','dispatch',new Error('Service unavailable'));
+assert.equal(lifecycleWindow.integrationMonitor.snapshot().local.services.octopus.state,'error','Real failures after a restored page remain visible');
+console.log('Page-exit cancellation is ignored; resumed-page service failures remain retained.');

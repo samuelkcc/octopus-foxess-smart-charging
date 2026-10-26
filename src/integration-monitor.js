@@ -3,6 +3,9 @@
     const key='smartChargingIntegrationStatusV1';
     let saved;try {saved=JSON.parse(localStorage.getItem(key)||'null');} catch {}
     let state;try {state=new window.IntegrationState(saved);} catch {state=new window.IntegrationState();}
+    let leaving=false;
+    window.addEventListener('pagehide',()=>{leaving=true;});
+    window.addEventListener('pageshow',()=>{leaving=false;});
     let remote=null;let pollBusy=false;let workerRequestSeen=0;let lastPersist=0;const busy={octopus:0,foxess:0};
     const notify=()=>window.dispatchEvent(new CustomEvent('integration-status-change'));
     const persist=(force=true)=>{if(force || Date.now()-lastPersist>=60000){try {localStorage.setItem(key,JSON.stringify(state.data));lastPersist=Date.now();} catch {}} notify();};
@@ -17,7 +20,7 @@
     window.integrationMonitor={
         start(name) {busy[name]++;notify();return()=>{busy[name]=Math.max(0,busy[name]-1);notify();};},
         success(name,channel='api') {const recovered=state.service(name).channels[channel]?.ok===false;state.success(name,channel);if(recovered)persist();else notify();},
-        failure(name,channel,error) {const revision=state.data.revision;state.failure(name,channel,clean(error));persist(state.data.revision!==revision);},
+        failure(name,channel,error) {if(leaving)return;const revision=state.data.revision;state.failure(name,channel,clean(error));persist(state.data.revision!==revision);},
         snapshot() {return {local:state.snapshot(),remote,busy:{...busy}};},
         async acknowledge(name) {
             const local=state.snapshot().services[name];const server=remote?.services[name];
@@ -48,6 +51,7 @@
                 for(const name of ['octopus','foxess']) state.success(name,'pi-status');
                 if(recovered)persist();else notify();
             } catch(error) {
+                if(leaving)return;
                 const revision=state.data.revision;
                 for(const name of ['octopus','foxess']) state.failure(name,'pi-status',clean(error));
                 persist(state.data.revision!==revision);

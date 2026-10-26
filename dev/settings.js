@@ -72,7 +72,7 @@
   window.addEventListener('dashboard-visibility-change', syncVisibleStates);
 
   if (pi) {
-    const telemetry = card('FoxESS telemetry', 'Select the power-data source. Inverter commands always use the official REST API.');
+    const telemetry = card('FoxESS telemetry', 'Choose the power-data source. Commands use official REST.');
     const selector = document.getElementById('live-ws-policy');
     const label = make('label', 'next-field', 'Power-data source'); label.htmlFor = selector.id;
     label.append(selector); telemetry.append(label, document.getElementById('live-ws-policy-state'));

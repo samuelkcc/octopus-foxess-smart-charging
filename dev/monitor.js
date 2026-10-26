@@ -31,7 +31,7 @@
   const formatTime=value=>value?new Date(value).toLocaleString():'No successful update recorded yet';
   function summary(snapshot,name) {
     const sources=[snapshot.local.services[name],snapshot.remote?.services[name]].filter(Boolean);
-    return {sources,failures:sources.flatMap(source=>source.failures),alerts:sources.filter(source=>source.alert).map(source=>source.alert),active:sources.some(source=>source.state==='error'),last:sources.map(source=>source.lastSuccessAt).filter(Boolean).sort().at(-1)};
+    return {sources,failures:sources.flatMap(source=>source.failures),alerts:sources.filter(source=>source.alert).map(source=>({...source.alert,origin:source===snapshot.remote?.services[name]?'Pi service request':'This browser request'})),active:sources.some(source=>source.state==='error'),last:sources.map(source=>source.lastSuccessAt).filter(Boolean).sort().at(-1)};
   }
   function render() {
     const snapshot=window.integrationMonitor.snapshot();const timing=getOverviewRefreshStatus();
@@ -63,9 +63,9 @@
     dialogTitle.textContent=`${title} update problem`;
     details.replaceChildren();
     const unique=new Map();
-    for(const alert of info.alerts)unique.set(alert.message,alert);
+    for(const alert of info.alerts)unique.set(alert.origin+alert.message,alert);
     for(const alert of unique.values()) {
-      const row=make('section');row.append(make('strong',alert.message),make('p',`First reported: ${formatTime(alert.firstAt)}`),make('p',`Last reported: ${formatTime(alert.lastAt)} · ${alert.count} failed ${alert.count===1?'check':'checks'}`));details.append(row);
+      const row=make('section');row.append(make('strong',alert.message),make('p',`Source: ${alert.origin}`),make('p',`First reported: ${formatTime(alert.firstAt)}`),make('p',`Last reported: ${formatTime(alert.lastAt)} · ${alert.count} failed ${alert.count===1?'check':'checks'}`));details.append(row);
     }
     if(info.active) {
       const current=new Set(info.failures.map(failure=>failure.message));

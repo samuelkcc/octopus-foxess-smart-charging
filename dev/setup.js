@@ -49,10 +49,10 @@
 })();
 
 // Launch presentation. Keep the engine-owned inputs and connect handler intact.
-window.installLaunchScreen = ({ pi, login, parking, byId, make, button }) => {
+window.installLaunchScreen = ({ pi, login, parking, byId, make, button, onEnter }) => {
   [...login.children].forEach(node => parking.append(node));
   login.className = 'next-login launch-screen';
-  login.dataset.mode = pi ? 'setup' : 'welcome';
+  login.dataset.mode = 'welcome';
   const welcome = make('section', 'launch-welcome');
   const brand = document.querySelector('.dev-brand img').cloneNode(true);
   brand.width = 58; brand.height = 58; brand.alt = '';
@@ -61,7 +61,9 @@ window.installLaunchScreen = ({ pi, login, parking, byId, make, button }) => {
   heading.append(make('br'), make('span', '', 'Your home, protected.'));
   welcome.append(heading, make('p', 'launch-intro', 'Connect Octopus charging windows to your FoxESS battery. Keep your energy controls in one place.'));
   const welcomeActions = make('div', 'launch-actions');
-  const start = button(pi ? 'Open dashboard' : 'Set up Smart Charging', () => openSetup());
+  const start = button(pi ? 'Open dashboard' : 'Set up Smart Charging', () => {
+    if(login.dataset.ready==='true') onEnter(); else openSetup();
+  });
   start.className = 'next-button'; welcomeActions.append(start);
   if (!pi) welcomeActions.append(button('Restore a saved setup', () => byId('import-file').click(), true));
   welcome.append(welcomeActions);
@@ -156,7 +158,13 @@ window.installLaunchScreen = ({ pi, login, parking, byId, make, button }) => {
   }
   function closeSetup() { login.dataset.mode = 'welcome'; start.focus({ preventScroll: true }); }
   if (!pi) showStep(0, false);
-  else { next.hidden = true; back.hidden = true; }
+  else { next.hidden = true; back.hidden = false; }
   new MutationObserver(() => { if (error.style.display === 'block' && !pi) openSetup(); }).observe(error, { attributes: true, attributeFilter: ['style'] });
-  return { session };
+  return { session, updateConnection(connected) {
+    login.dataset.ready=String(connected);
+    start.textContent=connected?'Open dashboard':pi?'Continue to sign in':'Set up Smart Charging';
+    introArt.querySelector('p').textContent=connected
+      ? pi?'Your Pi is connected. Open the dashboard to review your home energy.':'Your accounts are connected. Open the dashboard to review your home energy.'
+      : 'Connect your accounts, review charging windows, and keep your home battery protected.';
+  } };
 };

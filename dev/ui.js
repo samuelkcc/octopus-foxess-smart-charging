@@ -94,7 +94,7 @@
   if (piEdition) {
     const updateInfo = document.createElement('section');
     updateInfo.className = 'card dev-integrations';
-    updateInfo.innerHTML = '<h2>Updates &amp; recovery</h2><p>The existing graphical updater remains in the Pi taskbar → <strong>Configuration… → Update Raspberry Pi Edition</strong>. It installs the latest public GitHub release.</p><p>The current public update installs an earlier interface. This Pi receives updates separately while you review the new design.</p><p>Updates preserve encrypted configuration. History stays in the Pi data directory.</p>';
+    updateInfo.innerHTML = '<h2>Updates &amp; recovery</h2><p>Update the Pi from the taskbar → <strong>Configuration… → Update Raspberry Pi Edition</strong>.</p><p>The public updater installs the earlier interface. This Pi uses separate updates during design review.</p><p>Updates preserve encrypted configuration. History stays in the Pi data directory.</p>';
     move(updateInfo, 'settings');
   } else {
     integrations.innerHTML = '<h2>Account setup</h2><p>The web edition uses account details stored in this browser and your Google Apps Script relay for FoxESS.</p><div class="next-settings-actions"><button id="dev-edit-web-setup">Edit account setup</button><button id="dev-web-guide">Open web setup guide</button></div><h3>Browser operation</h3><p>Keep this browser open and awake. Use Settings to manage configuration backups, display preferences and saved browser data.</p><button id="dev-connection-menu">Open Settings</button>';

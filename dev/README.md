@@ -548,9 +548,30 @@ No real pause, inverter, credential, or history-clear action was submitted.
 The menu and workspace now share one full-height frame on every desktop page.
 This replaces the previous content-dependent menu height.
 Navigation does not change the frame height or the content scale.
-The window size sets one proportional scale for all pages.
-Short pages keep unused workspace below their cards.
-Desktop Settings uses three columns at the shared scale.
+The current layout uses native text sizes instead of proportional page scaling.
+Navigation and content use the same main text size.
+Cards and plots fill the workspace through flexible rows.
+Desktop Settings uses three columns.
+Small windows retain readable text and can scroll inside an overflowing card.
 The welcome and sign-in screens use a connected two-panel frame.
 The design follows the NAV Data Explorer structure and retains the Octopus palette.
 Phone layouts retain normal scrolling.
+
+## Readable desktop workspace and Welcome entry
+
+The desktop layout no longer shrinks the content container.
+Main content and navigation text use 14 pixels, or 16 pixels in tall windows.
+Supporting labels use 13 or 14 pixels.
+Cards use the available height on each page.
+History plots share the remaining space equally.
+The schedule page places the actual plan beside temporary controls.
+
+Both editions retain Welcome when a document opens.
+A restored connection shows Open dashboard.
+An unconnected device continues to its edition-specific setup.
+Entering the dashboard does not change worker ownership or authentication.
+
+The monitor ignores requests cancelled after page exit.
+Real request failures still produce retained alerts.
+The problem dialog identifies browser and Pi service sources separately.
+This change does not identify the cause of earlier generic service failures.
