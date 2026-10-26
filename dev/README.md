@@ -446,3 +446,10 @@ Green means that the latest recorded read succeeded.
 The circle itself does not prove a new successful response.
 Selecting either badge still requests both API updates through the existing refresh path.
 Selecting the red indicator opens the retained error details.
+
+UI commit `943aab78ab14bec9785565e8f297030bf6b37b27` was installed on the Pi on 26 October 2026.
+The update did not restart the server, worker, or tunnel.
+The public URL and saved intervals stayed unchanged.
+Mock observations confirmed that Octopus progress moved ten times faster than FoxESS at the 60-second and 600-second defaults.
+The fixed-speed animation was absent in both badge states.
+The full check suite and both interface builds passed.
