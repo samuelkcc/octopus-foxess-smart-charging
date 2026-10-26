@@ -20,32 +20,11 @@
     if(!desktop.matches)return;
     const height=content.clientHeight;
     if(!height)return;
-    const grid=shell.classList.contains('dev-auth-mode')?null:shell.querySelector('.dev-page:not([hidden]) .dev-page-grid');
-    const railBounds=rail.getBoundingClientRect();
-    const minimumBottom=railBounds.bottom;
-    // Zoom adjusts layout and hit testing while percentage width keeps both edges aligned.
-    const size=scale=>{
-      wrapper.style.width='100%';
-      wrapper.style.zoom=String(scale);
-      if(grid){
-        grid.style.minHeight='0px';
-        // Short pages must still leave room for every navigation control.
-        grid.style.minHeight=`${Math.max(0,(minimumBottom-grid.getBoundingClientRect().top)/scale)}px`;
-      }
-      return wrapper.getBoundingClientRect().height;
-    };
-    let scale=1;
-    if(size(1)>height){
-      let low=.05,high=1;
-      for(let step=0;step<10;step++){
-        const candidate=(low+high)/2;
-        if(size(candidate)<=height-1)low=candidate;else high=candidate;
-      }
-      scale=low;
-      size(scale);
-    }
+    // One scale for every page. Navigation must not change control or text sizes.
+    const scale=Math.min(1,height/1200,content.clientWidth/1440);
+    wrapper.style.width='100%';
+    wrapper.style.zoom=String(scale);
     content.dataset.fitScale=scale.toFixed(3);
-    if(grid)rail.style.height=`${grid.getBoundingClientRect().bottom-railBounds.top}px`;
     content.scrollTop=0;content.scrollLeft=0;
   };
   const schedule=()=>{if(!frame)frame=requestAnimationFrame(fit);};

@@ -401,7 +401,7 @@ body>#proxy-modal>div {max-width:850px!important;}
 /* Desktop pages occupy one viewport. Touch and phone layouts retain normal scrolling. */
 html.desktop-viewport,html.desktop-viewport body {height:100%;min-height:0;overflow:hidden;}
 .desktop-viewport #dev-shell {height:100dvh;min-height:0;--ui-gap:16px;}
-.desktop-viewport .dev-rail {height:auto;position:static;min-height:0;align-self:start;}
+.desktop-viewport .dev-rail {height:100%;position:static;min-height:0;align-self:stretch;}
 .desktop-viewport .dev-workspace {height:100%;min-height:0;display:flex;flex-direction:column;overflow:hidden;}
 .desktop-viewport .dev-appbar {flex:0 0 auto;min-height:64px;padding:12px 24px;}
 .desktop-viewport .next-pause-banner {position:static;flex:0 0 auto;padding:12px 24px;}
@@ -441,7 +441,7 @@ html.desktop-viewport,html.desktop-viewport body {height:100%;min-height:0;overf
 .desktop-viewport #history-activity {display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;font-size:12px;}
 .desktop-viewport .next-activity-row {margin:0;padding:10px 12px;min-width:0;}
 .desktop-viewport .next-activity-row p {margin:4px 0 0;}
-@media(min-width:1400px) {
+
   .desktop-viewport .dev-page[data-page=settings] .dev-page-grid {grid-template-columns:1.15fr 1fr 1fr;}
   .desktop-viewport #history-settings {grid-column:1;grid-row:1/span 2;}
   .desktop-viewport .dev-pi-edition [data-setting=appearance] {grid-column:2;grid-row:1;}
@@ -450,7 +450,6 @@ html.desktop-viewport,html.desktop-viewport body {height:100%;min-height:0;overf
   .desktop-viewport [data-setting=updates] {grid-column:1/-1;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px 24px;}
   .desktop-viewport [data-setting=updates] h2 {grid-column:1/-1;margin:0;}
   .desktop-viewport [data-setting=updates] p {margin:0;}
-}
 @media(max-width:760px) {.history-activity-heading {align-items:flex-start;flex-direction:column;gap:10px;}}
 
 /* One control size for comparable desktop actions, fields, chart and activity controls. */
@@ -471,3 +470,38 @@ html.desktop-viewport,html.desktop-viewport body {height:100%;min-height:0;overf
 .desktop-viewport .dev-hidden-panel-hint {align-self:start;}
 .desktop-viewport #dev-shell .dev-inspector>button {align-self:flex-start;}
 .desktop-viewport #dev-shell .next-pause-banner button {height:40px;min-height:40px;padding:0 14px;font-size:12px;}
+
+/* A single workspace frame, with the same dimensions on every desktop page. */
+.desktop-viewport .dev-rail {overflow:auto;}
+.desktop-viewport #dev-content {background:var(--bg);}
+.desktop-viewport .dev-page-grid {align-content:start;}
+.desktop-viewport #dev-shell.dev-auth-mode .dev-appbar {position:absolute;top:0;right:0;width:55%;z-index:5;background:transparent;border:0;min-height:64px;}
+.desktop-viewport .dev-auth-mode .dev-appbar>div:first-child {visibility:hidden;}
+.desktop-viewport #dev-shell.dev-auth-mode .app-wrapper {padding:0;height:100%;}
+.desktop-viewport .dev-auth-mode .app-content {height:100%;}
+.desktop-viewport #dev-shell .launch-screen {width:100%;max-width:none;height:100%;min-height:1200px;margin:0;gap:0;grid-template-columns:minmax(0,.9fr) minmax(0,1.1fr);align-items:stretch;}
+.desktop-viewport .launch-welcome {padding:64px 64px 44px;background:#16052f;color:white;display:flex;flex-direction:column;justify-content:center;}
+.desktop-viewport .launch-welcome>img {margin-bottom:38px;}
+.desktop-viewport .launch-welcome h1,.desktop-viewport .launch-screen[data-mode=setup] .launch-welcome h1 {font-size:48px;max-width:650px;}
+.desktop-viewport .launch-welcome .launch-intro,.desktop-viewport .launch-welcome .launch-flow-item small,.desktop-viewport .launch-welcome .launch-operation {color:#b7aecb;}
+.desktop-viewport .launch-welcome .launch-flow-number {background:#241140;border-color:#48305f;color:#ff4fce;}
+.desktop-viewport .launch-welcome .launch-eyebrow,.desktop-viewport .launch-welcome h1>span {color:#ff4fce;}
+.desktop-viewport .launch-art,.desktop-viewport .launch-setup {border:0;border-radius:0;box-shadow:none;background:var(--card-bg);align-self:stretch;display:flex;flex-direction:column;justify-content:center;padding:80px max(40px,8%);}
+.desktop-viewport .launch-art h2 {font-size:30px;line-height:1.2;letter-spacing:-1px;margin:18px 0;}
+.desktop-viewport .launch-art>p {font-size:14px;color:var(--text-muted);line-height:1.8;}
+.desktop-viewport .launch-art>.launch-eyebrow {text-align:left;color:var(--accent);}
+.desktop-viewport .launch-art .launch-actions {display:grid;gap:12px;margin:26px 0 10px;}
+.desktop-viewport #dev-shell .launch-art .launch-actions button {width:100%;height:46px;justify-content:center;}
+.desktop-viewport .launch-welcome .launch-art-orbit {max-width:420px;padding:20px 0;margin:12px 0;}
+.desktop-viewport .launch-welcome .launch-art-orbit svg {width:100%;max-height:250px;stroke:#eee8f9;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;}
+.desktop-viewport .launch-welcome .launch-wire {stroke:#ff4fce;stroke-dasharray:4 7;}
+.desktop-viewport .launch-welcome .launch-bolt {stroke:#ff4fce;stroke-width:4;}
+.desktop-viewport .launch-welcome .launch-art-pill {background:#241140;border-color:#48305f;color:#b7aecb;}
+.desktop-viewport .launch-welcome .launch-flow {margin:10px 0;}
+.desktop-viewport .launch-setup>h2 {font-size:30px;}
+.desktop-viewport .launch-step-stack {min-height:320px;}
+.desktop-viewport .launch-setup .launch-links {margin-top:24px;}
+
+.launch-welcome .launch-art-orbit svg {width:100%;max-width:350px;stroke:#b7aecb;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;}
+.launch-welcome .launch-wire {stroke:var(--accent);stroke-dasharray:4 7;}
+.launch-welcome .launch-bolt {stroke:var(--accent);stroke-width:4;}

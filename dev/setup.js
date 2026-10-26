@@ -81,6 +81,10 @@ window.installLaunchScreen = ({ pi, login, parking, byId, make, button }) => {
   const introArt = make('section', 'launch-art'); introArt.setAttribute('aria-label', 'EV and home battery protection');
   introArt.innerHTML = '<span class="launch-eyebrow">YOUR HOME ENERGY, CONNECTED</span><div class="launch-art-orbit"><svg viewBox="0 0 320 230" fill="none" aria-hidden="true"><path class="launch-wire" d="M65 80h190v95H65z"/><rect x="20" y="48" width="90" height="65" rx="14"/><path d="m38 87 14-22h27l14 22M39 87h53M45 100h7m28 0h7"/><circle cx="47" cy="86" r="2"/><circle cx="84" cy="86" r="2"/><path d="m215 160 40-35 40 35v42h-80zM245 202v-30h20v30"/><rect x="137" y="102" width="46" height="62" rx="12"/><path class="launch-bolt" d="m164 115-12 20h16l-12 20"/></svg><span class="launch-art-pill">Charging windows → Battery protection</span></div><div class="launch-art-note"><strong>One clear view of your energy.</strong><p>Review schedules, follow Smart Dispatch, and pause app control when you need a temporary setting.</p></div>';
 
+  // The welcome and sign-in pages share one full-height, two-panel frame.
+  const illustration = introArt.querySelector('.launch-art-orbit');
+  welcome.insertBefore(illustration, flow);
+  introArt.replaceChildren(make('span', 'launch-eyebrow', 'YOUR HOME ENERGY WORKSPACE'), make('h2', '', 'Open your home energy workspace'), make('p', '', 'Connect your accounts, review charging windows, and keep your home battery protected.'), welcomeActions, welcomeTools);
   const auth = make('section', 'next-auth-card launch-setup');
   auth.append(make('span', 'launch-eyebrow', pi ? 'PI DASHBOARD ACCESS' : 'CONNECT YOUR ACCOUNTS'), make('h2', '', pi ? 'Open your dashboard' : 'A few details. Then you’re connected.'));
   auth.append(make('p', 'next-auth-copy', pi ? 'Use your LAN access code or the separate Remote Access Key.' : 'Your Octopus account, FoxESS device, and Google relay work together here.'));

@@ -34,7 +34,7 @@ A development commit does not publish GitHub Pages or create a release.
 | `dev/setup.js` | Edition-specific welcome, guided login, and setup guide. |
 | `dev/settings.js` | Settings cards and existing preference controls. |
 | `dev/views.js` | New visible views and the shared-engine element adapter. |
-| `dev/viewport.js` | Desktop viewport fitting. Aligns the rail with visible content and scales desktop pages without changing app state. |
+| `dev/viewport.js` | Desktop viewport fitting. Keeps one desktop frame and one scale across pages without changing app state. |
 | `dev/ui.css` | Appearance of the development interface. |
 | `scripts/build-dev.mjs` | Separate Pi and web development builds. |
 

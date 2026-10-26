@@ -1,5 +1,8 @@
 ## v2.0.0 — Major redesign under review
 
+- Keep one full-height desktop frame and one content scale across all pages.
+- Use a connected two-panel welcome and sign-in layout with the Octopus palette.
+
 - Match the charging icon and browser-tab icon to the selected light or dark appearance.
 - Remove the repeated Pi administration card from Connections. Keep Settings in the navigation menu.
 

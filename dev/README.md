@@ -541,3 +541,16 @@ Live Connections showed the light-theme charging icon, account details, and serv
 Its menu and content lower edges matched after navigation from History.
 Live History retained all four charts and 44 recorded intervals.
 No real pause, inverter, credential, or history-clear action was submitted.
+
+
+## Unified desktop frame
+
+The menu and workspace now share one full-height frame on every desktop page.
+This replaces the previous content-dependent menu height.
+Navigation does not change the frame height or the content scale.
+The window size sets one proportional scale for all pages.
+Short pages keep unused workspace below their cards.
+Desktop Settings uses three columns at the shared scale.
+The welcome and sign-in screens use a connected two-panel frame.
+The design follows the NAV Data Explorer structure and retains the Octopus palette.
+Phone layouts retain normal scrolling.
