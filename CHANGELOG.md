@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+## v2026.10.26.2 — 2026-10-26
+
+- Replace the Raspberry Pi taskbar tick/warning/cross status badges with an EV car-and-charger icon. Green indicates healthy connections, orange indicates waiting or fallback, and red indicates a configuration or connection problem.
+- Preserve the application launcher artwork and all existing connection-status rules.
+
 ## v2026.10.26.1 — 2026-10-26
 
 - Add optional Cloudflare Quick Tunnel access with a random HTTPS URL and a separate generated 256-bit Remote Access Key. LAN access-code settings remain independent.

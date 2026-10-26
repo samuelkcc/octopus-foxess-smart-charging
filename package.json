@@ -1,6 +1,6 @@
 {
   "name": "octopus-foxess-smart-charging",
-  "version": "2026.10.26.1",
+  "version": "2026.10.26.2",
   "private": true,
   "type": "module",
   "dependencies": {
