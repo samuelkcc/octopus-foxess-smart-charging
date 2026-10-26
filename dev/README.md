@@ -169,7 +169,8 @@ The native client and icons use commit `b4fe9af`.
 The public root and old client links opened `/app/index.html` through Cloudflare.
 The app title and visible pages had no DEV label.
 All six pages kept the same frame and content width in the desktop browser check.
-The frame measured 1280 pixels; the content area measured 1048 pixels.
+The frame measured 1280 pixels.
+The content area measured 1048 pixels.
 No horizontal overflow or duplicate element IDs were found.
 Phone layouts were checked at 320 and 390 pixels.
 Settings appearance, panel visibility, and access help worked with mock data.
