@@ -420,3 +420,17 @@ The red pause banner and confirmation dialogs are unchanged.
 
 The rotating border indicates scheduled polling, not an API request on each rotation.
 Green still means that the last connection check succeeded.
+
+
+Final UI commit `fb4ead16b0692bf1eadb4e4144474a7acdda7cb0` was installed after the shared-engine update.
+This final asset update did not restart any service.
+The public dashboard displayed Pause automation beside the two equal API badges.
+The Overview heading no longer contained a duplicate pause button.
+Mock browser measurements confirmed all three desktop controls were 148 by 40 pixels.
+The 390-pixel phone preview kept all three controls on one row without overflow.
+Separate animation observations confirmed that the circular borders continued to move while connected.
+The pause dialog retained the 6-hour, 12-hour, 24-hour, and indefinite options.
+No live pause, schedule, or history-clear action was submitted.
+
+The live Octopus alert detail reported one Load failed event and subsequent recovery.
+The check did not clear retained incidents.
