@@ -4,6 +4,7 @@
 
 ## v2026.10.26.6 — Pi DEV (2026-10-26, not released)
 
+- Label first-use acknowledgement as Accept and Continue. Keep Close for later About visits. Use white text on filled and hovered buttons.
 - Keep a stable app frame across all pages. Move the old Menu controls into Settings. Add phone navigation and consistent cards, buttons, fields and switches.
 - Use the charging-plug and vehicle charge-port shape for the app and health indicators. Remove visible DEV labels. Use `/app/index.html` with redirects from old links.
 - Fit History charts to the recorded period so sparse new data stays readable.

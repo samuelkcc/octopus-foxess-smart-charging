@@ -61,7 +61,10 @@ http.createServer(async (request,response) => {
     if (url.pathname === '/dev/index.html' || url.pathname === '/app/index.html' || url.pathname === '/web/index.html') {
       let html = await readFile(path.join(root,'dist',web?'Smart_Charging_UI_DEV.html':'pi-dev.html'),'utf8');
       if (web) html = html.replaceAll('https://api.octopus.energy',`${origin}/mock-octopus`);
-      html = html.replace('<head>','<head><script>localStorage.setItem("licenseAccepted","true");</script>')
+      const noticeFixture = url.searchParams.get('firstUse') === '1'
+        ? 'localStorage.removeItem("licenseAccepted");'
+        : 'localStorage.setItem("licenseAccepted","true");';
+      html = html.replace('<head>',`<head><script>${noticeFixture}</script>`)
         .replace('<body>','<body><p style="padding:8px;margin:0;color:#b91c1c">LOCAL TEST · MOCK DATA · No real credentials or inverter commands</p>');
       response.writeHead(200,{'Content-Type':'text/html','Cache-Control':'no-store'});return response.end(html);
     }

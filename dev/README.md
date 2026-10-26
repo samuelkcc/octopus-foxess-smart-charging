@@ -26,6 +26,9 @@ The app title, icon, and address have no DEV label.
 The Pi remains a development installation.
 
 About & License opens in a side panel.
+On first use, its action is **Accept and Continue**.
+After acknowledgement, the About panel uses **Close**.
+Filled, selected, and hovered buttons use white text.
 The panel includes the complete GPL text and component notices.
 The setup guide also opens from the side.
 Pi and web login fields remain different.

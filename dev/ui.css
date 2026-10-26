@@ -1,12 +1,14 @@
 /* Copyright (C) 2026 SCKC. GPL-3.0-or-later.
    Shared visual system for Pi, standalone HTML and phone layouts. */
+:root { --button-fill:#e11d48; --button-hover:#be123c; }
+[data-theme=dark] { --button-fill:#bb0097; --button-hover:#950079; }
 html, body { width:100%; min-width:0; margin:0; }
 body { display:block; padding:0; justify-items:stretch; align-items:stretch; font:14px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; color:var(--text-main); background:var(--bg); }
 html[data-theme] body { background:var(--bg); }
 #dev-shell { width:100%; max-width:none; margin:0; justify-self:stretch; display:grid; grid-template-columns:232px minmax(0,1fr); min-height:100dvh; --ui-radius:14px; --ui-gap:20px; }
 #dev-shell *, .dev-review-dialog *, .dev-about-drawer * { box-sizing:border-box; }
 #dev-shell [hidden],#dev-engine-elements[hidden],.dev-about-drawer [hidden] { display:none!important; }
-#dev-shell button { font-family:inherit; cursor:pointer; box-shadow:none; transition:background .15s,border-color .15s; }
+#dev-shell button { font-family:inherit; cursor:pointer; box-shadow:none; transition:border-color .15s; }
 #dev-shell button:focus-visible,#dev-shell a:focus-visible,#dev-shell input:focus-visible,#dev-shell select:focus-visible { outline:3px solid color-mix(in srgb,var(--accent) 65%,transparent); outline-offset:3px; }
 .dev-rail { position:sticky; top:0; height:100dvh; min-width:0; display:flex; flex-direction:column; gap:26px; padding:28px 16px 22px; background:var(--card-bg); border-right:1px solid var(--border); }
 .dev-brand { display:flex; gap:10px; align-items:center; padding:0 6px; }
@@ -18,7 +20,7 @@ html[data-theme] body { background:var(--bg); }
 .dev-rail nav button,.dev-rail-bottom button { width:100%; display:flex; align-items:center; gap:12px; padding:12px 14px; min-height:46px; text-align:left; font-size:13px; font-weight:550; border:1px solid transparent; border-radius:9px; background:transparent; color:var(--text-muted); }
 .dev-rail nav button svg { width:19px; height:19px; flex-shrink:0; }
 .dev-rail nav button:hover,.dev-rail-bottom button:hover { background:var(--bg); color:var(--text-main); }
-.dev-rail nav button[aria-current=page] { color:var(--accent); background:color-mix(in srgb,var(--accent) 8%,var(--card-bg)); border-color:color-mix(in srgb,var(--accent) 22%,var(--border)); }
+.dev-rail nav button[aria-current=page] { color:white; background:var(--button-fill); border-color:var(--button-fill); }
 .dev-rail nav [data-page=settings] { margin-top:auto; }
 .dev-rail-bottom { display:grid; gap:8px; border-top:1px solid var(--border); padding-top:12px; }
 .dev-rail-bottom small { padding:0 14px; color:var(--text-muted); font-size:10px; }
@@ -66,8 +68,7 @@ html[data-theme] body { background:var(--bg); }
 .next-service-row { padding:16px 0; border-bottom:1px solid var(--border); }
 #dev-shell .next-service-row>.badge { white-space:nowrap; }
 #dev-shell .next-panel button,.next-button,.dev-history-controls button { width:auto; min-height:40px; padding:10px 14px; border:1px solid var(--border); border-radius:8px; background:var(--bg); color:var(--text-main); font-size:12px; font-weight:550; line-height:1.4; }
-#dev-shell .next-button:not(.secondary),#dev-shell button[id^=btn-save],.dev-history-controls button { background:var(--accent); border-color:var(--accent); color:white; }
-[data-theme=dark] #dev-shell .next-button:not(.secondary),[data-theme=dark] #dev-shell button[id^=btn-save],[data-theme=dark] .dev-history-controls button { color:#10002b; }
+#dev-shell .next-button:not(.secondary),#dev-shell button[id^=btn-save],#dev-shell #btn,.dev-history-controls button { background:var(--button-fill); border-color:var(--button-fill); color:white; }
 #dev-shell .next-button:hover { border-color:var(--accent); }
 #dev-shell .is-danger { color:var(--peak); border-color:color-mix(in srgb,var(--peak) 35%,var(--border)); background:transparent; }
 .next-field { display:flex; flex-direction:column; gap:8px; min-width:0; margin:0; font-size:12px; font-weight:400; color:var(--text-main); }
@@ -114,7 +115,7 @@ html[data-theme] body { background:var(--bg); }
 .dev-muted { color:var(--text-muted); font-size:11px; margin-top:22px; }
 .next-segmented { display:flex; gap:6px; background:var(--bg); border:1px solid var(--border); border-radius:10px; padding:5px; }
 #dev-shell .next-segmented button { flex:1; border-color:transparent; background:transparent; color:var(--text-muted); }
-#dev-shell .next-segmented button[aria-pressed=true] { background:var(--card-bg); border-color:var(--border); color:var(--text-main); }
+#dev-shell .next-segmented button[aria-pressed=true] { background:var(--button-fill); border-color:var(--button-fill); color:white; }
 #live-ws-policy-state { display:block; margin-top:14px; color:var(--text-muted); font-size:11px; }
 #dev-shell .app-footer { margin:30px 0 0; padding-top:20px; font-size:10px; }
 /* Sign-in shares the same frame, with navigation hidden until connected. */
@@ -144,6 +145,7 @@ html[data-theme] body { background:var(--bg); }
 .dev-dialog-actions { display:flex; gap:12px; justify-content:flex-end; margin-top:24px; }
 .dev-dialog-actions button { width:auto; min-height:40px; padding:10px 14px; font-size:12px; }
 .dev-dialog-actions button:first-child { background:var(--bg); color:var(--text-main); border:1px solid var(--border); }
+.dev-dialog-actions button:last-child { background:var(--button-fill); color:white; border:1px solid var(--button-fill); }
 .dev-about-drawer { position:fixed; inset:0 0 0 auto; margin:0; padding:0; width:min(600px,100vw); max-width:100vw; height:100dvh; max-height:100dvh; border:0; border-left:1px solid var(--border); color:var(--text-main); background:var(--card-bg); flex-direction:column; box-shadow:-18px 0 60px #0003; }
 .dev-drawer-header { display:flex; justify-content:space-between; gap:16px; padding:26px; border-bottom:1px solid var(--border); }
 .dev-drawer-header span { font-size:10px; letter-spacing:1.3px; color:var(--text-muted); }
@@ -155,7 +157,7 @@ html[data-theme] body { background:var(--bg); }
 .dev-drawer-body pre { font:11px/1.7 ui-monospace,monospace; white-space:pre-wrap; overflow-wrap:anywhere; }
 .dev-notice-tabs { display:flex; flex-wrap:wrap; gap:7px; padding:6px 0 22px; }
 .dev-notice-tabs button { width:auto; min-height:38px; padding:8px 10px; font-size:11px; border:1px solid var(--border); border-radius:7px; background:var(--bg); color:var(--text-muted); }
-.dev-notice-tabs button[aria-selected=true] { background:var(--accent); color:white; }
+.dev-notice-tabs button[aria-selected=true] { background:var(--button-fill); border-color:var(--button-fill); color:white; }
 .dev-about-facts { margin:20px 0; }
 .dev-about-facts>div { display:flex; justify-content:space-between; gap:16px; padding:12px 0; border-bottom:1px solid var(--border); font-size:11px; }
 .dev-about-facts dt { color:var(--text-muted); }
@@ -163,6 +165,8 @@ html[data-theme] body { background:var(--bg); }
 .dev-drawer-footer { padding:16px 26px; border-top:1px solid var(--border); }
 .dev-about-drawer #license-modal-buttons { justify-content:flex-end!important; }
 .dev-about-drawer #license-modal-buttons button { font-size:12px!important; }
+.dev-about-drawer #license-modal-buttons .dev-license-accept { background:var(--button-fill); color:white; }
+.dev-about-drawer #license-modal-buttons button:not(.dev-license-accept) { background:var(--bg); color:var(--text-main); border:1px solid var(--border); }
 #setup-guide-panel.dev-setup-drawer { position:fixed!important; inset:0 0 0 auto!important; transform:translateX(105%)!important; width:min(560px,100vw)!important; max-width:100vw; height:100dvh; max-height:100dvh!important; padding:26px!important; border-radius:0!important; z-index:10010; }
 #setup-guide-panel.dev-setup-drawer.open { transform:translateX(0)!important; }
 .dev-setup-drawer h3 button { width:34px; height:34px; padding:0; border:1px solid var(--border); border-radius:8px; background:var(--bg); color:var(--text-main); }
@@ -203,3 +207,8 @@ html[data-theme] body { background:var(--bg); }
 body>div[id$="-modal"]>div {background:var(--card-bg)!important;color:var(--text-main)!important;border:1px solid var(--border)!important;border-radius:14px!important;padding:26px!important;max-width:calc(100% - 32px)!important;}
 body>div[id$="-modal"] h3 {font-size:18px;font-weight:600;letter-spacing:-.3px;}
 body>div[id$="-modal"] button {min-height:38px;border-radius:8px!important;font-family:inherit;font-size:12px!important;}
+/* Filled highlights always pair a darker fill with white text. */
+#dev-shell button:hover:not(:disabled),#dev-shell .next-segmented button:hover:not(:disabled),.dev-notice-tabs button:hover,.dev-about-drawer #license-modal-buttons button:hover,.dev-dialog-actions button:hover,.dev-drawer-header button:hover,.dev-setup-drawer button:hover {background:var(--button-hover);border-color:var(--button-hover);color:white;}
+body>div[id$="-modal"] button:hover:not(:disabled) {background:var(--button-hover)!important;color:white!important;border-color:var(--button-hover)!important;}
+#dev-shell .is-danger:hover:not(:disabled) {background:#b91c1c;border-color:#b91c1c;color:white;}
+#dev-shell #fox-active-schedules button:hover:not(:disabled) {background:#b91c1c!important;border-color:#b91c1c!important;color:white!important;}

@@ -23,21 +23,44 @@
   drawer.querySelector('.dev-about-facts').append(revisionRow);
   drawer.querySelector('#dev-license-text').textContent = fullLicense;
   drawer.querySelector('#dev-components-text').textContent = componentNotices;
+  // Use the existing acknowledgement store and handler in both editions.
+  const engineOpenLicenseModal = openLicenseModal;
+  const engineAcceptLicense = acceptLicense;
+  let acknowledgementRequired = false;
+  acceptLicense = () => {
+    engineAcceptLicense();
+    acknowledgementRequired = false;
+  };
+  openLicenseModal = () => {
+    const firstUse = !localStorage.getItem('licenseAccepted');
+    acknowledgementRequired = firstUse;
+    engineOpenLicenseModal(firstUse);
+    const action = footer.querySelector('button');
+    action.type = 'button';
+    action.textContent = firstUse ? 'Accept and Continue' : 'Close';
+    action.classList.toggle('dev-license-accept', firstUse);
+    action.style.removeProperty('background');
+  };
   let focusBefore = null;
   const close = () => { drawer.style.display = 'none'; };
   drawer.querySelector('#dev-about-close').addEventListener('click', close);
   drawer.addEventListener('cancel', event => {
-    if (!localStorage.getItem('licenseAccepted')) event.preventDefault();
+    if (acknowledgementRequired) event.preventDefault();
   });
   drawer.addEventListener('close', () => {
+    // Some embedded browsers close native dialogs without a cancel event.
+    if (acknowledgementRequired) {
+      drawer.style.display = 'flex';
+      if (!drawer.open) drawer.showModal();
+      return;
+    }
     drawer.style.display = 'none';
     if (focusBefore?.isConnected) focusBefore.focus();
   });
   new MutationObserver(() => {
     if (drawer.style.display === 'flex' && !drawer.open) {
       focusBefore = document.activeElement;
-      const firstUse = !localStorage.getItem('licenseAccepted');
-      drawer.querySelector('#dev-about-close').hidden = firstUse;
+      drawer.querySelector('#dev-about-close').hidden = acknowledgementRequired;
       drawer.showModal();
     } else if (drawer.style.display === 'none' && drawer.open) drawer.close();
   }).observe(drawer, {attributes:true,attributeFilter:['style']});
