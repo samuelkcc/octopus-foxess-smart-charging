@@ -1,5 +1,12 @@
 ## v2.0.0 — Major redesign under review
 
+- Put developer and build details in About. Add the project background, battery-protection purpose, and edition-specific operating requirements.
+
+- Remove the repeated page footer. Keep developer credit, version, and licence information in About.
+
+- Place refresh controls in the top-right application header. Remove the connected edition label from Pi, desktop, and web views.
+- Keep countdown text and control widths stable during updates. Use worker activity for Pi status instead of frequent dashboard requests.
+
 - Move API countdowns and Update now into a compact Overview header row. Keep retained problem buttons and both schedules visible.
 
 Development Pi verification: version 2.0.0 is installed. Both APIs, REST schedule confirmation, power readings, retained history, and chart expansion were checked.

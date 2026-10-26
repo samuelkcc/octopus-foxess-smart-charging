@@ -333,3 +333,19 @@ The existing authenticated Safari session loaded the new header through the same
 Both countdowns displayed healthy status.
 The two real dispatch windows and the confirmed FoxESS schedule remained visible below the power readings.
 The installed runtime remains `214132d72ab06c9ea6696c14b645be4c90da7c6d`.
+
+
+## Stable application-header status and About
+
+Refresh controls now appear at the top right of the application header.
+Countdowns keep fixed numeric widths during updates.
+The activity dot shows an update without replacing the countdown text.
+When Pi worker timing is available, dashboard requests do not change the worker activity indicator.
+Connected edition labels, repeated page footers, and sidebar developer text are removed.
+Developer credit, version, copyright, and full licence information remain in About.
+The About background follows the public GitHub README and describes the battery-protection purpose.
+
+Desktop measurements showed identical timer-control widths during connected and updating states.
+The 390-pixel phone header retained both timers and the update action without horizontal overflow.
+Both About panels displayed their edition-specific requirements and full licence tabs.
+The full check suite and both interface builds passed.

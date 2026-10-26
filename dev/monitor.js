@@ -4,7 +4,6 @@
   const action=(text,handler)=>{const node=make('button',text);node.type='button';node.addEventListener('click',handler);return node;};
   const panel=make('section','','overview-updates');
   panel.setAttribute('aria-label','API refresh status');
-  panel.append(make('span','Next refresh','overview-update-label'));
   const refresh=action('Update now',async()=>{await refreshOverviewNow();render();});
   refresh.title='Refresh Octopus and FoxESS now. Refreshing does not cancel a pause.';
   const grid=make('div','','overview-update-grid');panel.append(grid,refresh);
@@ -29,7 +28,7 @@
     const incident=action('Review problem',()=>{selected=name;feedback.textContent='';render();dialog.showModal();});incident.className='overview-error-button';incident.hidden=true;
     card.append(status,label,timer,incident);grid.append(card);views[name]={title,status,timer,incident,card};
   }
-  document.querySelector('#dev-shell [data-page="overview"] .dev-page-heading').append(panel);
+  document.querySelector('#dev-shell .dev-app-actions').append(panel);
   const formatTime=value=>value?new Date(value).toLocaleString():'No successful update recorded yet';
   const seconds=value=>{const remaining=Math.max(0,Math.ceil((value-Date.now())/1000));return `${Math.floor(remaining/60)}:${String(remaining%60).padStart(2,'0')}`;};
   function summary(snapshot,name) {
@@ -39,14 +38,16 @@
   function render() {
     const snapshot=window.integrationMonitor.snapshot();const timing=getOverviewRefreshStatus();
     refresh.disabled=timing.running || Object.values(snapshot.busy).some(Boolean);
-    refresh.textContent=timing.running?'Updating…':'Update now';
+    refresh.setAttribute('aria-busy',String(timing.running));
     for(const [name,view] of Object.entries(views)) {
-      const info=summary(snapshot,name);const running=Boolean(snapshot.busy[name] || timing.workerBusy[name]);
+      const info=summary(snapshot,name);
+      // Pi countdowns describe the worker, not frequent cached dashboard reads.
+      const running=Boolean(timing.workerTiming?timing.workerBusy[name]:snapshot.busy[name]);
       const next=name==='octopus'?timing.octopusNextAt:timing.foxessNextAt;
       const stateText=info.active?'Update failed':running?'Updating':info.last?'Connected':'Waiting';
       view.status.setAttribute('aria-label',stateText);
       view.status.dataset.state=info.active?'error':running?'updating':info.last?'ok':'waiting';
-      view.timer.textContent=running?'Updating…':next?seconds(next):'—';
+      view.timer.textContent=next?seconds(next):'—';
       const source=timing.workerTiming?'Pi worker':window.linuxRuntime?'dashboard':'browser';
       view.card.title=`${view.title}: ${stateText}. Next ${source} API refresh: ${view.timer.textContent}. Last success: ${formatTime(info.last)}`;
       view.card.setAttribute('aria-label',view.card.title);

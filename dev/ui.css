@@ -29,7 +29,7 @@ html[data-theme] body { background:var(--bg); }
 .dev-appbar>div:first-child { display:flex; align-items:center; gap:15px; }
 .dev-appbar .dev-breadcrumb,.dev-appbar [aria-hidden] { color:var(--text-muted); }
 .dev-appbar strong { font-weight:550; }
-.dev-app-actions { display:flex; align-items:center; gap:12px; }
+.dev-app-actions { display:flex; align-items:center; gap:12px; margin-left:auto; min-width:0; max-width:100%; }
 .dev-service { color:var(--text-muted); font-size:11px; white-space:nowrap; }
 .dev-service::before { content:''; display:inline-block; width:6px; height:6px; border-radius:50%; background:var(--accent); margin-right:7px; }
 .dev-app-actions button { width:34px; height:34px; padding:0; color:var(--text-main); background:var(--bg); border:1px solid var(--border); border-radius:8px; }
@@ -117,7 +117,6 @@ html[data-theme] body { background:var(--bg); }
 #dev-shell .next-segmented button { flex:1; border-color:transparent; background:transparent; color:var(--text-muted); }
 #dev-shell .next-segmented button[aria-pressed=true] { background:var(--button-fill); border-color:var(--button-fill); color:white; }
 #live-ws-policy-state { display:block; margin-top:14px; color:var(--text-muted); font-size:11px; }
-#dev-shell .app-footer { margin:30px 0 0; padding-top:20px; font-size:10px; }
 /* Sign-in shares the same frame, with navigation hidden until connected. */
 #dev-shell.dev-auth-mode { grid-template-columns:minmax(0,1fr); }
 .dev-auth-mode .dev-rail,.dev-auth-mode .dev-announcement { display:none!important; }
@@ -334,23 +333,23 @@ body>#proxy-modal>div {max-width:850px!important;}
 }
 .launch-screen {overflow-anchor:none;}
 /* Compact header status keeps both schedule cards near the power readings. */
-.overview-updates {display:flex;align-items:center;flex-wrap:wrap;gap:10px;margin-top:16px;}
-.overview-update-label {font-size:11px;color:var(--text-muted);}
+.overview-updates {display:flex;align-items:center;justify-content:flex-end;flex-wrap:wrap;gap:8px;margin:0;}
+.dev-auth-mode .overview-updates {display:none!important;}
+.dev-appbar {flex-wrap:wrap;}
 .overview-update-grid {display:flex;align-items:center;flex-wrap:wrap;gap:8px;}
-.overview-update-card {display:flex;align-items:center;gap:8px;min-height:34px;padding:5px 10px;border:1px solid var(--border);border-radius:7px;background:var(--card-bg);font-size:11px;}
+.overview-update-card {display:flex;align-items:center;gap:8px;min-height:34px;padding:5px 10px;border:1px solid var(--border);border-radius:7px;background:var(--card-bg);font-size:11px;white-space:nowrap;}
 .overview-update-name {font-weight:550;}
 .overview-update-status {display:inline-block;flex-shrink:0;width:6px;height:6px;border-radius:50%;background:var(--text-muted);}
 .overview-update-status[data-state=error] {background:#ef4444;}
 .overview-update-status[data-state=ok] {background:#22c55e;}
 .overview-update-status[data-state=updating] {background:#f59e0b;}
-.overview-update-clock {font-size:12px;font-weight:600;font-variant-numeric:tabular-nums;min-width:3.4ch;}
-#dev-shell .overview-updates>button {width:auto;min-height:34px;padding:6px 12px;border-radius:7px;border:1px solid var(--border);background:var(--card-bg);color:var(--text-main);font-size:11px;font-weight:550;}
+.overview-update-clock {display:inline-block;width:5ch;flex:0 0 5ch;text-align:right;font-size:12px;font-weight:600;font-variant-numeric:tabular-nums;}
+#dev-shell .overview-updates>button {width:96px;flex:0 0 96px;white-space:nowrap;min-height:34px;padding:6px 12px;border-radius:7px;border:1px solid var(--border);background:var(--card-bg);color:var(--text-main);font-size:11px;font-weight:550;}
 #dev-shell .overview-update-card .overview-error-button {width:auto;min-height:28px;padding:3px 8px;border-radius:5px;background:#b91c1c!important;border:1px solid #b91c1c!important;color:white!important;font-size:10px;}
 .overview-incident-details section {border-bottom:1px solid var(--border);padding:16px 0;}
 .overview-incident-details strong {font-size:13px;overflow-wrap:anywhere;}
 @media(max-width:600px) {
   .overview-updates {gap:8px;}
-  .overview-update-label {flex-basis:100%;}
   .overview-update-grid {gap:6px;}
   .overview-update-card {padding:5px 8px;gap:6px;}
 }

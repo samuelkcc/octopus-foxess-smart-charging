@@ -126,7 +126,9 @@
     if(previousConnectionState!==connected) { window.scrollTo({top:0,left:0});previousConnectionState=connected; }
     byId('dev-theme').hidden=connected;
     byId('dev-page-name').textContent=connected?shell.querySelector('.dev-page:not([hidden]) h1')?.textContent || 'Overview':'Sign in';
-    shell.querySelector('.dev-service').textContent=pi?(connected?'Pi service':'Pi dashboard'):(connected?'Browser must stay awake':'Web edition');
+    const editionLabel=shell.querySelector('.dev-service');
+    editionLabel.hidden=pi || connected;
+    editionLabel.textContent=pi?'':'Web edition';
     if(pi) byId('login-layout').querySelector('.launch-setup>.next-auth-copy').textContent=window.linuxRemoteAccess?'Enter the separate Remote Access Key shown in your Pi Configuration.':'Enter your LAN access code if protection is enabled.';
     session.textContent=pi?(window.linuxRemoteAccess?'Browser login lasts up to 12 hours. Use the same remote key after expiry.':'Your Pi stores the account setup and runs the automation.'):'Keep this browser open and awake while automation runs.';
   };
