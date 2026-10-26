@@ -575,3 +575,36 @@ The monitor ignores requests cancelled after page exit.
 Real request failures still produce retained alerts.
 The problem dialog identifies browser and Pi service sources separately.
 This change does not identify the cause of earlier generic service failures.
+
+UI commit `002d90a053c576adfc23e2e3892ee964c01284d4` was installed on the Pi on 26 October 2026.
+The installer passed its pinned build and interface checks.
+It did not restart the server, worker, or tunnel.
+The existing public URL and authenticated browser session remained available.
+
+The full regression suite passed before installation.
+Later spacing and entry-scroll corrections passed syntax and interface build checks.
+The Pi login fixture passed Welcome, sign-in, and dashboard entry with dummy credentials.
+The standalone fixture retained Welcome and its separate account setup form.
+The 1920-by-1080 fixture measured identical 14-pixel navigation and main text without content scaling.
+The 2560-by-1320 fixture measured identical 16-pixel navigation and main text.
+History filled the common desktop frame with four resizable plots.
+The 390-pixel phone fixture retained vertical scrolling without horizontal overflow.
+Entering from Welcome returned the phone dashboard to the page top.
+
+Live Pi checks showed Welcome before dashboard entry.
+History displayed four charts, 48 intervals, and 8.0 KB of disk use.
+Both API indicators were healthy after installation and browser reload.
+The final reload recorded one browser-side FoxESS request failure at 22:52:42.
+The dialog reported Load failed and identified This browser request as its source.
+The request recovered, while its alert remained available for explicit acknowledgement.
+This browser failure does not establish a FoxESS upstream outage or an update-related cause.
+Earlier generic failures remain unexplained.
+Recovery alone cannot identify their original cause.
+No inverter, pause, credential, or history-clear action was submitted.
+
+Pi Connect output `NOOP-1` was set to 1920 by 1080 during this session.
+The display tool reported that mode as current.
+This check does not prove persistence after a reboot or a new remote session.
+
+The final live Overview showed all five dispatch windows beside the two FoxESS schedule periods.
+The larger schedule region retained the electricity plots within the same desktop frame.
