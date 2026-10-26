@@ -148,6 +148,7 @@ async function fetchJson(url, options = {}, timeoutMs = REQUEST_TIMEOUT_MS) {
             headers: { ...linuxHeaders, ...(options.headers || {}) },
             signal: controller.signal
         });
+        if (response.status === 401 && window.linuxRemoteAccess) window.location.reload();
         if (!response.ok) throw new Error(`HTTP ${response.status} from ${new URL(url, window.location.href).hostname}`);
         return await response.json();
     } catch (error) {
@@ -177,6 +178,7 @@ async function fetchOctopusJson(url, options = {}, authMode = 'none') {
 }
 
 function getLinuxAccessKey() {
+    if (window.linuxRemoteAccess) return '';
     return localStorage.getItem(LINUX_ACCESS_STORAGE_KEY)
         || sessionStorage.getItem('linuxAccessKey')
         || document.getElementById('local-access-key')?.value.trim()
@@ -224,12 +226,21 @@ async function detectLinuxRuntime() {
         const runtime = await response.json();
         if (runtime.mode !== 'linux') return;
 
+        window.linuxRemoteAccess = runtime.remoteAccess === true;
         window.linuxRuntime = true;
         window.linuxRole = runtime.role;
         window.linuxAuthRequired = runtime.authRequired;
         window.linuxAccessRequired = runtime.accessRequired !== false;
         window.linuxLocalConfiguration = runtime.localConfiguration === true;
         document.body.classList.add('linux-runtime', `linux-role-${runtime.role}`);
+        if (window.linuxRemoteAccess) {
+            document.querySelector('.linux-access-group label').textContent = '🔐 Remote Access Key';
+            document.getElementById('local-access-key').placeholder = 'Paste the remote key from Pi Server Configuration';
+            document.querySelector('.linux-access-group small').textContent = 'Use your remote key. Your LAN access code is not needed.';
+            document.querySelector('.linux-client-note strong').textContent = 'Secure remote dashboard';
+            document.querySelector('.access-protected-copy').textContent = 'Enter the separate Remote Access Key shown on your Pi.';
+            document.querySelector('.remove-access-button').textContent = '🔐 Sign Out';
+        }
         if (runtime.authRequired) document.body.classList.add('linux-auth-required');
         if (!runtime.authRequired) {
             document.body.classList.add('linux-password-free');
@@ -242,7 +253,7 @@ async function detectLinuxRuntime() {
         });
         document.querySelectorAll('[data-linux-lan-url]').forEach(element => {
             const clientUrl = runtime.lanUrls?.[0] || window.location.origin;
-            element.textContent = `Mobile / LAN access: ${clientUrl}`;
+            element.textContent = window.linuxRemoteAccess ? `Remote access: ${window.location.origin}` : `Mobile / LAN access: ${clientUrl}`;
         });
         const gasUrl = document.getElementById('gas-url');
         if (gasUrl) gasUrl.value = '/api/foxess';
@@ -264,12 +275,17 @@ async function ensureLinuxAccess() {
     }
     const response = await fetch('/api/auth', {
         method: 'POST',
-        headers: { 'X-Octopus-Access-Key': key }
+        headers: { [window.linuxRemoteAccess ? 'X-Octopus-Remote-Key' : 'X-Octopus-Access-Key']: key }
     });
     if (!response.ok) {
         clearLinuxAccessKey();
-        showError('The LAN access code is incorrect.');
+        showError(response.status === 429 ? 'Too many attempts. Wait one minute.' : (window.linuxRemoteAccess ? 'The remote access key is incorrect.' : 'The LAN access code is incorrect.'));
         return false;
+    }
+    if (window.linuxRemoteAccess) {
+        document.getElementById('local-access-key').value = '';
+        window.linuxAuthRequired = false;
+        return true; // The HttpOnly cookie holds the session; never persist the remote key in browser storage.
     }
     localStorage.setItem(LINUX_ACCESS_STORAGE_KEY, key);
     sessionStorage.setItem('linuxAccessKey', key);
@@ -477,7 +493,13 @@ async function setLiveWsPolicy(policy) {
     }
 }
 
-function removeSavedAccessCode() {
+async function removeSavedAccessCode() {
+    if (window.linuxRemoteAccess) {
+        const response = await fetch('/api/logout', { method: 'POST' });
+        if (!response.ok && response.status !== 401) return showToast('Could not sign out. Try again.');
+        window.location.reload();
+        return;
+    }
     clearLinuxAccessKey();
     activeCredentials = null;
     sessionStorage.removeItem('sessionCredentials');
@@ -1074,7 +1096,7 @@ function incrementFoxApi() {
 function openLicenseModal(isFirstLoad) {
     const btnContainer = document.getElementById('license-modal-buttons');
     if (isFirstLoad) {
-        btnContainer.innerHTML = `<button onclick="acceptLicense()" style="background: #10b981; width: auto; padding: 0.75rem 2rem; font-size: 1rem;">I Accept & Continue</button>`;
+        btnContainer.innerHTML = `<button onclick="acceptLicense()" style="background: #10b981; width: auto; padding: 0.75rem 2rem; font-size: 1rem;">Continue</button>`;
     } else {
         btnContainer.innerHTML = `<button onclick="document.getElementById('license-modal').style.display='none'" class="btn-clear" style="width: auto; padding: 0.6rem 2rem;">Close Window</button>`;
     }
@@ -1335,6 +1357,7 @@ async function initDashboard(isAutoRefresh = false, retryCount = 1) {
     }
 
     try {
+        if (!isAutoRefresh && canRunAutomaticActions()) loadAutomations(0, 0);
         const GRAPHQL_URL = 'https://api.octopus.energy/v1/graphql/';
 
         // 1. Octopus Auth (with automatic retry for API cold-starts)
@@ -1399,7 +1422,7 @@ async function initDashboard(isAutoRefresh = false, retryCount = 1) {
                     || readStoredJson('foxAutomations', {}).dispatchCheck === true;
                 await publishLinuxDispatchSnapshot(dispatches, dispatchEnabled ? 'syncing' : 'disabled');
             }
-            if (isAutoRefresh && hasEnabledLocalAutomation() && canRunAutomaticActions()) {
+            if ((isAutoRefresh || document.getElementById('toggle-auto-dispatch')?.checked) && hasEnabledLocalAutomation() && canRunAutomaticActions()) {
                 await evaluateLocalAutomations(null, true);
             }
         }
@@ -2153,17 +2176,21 @@ async function fetchFoxSchedules({ expectedGroups = null, attempts = 1 } = {}) {
                 `}).join('');
             }
             } else {
-                container.innerHTML = 'Failed to load schedules.';
+                throw new Error(data.msg || 'FoxESS did not return scheduler groups');
             }
 
             const schedulesMatch = expectedFingerprint === null || scheduleFingerprint(window.activeFoxGroups) === expectedFingerprint;
-            if (schedulesMatch || attempt === attempts) {
+            if (!schedulesMatch && attempt === attempts) throw new Error('FoxESS did not confirm the updated schedules');
+            if (schedulesMatch) {
                 await fetchCurrentWorkMode(true);
                 return window.activeFoxGroups;
             }
         } catch (e) {
             console.warn(`Fetch Schedule Error (attempt ${attempt}/${attempts})`, e);
-            if (attempt === attempts) return window.activeFoxGroups;
+            if (attempt === attempts) {
+                if (expectedGroups !== null) throw e;
+                return window.activeFoxGroups;
+            }
         }
 
         await wait(1000 * attempt);
@@ -2417,7 +2444,7 @@ function buildScheduleGroupsFromTimeline(timeline, minSoc, fdPwr) {
         const state = i < 1440 ? timeline[i] : null;
 
         if (!currentBlock && state) {
-            currentBlock = { start: i, workMode: state.workMode, finalFdSoc: state.finalFdSoc, source: state.source };
+            currentBlock = { start: i, workMode: state.workMode, finalFdSoc: state.finalFdSoc, source: state.source, sources: new Set([state.source]) };
         } else if (currentBlock && (!state || state.workMode !== currentBlock.workMode || state.finalFdSoc !== currentBlock.finalFdSoc)) {
             groups.push({
                 startHour: Math.floor(currentBlock.start / 60),
@@ -2429,16 +2456,33 @@ function buildScheduleGroupsFromTimeline(timeline, minSoc, fdPwr) {
                     minSocOnGrid: minSoc,
                     fdPwr,
                     fdSoc: currentBlock.finalFdSoc,
+                    schSources: [...currentBlock.sources],
                     schSource: currentBlock.source
                 }
             });
             currentBlock = state
-                ? { start: i, workMode: state.workMode, finalFdSoc: state.finalFdSoc, source: state.source }
+                ? { start: i, workMode: state.workMode, finalFdSoc: state.finalFdSoc, source: state.source, sources: new Set([state.source]) }
                 : null;
+        } else if (currentBlock && state) {
+            currentBlock.sources.add(state.source);
         }
     }
 
     return groups;
+}
+
+function prioritizeAutomationGroups(groups, now = new Date()) {
+    const minute = now.getHours() * 60 + now.getMinutes();
+    const rank = group => {
+        const start = Number(group.startHour) * 60 + Number(group.startMinute);
+        const active = isFoxScheduleActiveAt(group, now);
+        const dispatch = group.extraParam?.schSources?.includes('dispatch') || group.extraParam?.schSource === 'dispatch';
+        return [dispatch ? 0 : 1, active ? 0 : 1, (start - minute + 1440) % 1440];
+    };
+    return [...groups].sort((a, b) => {
+        const ar = rank(a), br = rank(b);
+        return ar[0] - br[0] || ar[1] - br[1] || ar[2] - br[2];
+    });
 }
 
 function getForceChargeOverviewLabel(sources) {
@@ -2456,7 +2500,7 @@ async function pushGroupsToFoxESS(groups, maxAttempts = 3) {
     const path = '/op/v3/device/scheduler/enable';
     const { activeGroups, paddedGroups, droppedCount } = prepareFoxSchedulePayload(groups);
     if (droppedCount > 0) {
-        showToast(`FoxESS supports five active scheduler periods. The earliest five were applied; ${droppedCount} later period${droppedCount === 1 ? '' : 's'} could not be sent.`);
+        showToast(`FoxESS supports five active scheduler periods. The highest-priority five were applied; ${droppedCount} later period${droppedCount === 1 ? '' : 's'} could not be sent.`);
     }
 
     try {
@@ -2796,7 +2840,7 @@ async function evaluateLocalAutomations(btn = null, isStartup = false) {
 
     // Reconstruct continuous groups. FoxESS merges adjacent periods when mode
     // and SOC match, even if the app's internal source label is different.
-    const groups = buildScheduleGroupsFromTimeline(timeline, minSoc, fdPwr);
+    const groups = prioritizeAutomationGroups(buildScheduleGroupsFromTimeline(timeline, minSoc, fdPwr), now);
 
     // Keep source information locally because FoxESS strips unknown metadata and
     // may merge adjacent periods with identical mode/SOC values.
@@ -2809,7 +2853,13 @@ async function evaluateLocalAutomations(btn = null, isStartup = false) {
         const localStr = prepareFoxSchedulePayload(groups).activeGroups.map(mapGroup).sort().join('|');
         const remoteStr = window.activeFoxGroups.filter(isActiveFoxSchedule).map(mapGroup).sort().join('|');
         if (localStr === remoteStr) {
-            console.log("Startup Check: Local automations match inverter schedules perfectly. Skipping sync.");
+            try {
+                await fetchFoxSchedules({ expectedGroups: groups, attempts: 1 });
+            } catch {
+                // The cached schedule is no longer authoritative. Rewrite and verify below.
+                return evaluateLocalAutomations(btn, false);
+            }
+            console.log("Startup Check: FoxESS freshly confirmed the automation schedules.");
             if (window.linuxRuntime && window.linuxRole === 'worker') {
                 await publishLinuxDispatchSnapshot(
                     automationDispatches,
@@ -2823,6 +2873,7 @@ async function evaluateLocalAutomations(btn = null, isStartup = false) {
 
     try {
         const result = await pushGroupsToFoxESS(groups);
+        if (result.droppedCount > 0) throw new Error('FoxESS applied only five periods. Reduce automation periods; the full schedule is not confirmed.');
         if (window.linuxRuntime && window.linuxRole === 'worker') {
             await publishLinuxDispatchSnapshot(
                 automationDispatches,

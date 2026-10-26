@@ -6,6 +6,8 @@ import { networkInterfaces } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+import { QuickTunnel, RemoteSessions, createRemoteKey, matchesRemoteKey, remoteCookie } from './remote-access.mjs';
+
 import { FoxessLiveTelemetry } from './foxess-live.mjs';
 
 const appRoot = path.dirname(fileURLToPath(import.meta.url));
@@ -14,6 +16,10 @@ const stateRoot = process.env.OCTOPUS_STATE_DIR || '/var/lib/octopus-foxess';
 const accessKeyFile = process.env.OCTOPUS_ACCESS_KEY_FILE || path.join(stateRoot, 'access.key');
 const host = process.env.OCTOPUS_HOST || '0.0.0.0';
 const port = Number(process.env.OCTOPUS_PORT || 8787);
+const remotePort = Number(process.env.OCTOPUS_REMOTE_PORT || port + 1);
+const remoteRequests = new WeakSet();
+const remoteSessions = new RemoteSessions();
+const quickTunnel = new QuickTunnel({ url: `http://127.0.0.1:${remotePort}` });
 const maxBodyBytes = 128 * 1024;
 const allowedFoxHost = 'www.foxesscloud.com';
 const allowedOctopusHost = 'api.octopus.energy';
@@ -43,6 +49,12 @@ const version = packageInfo.version;
 await mkdir(stateRoot, { recursive: true });
 
 function isLoopback(request) {
+  if (remoteRequests.has(request)) return false;
+  // Native worker/settings callers use a loopback Host as well as a loopback
+  // socket. A public proxy Host or DNS-rebound website is not native access.
+  let hostname;
+  try { hostname = new URL(`http://${request.headers.host || ''}`).hostname; } catch { return false; }
+  if (!['localhost', '127.0.0.1', '[::1]'].includes(hostname)) return false;
   const address = request.socket.remoteAddress || '';
   return address === '127.0.0.1' || address === '::1' || address === '::ffff:127.0.0.1';
 }
@@ -96,6 +108,13 @@ async function isLanAccessRequired() {
 }
 
 async function isAuthorized(request) {
+  if (remoteRequests.has(request)) {
+    const remote = (await loadState()).remoteAccess;
+    return Boolean(remote?.enabled && (
+      matchesRemoteKey(request.headers['x-octopus-remote-key'], remote.key)
+      || remoteSessions.valid(request, remote.key)
+    ));
+  }
   if (isLoopback(request) && !isExplicitClientRequest(request)) return true;
   if (!(await isLanAccessRequired())) return true;
   const expected = Buffer.from(await getAccessKey());
@@ -238,8 +257,9 @@ function requestedLiveWsPolicy(value, fallback) {
 function getClientState(state) {
   const credentials = state.credentials || {};
   const liveWsPolicy = getLiveWsPolicy(state);
+  const { remoteAccess, ...clientState } = state;
   return {
-    ...state,
+    ...clientState,
     liveWsEnabled: isLiveWsEnabled(state),
     liveWsPolicy,
     liveWsOnDemand: liveWsPolicy === 'on-demand',
@@ -490,10 +510,59 @@ async function serveStatic(request, response, pathname) {
   }
 }
 
-const server = http.createServer(async (request, response) => {
+async function handleRequest(request, response) {
   try {
     const requestUrl = new URL(request.url, `http://${request.headers.host || 'localhost'}`);
     const pathname = requestUrl.pathname;
+    if (remoteRequests.has(request)) {
+      response.setHeader('Cache-Control', 'no-store');
+      response.setHeader('Referrer-Policy', 'no-referrer');
+      response.setHeader('X-Frame-Options', 'DENY');
+      const remote = (await loadState()).remoteAccess;
+      if (!remote?.enabled) return sendJson(response, 503, { error: 'Remote access is disabled' });
+      const permitted = new Set(['/api/runtime', '/api/auth', '/api/logout', '/api/config', '/api/dispatch-snapshot', '/api/foxess', '/api/octopus', '/api/foxess/live', '/api/foxess/live/status']);
+      if (pathname.startsWith('/api/') && !permitted.has(pathname)) return sendJson(response, 403, { error: 'This endpoint is only available on the Raspberry Pi' });
+      if (!['GET', 'HEAD'].includes(request.method)) {
+        const origin = request.headers.origin;
+        if (request.headers['sec-fetch-site'] === 'cross-site' || (origin && origin !== `https://${request.headers.host}`)) {
+          return sendJson(response, 403, { error: 'Cross-site request rejected' });
+        }
+      }
+      if (pathname.startsWith('/api/') && !['/api/runtime', '/api/auth'].includes(pathname) && !(await isAuthorized(request))) {
+        return sendJson(response, 401, { error: 'Remote access key or session required' });
+      }
+      if (pathname === '/api/logout' && request.method === 'POST') {
+        remoteSessions.revoke(request);
+        response.setHeader('Set-Cookie', `${remoteCookie}=; Secure; HttpOnly; SameSite=Strict; Path=/; Max-Age=0`);
+        return sendEmpty(response);
+      }
+      if (pathname === '/api/auth' && request.method === 'POST') {
+        if (remoteSessions.valid(request, remote.key)) return sendEmpty(response);
+        if (remoteSessions.limited()) return sendJson(response, 429, { error: 'Too many attempts. Wait one minute.' });
+        if (!matchesRemoteKey(request.headers['x-octopus-remote-key'], remote.key)) {
+          remoteSessions.fail();
+          return sendJson(response, 401, { error: 'Invalid remote access key' });
+        }
+        const session = remoteSessions.issue(remote.key);
+        response.setHeader('Set-Cookie', `${remoteCookie}=${session}; Secure; HttpOnly; SameSite=Strict; Path=/; Max-Age=43200`);
+        return sendEmpty(response);
+      }
+    }
+    if (pathname === '/api/remote-access') {
+      if (!isLoopback(request)) return sendJson(response, 403, { error: 'Remote access is managed on the Raspberry Pi only' });
+      let state = await loadState();
+      if (request.method === 'PUT') {
+        const update = await readJsonBody(request);
+        const remoteAccess = { enabled: update.enabled === true, key: state.remoteAccess?.key || createRemoteKey() };
+        if (update.rotateKey === true) remoteAccess.key = createRemoteKey();
+        state = { ...state, remoteAccess };
+        await saveState(state);
+        remoteSessions.clear();
+        if (remoteAccess.enabled) quickTunnel.start(); else quickTunnel.stop();
+      }
+      if (['GET', 'PUT'].includes(request.method)) return sendJson(response, 200, { enabled: state.remoteAccess?.enabled === true, key: state.remoteAccess?.key || '', ...quickTunnel.status });
+      return sendJson(response, 405, { error: 'Method not allowed' });
+    }
 
     if (request.method === 'GET' && pathname === '/api/health') {
       return sendJson(response, 200, {
@@ -519,10 +588,11 @@ const server = http.createServer(async (request, response) => {
       });
     }
     if (request.method === 'GET' && pathname === '/api/runtime') {
-      const workerRequested = requestUrl.searchParams.get('worker') === '1';
+      const remote = remoteRequests.has(request);
+      const workerRequested = !remote && requestUrl.searchParams.get('worker') === '1';
       const clientRequested = requestUrl.searchParams.get('client') === '1';
       const localConfiguration = isLoopback(request) && !clientRequested && !workerRequested;
-      const accessRequired = await isLanAccessRequired();
+      const accessRequired = remote || await isLanAccessRequired();
       const role = workerRequested && isLoopback(request) ? 'worker' : 'dashboard';
       return sendJson(response, 200, {
         mode: 'linux',
@@ -530,8 +600,9 @@ const server = http.createServer(async (request, response) => {
         role,
         localConfiguration,
         accessRequired,
-        authRequired: accessRequired && role !== 'worker' && !localConfiguration,
-        lanUrls: getLanUrls()
+        authRequired: remote ? !(await isAuthorized(request)) : accessRequired && role !== 'worker' && !localConfiguration,
+        remoteAccess: remote,
+        lanUrls: remote ? [] : getLanUrls()
       });
     }
     if (request.method === 'POST' && pathname === '/api/auth') {
@@ -667,6 +738,10 @@ const server = http.createServer(async (request, response) => {
       if (Object.hasOwn(update, 'liveWsEnabled')) {
         return sendJson(response, 403, { error: 'Live WS availability can only be changed from the Raspberry Pi Settings app' });
       }
+      const allowedUpdates = new Set(['automations', 'liveWsPolicy', 'liveWsOnDemand']);
+      if (Object.keys(update).some(key => !allowedUpdates.has(key))) {
+        return sendJson(response, 403, { error: 'Only dashboard preferences may be changed here' });
+      }
       const current = await loadState();
       const requestedPolicy = update.liveWsPolicy ?? (
         Object.hasOwn(update, 'liveWsOnDemand')
@@ -794,6 +869,20 @@ const server = http.createServer(async (request, response) => {
         : 'Local server error'
     });
   }
+}
+
+const server = http.createServer(handleRequest);
+const remoteServer = http.createServer((request, response) => {
+  remoteRequests.add(request);
+  void handleRequest(request, response);
+});
+remoteServer.listen(remotePort, '127.0.0.1', async () => {
+  if ((await loadState()).remoteAccess?.enabled) quickTunnel.start();
+});
+remoteServer.on('error', error => {
+  quickTunnel.stop();
+  console.error('Remote listener failed:', error.message);
+  // A failed remote listener must never redirect the tunnel to the admin port.
 });
 
 server.listen(port, host, () => {
@@ -804,6 +893,8 @@ server.listen(port, host, () => {
 for (const signal of ['SIGINT', 'SIGTERM']) {
   process.on(signal, () => {
     foxessLive.stop();
+    quickTunnel.stop();
+    remoteServer.close();
     server.close(() => process.exit(0));
   });
 }

@@ -70,11 +70,42 @@ worker snapshot and refresh it every five seconds. A stale confirmation for an
 older Octopus revision is rejected, and the dashboard clearly distinguishes
 **SYNCING FOXESS**, **FOXESS CONFIRMED**, and **FOXESS SYNC FAILED**.
 
-Remote access can be configured with a private VPN or a DDNS hostname and
-router port forwarding. If using DDNS, place an authenticated HTTPS reverse
-proxy in front of the dashboard, forward only the HTTPS endpoint, keep access
-protection enabled, and use a strong unique Dashboard Access Code. Never expose
-the Pi's raw HTTP port `8787` directly to the public internet.
+### Optional free remote URL
+
+Choose **Remote Access…** from the Pi taskbar menu, then **Start Quick Tunnel**.
+The app creates a random HTTPS address on `trycloudflare.com` without a
+Cloudflare account, domain, or router port forwarding. Copy the separate
+**Remote Access Key** from this window and enter it when opening the remote
+URL. The LAN access code is not used for tunnel access. Remote access always
+requires authentication, even if LAN protection is disabled.
+
+The key contains 256 bits of cryptographic randomness and is encrypted with the
+Pi configuration at rest. Browser login exchanges it for a Secure, HttpOnly,
+SameSite session cookie, valid for 12 hours; the app never saves the remote key
+in browser local storage. Keep the key private and never put it in a URL.
+**New Key / Revoke Sessions** invalidates the previous key and all sessions.
+**Sign Out** ends the current browser session. **Stop** closes public access.
+
+The tunnel resumes after a service restart if previously enabled, with a new
+random URL shown in this window. Disconnections retry automatically. Cloudflare
+Quick Tunnels are intended for testing/development, have no uptime guarantee,
+allow at most 200 concurrent requests, and do not support SSE. This dashboard
+uses ordinary HTTP polling. See [Cloudflare's limitations](https://developers.cloudflare.com/tunnel/get-started/quick-tunnels/).
+
+The installer obtains `cloudflared` from Cloudflare's signed APT repository.
+Only the dedicated loopback listener (normally `8788`) is tunneled. It requires
+remote authentication and blocks Pi administration, credentials, access-key
+management, and worker publications. Never manually tunnel or forward the
+LAN/admin HTTP port `8787`; it trusts native loopback traffic.
+
+For API clients, pass the remote key in the `X-Octopus-Remote-Key` header over
+HTTPS. The remote key is separate from Octopus/FoxESS credentials. A tunnel
+secures transport through Cloudflare; Cloudflare terminates the public HTTPS
+connection. Private VPN access is an alternative if you prefer no public URL.
+
+**About & License…** in the native menu and **About & License** in the dashboard
+show version, developer, GPL terms, source code, and independent-software
+information. Full third-party notices are included in the dashboard and package.
 
 Adding the dashboard to an iOS or Android home screen uses the supplied
 Octopus/fox/charging app icon. The narrow Mobile view fits the viewport without

@@ -11,7 +11,11 @@ const [html, css, js] = await Promise.all([
   readFile(path.join(src, 'app.js'), 'utf8'),
 ]);
 
+const escapeText = text => text.replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;');
+const [license, notices] = await Promise.all(['LICENSE', 'THIRD_PARTY_NOTICES.md'].map(name => readFile(path.join(root, name), 'utf8')));
 const output = html
+  .replace('__FULL_LICENSE__', () => escapeText(license))
+  .replace('__THIRD_PARTY_NOTICES__', () => escapeText(notices))
   .replace(/\s*<link rel="stylesheet" href="\.\/styles\.css(?:\?[^"]*)?">/, `\n    <style>\n${css}\n    </style>`)
   .replace(/<script src="\.\/app\.js(?:\?[^"]*)?"><\/script>/, `<script>\n${js}\n</script>`);
 

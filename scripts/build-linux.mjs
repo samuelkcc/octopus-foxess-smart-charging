@@ -15,6 +15,7 @@ await mkdir(path.join(packageRoot, 'web'), { recursive: true });
 await mkdir(path.join(packageRoot, 'node_modules'), { recursive: true });
 
 await Promise.all([
+  cp(path.join(root, 'linux', 'remote-access.mjs'), path.join(packageRoot, 'remote-access.mjs')),
   cp(path.join(root, 'linux', 'server.mjs'), path.join(packageRoot, 'server.mjs')),
   cp(path.join(root, 'linux', 'foxess-live.mjs'), path.join(packageRoot, 'foxess-live.mjs')),
   cp(path.join(root, 'linux', 'foxess-web-signature.mjs'), path.join(packageRoot, 'foxess-web-signature.mjs')),

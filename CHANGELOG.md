@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+## v2026.10.26.1 — 2026-10-26
+
+- Add optional Cloudflare Quick Tunnel access with a random HTTPS URL and a separate generated 256-bit Remote Access Key. LAN access-code settings remain independent.
+- Isolate remote requests on a dedicated listener; deny Pi administration and worker endpoints, allowlist dashboard updates, rate-limit logins, and use expiring Secure/HttpOnly/SameSite browser sessions with logout and key revocation.
+- Apply newly detected Smart Dispatch schedules before tariff work in both editions, including initial connection with saved dispatch automation enabled.
+- Require fresh official FoxESS REST readback instead of cached schedule confirmation. Retain Smart Dispatch priority when selecting the five hardware periods and report partial schedules as incomplete.
+- Add matching About & License information to HTML, Pi dashboards, and the native Pi menu, with SCKC attribution, source links, complete GPL text, and third-party notices.
+- Add behavior tests for both scheduler editions and remote access security; document Codex maintenance and provide a version-update command.
+
 ## v2026.09.02.1 — 2026-09-02
 
 - Preserve the last confirmed Smart Dispatch schedule when Octopus GraphQL

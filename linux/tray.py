@@ -560,6 +560,78 @@ class ServerConfigurationWindow(Gtk.Window):
         )
 
 
+class RemoteAccessWindow(Gtk.Window):
+    def __init__(self):
+        super().__init__(title="Remote Access — Octopus FoxESS")
+        self.set_default_size(680, 400)
+        self.connect("delete-event", lambda window, _event: window.hide() or True)
+        root = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=12, margin=20)
+        self.add(root)
+        note = Gtk.Label(label="Create a free random HTTPS URL with Cloudflare Quick Tunnel. "
+                         "Remote access always requires its own 256-bit key; your LAN code is not used. "
+                         "The URL changes after a restart. Cloudflare provides no uptime guarantee.", xalign=0)
+        note.set_line_wrap(True)
+        root.pack_start(note, False, False, 0)
+        self.status = Gtk.Label(label="Loading…", xalign=0)
+        self.status.set_line_wrap(True)
+        root.pack_start(self.status, False, False, 0)
+        self.url = Gtk.Entry()
+        self.url.set_editable(False)
+        self.url.set_placeholder_text("Start a tunnel to generate the URL")
+        root.pack_start(Gtk.Label(label="Public URL", xalign=0), False, False, 0)
+        root.pack_start(self.url, False, False, 0)
+        self.key = Gtk.Entry()
+        self.key.set_editable(False)
+        self.key.set_visibility(False)
+        root.pack_start(Gtk.Label(label="Remote Access Key (keep private)", xalign=0), False, False, 0)
+        root.pack_start(self.key, False, False, 0)
+        reveal = Gtk.CheckButton(label="Show remote key")
+        reveal.connect("toggled", lambda button: self.key.set_visibility(button.get_active()))
+        root.pack_start(reveal, False, False, 0)
+        buttons = Gtk.Box(spacing=8)
+        root.pack_start(buttons, False, False, 0)
+        for label, callback in [
+            ("Start Quick Tunnel", lambda _button: self.change(True)),
+            ("Stop", lambda _button: self.change(False)),
+            ("New Key / Revoke Sessions", lambda _button: self.change(self.enabled, True)),
+            ("Copy Key", lambda _button: Gtk.Clipboard.get_default(self.get_display()).set_text(self.key.get_text(), -1)),
+            ("Refresh", lambda _button: self.refresh()),
+        ]:
+            button = Gtk.Button(label=label)
+            button.connect("clicked", callback)
+            buttons.pack_start(button, False, False, 0)
+        self.enabled = False
+        GLib.timeout_add_seconds(3, self.poll)
+
+    def show_window(self):
+        self.show_all()
+        self.present()
+        self.refresh()
+
+    def poll(self):
+        if self.get_visible():
+            self.refresh()
+        return True
+
+    def refresh(self):
+        run_in_background(lambda: api_json("/api/remote-access"), self.loaded, self.failed)
+
+    def change(self, enabled, rotate=False):
+        self.status.set_text("Updating remote access…")
+        run_in_background(lambda: api_json("/api/remote-access", "PUT", {"enabled": enabled, "rotateKey": rotate}), self.loaded, self.failed)
+
+    def loaded(self, data):
+        self.enabled = data.get("enabled", False)
+        self.key.set_text(data.get("key", ""))
+        self.url.set_text(data.get("url") or "")
+        self.status.set_text(data.get("error") or f"Tunnel: {data.get('state', 'disabled')}. Sessions expire after 12 hours; a new key revokes all sessions.")
+        return False
+
+    def failed(self, error):
+        self.status.set_text(str(error))
+        return False
+
+
 class TrayController:
     def __init__(self):
         self.refresh_in_progress = False
@@ -582,6 +654,13 @@ class TrayController:
         configure = Gtk.MenuItem(label="Server Configuration…")
         configure.connect("activate", lambda _item: self.window.show_window())
         self.menu.append(configure)
+        self.remote_window = RemoteAccessWindow()
+        remote = Gtk.MenuItem(label="Remote Access…")
+        remote.connect("activate", lambda _item: self.remote_window.show_window())
+        self.menu.append(remote)
+        about = Gtk.MenuItem(label="About & License…")
+        about.connect("activate", self.show_about)
+        self.menu.append(about)
 
         dashboard = Gtk.MenuItem(label="Open Dashboard Client")
         dashboard.connect("activate", lambda _item: run_detached(["/usr/local/bin/octopus-foxess-dashboard"]))
@@ -597,6 +676,28 @@ class TrayController:
         self.window = ServerConfigurationWindow(self)
         GLib.timeout_add_seconds(10, self.refresh)
         self.refresh()
+
+    def show_about(self, _item):
+        dialog = Gtk.AboutDialog(transient_for=self.window, modal=True)
+        dialog.set_program_name("Intelligent Octopus Go & FoxESS Smart Charging Detector")
+        try:
+            dialog.set_version(api_json("/api/health").get("version", "Development"))
+        except Exception:
+            dialog.set_version("Development")
+        dialog.set_copyright("Copyright (C) 2026 SCKC")
+        dialog.set_authors(["SCKC"])
+        dialog.set_website("https://github.com/samuelkcc/octopus-foxess-smart-charging")
+        dialog.set_website_label("Source code & releases")
+        dialog.set_comments("Independent software, not affiliated with, endorsed by, or supported by Octopus Energy or FoxESS. "
+                            "Distributed without warranty. Third-party licenses are included in the application folder and dashboard About & License.")
+        try:
+            with open("/opt/octopus-foxess/current/LICENSE", encoding="utf-8") as source:
+                dialog.set_license(source.read())
+        except OSError:
+            dialog.set_license_type(Gtk.License.GPL_3_0)
+        dialog.set_wrap_license(True)
+        dialog.run()
+        dialog.destroy()
 
     def add_status_item(self, text):
         item = Gtk.MenuItem(label=text)

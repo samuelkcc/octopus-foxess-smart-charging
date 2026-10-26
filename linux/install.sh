@@ -26,6 +26,16 @@ DEBIAN_FRONTEND=noninteractive apt-get install -y \
   ca-certificates curl nodejs chromium fonts-noto-color-emoji \
   python3 python3-gi gir1.2-ayatanaappindicator3-0.1 pkexec
 
+if ! command -v cloudflared >/dev/null 2>&1; then
+  echo "Installing optional Quick Tunnel support from Cloudflare's signed package repository..."
+  install -d -m 0755 /usr/share/keyrings
+  curl --proto '=https' --tlsv1.2 -fsSL https://pkg.cloudflare.com/cloudflare-main.gpg -o /usr/share/keyrings/cloudflare-main.gpg
+  chmod 0644 /usr/share/keyrings/cloudflare-main.gpg
+  printf '%s\n' 'deb [signed-by=/usr/share/keyrings/cloudflare-main.gpg] https://pkg.cloudflare.com/cloudflared any main' > /etc/apt/sources.list.d/cloudflared.list
+  apt-get update
+  DEBIAN_FRONTEND=noninteractive apt-get install -y cloudflared
+fi
+
 NODE_MAJOR="$(node -p "Number(process.versions.node.split('.')[0])")"
 if [ "$NODE_MAJOR" -lt 18 ]; then
   echo "Node.js 18 or newer is required. Raspberry Pi OS Bookworm or newer is recommended." >&2
