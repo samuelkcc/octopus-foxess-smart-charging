@@ -7,7 +7,7 @@
     {id:'soc',title:'Battery level',unit:'%',fields:[['SoC','Charge level','#c084fc']]}
   ];
   window.installHistoryView = (panel, {piEdition,isVisible}) => {
-    panel.innerHTML = `<div class="dev-history-controls"><label>Month<input type="month" id="dev-history-month"></label><button id="dev-history-refresh">Refresh history</button><button id="dev-history-export">Download month CSV</button></div><p id="dev-history-status" role="status">Open History to load recorded data.</p><p class="history-save-status" role="status"></p><div class="history-chart-grid"></div><p class="dev-muted history-data-note">Observed averages, not billing-grade energy totals. Missing readings stay as gaps. Recording starts when history storage is installed.</p><h2>Automation activity</h2><div id="history-activity" aria-live="polite"></div>`;
+    panel.innerHTML = `<div class="dev-history-controls"><label>Month<input type="month" id="dev-history-month"></label><button id="dev-history-refresh">Refresh history</button><button id="dev-history-export">Download month CSV</button></div><div class="history-metadata"><p id="dev-history-status" role="status">Open History to load recorded data.</p><p class="history-save-status" role="status"></p></div><div class="history-chart-grid"></div><p class="dev-muted history-data-note">Observed averages, not billing-grade energy totals. Missing readings stay as gaps. Recording starts when history storage is installed.</p><div class="history-activity-heading"><h2>Automation activity</h2><nav aria-label="Activity pages" hidden><button type="button" class="history-previous">Previous</button><span role="status"></span><button type="button" class="history-next">Next</button></nav></div><div id="history-activity" aria-live="polite"></div>`;
     const monthInput=panel.querySelector('#dev-history-month');
     monthInput.value=new Date().toISOString().slice(0,7);monthInput.max=monthInput.value;
     const status=panel.querySelector('#dev-history-status');
@@ -15,6 +15,12 @@
     const refresh=panel.querySelector('#dev-history-refresh');
     const exportButton=panel.querySelector('#dev-history-export');
     let data=null,loading=false,requestRevision=0,expandedGroup=null,expandedChart=null;
+    let activityPage=0;
+    const pageSize=3;
+    const pager=panel.querySelector('[aria-label="Activity pages"]');
+    const previous=pager.querySelector('.history-previous'),next=pager.querySelector('.history-next');
+    previous.addEventListener('click',()=>{activityPage--;drawActivity();});
+    next.addEventListener('click',()=>{activityPage++;drawActivity();});
     const charts=new Map(),cards=new Map();
     const dialog=document.createElement('dialog');dialog.className='dev-review-dialog history-expanded';
     dialog.setAttribute('aria-labelledby','history-expanded-title');
@@ -62,22 +68,33 @@
       const canvas=dialog.querySelector('canvas');canvas.setAttribute('aria-label',`${expandedGroup.title} history for ${data.month}`);
       expandedChart?.destroy();expandedChart=new Chart(canvas,chartConfig(expandedGroup));
     }
-    function draw() {
+    function drawActivity() {
       if(!data)return;
       const activity=panel.querySelector('#history-activity');activity.replaceChildren();
-      for(const event of data.events || []) {
+      const events=[...(data.events || [])].sort((a,b)=>b.at.localeCompare(a.at));
+      activityPage=Math.max(0,Math.min(activityPage,Math.ceil(events.length/pageSize)-1));
+      const start=activityPage*pageSize;
+      pager.hidden=events.length<=pageSize;
+      previous.disabled=activityPage===0;next.disabled=start+pageSize>=events.length;
+      pager.querySelector('span').textContent=`${start+1}–${Math.min(start+pageSize,events.length)} of ${events.length}`;
+      for(const event of events.slice(start,start+pageSize)) {
         const row=document.createElement('div');row.className='next-activity-row';
         const title=document.createElement('strong');title.textContent=({automation_paused:'Automation paused',automation_resumed:'Automation resumed',pause_expired:'Timed pause ended'})[event.type] || event.type;
         const detail=document.createElement('p');detail.textContent=`${new Date(event.at).toLocaleString()}${event.type==='automation_paused'?(event.until?` · Until ${new Date(event.until).toLocaleString()}`:' · Until manually resumed'):''}`;row.append(title,detail);activity.append(row);
       }
       if(!activity.children.length)activity.textContent='No automation activity recorded for this month.';
+    }
+    function draw() {
+      if(!data)return;
+      drawActivity();
       if(!piEdition){status.textContent='Pause and resume activity on this browser · 12-month retention';return;}
       for(const group of groups) {
         const card=cards.get(group.id),config=chartConfig(group);
         charts.get(group.id)?.destroy();charts.set(group.id,new Chart(card.canvas,config));
         const hasData=config.data.datasets.some(series=>series.data.some(point=>point.y!==null));
         card.expand.disabled=!hasData;
-        card.caption.textContent=hasData?`Recorded month: ${data.month}`:'No readings recorded for this month.';
+        card.caption.hidden=hasData;
+        card.caption.textContent=hasData?'':'No readings recorded for this month.';
       }
       const bytes=data.allocatedBytes ?? data.storageBytes;
       panel.querySelector('.history-save-status').textContent=`Saves every ${data.saveIntervalMinutes || 60} minutes · ${data.bufferedIntervals || 0} ${(data.bufferedIntervals || 0)===1?'interval':'intervals'} waiting to save · Last saved: ${data.lastSavedAt?new Date(data.lastSavedAt).toLocaleString():'No readings saved yet'}`;
@@ -91,7 +108,8 @@
       try {
         const result=piEdition?await fetchJson(`/api/history?month=${encodeURIComponent(month)}`):{events:window.automationControl.events().filter(event=>event.at.slice(0,7)===month)};
         if(revision!==requestRevision)return;
-        data=result;draw();
+        if(data?.month!==result.month || month!==data?.requestedMonth)activityPage=0;
+        data={...result,requestedMonth:month};draw();
       } catch(error){if(revision===requestRevision)status.textContent=`History unavailable: ${error.message}`;}
       finally{if(revision===requestRevision){loading=false;refresh.disabled=false;}}
     }

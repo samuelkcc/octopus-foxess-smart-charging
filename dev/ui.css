@@ -218,7 +218,7 @@ body>div[id$="-modal"] button:hover:not(:disabled) {background:var(--button-hove
 #dev-shell button[data-state=success] {background:#166534!important;border-color:#166534!important;color:#fff!important;}
 #dev-shell button:disabled,.dev-review-dialog button:disabled {opacity:.55!important;cursor:wait;}
 #dev-shell .next-toggle input[type=checkbox] {background:color-mix(in srgb,var(--text-muted) 25%,var(--card-bg))!important;border-color:var(--border)!important;}
-#dev-shell .next-toggle input[type=checkbox]:checked {background:var(--button-fill)!important;border-color:var(--button-fill)!important;}
+#dev-shell .next-toggle input[type=checkbox]:checked {background:#15803d!important;border-color:#15803d!important;}
 .dev-review-dialog {box-sizing:border-box;max-height:calc(100dvh - 32px);overflow:auto;box-shadow:0 24px 80px #0004;}
 .dev-review-dialog button {font-family:inherit;cursor:pointer;border-radius:8px;}
 .next-dialog-header {display:flex;align-items:start;justify-content:space-between;gap:18px;margin-bottom:18px;}
@@ -397,3 +397,77 @@ body>#proxy-modal>div {max-width:850px!important;}
 #dev-shell .next-storage-warning button {width:auto;min-height:40px;flex-shrink:0;padding:9px 14px;border:1px solid #b91c1c;background:#b91c1c;color:white;border-radius:8px;}
 #dev-shell #history-settings .history-clear-button {color:white;background:#b91c1c;border-color:#b91c1c;}
 @media(max-width:600px){.next-storage-warning{flex-direction:column;align-items:stretch;gap:12px;}}
+
+/* Desktop pages occupy one viewport. Touch and phone layouts retain normal scrolling. */
+html.desktop-viewport,html.desktop-viewport body {height:100%;min-height:0;overflow:hidden;}
+.desktop-viewport #dev-shell {height:100dvh;min-height:0;--ui-gap:16px;}
+.desktop-viewport .dev-rail {height:100%;position:static;min-height:0;}
+.desktop-viewport .dev-workspace {height:100%;min-height:0;display:flex;flex-direction:column;overflow:hidden;}
+.desktop-viewport .dev-appbar {flex:0 0 auto;min-height:64px;padding:12px 24px;}
+.desktop-viewport .next-pause-banner {position:static;flex:0 0 auto;padding:12px 24px;}
+.desktop-viewport #dev-content {flex:1;min-height:0;min-width:0;overflow:hidden;}
+.desktop-viewport #dev-shell .app-wrapper {max-width:none;min-height:0;padding:20px 24px;margin:0;overflow:visible;}
+.desktop-viewport .dev-page-heading {margin-bottom:18px;}
+.desktop-viewport .dev-page-heading h1 {font-size:26px;margin:0 0 6px;}
+.desktop-viewport #dev-shell .next-panel,.desktop-viewport #dev-shell .card {padding:18px;}
+.desktop-viewport .next-panel-title {margin-bottom:14px;}
+.desktop-viewport .next-power {grid-template-columns:repeat(4,minmax(0,1fr));}
+.desktop-viewport .next-power-item {min-height:108px;padding:16px 18px;gap:10px;}
+.desktop-viewport .next-price-row {gap:36px;margin-bottom:14px;}
+.desktop-viewport .next-price-row strong {font-size:26px;}
+.desktop-viewport .next-panel .tariff-chart-frame {height:clamp(160px,23dvh,280px);}
+.desktop-viewport .next-field-grid {gap:14px;margin:12px 0;}
+.desktop-viewport .next-toggle {padding:12px 0;}
+.desktop-viewport .next-days {margin:12px 0 16px;}
+.desktop-viewport .next-actions,.desktop-viewport .next-settings-actions {margin-top:14px;}
+.desktop-viewport .next-refresh-setting {margin:12px 0;}
+.desktop-viewport #dev-shell .data-list {margin:12px 0;}
+.desktop-viewport #dev-shell .data-list li {padding:9px 0;}
+.desktop-viewport .dev-page-grid {grid-template-columns:repeat(2,minmax(0,1fr));}
+.desktop-viewport .next-chart-grid {grid-template-columns:repeat(2,minmax(0,1fr));}
+.desktop-viewport .dev-history-controls {gap:12px;}
+.desktop-viewport #dev-history-status {margin:12px 0 4px;}
+.desktop-viewport .history-save-status {margin:0 0 10px;}
+.desktop-viewport .history-chart-grid {gap:14px;margin:12px 0;grid-template-columns:repeat(2,minmax(0,1fr));}
+.desktop-viewport .history-chart-card {padding:14px;}
+.desktop-viewport .history-chart-header {margin-bottom:10px;}
+.desktop-viewport .history-chart-card .dev-history-chart {height:clamp(160px,calc((100dvh - 700px)/2),340px);}
+.desktop-viewport .history-chart-caption {margin:8px 0 0;}
+.desktop-viewport .history-data-note {margin:10px 0;font-size:10px;}
+.history-activity-heading {display:flex;align-items:center;justify-content:space-between;gap:16px;margin:16px 0 10px;}
+#dev-shell .history-activity-heading h2 {margin:0;font-size:14px;}
+.history-activity-heading nav {display:flex;align-items:center;gap:10px;font-size:11px;color:var(--text-muted);}
+#dev-shell .history-activity-heading button {min-height:32px;padding:6px 10px;font-size:11px;}
+.desktop-viewport #history-activity {display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;font-size:12px;}
+.desktop-viewport .next-activity-row {margin:0;padding:10px 12px;min-width:0;}
+.desktop-viewport .next-activity-row p {margin:4px 0 0;}
+@media(min-width:1400px) {
+  .desktop-viewport .dev-page[data-page=settings] .dev-page-grid {grid-template-columns:1.15fr 1fr 1fr;}
+  .desktop-viewport #history-settings {grid-column:1;grid-row:1/span 2;}
+  .desktop-viewport .dev-pi-edition [data-setting=appearance] {grid-column:2;grid-row:1;}
+  .desktop-viewport .dev-pi-edition [data-setting=api-refresh-intervals] {grid-column:2;grid-row:2;}
+  .desktop-viewport .dev-pi-edition [data-setting=visible-panels] {grid-column:3;grid-row:1/span 2;}
+  .desktop-viewport [data-setting=updates] {grid-column:1/-1;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px 24px;}
+  .desktop-viewport [data-setting=updates] h2 {grid-column:1/-1;margin:0;}
+  .desktop-viewport [data-setting=updates] p {margin:0;}
+}
+@media(max-width:760px) {.history-activity-heading {align-items:flex-start;flex-direction:column;gap:10px;}}
+
+/* One control size for comparable desktop actions, fields, chart and activity controls. */
+.desktop-viewport #dev-shell .next-panel button,.desktop-viewport #dev-shell .dev-history button,.desktop-viewport #dev-shell .next-button {display:inline-flex;align-items:center;justify-content:center;width:auto;height:40px;min-height:40px;padding:0 14px;margin:0;font-size:12px;font-weight:550;line-height:1.2;white-space:nowrap;}
+.desktop-viewport #dev-shell .next-field input,.desktop-viewport #dev-shell .next-field select,.desktop-viewport #dev-shell .dev-history-controls input {height:40px;min-height:40px;padding:8px 12px!important;font-size:13px!important;}
+.desktop-viewport #dev-shell .dev-history {display:block;}
+.desktop-viewport .history-metadata {display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:6px 24px;margin:12px 0;}
+.desktop-viewport #dev-history-status,.desktop-viewport .history-save-status {margin:0;}
+.history-activity-heading nav {flex-shrink:0;white-space:nowrap;}
+#dev-shell .history-activity-heading button {width:auto;flex-shrink:0;}
+.history-activity-heading nav span {white-space:nowrap;min-width:70px;text-align:center;}
+.dev-drawer-header button,.dev-setup-drawer h3 button {width:40px;height:40px;}
+.desktop-viewport .dev-page-grid {align-items:stretch;}
+.desktop-viewport .dev-page[data-page=rules] .next-panel {display:flex;flex-direction:column;}
+.desktop-viewport .dev-page[data-page=rules] .next-rule-body {flex:1;}
+.desktop-viewport .dev-page[data-page=overview] .tariff-chart-frame {height:clamp(180px,calc(100dvh - 760px),500px);}
+
+.desktop-viewport .dev-hidden-panel-hint {align-self:start;}
+.desktop-viewport #dev-shell .dev-inspector>button {align-self:flex-start;}
+.desktop-viewport #dev-shell .next-pause-banner button {height:40px;min-height:40px;padding:0 14px;font-size:12px;}

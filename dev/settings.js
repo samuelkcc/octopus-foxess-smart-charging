@@ -14,6 +14,7 @@
   };
   const card = (title, description) => {
     const node = make('section', 'next-panel');
+    node.dataset.setting=title.toLowerCase().replace(/[^a-z]+/g,'-').replace(/-$/,'');
     node.append(make('h2', 'next-panel-title', title), make('p', 'next-muted', description));
     grid.append(node); return node;
   };
@@ -96,7 +97,7 @@
     action('About and licences', () => openLicenseModal(false))
   );
   help.append(helpActions);
-  previous.forEach(node => { node.className = 'next-panel'; node.querySelector('h2')?.classList.add('next-panel-title'); grid.append(node); });
+  previous.forEach(node => { node.dataset.setting='updates'; node.className = 'next-panel'; node.querySelector('h2')?.classList.add('next-panel-title'); grid.append(node); });
 
   // The old menu stays out of the layout. Remaining engine references remain valid.
   document.getElementById('dev-engine-elements').append(document.getElementById('app-menu-panel'));

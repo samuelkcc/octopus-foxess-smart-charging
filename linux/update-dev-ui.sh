@@ -25,6 +25,7 @@ node --check dev/views.js
 node --check dev/settings.js
 node --check dev/controls.js
 node --check dev/monitor.js
+node --check dev/viewport.js
 node --check dev/history.js
 node --check dev/default-route.js
 OCTOPUS_UI_COMMIT="$DEV_UI_COMMIT" node scripts/build-dev.mjs

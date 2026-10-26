@@ -22,7 +22,7 @@ let retentionMonths = 12;
 let saveIntervalMinutes = 60;
 let lowStorage=false,historyCleared=false;
 const historyStats=()=>({retentionMonths,saveIntervalMinutes,storageBytes:historyCleared?0:150,allocatedBytes:historyCleared?0:4096,bufferedIntervals:historyCleared?0:1,lastSavedAt:null,freeBytes:lowStorage?3e9:16e9,reserveBytes:4e9,lowStorage,automaticCleanup:true});
-const activity = [];
+const activity = process.env.OCTOPUS_FIXTURE_ACTIVITY==='1' ? Array.from({length:8},(_,index)=>({type:index%2?'automation_resumed':'automation_paused',at:new Date(Date.now()-index*3600000).toISOString(),until:null})) : [];
 const config = { credentials:{ acc:'A-MOCK', api:'pi-managed', foxSN:'pi-managed', foxToken:'pi-managed' }, automations:{dispatchCheck:false}, liveWsEnabled:false, liveWsPolicy:'rest', revision:1 };
 const device = {status:'LIVE',vehicleMake:'Example',vehicleModel:'Mock EV'};
 http.createServer(async (request,response) => {
@@ -34,11 +34,17 @@ http.createServer(async (request,response) => {
     const timestamp = new Date().toISOString();
     if (url.pathname === '/test/viewport') {
       const requested=Number(url.searchParams.get('width'));
-      const width=[320,390,768,1024].includes(requested)?requested:390;
+      const width=[320,390,768,1024,1280,1440,1920,2560].includes(requested)?requested:390;
+      const height=[650,720,900,1080,1320,1440].includes(Number(url.searchParams.get('height')))?Number(url.searchParams.get('height')):650;
+      const scale=Math.max(.25,Math.min(1,Number(url.searchParams.get('scale')) || 1));
       const view=['overview','schedules','rules','history','connections','settings'].includes(url.searchParams.get('view'))?url.searchParams.get('view'):'overview';
       const route=web?'/web/index.html?setup=1':`/dev/index.html?client=1&view=${view}${url.searchParams.get('connected')==='1'?'':'&locked=1'}`;
       response.writeHead(200,{'Content-Type':'text/html','Cache-Control':'no-store'});
-      return response.end(`<main><p>Local responsive fixture: ${width}px</p><iframe title="Responsive app test" src="${route}" style="display:block;width:${width}px;height:650px;border:0"></iframe></main>`);
+      return response.end(`<main><p>Local responsive fixture: ${width} × ${height}px</p><output id="viewport-metrics" style="display:block;font:10px monospace"></output><iframe title="Responsive app test" src="${route}" style="display:block;width:${width}px;height:${height}px;border:0;transform:scale(${scale});transform-origin:top left"></iframe></main><script>
+      setInterval(()=>{const frame=document.querySelector('iframe'),d=frame.contentDocument;if(!d?.querySelector('#dev-content'))return;
+      const page=d.querySelector('.dev-page:not([hidden])'),content=d.querySelector('#dev-content'),rail=d.querySelector('.dev-rail'),r=page?.getBoundingClientRect(),c=content.getBoundingClientRect();
+      document.querySelector('#viewport-metrics').textContent=JSON.stringify({page:page?.dataset.page,scale:content.dataset.fitScale,viewport:[frame.contentWindow.innerWidth,frame.contentWindow.innerHeight],document:[d.documentElement.scrollWidth,d.documentElement.scrollHeight],content:{left:c.left,right:c.right,bottom:c.bottom},pageBounds:r?{left:r.left,right:r.right,bottom:r.bottom}:null,railBottom:rail.getBoundingClientRect().bottom});},1000);
+      </script>`);
     }
     if(url.pathname==='/test/storage' && request.method==='PUT'){lowStorage=payload.low===true;return json(historyStats());}
     if(url.pathname==='/api/history/clear' && request.method==='POST'){historyCleared=true;activity.length=0;return json({cleared:true,...historyStats()});}
@@ -108,7 +114,7 @@ http.createServer(async (request,response) => {
         ? 'localStorage.removeItem("licenseAccepted");'
         : 'localStorage.setItem("licenseAccepted","true");';
       html = html.replace('<head>',`<head><script>${noticeFixture}</script>`)
-        .replace('<body>','<body><p style="padding:8px;margin:0;color:#b91c1c">LOCAL TEST · MOCK DATA · No real credentials or inverter commands</p>');
+        .replace('<body>','<body><p style="position:fixed;bottom:0;left:0;z-index:10020;padding:4px;margin:0;color:#b91c1c;background:white;font-size:10px;pointer-events:none">LOCAL TEST · MOCK DATA · No real credentials or inverter commands</p>');
       response.writeHead(200,{'Content-Type':'text/html','Cache-Control':'no-store'});return response.end(html);
     }
     if (url.pathname === '/octopus-foxess.svg') {

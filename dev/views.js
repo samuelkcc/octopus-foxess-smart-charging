@@ -100,7 +100,8 @@
   dischargeBody.append(toggle('toggle-auto-export','Discharge at an export price'),field('export-threshold','Minimum export price (p/kWh)'),byId('export-target-times'));
   dischargeBody.append(toggle('toggle-weekly-discharge','Weekly discharge schedule'),group(field('weekly-discharge-start','Start time'),field('weekly-discharge-end','End time')),days('weekly-discharge-day'));
   dischargeBody.append(toggle('toggle-discharge-pause-dispatch','Pause during Smart Dispatch','Keep EV charging protection active.'),toggle('toggle-discharge-overrides-charge','Replace overlapping ordinary charging','Do not charge and discharge in the same minute.'));
-  discharging.append(dischargeBody,byId('btn-save-discharge'));rules.append(discharging);
+  const dischargeActions=make('div','next-actions');dischargeActions.append(byId('btn-save-discharge'));
+  discharging.append(dischargeBody,dischargeActions);rules.append(discharging);
   for(const node of [charging,discharging,programmed]) {const hint=make('p','dev-hidden-panel-hint','This panel is hidden. Show it in Settings → Visible panels.');node.after(hint);}
 
   const connections=grid('connections');

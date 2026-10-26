@@ -453,3 +453,35 @@ The public URL and saved intervals stayed unchanged.
 Mock observations confirmed that Octopus progress moved ten times faster than FoxESS at the 60-second and 600-second defaults.
 The fixed-speed animation was absent in both badge states.
 The full check suite and both interface builds passed.
+
+
+## Desktop viewport layout
+
+Desktop pages fit inside the available browser viewport.
+The navigation rail uses the full viewport height.
+Content uses a common width and consistent outer margins.
+The interface scales content proportionally when a desktop page needs more room.
+The desktop target is a 2560-by-1440 landscape display.
+The available height excludes browser controls.
+Wide desktop Settings uses three columns.
+History shows all four charts with compact captions and paged activity.
+Each activity page contains up to three entries, with the newest entries first.
+Expanded charts and licence drawers remain separate overlays.
+Phone and touch layouts retain normal scrolling.
+
+Comparable desktop action buttons and input fields use a common 40-pixel height.
+Charging and discharging actions use the same right-aligned button row.
+Enabled toggle switches use green across Settings and automation rules.
+Cards in the same grid row share aligned lower edges.
+
+Desktop browser checks used a 2560-by-1320 content viewport to allow space for browser controls on the target display.
+All six main Pi pages fit at their original scale without document overflow.
+The navigation rail ended at the same lower edge as the viewport.
+A 1280-by-720 check confirmed proportional fitting on smaller desktop windows.
+The 390-pixel phone check retained vertical scrolling without horizontal overflow.
+History activity pagination and chart expansion passed browser checks.
+Mock pause controls preserved the red banner without extending the desktop page.
+Pi login and standalone setup were checked separately.
+Standalone setup connected to a local GAS mock; no live GAS deployment was used.
+No real pause, inverter, history-clear, or credential change was submitted.
+The full check suite and both interface builds passed.

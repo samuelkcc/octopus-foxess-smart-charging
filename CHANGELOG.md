@@ -1,5 +1,9 @@
 ## v2.0.0 — Major redesign under review
 
+- Fit desktop pages inside one viewport. Align the navigation rail and content edges. Preserve phone scrolling.
+- Use compact desktop cards, responsive chart heights, and three Settings columns on wide screens.
+- Page through history activity without extending the dashboard. Keep all four history charts and Expand actions available.
+
 - Replace header countdowns with two equal API status buttons. Synchronize their circular progress with each API interval and reload data on selection.
 - Move Pause automation into the shared application header. Keep the red pause banner and duration dialog.
 - Keep retained problem alerts in fixed-size red indicators. Remove the separate Update now action.
