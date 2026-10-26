@@ -109,9 +109,6 @@
   const service=panel(pi?'Service connections':'Browser connections');
   for(const [label,badge] of [['Octopus API','octo-api-badge'],['FoxESS REST / telemetry','fox-api-badge']]) {const row=make('div','next-service-row');row.append(make('strong','',label),byId(badge));service.append(row);}
   const tracking=make('p','next-muted');tracking.append(make('span','','FoxESS API calls today: '),byId('fox-api-counter'));service.append(tracking);
-  const intervals=make('details');intervals.append(make('summary','','Refresh intervals'));
-  const intervalBody=make('div','next-details-body');intervalBody.append(group(field('octo-interval-input','Octopus interval (seconds)'),field('fox-interval-input','FoxESS interval (seconds)')));
-  const intervalActions=make('div','next-actions');intervalActions.append(byId('btn-apply-octo'),byId('btn-apply-fox'));intervals.append(intervalBody,intervalActions);service.append(intervals);
   // The existing worker state fields remain live. They appear once, in Connections.
   const inspector=parking.querySelector('.dev-inspector');if(inspector)service.append(inspector);
   connections.append(service);

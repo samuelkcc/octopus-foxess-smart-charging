@@ -61,6 +61,7 @@ http.createServer(async (request,response) => {
     }
     if (url.pathname === '/api/auth') { response.writeHead(204);return response.end(); }
     if (url.pathname === '/api/config') {
+      if(request.method==='PUT') {config.automations=payload.automations || config.automations;config.revision+=1;return json({saved:true,revision:config.revision});}
       if (request.method !== 'GET') return json({error:'Fixture configuration is read-only'},405);
       return json({...config, automationPause:pauseState});
     }

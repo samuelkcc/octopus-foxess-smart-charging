@@ -1,5 +1,10 @@
 ## v2.0.0 — Major redesign under review
 
+- Replace header countdowns with two equal API status buttons. Animate their circular icons during reads and reload data on selection.
+- Keep retained problem alerts in fixed-size red indicators. Remove the separate Update now action.
+- Move refresh intervals into Settings. Save browser values locally and Pi values in encrypted configuration for the worker.
+- Keep the Pi Smart Dispatch interval at 60 seconds or less. Retain confirmation before shorter API intervals.
+
 - Put developer and build details in About. Add the project background, battery-protection purpose, and edition-specific operating requirements.
 
 - Remove the repeated page footer. Keep developer credit, version, and licence information in About.

@@ -357,3 +357,35 @@ The existing authenticated Safari session displayed the top-right timers and bot
 The repeated footer and connected Pi label were absent.
 The live About panel displayed the new background and the exact installed UI revision.
 The runtime remains `214132d72ab06c9ea6696c14b645be4c90da7c6d`.
+
+
+## API health badges and interval settings
+
+The application header shows two equal API status buttons without countdown text.
+Green rings identify healthy connections.
+Circular icons rotate during API reads.
+Selecting either badge reloads API data through the existing protected refresh path.
+Retained incidents use small red indicators in reserved positions.
+The indicator opens the existing review and acknowledgement dialog.
+
+Settings contains both API refresh intervals.
+The web edition saves values in browser storage.
+The Pi stores values inside its encrypted automation configuration.
+The worker loads changed configuration through its existing revision check.
+Invalid values and failed saves cannot replace the last saved interval.
+Existing automation rules are preserved when an interval is saved.
+Pi Smart Dispatch checks remain at 60 seconds or less.
+Shorter intervals retain the existing API-rate warning confirmation.
+
+The pinned browser-asset updater now builds the shared engine from source.
+Its optional `--restart-worker` argument reloads the existing background worker.
+The updater does not restart the server or tunnel.
+This installation needs that option so the worker can read saved intervals.
+
+
+Mock browser checks measured both desktop badges at 148 by 40 pixels.
+A retained error did not change either badge size.
+Selecting a badge requested an immediate refresh.
+The Pi fixture saved a 900-second FoxESS interval and restored it after page reload.
+A 390-pixel phone check confirmed visible circular icons and a fixed red alert indicator.
+The standalone setup screen and interval persistence unit tests passed.

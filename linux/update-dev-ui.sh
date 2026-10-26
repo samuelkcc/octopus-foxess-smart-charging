@@ -1,21 +1,23 @@
 #!/bin/sh
-# Update only the DEV view; no server restart, configuration write, or tunnel change.
+# Update browser assets from pinned source; never restart the server or tunnel.
+# --restart-worker loads shared browser-engine changes in the existing worker.
 set -eu
 [ "$(id -u)" -eq 0 ] || { echo 'Run with sudo.' >&2; exit 1; }
 DEV_UI_COMMIT="${1:-}"
+case "${2:-}" in ''|--restart-worker) ;; *) echo 'Unknown option.' >&2; exit 1;; esac
 case "$DEV_UI_COMMIT" in *[!0-9a-f]*|'') exit 1;; esac
 [ "${#DEV_UI_COMMIT}" -eq 40 ] || exit 1
 ACTIVE_DEV="$(readlink -f /opt/octopus-foxess/current)"
 case "$ACTIVE_DEV" in /opt/octopus-foxess/dev/*) ;; *) echo 'DEV runtime required.' >&2; exit 1;; esac
 TEMP_UI="$(mktemp -d)"
 trap 'rm -rf "$TEMP_UI"' EXIT INT TERM
-mkdir -p "$TEMP_UI/dist" "$TEMP_UI/dev" "$TEMP_UI/scripts" "$TEMP_UI/linux" "$TEMP_UI/src/icons"
-cp "$ACTIVE_DEV/web/index.html" "$TEMP_UI/dist/Octopus_IGO_Smart_Charging_Detector.html"
-for file in dev/ui.css dev/ui.js dev/about.js dev/setup.js dev/views.js dev/settings.js dev/controls.js dev/monitor.js dev/history.js dev/default-route.js dev/site.webmanifest linux/octopus-foxess.svg src/icons/icon-192.png src/icons/icon-512.png src/icons/apple-touch-icon.png scripts/build-dev.mjs scripts/test-dev-build.mjs package.json; do
-  curl --connect-timeout 15 --max-time 60 --proto '=https' --tlsv1.2 -fsSL "https://raw.githubusercontent.com/samuelkcc/octopus-foxess-smart-charging/$DEV_UI_COMMIT/$file" -o "$TEMP_UI/$file"
-done
+curl --connect-timeout 15 --max-time 120 --proto '=https' --tlsv1.2 -fsSL "https://codeload.github.com/samuelkcc/octopus-foxess-smart-charging/tar.gz/$DEV_UI_COMMIT" -o "$TEMP_UI/source.tar.gz"
+mkdir "$TEMP_UI/source"
+tar -xzf "$TEMP_UI/source.tar.gz" --strip-components=1 -C "$TEMP_UI/source"
 [ -f "$ACTIVE_DEV/automation-pause.mjs" ] && [ -f "$ACTIVE_DEV/integration-state.mjs" ] || { echo 'Install the full runtime update before this UI update.' >&2; exit 1; }
-cd "$TEMP_UI"
+cd "$TEMP_UI/source"
+node scripts/build.mjs
+node --check src/refresh-preferences.js
 node --check dev/ui.js
 node --check dev/about.js
 node --check dev/setup.js
@@ -43,4 +45,9 @@ install -d -m 0755 "$ACTIVE_DEV/web/app/icons"
 for icon in icon-192.png icon-512.png apple-touch-icon.png; do
   install -m 0644 "dist/linux-package/octopus-foxess/web/app/icons/$icon" "$ACTIVE_DEV/web/app/icons/$icon"
 done
-echo "DEV UI updated to $DEV_UI_COMMIT; original dashboard, worker, configuration and tunnel unchanged."
+case "${2:-}" in
+  --restart-worker) systemctl restart octopus-foxess-worker;;
+  '') ;;
+  *) echo 'Unknown option.' >&2; exit 1;;
+esac
+echo "DEV UI updated to $DEV_UI_COMMIT; server, configuration, history and tunnel unchanged."

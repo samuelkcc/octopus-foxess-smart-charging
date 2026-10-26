@@ -23,6 +23,7 @@ A development commit does not publish GitHub Pages or create a release.
 | `linux/automation-pause.mjs` | Persistent pause state, command barrier, expiry, and activity journal. |
 | `dev/controls.js` | Pause controls, hardware-limit dialog, and history retention interface. |
 | `linux/integration-state.mjs` | Shared service health, retained alerts, and acknowledgement rules. |
+| `src/refresh-preferences.js` | Validates and saves API intervals through existing browser and encrypted Pi configuration. |
 | `src/integration-monitor.js` | Browser health storage, Pi status polling, and worker refresh requests. |
 | `dev/history.js` | History overview charts, expansion, month queries, CSV export, and activity. |
 | `dev/monitor.js` | Shared Overview countdowns, manual refresh, and problem dialogs. |

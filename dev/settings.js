@@ -38,6 +38,18 @@
   displayActions.append(action('Full screen', toggleFullScreen), action('Screen saver', toggleScreenSaver));
   appearance.append(displayActions);
 
+  const refreshSettings=card('API refresh intervals', pi
+    ? 'These intervals apply to the Pi worker. Smart Dispatch checks run at least once every 60 seconds.'
+    : 'Set how often this browser reads each API. Keep this browser open and awake.');
+  for(const [name,id,buttonId,title] of [['octopus','octo-interval-input','btn-apply-octo','Octopus Energy'],['foxess','fox-interval-input','btn-apply-fox','FoxESS']]) {
+    const row=make('div','next-refresh-setting');
+    const label=make('label','next-field',`${title} interval (seconds)`);label.htmlFor=id;
+    const input=document.getElementById(id);input.min='10';input.max=name==='octopus' && pi?'60':'86400';input.step='1';
+    label.append(input);const save=document.getElementById(buttonId);save.textContent='Save';
+    row.append(label,save);refreshSettings.append(row);
+  }
+  refreshSettings.append(make('p','next-muted','Short intervals can reach API rate limits. FoxESS defaults to 600 seconds.'));
+
   const visibleStates = [];
   const visibility = card('Visible panels', 'Choose which panels to show on this device. This does not disable automation.');
   for (const [key, label] of [

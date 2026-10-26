@@ -338,6 +338,7 @@ async function loadLinuxState() {
     if (state.automations) {
         localStorage.setItem('foxAutomations', JSON.stringify(state.automations));
     }
+    window.refreshPreferences?.load(state.automations?.refreshIntervals);
     renderLiveWsMenuState(state);
     return state;
 }
@@ -1036,59 +1037,8 @@ function forceOctoRefresh() { if (octoCountdown > 2) window.nextOctoTime = Date.
 function forceFoxRefresh() { if (foxCountdown > 2) window.nextFoxTime = Date.now() + 1000; }
 let localWorkModeState = "Unknown";
 
-function applyOctoInterval() {
-    const val = parseInt(document.getElementById('octo-interval-input').value);
-    if (isNaN(val) || val < 10) return;
-    
-    const commitOctoValue = () => {
-        octoRefreshInterval = val; window.nextOctoTime = Date.now() + (val * 1000);
-        const btn = document.getElementById('btn-apply-octo');
-        if (btn) {
-            btn.textContent = "✅"; btn.style.background = "#10b981";
-            setTimeout(() => { btn.textContent = "Apply"; btn.style.background = "var(--accent)"; }, 2000);
-        }
-        updateCircleTimer('octo-timer', octoCountdown, octoRefreshInterval);
-    };
-
-    if (val < 60) {
-        const modal = document.getElementById('octo-warning-modal');
-        modal.style.display = 'flex';
-        document.getElementById('cancel-octo-btn').onclick = () => { 
-            modal.style.display = 'none'; 
-            document.getElementById('octo-interval-input').value = 60;
-        };
-        document.getElementById('confirm-octo-btn').onclick = () => { modal.style.display = 'none'; commitOctoValue(); };
-    } else {
-        commitOctoValue();
-    }
-}
-
-function applyFoxInterval() {
-    const val = parseInt(document.getElementById('fox-interval-input').value);
-    if (isNaN(val) || val < 10) return;
-    
-    const commitFoxValue = () => {
-        foxRefreshInterval = val; window.nextFoxTime = Date.now() + (val * 1000);
-        const btn = document.getElementById('btn-apply-fox');
-        if (btn) {
-            btn.textContent = "✅"; btn.style.background = "#10b981";
-            setTimeout(() => { btn.textContent = "Apply"; btn.style.background = "var(--accent)"; }, 2000);
-        }
-        updateCircleTimer('fox-timer', foxCountdown, foxRefreshInterval);
-    };
-
-    if (val < 600) {
-        const modal = document.getElementById('fox-warning-modal');
-        modal.style.display = 'flex';
-        document.getElementById('cancel-fox-btn').onclick = () => { 
-            modal.style.display = 'none'; 
-            document.getElementById('fox-interval-input').value = 600;
-        };
-        document.getElementById('confirm-fox-btn').onclick = () => { modal.style.display = 'none'; commitFoxValue(); };
-    } else {
-        commitFoxValue();
-    }
-}
+function applyOctoInterval() { return window.refreshPreferences?.apply('octopus'); }
+function applyFoxInterval() { return window.refreshPreferences?.apply('foxess'); }
 
 function updateCircleTimer(id, current, max) {
     const percentage = Math.max(0, (current / max) * 100);
@@ -1698,6 +1648,7 @@ async function initDashboard(isAutoRefresh = false, retryCount = 1) {
 }
 
 function startAutoRefreshTimer() {
+    window.refreshPreferences?.load(readStoredJson('foxAutomations',{}).refreshIntervals);
     const initialOctoInterval = getEffectiveOctopusRefreshInterval();
     window.nextOctoTime = Date.now() + (initialOctoInterval * 1000);
     window.nextFoxTime = Date.now() + (foxRefreshInterval * 1000);
@@ -2724,6 +2675,7 @@ async function evaluateLocalAutomations(btn = null, isStartup = false) {
 
     // Save configuration implicitly on run
     const automationConfig = {
+        refreshIntervals: window.refreshPreferences?.values(),
         priceCheck: isAutoPrice,
         dispatchCheck: isAutoDispatch,
         exportCheck: isAutoExport,
