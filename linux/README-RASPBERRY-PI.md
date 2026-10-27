@@ -47,7 +47,7 @@ Browser clients do not receive the service API keys or FoxCloud passwords.
 | Amber | The service is waiting or using a fallback. |
 | Red | A connection or configuration needs attention. |
 
-![Pi settings](../Pi_Config.png)
+![Pi Configuration with example data](../docs/screenshots/pi-configuration.png)
 
 ## Open the LAN dashboard
 
@@ -138,6 +138,18 @@ A private VPN is another access option.
 API clients can send the key in the `X-Octopus-Remote-Key` header over HTTPS.
 The key must not appear in a URL.
 
+## Recover a changed public URL
+
+Set up [Raspberry Pi Connect](https://www.raspberrypi.com/documentation/services/connect.html) before relying on Quick Tunnel.
+
+1. Sign in to [Pi Connect](https://connect.raspberrypi.com/).
+2. Open your Pi screen share.
+3. Open the charger icon's **Remote Access…** window.
+4. Copy the public URL field.
+5. Select **Copy Key**.
+6. Use Pi Connect's **Copy from remote** to transfer the key.
+7. Update the bookmark or Home Screen shortcut.
+
 ## Add a Home Screen shortcut
 
 1. Open the dashboard in Safari on the iPhone or iPad.
@@ -165,10 +177,9 @@ A newer dispatch revision takes priority over an older confirmation.
 The service rejects stale confirmation results.
 A matching schedule readback does not prove measured battery power.
 
-## Use DEV history
+## Use history
 
-History is available in version 2.0.0 under review.
-It is not in public v2026.10.26.5.
+History is included in public version 2.0.0.
 
 1. Select **Open Desktop Client** from the taskbar charger menu.
 2. Select **History**.
@@ -188,7 +199,7 @@ It reuses existing worker telemetry requests.
 History adds no upstream API requests.
 It records solar, home load, grid import/export, battery charge/discharge, and state of charge.
 
-Collection starts when the DEV version is installed.
+Collection starts when history storage is installed.
 Earlier records are not imported.
 Missing readings remain gaps.
 The values are observed averages, not billing-grade energy totals.
@@ -214,9 +225,8 @@ It preserves configuration and history data.
 It restarts the tunnel if remote access was enabled.
 That restart creates a new public URL.
 
-The public updater currently installs v2026.10.26.5.
-On DEV, it returns the Pi to the public edition.
-[The DEV guide](../dev/README.md) describes separate development updates.
+Version 2.0.0 includes the redesigned dashboard, native service controls, remote access, and history.
+[The development guide](../dev/README.md) describes source-based installation tools.
 
 ## Inspect the services
 
@@ -270,9 +280,9 @@ History records pause, manual resume, and timed expiry.
 ## Check data updates
 
 1. Open **Overview**.
-2. Find **Data updates** below the power readings.
-3. Check the Octopus and FoxESS countdowns.
-4. To request fresh data, select **Update now**.
+2. Find the Octopus and FoxESS badges in the shared header.
+3. Check their health indicators and circular interval progress.
+4. To request fresh data, select the related API badge.
 5. If a red problem button appears, select it.
 6. Read the reported problem.
 7. After recovery, select **Clear alert**.
@@ -285,8 +295,8 @@ A value of `--` means the required measurement is unavailable.
 Data refresh does not cancel an automation pause.
 
 The same controls appear on desktop and mobile dashboards.
-The countdowns use the Pi worker timing when it is available.
-**Update now** also requests a worker refresh.
+The circles use Pi worker timing when it is available.
+Selecting a badge also requests a worker refresh.
 The worker retains control of automatic schedule changes.
 Server problem alerts survive a service restart.
 Clearing a server alert clears it for all connected Pi dashboards.
@@ -340,7 +350,9 @@ Settings rejects Octopus intervals below 60 seconds and FoxESS intervals below 6
 Every outbound Octopus request uses one shared queue.
 Opening more Pi dashboards does not create separate upstream polling loops.
 Authentication, dispatch, account, and tariff requests remain at least one minute apart.
-The first connection can require several minutes.
+After a service restart, the worker can need several minutes for its first complete API response.
+Phone and desktop clients open from a local snapshot without joining that upstream queue.
+Before the first response, the dashboard shows pending server data.
 A reported rate limit delays later requests.
 The last valid dispatch remains available after a failed request.
 
@@ -373,4 +385,4 @@ Pause blocks schedule writes but continues API monitoring.
 Only the local Configuration window can change service enablement.
 Remote clients can see the disabled state.
 They cannot enable the service.
-Older public versions do not support this control.
+Version 2.0.0 includes this control.

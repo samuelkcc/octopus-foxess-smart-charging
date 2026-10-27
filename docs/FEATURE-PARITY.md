@@ -34,5 +34,16 @@ It does not independently certify native DPAPI, firewall, sleep, or shutdown beh
 Public screenshots do not display a real account or device identifier.
 
 A spare-Pi rollback exercise was not performed for this release.
-The existing installer backup and rollback paths remain in place.
-The final live update is checked separately after publication.
+The source-based development installer retains its backup and rollback paths.
+The public installer preserves the configuration and history directories.
+
+## Live public update
+
+Release commit `40fa2893272d5185f65d2101aed909aa10d97ba2` was installed through the normal Pi updater on 27 October 2026.
+Credential, LAN-code, and remote-key fingerprints were unchanged.
+The history store retained 60 intervals. All three services and both energy APIs were healthy.
+Four concurrent snapshot reads completed in approximately 0.02 seconds on the host.
+The taskbar icon was visible, and the display remained at 1920 × 1080.
+An unauthenticated request reached the correct release login entry.
+Dashboard authentication remains required.
+An authenticated test through that replacement URL was not performed.

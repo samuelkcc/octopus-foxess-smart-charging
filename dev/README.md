@@ -1,6 +1,6 @@
 # DEV guide
 
-The development version is **2.0.0**.
+Version **2.0.0** is published. These tools support future source-based development.
 The source branch is `codex/ui-ux-preview`.
 This branch does not publish GitHub Pages or create a release tag.
 
@@ -23,7 +23,7 @@ Settings is part of the main navigation.
 The phone layout uses navigation at the bottom.
 Settings contains appearance, visible panels, telemetry, access, and help.
 The app title, icon, and address have no DEV label.
-The Pi remains a development installation.
+The review Pi now uses the published release through the standard updater.
 
 About & License opens in a side panel.
 On first use, its action is **Accept and Continue**.
@@ -630,3 +630,21 @@ Only local Configuration can change it.
 Its mock test verifies zero upstream requests while disabled and persistence after restart.
 The Windows package uses the normal application name without a Preview label.
 Its native Windows verification will use the user's UTM environment.
+
+## Published release verification — 27 October 2026
+
+The user approved publication of version 2.0.0.
+Release commit `40fa2893272d5185f65d2101aed909aa10d97ba2` was installed through the existing public updater.
+The update completed successfully.
+Credential, LAN-code, and remote-key fingerprints matched the private pre-update baseline.
+The history store retained its existing 60 recorded intervals.
+Server, worker, and sleep-inhibition services were active.
+Both energy APIs recovered after startup.
+Four concurrent dashboard-snapshot reads completed in approximately 0.02 seconds on the host.
+These snapshot reads do not consume upstream Octopus queue slots.
+The taskbar indicator was registered and visible.
+The headless display remained at 1920 × 1080 with normal rotation.
+
+The replacement public URL served the correct Pi interface and release revision.
+No authenticated login was performed through that replacement URL.
+No live inverter command, operator pause, or history deletion was used as a test action.
