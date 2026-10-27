@@ -139,3 +139,15 @@ Interface images use dark appearance. The mobile montage was supplied by the pro
 - All three Pi services were active. Both API services reported healthy live state.
 - Recent Chromium graphics and desktop-bus warnings did not coincide with an active API failure.
 - No live inverter command is used for verification.
+
+### Public v2.0.4 installation
+
+The normal Pi updater installed v2.0.4 on 27 October 2026.
+The installed UI revision is `938259d7dc124c6ebfc5780530cdc1c7ae0eb3bf`.
+All three services were active after installation. Both API services reported healthy state.
+A private on-device backup preserves the previous settings and history.
+Private fingerprints confirmed unchanged account settings, LAN code, and Remote Access Key.
+The replacement public URL returned the v2.0.4 runtime without a credential submission.
+Both GitHub workflows passed. All downloaded release files matched the published checksums.
+The local distribution contains one HTML file and one Windows EXE.
+Native Windows execution remains a user check.

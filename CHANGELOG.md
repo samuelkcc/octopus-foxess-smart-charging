@@ -36,6 +36,8 @@ Diagnostic tests cover error-only recording, grouping, size limits, restart pers
 The full regression suite and build checks pass.
 Browser checks confirm automatic price display and diagnostic-export feedback with mock services.
 No verification sends a command to a live inverter.
+The public updater installed v2.0.4 on the project owner's Pi. All three services and both API connections were healthy.
+Account settings and both access credentials remained unchanged.
 Native Windows execution remains a user check.
 
 # v2.0.3 — 2026-10-27
