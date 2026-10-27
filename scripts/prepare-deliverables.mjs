@@ -1,0 +1,40 @@
+// Copyright (C) 2026 SCKC. GPL-3.0-or-later.
+// Keep only the two user-facing files in dist. Preserve build work separately.
+import { mkdir, mkdtemp, readFile, readdir, rename, stat } from 'node:fs/promises';
+import path from 'node:path';
+import { pathToFileURL } from 'node:url';
+
+export async function prepareDeliverables(root = process.cwd()) {
+  const { version } = JSON.parse(await readFile(path.join(root, 'package.json'), 'utf8'));
+  const dist = path.join(root, 'dist');
+  const html = `Smart_Charging_v${version}.html`;
+  const exe = `SmartCharging-${version}-Windows-x64.exe`;
+  const nestedExe = path.join(dist, 'windows', exe);
+  let executable = path.join(dist, exe);
+  try { await stat(executable); } catch (error) {
+    if (error.code !== 'ENOENT') throw error;
+    executable = nestedExe;
+  }
+  // Validate both deliverables before moving any files.
+  for (const file of [path.join(dist, html), executable]) {
+    const info = await stat(file);
+    if (!info.isFile() || !info.size) throw new Error(`Missing deliverable: ${file}`);
+  }
+  const keep = new Set([html, exe]);
+  const extras = (await readdir(dist)).filter(name => !keep.has(name));
+  let archive;
+  if (extras.length) {
+    const work = path.join(root, '.build');
+    await mkdir(work, { recursive: true });
+    archive = await mkdtemp(path.join(work, 'artifacts-'));
+  }
+  if (executable !== path.join(dist, exe)) await rename(executable, path.join(dist, exe));
+  for (const name of extras) await rename(path.join(dist, name), path.join(archive, name));
+  return { html: path.join(dist, html), exe: path.join(dist, exe), archive };
+}
+
+if (process.argv[1] && import.meta.url === pathToFileURL(path.resolve(process.argv[1])).href) {
+  const result = await prepareDeliverables();
+  console.log(`Ready: ${result.html}\nReady: ${result.exe}`);
+  if (result.archive) console.log(`Build files retained: ${result.archive}`);
+}

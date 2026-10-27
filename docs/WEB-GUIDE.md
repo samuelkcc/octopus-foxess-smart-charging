@@ -6,9 +6,9 @@ The Pi edition does not need the Google relay.
 
 ## Create the relay
 
-1. Open [Google Apps Script](https://script.google.com/).
-2. Create a project.
-3. Add this code:
+- Open [Google Apps Script](https://script.google.com/).
+- Create a project.
+- Add this code:
 
 ```javascript
 function doPost(e) {
@@ -33,74 +33,81 @@ function doPost(e) {
 }
 ```
 
-4. Select **Deploy → New deployment**.
-5. Select **Web app** as the deployment type.
-6. Set **Execute as** to **Me**.
-7. Set **Who has access** to **Anyone**.
-8. Deploy the project.
-9. Complete the Google permission steps for your account.
-10. Copy the Web App URL that ends in `/exec`.
+- Select **Deploy → New deployment**.
+- Select **Web app** as the deployment type.
+- Set **Execute as** to **Me**.
+- Set **Who has access** to **Anyone**.
+- Deploy the project.
+- Complete the Google permission steps for your account.
+- Copy the Web App URL that ends in `/exec`.
 
 The relay runs in your Google account.
 It forwards the signed FoxESS requests from this app.
 
 ## Connect the app
 
-1. Open the hosted app or the downloaded HTML file.
-2. Select **Set up Smart Charging**.
-3. Enter your Octopus account number and API key.
-4. Select **Continue**.
-5. Enter your FoxESS inverter serial number and API token.
-6. Select **Continue**.
-7. Paste the Web App URL into **Google Apps Script Web App URL**.
-8. Select **CONNECT**.
-9. Check both connection states.
+- Open the hosted app or the downloaded HTML file.
+- Select **Set up Smart Charging**.
+- Enter your Octopus account number and API key.
+- Select **Continue**.
+- Enter your FoxESS inverter serial number and API token.
+- Select **Continue**.
+- Paste the Web App URL into **Google Apps Script Web App URL**.
+- Select **CONNECT**.
+- Check both connection states.
 
 Version 2.0.0 groups these fields into three setup stages.
 **Restore a saved setup** opens the existing encrypted import flow.
 Its setup guide opens from the side of the screen.
-The public interface retains its existing layout until approval.
+
+On later visits, Welcome shows **Connect** when the browser restores your saved setup.
+**Modify setup** opens the three setup stages when you need to change a value.
+Restoring saved setup does not automatically contact the APIs.
+
+Normal web login has no added 60-second cooldown.
+If Octopus returns a rate limit, the app waits before another request.
+The connection screen shows that remaining wait.
+Routine refresh still has a 60-second minimum.
 
 ## Run automation
 
-1. Open **Automations**.
-2. Select the required rules.
-3. Check the times and charge-level limits.
-4. Select **Review & apply** in DEV.
-5. Check the review information.
-6. Select **Apply changes**.
-7. Check the FoxESS schedule.
+- Open **Automations**.
+- Select the required rules.
+- Check the times and charge-level limits.
+- Select **Review & apply**.
+- Check the review information.
+- Select **Apply changes**.
+- Check the FoxESS schedule.
 
-The public interface uses **Apply Smart Charging** and **Apply Smart Discharging**.
-The DEV interface adds a review step before those same engine operations.
+The review step summarizes changes before the existing scheduler applies them.
 
 The browser must stay open and awake.
 Automation stops when the browser closes or the device sleeps.
 
 ## Save a backup
 
-1. Open **Settings**.
-2. Select **Save configuration**.
-3. Enter a backup passphrase.
-4. Save the encrypted file.
-5. Keep the passphrase in a private location.
+- Open **Settings**.
+- Select **Save configuration**.
+- Enter a backup passphrase.
+- Save the encrypted file.
+- Keep the passphrase in a private location.
 
 The file can contain account credentials.
 The passphrase protects that exported copy.
 
 ## Restore a backup
 
-1. Open the setup screen.
-2. Select **Load Config**.
-3. Select the encrypted backup file.
-4. Enter its passphrase.
-5. Check the connection state.
+- Open the setup screen.
+- Select **Load Config**.
+- Select the encrypted backup file.
+- Enter its passphrase.
+- Check the connection state.
 
 ## Remove saved browser data
 
-1. Open **Settings**.
-2. Select **Wipe saved data**.
-3. Confirm **Yes, Wipe Data**.
+- Open **Settings**.
+- Select **Wipe saved data**.
+- Confirm **Yes, Wipe Data**.
 
 This action clears this browser's local storage, session storage, and app IndexedDB data.
 Other browsers and exported backup files are separate copies.
@@ -110,11 +117,11 @@ Other browsers and exported backup files are separate copies.
 The hosted app uses the version published on GitHub Pages.
 A downloaded HTML file does not replace itself.
 
-1. Export an encrypted backup before changing browsers or devices.
-2. Download the approved new HTML file.
-3. Open the new file.
-4. If necessary, restore the backup.
-5. Check the connection state.
+- Export an encrypted backup before changing browsers or devices.
+- Download the approved new HTML file.
+- Open the new file.
+- If necessary, restore the backup.
+- Check the connection state.
 
 ## If a connection fails
 
@@ -131,10 +138,10 @@ The app's About & License panel contains the complete GPL and component notices.
 
 ## Pause browser automation
 
-1. Open **Overview**.
-2. Select **Pause automation**.
-3. Select the required period.
-4. Confirm the pause.
+- Open **Overview**.
+- Select **Pause automation**.
+- Select the required period.
+- Confirm the pause.
 
 The browser saves the pause and shows a red banner.
 The existing FoxESS schedule stays in place.
@@ -144,23 +151,23 @@ The Pi edition also stores power history.
 A timed pause resumes when this browser is open and awake.
 The Pi timer runs without an open dashboard.
 
-## Test the redesigned file
+## Downloaded file
 
 The current test file is `Smart_Charging_v2.0.0.html`.
 It uses your existing GAS Web App URL.
 It includes no account credentials.
 The file requires an internet connection for APIs and external script libraries.
-The hosted public edition remains unchanged until release approval.
+The hosted app and downloaded file use the same interface.
 
 ## Check data updates
 
-1. Open **Overview**.
-2. Find **Data updates** below the power readings.
-3. Check the Octopus and FoxESS countdowns.
-4. To request fresh data, select **Update now**.
-5. If a red problem button appears, select it.
-6. Read the reported problem.
-7. After recovery, select **Clear alert**.
+- Open **Overview**.
+- Find the Octopus and FoxESS health badges in the header.
+- Check their circular interval progress.
+- To request fresh data, select the related badge.
+- If a red problem button appears, select it.
+- Read the reported problem.
+- After recovery, select **Clear alert**.
 
 The red button remains after recovery until you clear it.
 An active failure cannot be cleared as healthy.

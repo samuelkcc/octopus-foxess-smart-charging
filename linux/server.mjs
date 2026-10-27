@@ -43,6 +43,7 @@ const dispatchSyncStatuses = new Set(['waiting', 'syncing', 'confirmed', 'failed
 let octopusAuthPromise = null;
 let octopusAuthFingerprint = null;
 let octopusTokenCache = { apiKeyFingerprint: null, token: null, expiresAt: 0 };
+let octopusDisplaySnapshot = null;
 let packageContents;
 try {
   packageContents = await readFile(path.join(appRoot, 'package.json'), 'utf8');
@@ -57,14 +58,17 @@ await mkdir(stateRoot, { recursive: true });
 const serviceControl = new ServiceControl(path.join(stateRoot, 'service-control.json'));
 await serviceControl.load();
 
-// Only timestamps are persisted. A restart cannot bypass the Octopus budget.
-const octopusBudgetFile = path.join(stateRoot, 'octopus-request-budget.json');
-let savedOctopusNextAt = Date.now() + 60_000;
+// Pi keeps the all-request floor. Desktop login only waits after a real rate limit.
+const desktopHost = process.env.OCTOPUS_DESKTOP === '1';
+const octopusRequestInterval = desktopHost ? 0 : 60_000;
+const octopusBudgetFile = path.join(stateRoot, desktopHost ? 'desktop-octopus-cooldown-v2.json' : 'octopus-request-budget.json');
+let savedOctopusNextAt = Date.now() + octopusRequestInterval;
 try {
   const saved = JSON.parse(await readFile(octopusBudgetFile, 'utf8'));
   if (Number.isFinite(saved.nextAt)) savedOctopusNextAt = saved.nextAt;
 } catch (error) { if (error.code !== 'ENOENT') throw error; }
 const octopusBudget = new RequestBudget({
+  interval: octopusRequestInterval,
   readNext: () => savedOctopusNextAt,
   saveNext: async nextAt => {
     savedOctopusNextAt = nextAt;
@@ -591,6 +595,10 @@ async function proxyOctopusRequest(request, response) {
   const channel = dispatchQuery ? 'dispatch-data' : 'account-data';
   const validData = payload.authMode !== 'graphql' || (upstreamData?.data && (!dispatchQuery || Array.isArray(upstreamData.data.plannedDispatches)));
   if (upstream.ok && !upstreamData?.errors && validData) {
+    if (payload.authMode === 'graphql' && Array.isArray(upstreamData?.data?.plannedDispatches)) {
+      octopusDisplaySnapshot = { accountNumber, apiKeyFingerprint:createHash('sha256').update(apiKey).digest('hex'),
+        data:upstreamData.data, fetchedAt:Number(upstream.headers.get('X-Smart-Charging-Fetched-At')) || Date.now() };
+    }
     markIntegrationSuccess('octopus', channel, new Date(Number(upstream.headers.get('X-Smart-Charging-Fetched-At')) || Date.now()).toISOString());
     if (payload.authMode === 'graphql') markIntegrationSuccess('octopus', 'auth');
   } else {
@@ -661,7 +669,7 @@ async function handleRequest(request, response) {
       response.setHeader('X-Frame-Options', 'DENY');
       const remote = (await loadState()).remoteAccess;
       if (!remote?.enabled) return sendJson(response, 503, { error: 'Remote access is disabled' });
-      const permitted = new Set(['/api/runtime', '/api/auth', '/api/logout', '/api/config', '/api/dispatch-snapshot', '/api/foxess', '/api/octopus', '/api/foxess/live', '/api/foxess/live/status', '/api/history', '/api/history/settings', '/api/history/clear', '/api/automation/pause', '/api/integration-status']);
+      const permitted = new Set(['/api/runtime', '/api/auth', '/api/logout', '/api/config', '/api/dashboard-snapshot', '/api/dispatch-snapshot', '/api/foxess', '/api/octopus', '/api/foxess/live', '/api/foxess/live/status', '/api/history', '/api/history/settings', '/api/history/clear', '/api/automation/pause', '/api/integration-status']);
       if (pathname.startsWith('/api/') && !permitted.has(pathname)) return sendJson(response, 403, { error: 'This endpoint is only available on the Raspberry Pi' });
       if (!['GET', 'HEAD'].includes(request.method)) {
         const origin = request.headers.origin;
@@ -699,7 +707,7 @@ async function handleRequest(request, response) {
       const previous=serviceControl.enabled;
       const control=await serviceControl.change(update.enabled);
       if (!control.enabled) foxessLive.stop();
-      else if (!previous) { await octopusBudget.defer(60_000); foxessLive.start(); }
+      else if (!previous) { if (!desktopHost) await octopusBudget.defer(60_000); foxessLive.start(); }
       if(previous!==control.enabled){
         foxReadCache.cache.clear();foxCacheRevision++;
         await history.recordEvent({type:control.enabled?'service_enabled':'service_disabled',at:new Date().toISOString(),revision:control.revision});
@@ -882,7 +890,7 @@ async function handleRequest(request, response) {
       });
     }
 
-    const protectedApi = ['/api/config', '/api/dispatch-snapshot', '/api/foxess', '/api/octopus', '/api/history'];
+    const protectedApi = ['/api/config', '/api/dashboard-snapshot', '/api/dispatch-snapshot', '/api/foxess', '/api/octopus', '/api/history'];
     const isProtected = pathname === '/api/integration-status' || pathname === '/api/automation/pause' || protectedApi.includes(pathname) || pathname === '/api/history/settings' || pathname === '/api/history/clear' || pathname.startsWith('/api/foxess/live');
     if (isProtected && !(await isAuthorized(request))) {
       return sendJson(response, 401, { error: 'Invalid LAN access code' });
@@ -936,6 +944,17 @@ async function handleRequest(request, response) {
       await saveState({ revision: Date.now() });
       if(serviceControl.enabled) void foxessLive.reconcile({ force: true });
       return sendEmpty(response);
+    }
+    if (pathname === '/api/dashboard-snapshot' && request.method === 'GET') {
+      // Opening a dashboard never authenticates with Octopus or consumes a queue slot.
+      const state = await loadState();
+      const identity = createHash('sha256').update(state.credentials?.api || '').digest('hex');
+      const snapshot = octopusDisplaySnapshot?.accountNumber === state.credentials?.acc
+        && octopusDisplaySnapshot.apiKeyFingerprint === identity ? octopusDisplaySnapshot : null;
+      return sendJson(response, 200, { data:snapshot?.data || {
+        registeredKrakenflexDevice:null, vehicleChargingPreferences:null,
+        plannedDispatches:getDispatchSnapshot(state).dispatches
+      }, _serverSnapshot:{pending:!snapshot,fetchedAt:snapshot?.fetchedAt || null} });
     }
     if (pathname === '/api/dispatch-snapshot' && request.method === 'GET') {
       return sendJson(response, 200, getDispatchSnapshot(await loadState()));

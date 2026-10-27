@@ -8,6 +8,7 @@ export class RequestBudget {
     this.pending = new Map();
     this.cache = new Map();
     this.running = false;
+    this.activity = 'idle';
   }
   async defer(milliseconds) {
     this.nextAt = Math.max(this.nextAt, this.now() + milliseconds);
@@ -32,10 +33,12 @@ export class RequestBudget {
           const value = await this.lock(async () => {
             // Re-read persistent timing inside the cross-tab lock, before each send.
             this.nextAt = Math.max(this.nextAt, Number(await this.readNext()) || 0);
+            this.activity = 'waiting';
             while (this.nextAt > this.now()) await this.sleep(this.nextAt - this.now());
             job.startedAt = this.now();
             this.nextAt = job.startedAt + this.interval;
             await this.saveNext(this.nextAt);
+            this.activity = 'requesting';
             return job.operation();
           });
           if (job.ttl && job.cacheWhen(value)) this.cache.set(job.key, { value, until: job.startedAt + job.ttl });
@@ -45,7 +48,7 @@ export class RequestBudget {
           if (job.errorTtl) this.cache.set(job.key, { error, until: this.now() + job.errorTtl });
           job.reject(error);
         }
-        finally { this.pending.delete(job.key); }
+        finally { this.pending.delete(job.key); this.activity = 'idle'; }
       }
     } finally { this.running = false; }
   }

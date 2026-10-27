@@ -8,8 +8,8 @@
   // runtime detection fails. Deliberate Apply still uses the existing engine.
   if (piEdition) canRunAutomaticActions = () => false;
   else {
-    const originalAutoConnect = startAutoConnect;
-    startAutoConnect = () => { if (new URLSearchParams(location.search).get('setup') !== '1') originalAutoConnect(); };
+    // Restored web credentials prepare Welcome. Only Connect starts API access.
+    startAutoConnect = () => {};
   }
   const wrapper = document.querySelector('.app-wrapper');
   const dashboard = document.getElementById('dashboard');
@@ -95,7 +95,7 @@
   if (piEdition) {
     const updateInfo = document.createElement('section');
     updateInfo.className = 'card dev-integrations';
-    updateInfo.innerHTML = '<h2>Updates &amp; recovery</h2><p>Update the Pi from the taskbar → <strong>Configuration… → Update Raspberry Pi Edition</strong>.</p><p>The public updater installs the earlier interface. This Pi uses separate updates during design review.</p><p>Updates preserve encrypted configuration. History stays in the Pi data directory.</p>';
+    updateInfo.innerHTML = '<h2>Updates &amp; recovery</h2><p>Update the Pi from the taskbar → <strong>Configuration… → Update Raspberry Pi Edition</strong>.</p><p>The updater installs the latest public release from GitHub.</p><p>Updates preserve encrypted configuration. History stays in the Pi data directory.</p>';
     if(hostName==='PC')updateInfo.innerHTML='<h2>Updates &amp; recovery</h2><p>Close Smart Charging before replacing the portable EXE. Settings and history remain in your Windows user profile.</p>';
     move(updateInfo, 'settings');
   } else {

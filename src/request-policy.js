@@ -1,10 +1,12 @@
 /* Copyright (C) 2026 SCKC. GPL-3.0-or-later. */
 (() => {
-  const key = 'octopusOutboundNextAtV1';
+  // Web login has no artificial request gap. Persist only an actual API cooldown.
+  // Do not reuse the old per-request 60-second clock from earlier HTML builds.
+  const key = 'octopusWebRetryAfterV2';
   const readNext = () => { try { return Number(localStorage.getItem(key)) || 0; } catch { return 0; } };
   const saveNext = value => { try { localStorage.setItem(key, String(value)); } catch { /* Memory timing remains active. */ } };
   const lock = task => navigator.locks ? navigator.locks.request('smart-charging-octopus-api', task) : task();
-  const octopus = new window.RequestBudget({ readNext, saveNext, lock });
+  const octopus = new window.RequestBudget({ interval: 0, readNext, saveNext, lock });
   const foxess = new window.RequestBudget({ interval: 0 });
   let foxRevision = 0;
   let verification = 0;

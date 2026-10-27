@@ -3,7 +3,7 @@
 This edition includes the dashboard, local service, automation worker, and Cloudflare tunnel client.
 The app does not install a Windows service.
 The portable app targets 64-bit Windows.
-Windows runtime verification is pending.
+The user tested this edition on Windows 11 ARM through UTM.
 The EXE is unsigned.
 
 ## Start
@@ -61,17 +61,23 @@ Windows encryption protects the configuration key for the current user.
 The app transfers that key to its service through a private process channel.
 The service does not write an unprotected configuration key file.
 
-Octopus requests remain at least 60 seconds apart.
+Normal login has no added 60-second request gap.
+Actual API rate-limit responses still delay new requests.
+The routine Octopus refresh setting has a 60-second minimum.
 FoxESS routine reads use a cache for at least 600 seconds.
 New Smart Dispatch schedules bypass routine polling delays.
 An explicit automation pause still blocks commands.
+
+The account setup guide opens from Welcome and Configuration.
+It explains the Octopus API key, FoxESS API token, and inverter serial number.
+The LAN access code has a Show and Hide control.
 
 1. Before an update, close Smart Charging.
 2. Replace the portable EXE.
 3. Open the new EXE.
 
 The app retains settings and history in the same user profile.
-A public release and signed distribution remain separate review steps.
+This release is unsigned.
 
 ## Build
 
@@ -80,13 +86,15 @@ A public release and signed distribution remain separate review steps.
 3. Run `npm run build:desktop`.
 
 The build validates the pinned Cloudflare binary checksum.
-The output is in `dist/windows`.
+The `dist` folder contains one standalone HTML file and one portable EXE.
+Build directories, checksums, and Pi packages remain in `.build/artifacts-*`.
+After a separate packaging run, use `npm run package:deliverables` to organize the two files.
 This build does not publish a release.
 
 ## Verification limits
 
 Automated tests cover local-service encryption, restart persistence, LAN authentication, and desktop IPC sender restrictions.
 A mock host key is used in those tests.
-Windows DPAPI, EXE startup, firewall prompts, sleep behaviour, and shutdown require a Windows PC test.
+Automated mock checks do not certify native Windows DPAPI, firewall, sleep, or shutdown behaviour.
 The design preview uses fake data.
 It does not prove real Windows operation.

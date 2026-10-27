@@ -1,75 +1,45 @@
-## v2.0.0 — Major redesign under review
+## v2.0.0 — 2026-10-27
 
-- Add Enable Pi Service and Disable Pi Service in native Configuration only.
-- Stop new Octopus, FoxESS REST, Live WS, and schedule requests while disabled. Retain local administration.
-- Persist service disablement across restarts. Log both transitions in History.
-- Reject queued requests from an earlier service state. Wait at least 60 seconds after enabling Octopus access.
+A new shared interface for Raspberry Pi, Windows portable, and standalone web use.
+The app connects Intelligent Octopus Go charging windows to FoxESS battery schedules.
 
-- Keep a deliberate Connect request while asynchronous authentication completes. Connect no longer only cancels the restored-session countdown.
-- Keep active schedule rows inside their cards. Use consistent padding and row heights.
-- Add an unsigned Windows portable edition with an embedded dashboard, service, and single background worker.
-- Integrate native account configuration into Welcome and Settings. Add Remote Access above Settings.
-- Protect the desktop configuration key with Windows user encryption. Restrict administration IPC to the owning main frame.
-- Bundle a pinned, checksum-verified Cloudflare client. Stop the worker and tunnel when the desktop app exits.
-- Windows native startup, encryption, networking, and shutdown remain unverified on a Windows PC.
+## New functions
 
-- Serialize all Octopus requests with at least 60 seconds between sends. Preserve this limit across Pi service restarts.
-- Share authentication and combined dashboard data across Pi clients. Queue account and tariff reads behind the same limit.
-- Honour HTTP and GraphQL rate-limit responses. Retain the last valid dispatch after a failed check.
-- Load tariffs separately so price requests do not block immediate dispatch reconciliation.
-- Cache routine FoxESS reads for at least 600 seconds. Keep post-command scheduler verification fresh.
-- After a successful schedule command, restart the normal FoxESS interval.
+- Windows portable app with an embedded dashboard, local server, and automation worker.
+- Protected Cloudflare remote access with a separate 256-bit key and expiring browser sessions.
+- Compact mobile Welcome and dashboard layouts, responsive desktop pages, and light/dark artwork.
+- Four history charts, chart expansion, CSV export, and storage reporting on Pi and Windows.
+- Compressed monthly history, hourly memory-buffer saves, 12-month default retention, and low-space cleanup below 4 GB.
+- Operator pause for 6, 12, or 24 hours, or until resumed, with a red banner and history entry.
+- Equal API health buttons with interval progress, individual refresh requests, and retained incident alerts.
+- Native Pi service enable/disable for testing another host without competing API connections.
+- Saved web setup returns directly to Connect. Windows includes account instructions and LAN-code visibility.
+- About and licence drawer with project background, developer details, GPL text, and component notices.
 
-- Use readable desktop text at the same size as the navigation menu. Fill the common frame with flexible cards and plots.
-- Keep Welcome as the entry screen in both editions, including restored sessions.
-- Ignore request cancellations after page exit. Keep real failures and show the source of each retained alert.
-- Use a connected two-panel welcome and sign-in layout with the Octopus palette.
+## Reliability
 
-- Match the charging icon and browser-tab icon to the selected light or dark appearance.
-- Remove the repeated Pi administration card from Connections. Keep Settings in the navigation menu.
+- Pi dashboard clients read a protected host snapshot without another Octopus login or a 60-second queue.
+- Pi outbound Octopus requests retain a shared, durable 60-second minimum gap.
+- Web and Windows login have no artificial request gap. Real API rate-limit responses remain enforced.
+- Routine refresh settings cannot go below 60 seconds for Octopus or 600 seconds for FoxESS.
+- Changed valid Smart Dispatch schedules reconcile immediately, with a fresh official FoxESS REST confirmation.
+- Operator pause blocks all app schedule writes. Invalid dispatch responses retain the last valid schedule.
 
-- Fit desktop pages inside one viewport. Dynamically align the menu bottom with the visible content. Preserve phone scrolling.
-- Use compact desktop cards, responsive chart heights, and three Settings columns on wide screens.
-- Page through history activity without extending the dashboard. Keep all four history charts and Expand actions available.
+## Downloads and updates
 
-- Replace header countdowns with two equal API status buttons. Synchronize their circular progress with each API interval and reload data on selection.
-- Move Pause automation into the shared application header. Keep the red pause banner and duration dialog.
-- Keep retained problem alerts in fixed-size red indicators. Remove the separate Update now action.
-- Move refresh intervals into Settings. Save browser values locally and Pi values in encrypted configuration for the worker.
-- Enforce minimum settings of 60 seconds for Octopus and 600 seconds for FoxESS. Reject shorter saved values.
+- The hosted web app uses the redesigned interface. Downloaded HTML still supports a personal Google Apps Script relay.
+- Existing Pi updater asset names remain compatible. Pi updates preserve configuration and history.
+- The Windows EXE targets x64 and is unsigned. Keep the app and PC running for automation.
+- Quick Tunnel URLs change after a tunnel or host restart. Use Pi Connect to recover the new URL and key.
 
-- Put developer and build details in About. Add the project background, battery-protection purpose, and edition-specific operating requirements.
+## Verification
 
-- Remove the repeated page footer. Keep developer credit, version, and licence information in About.
+The automated suite covers scheduler safety, authentication, request budgets, history, service control, GAS transport, and desktop IPC.
+The user tested the web and Windows editions, including Windows 11 ARM through UTM.
+Final interface changes use mock account data for browser checks and public screenshots.
+Tests do not prove measured behaviour on every FoxESS model or independent Windows DPAPI certification.
 
-- Place refresh controls in the top-right application header. Remove the connected edition label from Pi, desktop, and web views.
-- Keep control widths stable during updates. Use worker activity for Pi status instead of frequent dashboard requests.
-
-- Keep retained problem indicators compact and both schedule cards visible.
-
-- Buffer history readings in memory. Save compressed monthly archives every hour by default, with a 30-minute option.
-- Show history disk use, free space, unsaved intervals, and the last save time.
-- Below 4 GB free space, show an Overview warning and remove oldest history early. Preserve the newest 24 hours.
-- Add confirmed Clear all history and Keep recent 3 months actions. Retain account settings and automation rules.
-- Back up history before a full development update. Read existing plain archives and migrate active archives during a batch save.
-
-- Replace the History measurement selector with four overview charts and individual Expand actions. Align the month and action controls.
-- Remove competing battery display updates. Keep measured idle power at zero without alternating with unavailable data.
-
-- Request grid and battery power in the web edition. Show measured zero as zero and unavailable readings as missing.
-- Add shared API health controls and retained red problem alerts for web, Pi, and mobile.
-- Use Pi worker timing across dashboard clients. A refresh request preserves worker ownership and an active pause.
-- Retain Pi alerts across restarts. Require recovery and an explicit acknowledgement before clearing an alert.
-- Verify failure, recovery, acknowledgement, protected worker timing, storage permissions, and GAS power fields with mocks.
-
-- Keep guided setup height and button spacing stable when switching between Octopus, FoxESS and GAS.
-
-- Add a branded welcome screen with setup and restore actions. Use guided web account setup and direct Pi key access.
-- Use MAJOR.MINOR.PATCH version numbers, matching the convention in Script Bridge. Preserve legacy calendar release history and existing update asset names.
-- Include the redesigned Pi, desktop-browser, mobile and standalone HTML interfaces, with the shared automation safeguards, pause controls and history features.
-- Rename the native settings window and heading to Configuration. Remove its duplicate Open Dashboard Client button. Keep the taskbar dashboard action.
-- Verify the standalone GAS contract with signed reads, schedule writes, fresh readback, response redirects, rejection handling and pause blocking against mock responses.
-- Create a versioned standalone HTML file for user testing. Keep public Pages and release publication pending approval.
+[Setup and screenshots](https://github.com/samuelkcc/octopus-foxess-smart-charging#readme)
 
 ## v2026.10.26.7 — Pi development update (not a public release)
 

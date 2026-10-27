@@ -25,9 +25,12 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run check
+      - run: npm run build:dev
+        env:
+          OCTOPUS_UI_COMMIT: ${{ github.sha }}
       - run: |
           mkdir _site
-          cp dist/Octopus_IGO_Smart_Charging_Detector.html _site/index.html
+          cp dist/Smart_Charging.html _site/index.html
           cp linux/octopus-foxess.svg _site/octopus-foxess.svg
           cp src/site.webmanifest _site/site.webmanifest
           cp -R src/icons _site/icons

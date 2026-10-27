@@ -283,10 +283,10 @@ async function detectLinuxRuntime() {
         document.body.classList.add('linux-runtime', `linux-role-${runtime.role}`);
         if (window.linuxRemoteAccess) {
             document.querySelector('.linux-access-group label').textContent = '🔐 Remote Access Key';
-            document.getElementById('local-access-key').placeholder = 'Paste the remote key from Pi Configuration';
+            document.getElementById('local-access-key').placeholder = window.desktopRuntime ? 'Paste the key from Windows app → Remote Access' : 'Paste the remote key from Pi Configuration';
             document.querySelector('.linux-access-group small').textContent = 'Use your remote key. Your LAN access code is not needed.';
             document.querySelector('.linux-client-note strong').textContent = 'Secure remote dashboard';
-            document.querySelector('.access-protected-copy').textContent = 'Enter the separate Remote Access Key shown on your Pi.';
+            document.querySelector('.access-protected-copy').textContent = window.desktopRuntime ? 'Enter the Remote Access Key from Windows app → Remote Access.' : 'Enter the separate Remote Access Key shown on your Pi.';
             document.querySelector('.remove-access-button').textContent = '🔐 Sign Out';
         }
         if (runtime.authRequired) document.body.classList.add('linux-auth-required');
@@ -1187,6 +1187,8 @@ document.addEventListener("DOMContentLoaded", async () => {
             console.warn('Automatic Raspberry Pi dashboard connection failed.', error);
         }
     } else if (hasCreds) {
+        window.savedWebSetupAvailable = true;
+        window.dispatchEvent(new Event('web-setup-restored'));
         startAutoConnect();
     }
     startLinuxWorkerConfigPoll();
@@ -1406,6 +1408,8 @@ async function refreshDashboard(isAutoRefresh = false, retryCount = 1) {
     
     const btn = document.getElementById('btn');
     const errorDiv = document.getElementById('error');
+    let connectionProgressTimer = null;
+    let connectionStep = 'Signing in to Octopus';
 
     if (!isAutoRefresh) {
         errorDiv.style.display = 'none';
@@ -1416,6 +1420,18 @@ async function refreshDashboard(isAutoRefresh = false, retryCount = 1) {
         // Show Dimmed Loading Overlay
         const loader = document.getElementById('loading-overlay');
         loader.style.display = 'flex';
+        const updateProgress = () => {
+            const budget = window.requestPolicy?.octopus;
+            const waiting = budget?.activity === 'waiting' && budget.nextAt > Date.now();
+            const title = document.getElementById('loading-title');
+            const message = document.getElementById('loading-message');
+            if (title) title.textContent = waiting ? 'Waiting for Octopus' : connectionStep;
+            if (message) message.textContent = waiting
+                ? `The API requested a cooldown. Retrying in ${Math.ceil((budget.nextAt - Date.now()) / 1000)} seconds.`
+                : 'Connecting your saved accounts. Please keep this page open.';
+        };
+        updateProgress();
+        connectionProgressTimer = setInterval(updateProgress, 250);
         
         // A queued Octopus request can intentionally wait longer than five seconds.
         // Keep the connection action pending until it completes.
@@ -1448,7 +1464,11 @@ async function refreshDashboard(isAutoRefresh = false, retryCount = 1) {
         // the service performs authentication so API credentials never enter a
         // remote mobile or LAN browser.
         let gqlData;
-        if (window.linuxRuntime) {
+        if (window.linuxRuntime && !workerOnlyQuery) {
+            connectionStep = 'Reading server data';
+            gqlData = await fetchJson('/api/dashboard-snapshot', { cache:'no-store' });
+        } else if (window.linuxRuntime) {
+            connectionStep = 'Reading charging windows';
             gqlData = await fetchOctopusJson(GRAPHQL_URL, {
                 method: 'POST',
                 body: JSON.stringify(dashboardQuery)
@@ -1462,6 +1482,7 @@ async function refreshDashboard(isAutoRefresh = false, retryCount = 1) {
             if (authData.errors || !authData.data?.obtainKrakenToken?.token) {
                 throw new Error(authData.errors?.[0]?.message || 'Octopus authentication failed.');
             }
+            connectionStep = 'Reading charging windows';
             gqlData = await fetchJson(GRAPHQL_URL, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', 'Authorization': authData.data.obtainKrakenToken.token },
@@ -1469,6 +1490,8 @@ async function refreshDashboard(isAutoRefresh = false, retryCount = 1) {
             });
         }
         const gqlResult = assertValidOctopusGraphqlResponse(gqlData, { requireDispatches: shouldFetchDispatches });
+        // This channel tracks browser transport recovery. Host API failures remain
+        // authoritative in the separate server integration state.
         window.integrationMonitor?.success('octopus', 'dashboard-data');
         const device = gqlResult.registeredKrakenflexDevice;
         const prefs = gqlResult.vehicleChargingPreferences;
@@ -1583,8 +1606,8 @@ async function refreshDashboard(isAutoRefresh = false, retryCount = 1) {
 
         const octoBadge = document.getElementById('octo-api-badge');
         const octoText = document.getElementById('octo-api-text');
-        if (octoText) octoText.textContent = "🟢 API CONNECTED";
-        if (octoBadge) octoBadge.className = "badge off-peak countdown-border";
+        if (octoText) octoText.textContent = gqlData._serverSnapshot?.pending ? 'WAITING FOR SERVER DATA' : '🟢 API CONNECTED';
+        if (octoBadge) octoBadge.className = gqlData._serverSnapshot?.pending ? 'badge neutral' : 'badge off-peak countdown-border';
 
         let priceLabel = "🔴 STANDARD RATE";
         let badgeClass = "peak";
@@ -1681,7 +1704,7 @@ async function refreshDashboard(isAutoRefresh = false, retryCount = 1) {
             loadAutomations(0, 0);
             startAutoRefreshTimer();
         }
-        if ((err.message === 'Load failed' || err.message === 'Failed to fetch') && retryCount > 0) {
+        if (isAutoRefresh && (err.message === 'Load failed' || err.message === 'Failed to fetch') && retryCount > 0) {
             console.warn("Network error caught, retrying automatically...");
             setTimeout(() => initDashboard(isAutoRefresh, retryCount - 1), 60_000);
             return;
@@ -1691,7 +1714,11 @@ async function refreshDashboard(isAutoRefresh = false, retryCount = 1) {
             showError(err.message);
         }
     } finally {
-        if (!isAutoRefresh) { btn.textContent = 'Refresh Now'; btn.disabled = false; }
+        if (connectionProgressTimer !== null) clearInterval(connectionProgressTimer);
+        if (!isAutoRefresh) {
+            document.getElementById('loading-overlay').style.display = 'none';
+            btn.textContent = 'Connect'; btn.disabled = false;
+        }
     }
 }
 

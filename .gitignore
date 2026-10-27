@@ -1,6 +1,10 @@
 .DS_Store
 node_modules/
 dist/
+.build/
 *.log
 desktop/.cache/
 prototype/ui-ux-review/Smart_Charging_Web_Test.html
+
+# Private review screenshots are never release documentation.
+prototype/ui-ux-review/*.png

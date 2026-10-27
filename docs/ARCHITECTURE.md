@@ -113,9 +113,14 @@ The native updater installs the latest public GitHub release.
 It preserves the Pi configuration directory.
 The history directory is inside that configuration directory.
 
-The public updater currently installs v2026.10.26.5.
-On DEV, that action returns the Pi to the public edition.
-The DEV interface states this difference in Settings.
+The public updater installs the latest published release.
+Release staging repacks the Pi archive after the shared interface build.
+Existing release asset names remain compatible.
+
+Dashboard clients read `/api/dashboard-snapshot`.
+This protected endpoint reads the last successful combined worker response from memory.
+It never authenticates with Octopus or consumes an outbound request slot.
+Before the first worker response, clients show pending server data.
 
 The DEV installer accepts a complete Git commit ID.
 It creates a private configuration backup before the service change.
@@ -129,7 +134,7 @@ The [feature review](FEATURE-PARITY.md) records completed checks and open releas
 A successful mock test does not prove real inverter behaviour.
 A matching REST readback confirms the written schedule, not measured battery power.
 
-Before a public release, test an update from the last public version on a spare Pi.
+Before each release, check update compatibility and preserve rollback information.
 Check configuration, access settings, history files, launchers, and rollback.
 Publish the redesigned default interface only after the user approves it.
 
@@ -236,14 +241,20 @@ The browser build embeds the same implementation.
 `src/request-policy.js` connects standalone requests to that queue.
 The Pi proxy owns one queue for all connected clients.
 
-Every outbound Octopus request consumes one slot.
-Authentication, dispatch, account, and tariff requests remain at least 60 seconds apart.
+On Pi, every outbound Octopus request consumes one slot.
+Its authentication, dispatch, account, and tariff requests remain at least 60 seconds apart.
 The Pi persists only the next permitted send time.
 A restart does not reset that limit.
 Browser storage and Web Locks coordinate tabs on the same origin where supported.
 Independent browsers and other applications cannot share this local budget.
 
-The first connection can require several minutes.
+Web and Windows have no artificial gap between login requests.
+Both retain request deduplication, authentication caching, and actual API rate-limit cooldowns.
+Their routine refresh setting still has a 60-second minimum.
+Saved web setup opens Welcome with Connect and Modify setup actions.
+It does not automatically connect or repeat the setup wizard.
+
+The first Pi connection can require several minutes.
 Tariff loading runs separately from dispatch reconciliation.
 A combined GraphQL response serves Pi worker and dashboard reads.
 Visible clients still use the authoritative worker snapshot for dispatch confirmation.

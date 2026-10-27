@@ -130,7 +130,7 @@ html[data-theme] body { background:var(--bg); }
 .next-auth-group h2 { margin:0 0 20px; font-size:13px; font-weight:600; }
 #dev-shell .next-auth-card .input-group { margin-bottom:18px; }
 #dev-shell .next-auth-card .next-field { margin-bottom:18px; }
-#dev-shell .next-auth-card input { min-width:0; width:100%; min-height:44px; padding:12px; border:1px solid var(--border); border-radius:8px; background:var(--bg); color:var(--text-main); font-size:16px; }
+#dev-shell .next-auth-card input:not([type=checkbox]) { min-width:0; width:100%; min-height:44px; padding:12px; border:1px solid var(--border); border-radius:8px; background:var(--bg); color:var(--text-main); font-size:16px; }
 .next-auth-actions { display:flex; flex-wrap:wrap; gap:8px; margin-top:18px; }
 #dev-shell .next-auth-actions button { width:auto; min-height:36px; padding:8px 10px; font-size:11px; }
 .next-session-note { font-size:12px; line-height:1.7; color:var(--text-muted); margin:20px 0; }
@@ -602,13 +602,78 @@ html.desktop-viewport,html.desktop-viewport body {height:100%;min-height:0;overf
 /* Native desktop administration uses the common form and button system. */
 .desktop-configuration {display:grid;gap:14px;}
 .desktop-configuration .next-field {margin:0;}
-.desktop-configuration input {width:100%;min-height:40px;}
-.desktop-configuration input[type=checkbox] {width:36px;min-height:20px;}
+.desktop-configuration input:not([type=checkbox]) {width:100%;min-height:40px;}
+#dev-shell .next-toggle>span {flex:1;min-width:0;}
+#dev-shell .next-toggle input[type=checkbox] {box-sizing:border-box;flex:0 0 34px;width:34px!important;min-width:34px!important;max-width:34px;height:20px!important;min-height:20px!important;max-height:20px;padding:0!important;margin:0!important;}
 .desktop-advanced {padding:12px;border:1px solid var(--border);border-radius:8px;}
 .desktop-advanced summary {cursor:pointer;margin-bottom:10px;}
 .desktop-host .dev-rail nav button[data-page=remote] {margin-top:auto;}
 .desktop-host .dev-rail nav button[data-page=settings] {margin-top:0;}
 .desktop-host [data-setting=desktop-service] {grid-column:1/-1;}
+.desktop-secret-control {display:flex;align-items:center;gap:8px;min-width:0;}
+#dev-shell .desktop-secret-control>input {flex:1;min-width:0;width:0!important;}
+#dev-shell .desktop-secret-toggle {flex:0 0 42px;width:42px!important;height:42px;min-height:42px;padding:10px;display:grid;place-items:center;}
+.desktop-secret-toggle svg {width:20px;height:20px;}
+#dev-shell .desktop-code-actions>.next-field {margin:0!important;}
+.desktop-code-actions {display:grid;grid-template-columns:minmax(0,1fr) auto;gap:12px;align-items:end;}
+#dev-shell .desktop-configuration .next-field-grid {margin:0;gap:12px;}
+.desktop-configuration>.next-muted {margin:0;}
+.desktop-remote-actions {display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-top:18px;}
+#dev-shell .desktop-remote-actions button {width:100%;height:44px;justify-content:center;}
+.desktop-remote-security {display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-top:20px;padding-top:16px;border-top:1px solid var(--border);}
+.desktop-remote-security p {margin:0;flex:1;min-width:180px;}
+/* Fit the launch composition to the available desktop height and Windows DPI. */
+.desktop-viewport .launch-welcome {padding:clamp(16px,3vh,32px) clamp(24px,4vw,64px);gap:0;}
+.desktop-viewport .launch-welcome>img {width:40px;height:40px;margin-bottom:clamp(8px,2vh,24px);flex-shrink:0;}
+.desktop-viewport .launch-welcome h1,.desktop-viewport .launch-screen[data-mode=setup] .launch-welcome h1 {font-size:clamp(26px,min(3vw,5.2vh),54px);line-height:1.15;margin:12px 0;}
+.desktop-viewport .launch-welcome .launch-intro {margin:10px 0;line-height:1.5;}
+.desktop-viewport .launch-welcome .launch-art-orbit {max-width:300px;padding:0;margin:8px 0;}
+.desktop-viewport .launch-welcome .launch-art-orbit svg {width:auto;max-width:100%;height:clamp(64px,16vh,180px);}
+.desktop-viewport .launch-welcome .launch-flow {margin:8px 0;}
+.desktop-viewport .launch-welcome .launch-flow-item {padding:5px 0;}
+.desktop-viewport .launch-welcome .launch-operation {margin:10px 0;line-height:1.5;}
+.desktop-viewport .launch-art,.desktop-viewport .launch-setup {padding:56px clamp(24px,4vw,64px) 20px;}
+.desktop-viewport .launch-setup>h2 {font-size:clamp(22px,3.5vh,30px);margin:10px 0;}
+.desktop-viewport .desktop-configuration {gap:10px;}
+.desktop-viewport .desktop-advanced {padding:10px 12px;}
+.desktop-viewport .desktop-advanced .next-field-grid {margin-top:10px!important;}
+@media (max-height:800px) and (min-width:761px) {
+  .desktop-viewport .launch-welcome .launch-art-pill {display:none;}
+  .desktop-viewport .launch-welcome .launch-eyebrow {font-size:10px;}
+  .desktop-viewport .launch-welcome .launch-intro,.desktop-viewport .launch-welcome .launch-operation {font-size:13px;}
+  .desktop-viewport .launch-flow-item strong {font-size:14px;}
+  .desktop-viewport .launch-flow-item small {font-size:12px;}
+  .desktop-viewport .launch-welcome .launch-art-orbit svg {height:clamp(60px,12vh,96px);}
+  .desktop-viewport .desktop-host .launch-setup>.next-auth-copy {font-size:14px;margin:8px 0 14px;}
+  .desktop-viewport .desktop-host .launch-setup .next-field {gap:5px;font-size:14px;}
+  .desktop-viewport .desktop-host .launch-setup .desktop-configuration>.next-muted {font-size:12px;line-height:1.4;}
+  .desktop-viewport .desktop-host .launch-setup .next-settings-actions {margin-top:12px;}
+  .desktop-viewport .desktop-host .launch-setup .next-toggle {padding:8px 0;font-size:14px;}
+}
+@media (max-width:760px) {.desktop-code-actions {grid-template-columns:1fr;}.desktop-remote-security {align-items:stretch;}.desktop-remote-security button {width:100%;}}
+/* A short phone entry screen. Navigation and sign-in share one compact header. */
+.mobile-launch #dev-shell.dev-auth-mode .dev-appbar {flex-wrap:nowrap;min-height:56px;padding:8px 16px;gap:12px;}
+.mobile-launch .dev-auth-mode .dev-appbar>div:first-child {flex:1;min-width:0;white-space:nowrap;}
+.mobile-launch .dev-auth-mode .dev-app-actions {flex:0 0 auto;flex-wrap:nowrap;margin-left:auto;}
+.mobile-launch .dev-auth-mode .dev-service {display:none!important;}
+.mobile-launch .dev-auth-mode #dev-theme {width:40px;height:40px;}
+.mobile-launch #dev-shell.dev-auth-mode .app-wrapper {padding:20px 18px max(24px,env(safe-area-inset-bottom));}
+.mobile-launch #dev-shell .launch-screen {max-width:520px;gap:18px;margin:0 auto;}
+.mobile-launch .launch-welcome {padding:0;}
+.mobile-launch .launch-welcome>img {width:40px;height:40px;margin:0 0 12px;}
+.mobile-launch .launch-welcome>.launch-eyebrow {font-size:10px;letter-spacing:1.2px;}
+.mobile-launch .launch-welcome h1 {font-size:28px;line-height:1.15;margin:12px 0;}
+.mobile-launch .launch-welcome .launch-intro {font-size:14px;line-height:1.5;margin:0;}
+.mobile-launch .launch-welcome .launch-art-orbit,.mobile-launch .launch-welcome .launch-flow,.mobile-launch .launch-welcome .launch-operation {display:none;}
+.mobile-launch .launch-art,.mobile-launch .launch-setup {padding:20px;}
+.mobile-launch .launch-art h2 {font-size:22px;line-height:1.25;margin:10px 0;}
+.mobile-launch .launch-art>p {font-size:14px;line-height:1.5;}
+.mobile-launch .launch-art .launch-actions {margin:18px 0 12px;gap:10px;}
+.mobile-launch .launch-art .launch-actions button {width:100%;min-height:44px;}
+.mobile-launch .launch-links {display:flex;flex-wrap:wrap;gap:8px;}
+.mobile-launch .launch-screen[data-mode=setup] .launch-welcome {display:grid;grid-template-columns:38px minmax(0,1fr);align-items:center;gap:12px;}
+.mobile-launch .launch-screen[data-mode=setup] .launch-welcome>img {grid-column:1;margin:0;width:38px;height:38px;}
+.mobile-launch .launch-screen[data-mode=setup] .launch-welcome>.launch-eyebrow {grid-column:2;line-height:1.5;letter-spacing:1px;}
 
 /* Active rows stay inside the same content box as ordinary rows. */
 #dev-shell .overview-schedule-row {box-sizing:border-box;width:100%;min-width:0;margin:0;padding:8px 10px;min-height:56px;}

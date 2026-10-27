@@ -7,6 +7,7 @@ import { createGasRelay } from './fixtures/gas-relay.mjs';
 import { IntegrationState } from '../linux/integration-state.mjs';
 const web = process.argv.includes('--web');
 const desktop = process.env.OCTOPUS_FIXTURE_DESKTOP === '1';
+const screenshotMode=process.env.OCTOPUS_FIXTURE_SCREENSHOT==='1';
 const port = Number(process.env.OCTOPUS_FIXTURE_PORT) || (web ? 65524 : 65523);
 const origin = `http://127.0.0.1:${port}`;
 const root = process.cwd();
@@ -26,8 +27,9 @@ const historyStats=()=>({retentionMonths,saveIntervalMinutes,storageBytes:histor
 const activity = process.env.OCTOPUS_FIXTURE_ACTIVITY==='1' ? Array.from({length:8},(_,index)=>({type:index%2?'automation_resumed':'automation_paused',at:new Date(Date.now()-index*3600000).toISOString(),until:null})) : [];
 const config = { credentials:{ acc:'A-MOCK', api:'pi-managed', foxSN:'pi-managed', foxToken:'pi-managed' }, automations:{dispatchCheck:false}, liveWsEnabled:false, liveWsPolicy:'rest', revision:1 };
 const seeded=process.env.OCTOPUS_FIXTURE_SCHEDULES==='1';
-const dispatches=seeded?Array.from({length:5},(_,index)=>({startDt:new Date(Date.now()+(index*2-.5)*3600000).toISOString(),endDt:new Date(Date.now()+(index*2+.5)*3600000).toISOString()})):[];
+const dispatches=seeded?Array.from({length:screenshotMode?2:5},(_,index)=>({startDt:new Date(Date.now()+(index*2-.5)*3600000).toISOString(),endDt:new Date(Date.now()+(index*2+.5)*3600000).toISOString()})):[];
 const seededGroups=seeded?[{enable:1,startHour:0,startMinute:0,endHour:23,endMinute:59,workMode:'ForceCharge',extraParam:{schSources:['weekly']}},{enable:1,startHour:0,startMinute:0,endHour:5,endMinute:30,workMode:'ForceCharge',extraParam:{schSources:['dispatch']}}]:[];
+const historyPoints=Array.from({length:96},(_,index)=>{const hour=index/4;const solar=Math.max(0,Math.sin((hour-6)*Math.PI/12))*3.6;const home=.45+Math.max(0,Math.sin(hour*1.7))*.5+(hour>17&&hour<20?1.4:0);const charge=hour<5?1.8:0;const discharge=hour>16&&hour<22?.8:0;return {at:new Date(new Date().setHours(0,0,0,0)+index*900000).toISOString(),values:{pvPower:solar,loadsPower:home,gridConsumptionPower:Math.max(0,home-solar+charge-discharge),feedinPower:Math.max(0,solar-home),batChargePower:charge,batDischargePower:discharge,SoC:Math.min(95,Math.max(15,25+hour*4-(hour>15?(hour-15)*13:0)))},samples:{}}});
 const device = {status:'LIVE',vehicleMake:'Example',vehicleModel:'Mock EV'};
 http.createServer(async (request,response) => {
   const json = (value,status=200) => { response.writeHead(status,{'Content-Type':'application/json','Cache-Control':'no-store'});response.end(JSON.stringify(value)); };
@@ -36,6 +38,16 @@ http.createServer(async (request,response) => {
     let body = ''; for await (const chunk of request) body += chunk;
     const payload = body ? JSON.parse(body) : {};
     const timestamp = new Date().toISOString();
+    if (url.pathname === '/api/dashboard-snapshot') return json({data:{registeredKrakenflexDevice:device,vehicleChargingPreferences:{weekdayTargetTime:'07:00',weekdayTargetSoc:80},plannedDispatches:dispatches},_serverSnapshot:{pending:false,fetchedAt:Date.now()}});
+    if (url.pathname === '/test/capture') {
+      const mobile=url.searchParams.get('mobile')==='1';
+      const welcome=url.searchParams.get('welcome')==='1';
+      const view=url.searchParams.get('view')||'overview';
+      const route=desktop?'/app/index.html?client=1':web?'/web/index.html':'/dev/index.html?client=1';
+      const frames=mobile?[{url:'/dev/index.html?client=1&locked=1',width:390},{url:'/dev/index.html?client=1',width:390},{url:'/dev/index.html?client=1&view=history',width:390}]:[{url:route+(route.includes('?')?'&':'?')+'view='+view+(welcome?'&locked=1':''),width:1920}];
+      response.writeHead(200,{'Content-Type':'text/html','Cache-Control':'no-store'});
+      return response.end(`<style>body{margin:0;background:#100326;display:flex;gap:24px;width:1280px;height:720px;overflow:hidden}iframe{border:0;display:block;flex-shrink:0;height:720px}body:has(iframe:only-child) iframe{height:1080px;transform:scale(.6666666667);transform-origin:top left}</style>${frames.map((frame,index)=>`<iframe title="Example interface ${index+1}" src="${frame.url}" style="width:${frame.width}px"></iframe>`).join('')}`);
+    }
     if (url.pathname === '/test/viewport') {
       const requested=Number(url.searchParams.get('width'));
       const width=[320,390,768,1024,1280,1440,1920,2560].includes(requested)?requested:390;
@@ -89,7 +101,7 @@ http.createServer(async (request,response) => {
       return json(pauseState);
     }
     if (url.pathname === '/api/history/settings') { if (request.method === 'PUT') {retentionMonths = payload.retentionMonths ?? retentionMonths;saveIntervalMinutes=payload.saveIntervalMinutes ?? saveIntervalMinutes;} return json(historyStats()); }
-    if (url.pathname === '/api/history') return json({month:url.searchParams.get('month'),intervalMinutes:15,...historyStats(),events:activity,fields:Object.keys(readings),points:historyCleared?[]:[{at:timestamp,values:readings,samples:{}}]});
+    if (url.pathname === '/api/history') return json({month:url.searchParams.get('month'),intervalMinutes:15,...historyStats(),events:activity,fields:Object.keys(readings),points:historyCleared?[]:historyPoints});
     if (url.pathname.startsWith('/mock-octopus/') || url.pathname === '/api/octopus') {
       if(faults.octopus){health.failure('octopus','api','Mock Octopus unavailable');return json({error:'Mock Octopus unavailable'},503);}
       health.success('octopus');
@@ -98,8 +110,9 @@ http.createServer(async (request,response) => {
       if (target.includes('graphql')) return json(data.query?.includes('obtainKrakenToken')
         ? {data:{obtainKrakenToken:{token:'mock-token'}}}
         : {data:{registeredKrakenflexDevice:device,vehicleChargingPreferences:{weekdayTargetTime:'07:00',weekdayTargetSoc:80},plannedDispatches:dispatches}});
-      if (target.includes('accounts')) return json({properties:[{electricity_meter_points:[{is_export:false,agreements:[{tariff_code:'E-1R-DEMO-26-A',valid_from:'2020-01-01T00:00:00Z',valid_to:null}]}]}]});
-      return json({results:[{value_inc_vat:8,valid_from:new Date(Date.now()-86400000).toISOString(),valid_to:new Date(Date.now()+86400000).toISOString()}]});
+      if (target.includes('accounts')) return json({properties:[{electricity_meter_points:[{is_export:false,agreements:[{tariff_code:'E-1R-DEMO-26-A',valid_from:'2020-01-01T00:00:00Z',valid_to:null}]},{is_export:true,agreements:[{tariff_code:'E-1R-OUTGOING-26-A',valid_from:'2020-01-01T00:00:00Z',valid_to:null}]}]}]});
+      const day=new Date().setHours(0,0,0,0);
+      return json({results:Array.from({length:48},(_,i)=>({value_inc_vat:target.includes('OUTGOING')?12:i<11||i>46?8:29.8,valid_from:new Date(day+i*1800000).toISOString(),valid_to:new Date(day+(i+1)*1800000).toISOString()}))});
     }
     if (url.pathname === '/mock-foxess' || url.pathname === '/api/foxess') {
       if(faults.foxess){health.failure('foxess','api','Mock FoxESS unavailable');return json({error:'Mock FoxESS unavailable'},503);}
@@ -123,7 +136,7 @@ http.createServer(async (request,response) => {
       window.desktopHost={platform:'windows',configuration:async()=>fixtureConfig,saveConfiguration:async()=>({saved:true}),status:async()=>({lanUrls:['http://192.0.2.1:8787']}),remoteAccess:async()=>fixtureRemote,setRemoteAccess:async value=>(fixtureRemote={...fixtureRemote,...value,state:value.enabled?'running':'disabled',url:value.enabled?'https://mock-url.example.test':null}),copyRemoteKey:async()=>true,copyPublicUrl:async()=>true,copyLanCode:async()=>true};
       </script>`);
       html = html.replace('<head>',`<head><script>${noticeFixture}</script>`)
-        .replace('<body>','<body><p style="position:fixed;bottom:0;left:0;z-index:10020;padding:4px;margin:0;color:#b91c1c;background:white;font-size:10px;pointer-events:none">LOCAL TEST · MOCK DATA · No real credentials or inverter commands</p>');
+        .replace('<body>',screenshotMode?'<body>':'<body><p style="position:fixed;bottom:0;left:0;z-index:10020;padding:4px;margin:0;color:#b91c1c;background:white;font-size:10px;pointer-events:none">LOCAL TEST · MOCK DATA · No real credentials or inverter commands</p>');
       response.writeHead(200,{'Content-Type':'text/html','Cache-Control':'no-store'});return response.end(html);
     }
     if (url.pathname === '/octopus-foxess.svg') {

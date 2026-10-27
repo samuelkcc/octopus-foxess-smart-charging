@@ -22,12 +22,24 @@
     }
     const access=toggle('Require a LAN access code');const code=field('LAN access code','password');
     code.input.minLength=8;code.input.maxLength=64;
+    const secret=make('div','desktop-secret-control');
+    const reveal=button('',async()=>{
+      const showing=code.input.type==='password';code.input.type=showing?'text':'password';
+      reveal.setAttribute('aria-label',showing?'Hide LAN access code':'Show LAN access code');
+      reveal.setAttribute('aria-pressed',String(showing));
+    });
+    reveal.classList.add('desktop-secret-toggle');reveal.setAttribute('aria-label','Show LAN access code');reveal.setAttribute('aria-pressed','false');
+    reveal.innerHTML='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/></svg>';
+    secret.append(code.input,reveal);code.row.append(secret);
+    const lan=make('div','desktop-code-actions');lan.append(code.row,button('Copy LAN code',()=>host.copyLanCode()));
     const live=toggle('Enable FoxESS Live WS telemetry');
     fields.foxWebUsername=field('FoxCloud web-login account');fields.foxWebPassword=field('FoxCloud web-login password','password');
-    const advanced=make('details','desktop-advanced');advanced.append(make('summary','','Optional live telemetry'),live.row,fields.foxWebUsername.row,fields.foxWebPassword.row);
+    const advanced=make('details','desktop-advanced');
+    const liveCredentials=make('div','next-field-grid');liveCredentials.append(fields.foxWebUsername.row,fields.foxWebPassword.row);
+    advanced.append(make('summary','','Optional live telemetry'),live.row,liveCredentials);
     const status=make('p','next-muted');status.setAttribute('role','status');
     const save=make('button','next-button','Save configuration');save.type='submit';
-    form.append(credentials,access.row,code.row,button('Copy LAN code',()=>host.copyLanCode()),advanced,status,save);
+    form.append(credentials,access.row,lan,advanced,status,save);
     const load=async()=>{
       const state=await host.configuration();
       for(const [name,control] of Object.entries(fields))control.input.value=state.credentials?.[name]||'';
@@ -57,7 +69,7 @@
   const parking=document.getElementById('dev-engine-elements');
   [...setup.children].forEach(node=>parking.append(node));
   setup.append(make('span','launch-eyebrow','SET UP THIS PC'),make('h2','','Connect your energy accounts'),make('p','next-auth-copy','No Google relay is required. Use one automation host for each inverter.'),configuration());
-  const actions=make('div','next-settings-actions');actions.append(button('Back to Welcome',()=>{login.dataset.mode='welcome';}));setup.append(actions);
+  const actions=make('div','next-settings-actions');actions.append(button('Account setup guide',()=>toggleDrawer('setup-guide-panel')),button('Back to Welcome',()=>{login.dataset.mode='welcome';}));setup.append(actions);
   login.querySelector('.launch-operation').textContent='Keep Smart Charging open. Minimizing continues automation. Closing the app stops the service.';
   const configure=button('Configure this PC',()=>{login.dataset.mode='setup';});
   login.querySelector('.launch-art .launch-links').prepend(configure);
@@ -74,13 +86,15 @@
   const publicUrl=field('Public URL');publicUrl.input.readOnly=true;
   const key=field('Remote Access Key','password');key.input.readOnly=true;
   const show=toggle('Show remote key');show.input.addEventListener('change',()=>{key.input.type=show.input.checked?'text':'password';});
-  const operations=make('div','next-settings-actions');
+  const operations=make('div','next-settings-actions desktop-remote-actions');
   operations.append(button('Start Quick Tunnel',async()=>{await host.setRemoteAccess({enabled:true});await updateRemote();},false),button('Stop tunnel',async()=>{await host.setRemoteAccess({enabled:false});await updateRemote();}),button('Copy URL',()=>host.copyPublicUrl()),button('Copy Key',()=>host.copyRemoteKey()));
   const rotate=button('New key / Sign out all',async()=>{
     const confirmed=await window.confirm('Replace the remote key and sign out every remote browser?');
     if(confirmed){await host.setRemoteAccess({enabled:true,rotateKey:true});await updateRemote();}
   });
-  tunnel.append(stateText,publicUrl.row,key.row,show.row,operations,rotate,make('p','next-muted','The URL stays while this tunnel runs. Restarting the app creates a new URL. Browser sessions last up to 12 hours.'));
+  const security=make('div','desktop-remote-security');
+  security.append(make('p','next-muted','Replacing the key signs out every remote browser.'),rotate);
+  tunnel.append(stateText,publicUrl.row,key.row,show.row,operations,security,make('p','next-muted','The URL stays while this tunnel runs. Restarting the app creates a new URL. Browser sessions last up to 12 hours.'));
   remote.append(tunnel);
   async function updateRemote(){
     const state=await host.remoteAccess();

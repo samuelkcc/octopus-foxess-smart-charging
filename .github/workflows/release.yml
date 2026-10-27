@@ -28,6 +28,7 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
+      - run: npm ci --prefix desktop
       - name: Resolve release tag
         run: echo "RELEASE_TAG=${{ inputs.tag || github.ref_name }}" >> "$GITHUB_ENV"
       - name: Create tag for a manual release
@@ -42,10 +43,17 @@ jobs:
             git push origin "$RELEASE_TAG"
           fi
       - run: npm run check
+      - run: npm run build:dev
+        env:
+          OCTOPUS_UI_COMMIT: ${{ github.sha }}
+      - name: Build portable Windows app and complete release assets
+        run: |
+          node scripts/build-desktop.mjs
+          node scripts/stage-release.mjs
       - name: Verify tag matches package version
         run: |
           test "$RELEASE_TAG" = "v$(node -p "require('./package.json').version")"
-      - name: Create release and upload both editions
+      - name: Create release and upload web, Pi, and Windows editions
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
@@ -55,17 +63,11 @@ jobs:
               --notes-file RELEASE_NOTES.md \
               --latest
             gh release upload "$RELEASE_TAG" \
-              dist/Octopus_IGO_Smart_Charging_Detector.html \
-              dist/Octopus_FoxESS_Raspberry_Pi.tar.gz \
-              dist/install.sh \
-              dist/uninstall.sh \
+              .build/release-"$RELEASE_TAG"/* \
               --clobber
           else
             gh release create "$RELEASE_TAG" \
-              dist/Octopus_IGO_Smart_Charging_Detector.html \
-              dist/Octopus_FoxESS_Raspberry_Pi.tar.gz \
-              dist/install.sh \
-              dist/uninstall.sh \
+              .build/release-"$RELEASE_TAG"/* \
               --title "$RELEASE_TAG" \
               --notes-file RELEASE_NOTES.md \
               --latest

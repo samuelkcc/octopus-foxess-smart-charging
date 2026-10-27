@@ -135,7 +135,7 @@
     const editionLabel=shell.querySelector('.dev-service');
     editionLabel.hidden=pi || viewing;
     editionLabel.textContent=pi?'':'Web edition';
-    if(pi && !window.desktopHost) byId('login-layout').querySelector('.launch-setup>.next-auth-copy').textContent=window.linuxRemoteAccess?`Enter the separate Remote Access Key shown in your ${hostName} Configuration.`:'Enter your LAN access code if protection is enabled.';
+    if(pi && !window.desktopHost) byId('login-layout').querySelector('.launch-setup>.next-auth-copy').textContent=window.linuxRemoteAccess?(hostName==='PC'?'Enter the Remote Access Key from Windows app → Remote Access.':'Enter the separate Remote Access Key shown in Pi Configuration.'):'Enter your LAN access code if protection is enabled.';
     session.textContent=pi?(window.linuxRemoteAccess?'Browser login lasts up to 12 hours. Use the same remote key after expiry.':`Your ${hostName} stores the account setup and runs the automation.`):'Keep this browser open and awake while automation runs.';
   };
   new MutationObserver(syncAuth).observe(dashboard,{attributes:true,attributeFilter:['class']});
