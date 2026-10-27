@@ -231,6 +231,12 @@ The History page shows all measurements together and reports storage use.
 These are observed averages, not billing-grade energy totals.
 Missing readings stay as gaps.
 
+Power charts use positive and negative values to show direction.
+Solar generation, grid import, and battery charging appear above zero.
+Home demand, grid export, and battery discharging appear below zero.
+Battery level remains between 0% and 100%.
+CSV exports retain the original recorded magnitudes.
+
 - Retention defaults to **12 months**, with a configurable range of **1–24 months**.
 - Readings are buffered in memory and saved every **60 minutes** by default. A **30-minute** option is available.
 - Monthly archives are compressed. Unsaved readings can be lost after an unexpected power failure.

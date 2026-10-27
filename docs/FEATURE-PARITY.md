@@ -113,3 +113,15 @@ The personal deployment and downloadable relay source use that same code.
 All downloaded release assets matched the published checksums.
 The local distribution contains one HTML file and one Windows EXE.
 Interface images use dark appearance. The mobile montage was supplied by the project owner.
+
+## Version 2.0.3 history direction review
+
+- Power charts show positive and negative directions with a clear zero line.
+- Solar generation, grid import, and battery charging are positive.
+- Home demand, grid export, and battery discharging are negative.
+- Source fields remain paired with their original labels and colours.
+- Expanded charts use the same data and axis limits.
+- Battery level retains its 0–100% range.
+- Tests cover missing readings, measured zero, original records, and CSV magnitudes.
+- This presentation change does not modify telemetry, storage, authentication, or scheduler behaviour.
+- Native Windows execution and installation on the user's Pi remain unverified for this patch.

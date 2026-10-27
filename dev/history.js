@@ -1,9 +1,9 @@
 /* Copyright (C) 2026 SCKC. GPL-3.0-or-later. History overview and expanded charts. */
 (() => {
   const groups = [
-    {id:'home',title:'Solar and home demand',unit:'kW',fields:[['pvPower','Solar','#f59e0b'],['loadsPower','Home','#e879f9']]},
-    {id:'grid',title:'Grid import and export',unit:'kW',fields:[['gridConsumptionPower','Import','#38bdf8'],['feedinPower','Export','#34d399']]},
-    {id:'battery',title:'Battery charge and discharge',unit:'kW',fields:[['batChargePower','Charge','#2dd4bf'],['batDischargePower','Discharge','#fb923c']]},
+    {id:'home',title:'Solar and home demand',unit:'kW',fields:[['pvPower','Solar generation (+)','#f59e0b',1],['loadsPower','Home demand (−)','#e879f9',-1]]},
+    {id:'grid',title:'Grid import and export',unit:'kW',fields:[['gridConsumptionPower','Import (+)','#38bdf8',1],['feedinPower','Export (−)','#34d399',-1]]},
+    {id:'battery',title:'Battery charge and discharge',unit:'kW',fields:[['batChargePower','Charge (+)','#2dd4bf',1],['batDischargePower','Discharge (−)','#fb923c',-1]]},
     {id:'soc',title:'Battery level',unit:'%',fields:[['SoC','Charge level','#c084fc']]}
   ];
   window.installHistoryView = (panel, {piEdition,isVisible}) => {
@@ -54,12 +54,17 @@
       const maximum=times.length?Math.min(end,times.at(-1)+900000):end;
       const ticks=[];
       if(times.length)for(let at=times[0];at<=times.at(-1);at+=900000)ticks.push(at);
-      const datasets=group.fields.map(([field,label,color])=>({label,borderColor:color,borderWidth:2,pointRadius:ticks.length<3?3:0,spanGaps:false,data:ticks.map(at=>{const value=byTime.get(at)?.[field];return {x:at,y:typeof value==='number' && Number.isFinite(value)?value:null};})}));
+      // Directional archives retain non-negative magnitudes. Apply chart signs only here;
+      // CSV export, stored readings, and scheduler telemetry keep their original values.
+      const datasets=group.fields.map(([field,label,color,direction=1])=>({label,borderColor:color,borderWidth:2,pointRadius:ticks.length<3?3:0,spanGaps:false,data:ticks.map(at=>{const value=byTime.get(at)?.[field];return {x:at,y:typeof value==='number' && Number.isFinite(value)?(value===0?0:value*direction):null};})}));
       const style=getComputedStyle(document.documentElement),muted=style.getPropertyValue('--text-muted');
+      const signed=group.unit==='kW';
+      const extent=Math.max(0.1,...datasets.flatMap(series=>series.data.map(point=>Math.abs(point.y ?? 0))));
+      const signedValue=value=>`${value>0?'+':value<0?'−':''}${Math.abs(value).toFixed(2)}`;
       return {type:'line',data:{datasets},options:{responsive:true,maintainAspectRatio:false,animation:false,parsing:false,
-        interaction:{mode:'index',intersect:false},plugins:{legend:{position:'bottom',labels:{color:muted,usePointStyle:true,boxWidth:8,padding:18}},tooltip:{callbacks:{title:items=>items.length?new Date(items[0].parsed.x).toLocaleString():'',label:item=>`${item.dataset.label}: ${item.parsed.y.toFixed(2)} ${group.unit}`}}},
+        interaction:{mode:'index',intersect:false},plugins:{legend:{position:'bottom',labels:{color:muted,usePointStyle:true,boxWidth:8,padding:18}},tooltip:{callbacks:{title:items=>items.length?new Date(items[0].parsed.x).toLocaleString():'',label:item=>`${item.dataset.label}: ${signed?signedValue(item.parsed.y):item.parsed.y.toFixed(2)} ${group.unit}`}}},
         scales:{x:{type:'linear',min:minimum,max:maximum,grid:{color:style.getPropertyValue('--border')},ticks:{maxTicksLimit:6,color:muted,callback:value=>maximum-minimum<=3*86400000?new Date(value).toLocaleTimeString(undefined,{hour:'2-digit',minute:'2-digit'}):new Date(value).toLocaleDateString(undefined,{day:'numeric',month:'short'})}},
-          y:{beginAtZero:true,max:group.unit==='%'?100:undefined,title:{display:true,text:group.unit==='%'?'Charge level (%)':'Average power (kW)',color:muted},ticks:{color:muted},grid:{color:style.getPropertyValue('--border')}}}}};
+          y:{beginAtZero:true,min:signed?undefined:0,max:signed?undefined:100,suggestedMin:signed?-extent:undefined,suggestedMax:signed?extent:undefined,title:{display:true,text:signed?'Average power (kW)':'Charge level (%)',color:muted},ticks:{color:muted,callback:value=>signed&&value>0?`+${value}`:String(value)},grid:{color:context=>context.tick.value===0?muted:style.getPropertyValue('--border'),lineWidth:context=>context.tick.value===0?2:1}}}}};
     }
     function drawExpanded() {
       if(!expandedGroup || !data)return;

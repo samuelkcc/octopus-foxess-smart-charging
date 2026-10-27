@@ -1,6 +1,6 @@
 # Interface screenshots
 
-Updated on 27 October 2026 for version 2.0.2.
+Updated on 27 October 2026.
 
 - Interface screenshots use dark appearance.
 - Published images omit viewport diagnostics and local test overlays.
@@ -12,6 +12,7 @@ Updated on 27 October 2026 for version 2.0.2.
 - The preview cannot call the service or save account settings.
 - No live account configuration or desktop theme was changed for these images.
 - Desktop previews use 1920 × 1080 or 1280 × 720 layouts.
+- The History image shows signed power directions from version 2.0.3 with demonstration readings.
 - Screenshots contain no real account numbers, serial numbers, API keys, or remote keys.
 
 A screenshot demonstrates the interface, not verified inverter behaviour.
