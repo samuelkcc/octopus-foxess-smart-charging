@@ -169,7 +169,7 @@ Native Windows execution remains a user check.
 - Installed UI commit: `145e1d761631c9f37f18273c1b3cee4b5eac7f00`.
 - Official Pi updater completed successfully on 2026-10-27.
 - Post-restart shared snapshot: 144 import intervals and two export rate records, with no active tariff problem.
-- Live Overview: 29.82p import and 12p export; both charts rendered without manual API refresh.
+- Live Overview: 29.82p import and 12p export. Both charts rendered without manual API refresh.
 - Live Octopus and FoxESS service health: healthy after the update.
 - Welcome, Overview, and Settings navigation: verified through the Pi LAN dashboard.
 - Retained recovered alerts remain visible until acknowledgement or configured expiry.
