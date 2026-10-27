@@ -608,3 +608,25 @@ This check does not prove persistence after a reboot or a new remote session.
 
 The final live Overview showed all five dispatch windows beside the two FoxESS schedule periods.
 The larger schedule region retained the electricity plots within the same desktop frame.
+
+
+## API safeguard installation
+
+The Pi runtime and interface were installed from `d4afb332ce286e6997b6aaf5412c4e304c81c439`.
+That installation contains shared Octopus request spacing and the enforced refresh minimums.
+The tunnel restarted with its existing key.
+The local report confirmed retained history and current telemetry.
+Later Welcome and active-row fixes require a separate interface update.
+
+The independent HTML test file is available as `dist/Smart_Charging_v2.0.0.html`.
+A separate Desktop copy supports local Safari review.
+The Welcome connection transition was checked with mock Octopus and GAS responses.
+The active-row check used five mock dispatches and two mock FoxESS periods.
+Every checked text and badge remained inside its row.
+
+
+The current branch also adds native Pi service enablement.
+Only local Configuration can change it.
+Its mock test verifies zero upstream requests while disabled and persistence after restart.
+The Windows package uses the normal application name without a Preview label.
+Its native Windows verification will use the user's UTM environment.

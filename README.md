@@ -33,6 +33,10 @@ GitHub Pages still uses the public interface.
 Use only one active automation browser in the web edition.
 The Pi edition uses one worker for all dashboard clients.
 
+A [Windows portable app](desktop/README.md) is also in development.
+It includes the local service and dashboard in one desktop app.
+Windows runtime verification is pending.
+
 ## Read the guides
 
 - [Pi installation, access, and updates](linux/README-RASPBERRY-PI.md)

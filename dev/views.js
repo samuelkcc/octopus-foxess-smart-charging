@@ -3,6 +3,7 @@
  * values and handlers. Old presentation nodes are retained in one hidden host.
  */
 (() => {
+  const hostName = document.documentElement.dataset.devEdition === 'desktop' ? 'PC' : 'Pi';
   const pi = document.documentElement.dataset.devEdition !== 'web';
   const shell = document.getElementById('dev-shell');
   const dashboard = document.getElementById('dashboard');
@@ -123,8 +124,8 @@
   let previousConnectionState=null;
   const syncAuth = () => {
     const connected=dashboard.classList.contains('visible');
-    if(connected && previousConnectionState===false && byId('login-layout').dataset.mode==='setup')entered=true;
-    if(!connected)entered=false;
+    // Keep the user's entry request while authentication and queued API reads finish.
+    // Restored background connections leave Welcome visible until a deliberate entry.
     const viewing=connected && entered;
     shell.classList.toggle('dev-auth-mode',!viewing);
     updateConnection(connected);
@@ -134,12 +135,18 @@
     const editionLabel=shell.querySelector('.dev-service');
     editionLabel.hidden=pi || viewing;
     editionLabel.textContent=pi?'':'Web edition';
-    if(pi) byId('login-layout').querySelector('.launch-setup>.next-auth-copy').textContent=window.linuxRemoteAccess?'Enter the separate Remote Access Key shown in your Pi Configuration.':'Enter your LAN access code if protection is enabled.';
-    session.textContent=pi?(window.linuxRemoteAccess?'Browser login lasts up to 12 hours. Use the same remote key after expiry.':'Your Pi stores the account setup and runs the automation.'):'Keep this browser open and awake while automation runs.';
+    if(pi && !window.desktopHost) byId('login-layout').querySelector('.launch-setup>.next-auth-copy').textContent=window.linuxRemoteAccess?`Enter the separate Remote Access Key shown in your ${hostName} Configuration.`:'Enter your LAN access code if protection is enabled.';
+    session.textContent=pi?(window.linuxRemoteAccess?'Browser login lasts up to 12 hours. Use the same remote key after expiry.':`Your ${hostName} stores the account setup and runs the automation.`):'Keep this browser open and awake while automation runs.';
   };
   new MutationObserver(syncAuth).observe(dashboard,{attributes:true,attributeFilter:['class']});
   syncAuth();
   const refreshView=()=>{
+    const rows=Math.max(byId('overview-dynamic-schedules').children.length,byId('overview-fox-schedules').children.length);
+    const summaryHeight=`${Math.max(2,Math.min(5,rows))*60+80}px`;
+    if(shell.style.getPropertyValue('--schedule-summary-height')!==summaryHeight){
+      shell.style.setProperty('--schedule-summary-height',summaryHeight);
+      schedulePriceChartResize();
+    }
     const importPrice=window.currentLivePrice;
     byId('next-import-price').textContent=Number.isFinite(importPrice)?Number(importPrice).toFixed(2):'—';
     const exportRate=getRateAtTime(window.exportRates || [],Date.now());

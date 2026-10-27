@@ -255,3 +255,46 @@ A successful schedule command invalidates that cache.
 Fresh scheduler verification is allowed for 30 seconds after a successful command.
 The normal worker countdown restarts after command acceptance.
 Explicit pause still blocks schedule writes.
+
+
+## Windows desktop host
+
+`desktop/main.cjs` owns the desktop window, hidden automation worker, and utility service process.
+The service reuses `linux/server.mjs` with explicit data and asset directories.
+Windows does not depend on systemd, Python, or an external browser.
+The desktop window uses isolated, sandboxed preload IPC.
+Only its main frame can use administration operations.
+LAN and tunnel clients have no desktop administration bridge.
+
+`dev/desktop.js` provides desktop account setup and Remote Access controls.
+The shared navigation module registers that additional page.
+The Pi account administration remains unchanged.
+The standalone web edition retains Google Apps Script transport.
+
+Electron safeStorage protects the desktop AES key with Windows user encryption.
+A private utility-process message transfers the key into service memory.
+The service does not write that raw key to disk.
+Windows user-profile storage retains history and configuration across EXE replacement.
+The desktop build uses separate service staging so Pi output remains independent.
+
+The app starts one worker and holds a single-instance lock.
+Minimizing leaves that worker active.
+A normal exit stops the worker, flushes history, and stops the local service and tunnel.
+The Windows executable uses the same application name and version.
+Native Windows verification remains pending.
+
+
+## Native service control
+
+`linux/service-control.mjs` owns persistent service enablement and a request generation.
+Its independent state file avoids configuration-write races.
+Native Configuration uses a loopback-only endpoint.
+The remote listener and dashboard configuration API cannot change enablement.
+
+Disabled services reject upstream requests before entering a transport queue.
+Queued operations also check the generation immediately before sending.
+Live WS stops and cannot start a new portal login while disabled.
+The worker still checks local configuration so enablement can resume operation.
+A disabled service keeps its local administration server available.
+History records both service state changes.
+Explicit automation pause remains separate and continues monitoring.

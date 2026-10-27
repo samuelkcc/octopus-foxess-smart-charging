@@ -2,6 +2,7 @@
  * One Settings view. Engine-owned controls keep their IDs and event handlers.
  */
 (() => {
+  const hostName = document.documentElement.dataset.devEdition === 'desktop' ? 'PC' : 'Pi';
   const pi = document.documentElement.dataset.devEdition !== 'web';
   const shell = document.getElementById('dev-shell');
   const grid = shell.querySelector('[data-page="settings"] .dev-page-grid');
@@ -40,7 +41,7 @@
   appearance.append(displayActions);
 
   const refreshSettings=card('API refresh intervals', pi
-    ? 'These intervals apply to the Pi worker. Octopus requests are at least 60 seconds apart.'
+    ? `These intervals apply to the ${hostName} worker. Octopus requests are at least 60 seconds apart.`
     : 'Set how often this browser reads each API. Keep this browser open and awake.');
   for(const [name,id,buttonId,title] of [['octopus','octo-interval-input','btn-apply-octo','Octopus Energy'],['foxess','fox-interval-input','btn-apply-fox','FoxESS']]) {
     const row=make('div','next-refresh-setting');
@@ -76,7 +77,7 @@
     const selector = document.getElementById('live-ws-policy');
     const label = make('label', 'next-field', 'Power-data source'); label.htmlFor = selector.id;
     label.append(selector); telemetry.append(label, document.getElementById('live-ws-policy-state'));
-    const access = card('Access on this device', 'Sign out of this dashboard. Your Pi continues to run the automation.');
+    const access = card('Access on this device', `Sign out of this dashboard. Your ${hostName} continues to run the automation.`);
     const signOut = action('Sign out', removeSavedAccessCode, true);
     signOut.classList.add('remove-access-button'); access.append(signOut);
   } else {

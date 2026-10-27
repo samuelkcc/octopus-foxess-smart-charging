@@ -1,5 +1,18 @@
 ## v2.0.0 — Major redesign under review
 
+- Add Enable Pi Service and Disable Pi Service in native Configuration only.
+- Stop new Octopus, FoxESS REST, Live WS, and schedule requests while disabled. Retain local administration.
+- Persist service disablement across restarts. Log both transitions in History.
+- Reject queued requests from an earlier service state. Wait at least 60 seconds after enabling Octopus access.
+
+- Keep a deliberate Connect request while asynchronous authentication completes. Connect no longer only cancels the restored-session countdown.
+- Keep active schedule rows inside their cards. Use consistent padding and row heights.
+- Add an unsigned Windows portable edition with an embedded dashboard, service, and single background worker.
+- Integrate native account configuration into Welcome and Settings. Add Remote Access above Settings.
+- Protect the desktop configuration key with Windows user encryption. Restrict administration IPC to the owning main frame.
+- Bundle a pinned, checksum-verified Cloudflare client. Stop the worker and tunnel when the desktop app exits.
+- Windows native startup, encryption, networking, and shutdown remain unverified on a Windows PC.
+
 - Serialize all Octopus requests with at least 60 seconds between sends. Preserve this limit across Pi service restarts.
 - Share authentication and combined dashboard data across Pi clients. Queue account and tariff reads behind the same limit.
 - Honour HTTP and GraphQL rate-limit responses. Retain the last valid dispatch after a failed check.

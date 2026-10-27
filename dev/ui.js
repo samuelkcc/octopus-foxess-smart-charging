@@ -1,6 +1,7 @@
 /* Copyright (C) 2026 SCKC. GPL-3.0-or-later. Pi DEV layout. */
 (() => {
   'use strict';
+  const hostName = document.documentElement.dataset.devEdition === 'desktop' ? 'PC' : 'Pi';
   const piEdition = document.documentElement.dataset.devEdition !== 'web';
   document.body.classList.add(piEdition ? 'dev-pi-edition' : 'dev-web-edition');
   // A DEV view must never acquire the worker's automatic-write role, even if
@@ -24,7 +25,7 @@
     settings:'<path d="M4 7h16M4 17h16"/><circle cx="9" cy="7" r="3"/><circle cx="15" cy="17" r="3"/>'
   };
   const nav = Object.entries({overview:'Overview',schedules:'Schedules',rules:'Automations',history:'History',connections:'Connections',settings:'Settings'}).map(([page,label]) => `<button type="button" data-page="${page}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${navIcons[page]}</svg><span>${label}</span></button>`).join('');
-  shell.innerHTML = `<aside class="dev-rail"><div class="dev-brand"><img src="/octopus-foxess.svg" alt="" width="42" height="42"><div><strong>Smart Charging</strong><small>for Octopus Energy &amp; FoxESS</small></div></div><span class="dev-tag">HOME ENERGY</span><nav aria-label="Main navigation">${nav}</nav><div class="dev-rail-bottom"><button id="dev-about">About &amp; licences</button></div></aside><div class="dev-workspace"><header class="dev-appbar"><div><span class="dev-breadcrumb">Smart Charging</span><span class="dev-breadcrumb-separator" aria-hidden="true">/</span><strong id="dev-page-name">Overview</strong></div><div class="dev-app-actions"><span class="dev-service" hidden></span><button id="dev-theme" aria-label="Toggle light and dark appearance">◐</button></div></header><div class="dev-announcement">Automation runs on your Pi. You can close this dashboard.</div><div id="dev-content"></div></div>`;
+  shell.innerHTML = `<aside class="dev-rail"><div class="dev-brand"><img src="/octopus-foxess.svg" alt="" width="42" height="42"><div><strong>Smart Charging</strong><small>for Octopus Energy &amp; FoxESS</small></div></div><span class="dev-tag">HOME ENERGY</span><nav aria-label="Main navigation">${nav}</nav><div class="dev-rail-bottom"><button id="dev-about">About &amp; licences</button></div></aside><div class="dev-workspace"><header class="dev-appbar"><div><span class="dev-breadcrumb">Smart Charging</span><span class="dev-breadcrumb-separator" aria-hidden="true">/</span><strong id="dev-page-name">Overview</strong></div><div class="dev-app-actions"><span class="dev-service" hidden></span><button id="dev-theme" aria-label="Toggle light and dark appearance">◐</button></div></header><div class="dev-announcement">Automation runs on your ${hostName}. You can close this dashboard.</div><div id="dev-content"></div></div>`;
   // The app theme selects both brand and browser-tab artwork.
   const syncBrandTheme = () => {
     const key = document.documentElement.dataset.theme === 'light' ? 'iconLight' : 'iconDark';
@@ -51,7 +52,7 @@
   const descriptions = {
     overview:'Your current power flow, dispatch windows, and FoxESS confirmation.',
     schedules:'The current inverter schedule and manual controls. Actions here affect real hardware.',
-    rules:'Review charging and discharging preferences before applying them to the Pi worker.',
+    rules:`Review charging and discharging preferences before applying them to the ${hostName} worker.`,
     history:'Browse recorded power averages and automation activity. Manage retention in Settings.',
     connections:'Account, device and service connection status.',
     settings:'Appearance, visible panels, telemetry and access on this device.'
@@ -81,7 +82,7 @@
   dashboard.querySelectorAll('.dashboard-column').forEach(column => column.remove());
   const inspector = document.createElement('aside');
   inspector.className = 'dev-inspector card';
-  inspector.innerHTML = `<h2>Worker &amp; safety</h2><div id="dev-worker-state" role="status">Waiting for the Pi worker…</div><dl><div><dt>Dispatch fetched</dt><dd id="dev-fetched">—</dd></div><div><dt>FoxESS confirmed</dt><dd id="dev-confirmed">—</dd></div><div><dt>Schedule periods</dt><dd id="dev-periods">—</dd></div><div><dt>Telemetry updated</dt><dd id="dev-telemetry-at">—</dd></div></dl><p>Smart Dispatch takes priority. The worker retains the last valid dispatch when an upstream check fails.</p><p>REST readback confirms schedule programming. Power readings show actual measured behaviour.</p><button id="dev-inspect-schedules">View schedules</button>`;
+  inspector.innerHTML = `<h2>Worker &amp; safety</h2><div id="dev-worker-state" role="status">Waiting for the ${hostName} worker…</div><dl><div><dt>Dispatch fetched</dt><dd id="dev-fetched">—</dd></div><div><dt>FoxESS confirmed</dt><dd id="dev-confirmed">—</dd></div><div><dt>Schedule periods</dt><dd id="dev-periods">—</dd></div><div><dt>Telemetry updated</dt><dd id="dev-telemetry-at">—</dd></div></dl><p>Smart Dispatch takes priority. The worker retains the last valid dispatch when an upstream check fails.</p><p>REST readback confirms schedule programming. Power readings show actual measured behaviour.</p><button id="dev-inspect-schedules">View schedules</button>`;
   move(inspector, 'overview');
   if (!piEdition) {
     inspector.querySelector('h2').textContent = 'Browser automation & safety';
@@ -95,6 +96,7 @@
     const updateInfo = document.createElement('section');
     updateInfo.className = 'card dev-integrations';
     updateInfo.innerHTML = '<h2>Updates &amp; recovery</h2><p>Update the Pi from the taskbar → <strong>Configuration… → Update Raspberry Pi Edition</strong>.</p><p>The public updater installs the earlier interface. This Pi uses separate updates during design review.</p><p>Updates preserve encrypted configuration. History stays in the Pi data directory.</p>';
+    if(hostName==='PC')updateInfo.innerHTML='<h2>Updates &amp; recovery</h2><p>Close Smart Charging before replacing the portable EXE. Settings and history remain in your Windows user profile.</p>';
     move(updateInfo, 'settings');
   } else {
     integrations.innerHTML = '<h2>Account setup</h2><p>The web edition uses account details stored in this browser and your Google Apps Script relay for FoxESS.</p><div class="next-settings-actions"><button id="dev-edit-web-setup">Edit account setup</button><button id="dev-web-guide">Open web setup guide</button></div><h3>Browser operation</h3><p>Keep this browser open and awake. Use Settings to manage configuration backups, display preferences and saved browser data.</p><button id="dev-connection-menu">Open Settings</button>';
@@ -109,7 +111,7 @@
   // Apply uses the unchanged scheduler engine, after an explicit review step.
   const reviewDialog = document.createElement('dialog');
   reviewDialog.className = 'dev-review-dialog';
-  reviewDialog.innerHTML = `<h2>Apply automation changes?</h2><p>These are real Pi settings. Applying saves your rules and asks the existing worker to reconcile the inverter schedule.</p><dl id="dev-review-facts"></dl><p>Confirmation remains pending until the worker receives a matching official FoxESS REST readback.</p><div class="dev-dialog-actions"><button id="dev-review-cancel">Cancel</button><button id="dev-review-apply">Apply to Pi</button></div>`;
+  reviewDialog.innerHTML = `<h2>Apply automation changes?</h2><p>These are real ${hostName} settings. Applying saves your rules and asks the existing worker to reconcile the inverter schedule.</p><dl id="dev-review-facts"></dl><p>Confirmation remains pending until the worker receives a matching official FoxESS REST readback.</p><div class="dev-dialog-actions"><button id="dev-review-cancel">Cancel</button><button id="dev-review-apply">Apply to ${hostName}</button></div>`;
   document.body.append(reviewDialog);
   if (!piEdition) {
     reviewDialog.querySelector('p').textContent = 'These are real inverter settings. Applying saves your browser rules and sends the schedule through your configured Google relay.';
@@ -155,6 +157,27 @@
       catch (error) { showToast(`Unable to apply: ${error.message}`); resetAutomationApplyButton(pendingApply); }
     }
   });
+  window.dashboardNavigation = {
+    navigate: name => navigate(name),
+    register(name, title, description) {
+      if (sections[name]) throw new Error('Dashboard page already exists');
+      titles[name] = title;
+      const section = document.createElement('section');
+      section.className = 'dev-page'; section.dataset.page = name; section.hidden = true;
+      const heading = document.createElement('header'); heading.className = 'dev-page-heading';
+      const label = document.createElement('h1'); label.textContent = title;
+      const copy = document.createElement('p'); copy.textContent = description;
+      heading.append(label, copy);
+      const grid = document.createElement('div'); grid.className = 'dev-page-grid';
+      section.append(heading, grid); dashboard.append(section); sections[name] = section;
+      const button = document.createElement('button'); button.type = 'button'; button.dataset.page = name;
+      button.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c5 5 5 13 0 18-5-5-5-13 0-18Z"/></svg>';
+      const caption = document.createElement('span'); caption.textContent = title; button.append(caption);
+      button.addEventListener('click', () => navigate(name));
+      const settings = shell.querySelector('nav button[data-page="settings"]'); settings.before(button);
+      return grid;
+    }
+  };
   let currentPage = 'overview';
   function navigate(name) {
 
@@ -186,7 +209,7 @@
     const state = document.getElementById('dev-worker-state');
     const messages = { waiting:'Waiting for worker', syncing:'Writing schedule · awaiting REST readback', confirmed:'Schedule confirmed by FoxESS REST', failed:'Schedule confirmation failed', disabled:'Dispatch sync disabled' };
     state.textContent = piEdition
-      ? (snapshot ? (messages[snapshot.status] || 'Unknown worker state') : 'Waiting for authenticated Pi data')
+      ? (snapshot ? (messages[snapshot.status] || 'Unknown worker state') : `Waiting for authenticated ${hostName} data`)
       : (dashboard.classList.contains('visible') ? 'Automation runs in this browser. Keep it open and awake.' : 'Connect your accounts to start.');
     if (window.automationControl?.isPaused()) state.textContent = 'App schedule control is paused or unavailable. Monitoring continues.';
     state.dataset.status = window.automationControl?.isPaused() ? 'paused' : snapshot?.status || 'waiting';

@@ -80,6 +80,8 @@ def state_text(integration, good="Connected"):
     state = integration.get("state")
     if state == "ok":
         return f"✅ {good}"
+    if state == "disabled":
+        return "⏸ Disabled"
     if state == "waiting":
         return "⚠️ Waiting for first successful request"
     if state == "not-configured":
@@ -130,6 +132,7 @@ class ServerConfigurationWindow(Gtk.Window):
         self.config_loaded = False
         self.config_refresh_in_progress = False
         self.operation_in_progress = False
+        self.service_enabled = True
         self.set_default_size(980, 620)
         self.set_border_width(10)
         self.connect("delete-event", self.hide_on_close)
@@ -145,6 +148,10 @@ class ServerConfigurationWindow(Gtk.Window):
         heading.set_xalign(0)
         heading.set_hexpand(True)
         header.pack_start(heading, True, True, 0)
+
+        self.service_button = Gtk.Button(label="Disable Pi Service")
+        self.service_button.connect("clicked", self.toggle_service)
+        header.pack_end(self.service_button, False, False, 0)
 
         self.update_button = Gtk.Button(label="Update Raspberry Pi Edition")
         self.update_button.connect("clicked", self.update_application)
@@ -325,7 +332,7 @@ class ServerConfigurationWindow(Gtk.Window):
         self.fields["foxWebUsername"].set_sensitive(enabled)
         self.fields["foxWebPassword"].set_sensitive(enabled)
         if hasattr(self, "live_test_button"):
-            self.live_test_button.set_sensitive(enabled and not self.operation_in_progress)
+            self.live_test_button.set_sensitive(enabled and self.service_enabled and not self.operation_in_progress)
 
     def update_secret_visibility(self, button):
         visible = button.get_active()
@@ -352,6 +359,7 @@ class ServerConfigurationWindow(Gtk.Window):
 
     def configuration_loaded(self, config):
         credentials = config.get("credentials") or {}
+        self.set_service_state(config.get("serviceEnabled") is not False)
         self.access_required.set_active(config.get("accessRequired") is not False)
         self.access_code.set_text(config.get("accessKey", ""))
         for key, entry in self.fields.items():
@@ -379,7 +387,43 @@ class ServerConfigurationWindow(Gtk.Window):
         )
         return False
 
+    def set_service_state(self, enabled):
+        self.service_enabled = enabled
+        self.service_button.set_label("Disable Pi Service" if enabled else "Enable Pi Service")
+        context = self.service_button.get_style_context()
+        context.remove_class("destructive-action")
+        context.remove_class("suggested-action")
+        context.add_class("destructive-action" if enabled else "suggested-action")
+        self.update_live_sensitivity()
+
+    def toggle_service(self, _button):
+        if self.operation_in_progress:
+            return
+        enabled = not self.service_enabled
+        self.set_operation_busy(True)
+        self.message.set_text("Enabling Pi service…" if enabled else "Stopping new Octopus and FoxESS requests…")
+
+        def completed(state):
+            self.set_operation_busy(False)
+            self.set_service_state(state.get("enabled") is not False)
+            self.message.set_text(
+                "Pi service enabled. API checks resume after their safe interval."
+                if self.service_enabled else
+                "Pi service disabled. No new Octopus, FoxESS REST, or Live WS requests. The existing inverter schedule stays in place."
+            )
+            self.controller.refresh()
+            return False
+
+        def failed(error):
+            self.set_operation_busy(False)
+            self.message.set_text(f"Could not change Pi service: {error}")
+            self.controller.refresh()
+            return False
+
+        run_in_background(lambda: api_json("/api/service-control", "PUT", {"enabled": enabled}), completed, failed)
+
     def update_status(self, status):
+        self.set_service_state(status.get("serviceEnabled") is not False)
         urls = status.get("lanUrls") or []
         self.address.set_text(urls[0] if urls else f"http://raspberrypi.local:{PORT}")
         self.status_values["server"].set_text(f"✅ Running · v{status.get('version', 'unknown')}")
@@ -387,6 +431,10 @@ class ServerConfigurationWindow(Gtk.Window):
         self.status_values["foxRest"].set_text(state_text(status.get("foxRest", {})))
 
         self.status_values["foxLive"].set_text(live_status_text(status.get("foxLive", {})))
+        if not self.service_enabled:
+            self.status_values["server"].set_text(f"⏸ API service disabled · v{status.get('version', 'unknown')}")
+            for key in ("octopus", "foxRest", "foxLive"):
+                self.status_values[key].set_text("⏸ Disabled — no new API requests")
 
     def show_offline(self, message):
         self.address.set_text(f"http://raspberrypi.local:{PORT}")
@@ -414,6 +462,7 @@ class ServerConfigurationWindow(Gtk.Window):
 
     def set_operation_busy(self, busy):
         self.operation_in_progress = busy
+        self.service_button.set_sensitive(not busy)
         self.save_button.set_sensitive(not busy)
         self.refresh_button.set_sensitive(not busy and not self.config_refresh_in_progress)
         self.update_button.set_sensitive(not busy)
@@ -782,12 +831,12 @@ class TrayController:
         )
         waiting = octopus.get("state") == "waiting" or fox_rest.get("state") == "waiting"
         live_warning = live_status_severity(fox_live) == "amber"
-        color = "red" if definite_problem else ("amber" if waiting or live_warning else "green")
+        color = "amber" if status.get("serviceEnabled") is False else ("red" if definite_problem else ("amber" if waiting or live_warning else "green"))
         self.indicator.set_icon_full(ICONS[color], f"Octopus FoxESS server {color}")
-        self.summary_item.set_label(f"Server: ✅ running · v{status.get('version', 'unknown')}")
+        self.summary_item.set_label(f"Server: {'⏸ API service disabled' if status.get('serviceEnabled') is False else '✅ running'} · v{status.get('version', 'unknown')}")
         self.octopus_item.set_label(f"Octopus API: {state_text(octopus)}")
         self.fox_rest_item.set_label(f"FoxESS REST: {state_text(fox_rest)}")
-        self.fox_live_item.set_label(f"FoxESS Live WS: {live_status_text(fox_live)}")
+        self.fox_live_item.set_label("FoxESS Live WS: ⏸ Disabled" if status.get("serviceEnabled") is False else f"FoxESS Live WS: {live_status_text(fox_live)}")
         self.window.update_status(status)
         return False
 

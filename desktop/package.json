@@ -1,0 +1,64 @@
+{
+  "name": "smart-charging-desktop",
+  "version": "2.0.0",
+  "description": "Smart Charging for Octopus Energy and FoxESS",
+  "author": "SCKC",
+  "license": "GPL-3.0-or-later",
+  "private": true,
+  "main": "main.cjs",
+  "scripts": {
+    "start": "electron .",
+    "build:win": "electron-builder --win portable --x64 --publish never"
+  },
+  "devDependencies": {
+    "electron": "45.0.0",
+    "electron-builder": "26.18.0"
+  },
+  "build": {
+    "appId": "com.sckc.smartcharging",
+    "productName": "Smart Charging",
+    "asar": true,
+    "directories": {
+      "output": "../dist/windows"
+    },
+    "files": [
+      "main.cjs",
+      "preload.cjs",
+      "service.mjs",
+      "package.json",
+      "policy.cjs"
+    ],
+    "extraResources": [
+      {
+        "from": "../dist/desktop-service",
+        "to": "service",
+        "filter": [
+          "**/*",
+          "!tray.py",
+          "!*.sh",
+          "!*.desktop"
+        ]
+      },
+      {
+        "from": "../dist/desktop-assets",
+        "to": "desktop-assets"
+      },
+      {
+        "from": "../node_modules/ws",
+        "to": "service/node_modules/ws",
+        "filter": [
+          "**/*"
+        ]
+      }
+    ],
+    "win": {
+      "target": "portable",
+      "icon": "../src/icons/icon-512.png",
+      "signExecutable": false
+    },
+    "portable": {
+      "artifactName": "SmartCharging-${version}-Windows-x64.exe",
+      "requestExecutionLevel": "user"
+    }
+  }
+}

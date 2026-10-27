@@ -33,13 +33,16 @@
     const sources=[snapshot.local.services[name],snapshot.remote?.services[name]].filter(Boolean);
     return {sources,failures:sources.flatMap(source=>source.failures),alerts:sources.filter(source=>source.alert).map(source=>({...source.alert,origin:source===snapshot.remote?.services[name]?'Pi service request':'This browser request'})),active:sources.some(source=>source.state==='error'),last:sources.map(source=>source.lastSuccessAt).filter(Boolean).sort().at(-1)};
   }
+  const disabledBanner=make('div','Pi service disabled. New API requests and schedule commands are stopped. Enable the service in local Pi Configuration.','next-service-disabled');
+  disabledBanner.setAttribute('role','status');disabledBanner.hidden=true;document.querySelector('.dev-appbar').after(disabledBanner);
   function render() {
     const snapshot=window.integrationMonitor.snapshot();const timing=getOverviewRefreshStatus();
+    const disabled=snapshot.remote?.serviceEnabled===false;disabledBanner.hidden=!disabled;
     for(const [name,view] of Object.entries(views)) {
       const info=summary(snapshot,name);
       // Manual reloads give immediate feedback; automatic activity follows the worker.
       const running=Boolean(timing.running || (timing.workerTiming?timing.workerBusy[name]:snapshot.busy[name]));
-      const stateText=info.active?'Connection problem':running?'Reading API':info.last?'Connected':'Waiting';
+      const stateText=disabled?'Service disabled':info.active?'Connection problem':running?'Reading API':info.last?'Connected':'Waiting';
       const nextAt=timing[name==='octopus'?'octopusNextAt':'foxessNextAt'];
       const interval=name==='octopus'?getEffectiveOctopusRefreshInterval():foxRefreshInterval;
       const remaining=Number.isFinite(nextAt)?Math.max(0,Math.min(1,(nextAt-Date.now())/(interval*1000))):1;
@@ -47,9 +50,9 @@
       view.progress.style.transition=reset?'none':'stroke-dashoffset 1s linear';
       view.progress.style.strokeDashoffset=String(remaining*100);
       view.nextAt=nextAt;
-      view.refresh.disabled=timing.running;
+      view.refresh.disabled=disabled || timing.running;
       view.refresh.setAttribute('aria-busy',String(running));
-      view.ring.dataset.state=info.active?'error':running?'updating':info.last?'ok':'waiting';
+      view.ring.dataset.state=disabled?'waiting':info.active?'error':running?'updating':info.last?'ok':'waiting';
       view.refresh.title=`${view.title}: ${stateText}. Last success: ${formatTime(info.last)}. Select to reload API data.`;
       view.refresh.setAttribute('aria-label',`${view.title}: ${stateText}. Reload API data`);
       view.incident.hidden=info.alerts.length===0;

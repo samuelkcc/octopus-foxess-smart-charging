@@ -20,7 +20,7 @@
     window.integrationMonitor={
         start(name) {busy[name]++;notify();return()=>{busy[name]=Math.max(0,busy[name]-1);notify();};},
         success(name,channel='api') {const recovered=state.service(name).channels[channel]?.ok===false;state.success(name,channel);if(recovered)persist();else notify();},
-        failure(name,channel,error) {if(leaving)return;const revision=state.data.revision;state.failure(name,channel,clean(error));persist(state.data.revision!==revision);},
+        failure(name,channel,error) {if(leaving || window.linuxRuntime && window.linuxServiceEnabled===false)return;const revision=state.data.revision;state.failure(name,channel,clean(error));persist(state.data.revision!==revision);},
         snapshot() {return {local:state.snapshot(),remote,busy:{...busy}};},
         async acknowledge(name) {
             const local=state.snapshot().services[name];const server=remote?.services[name];
@@ -44,6 +44,7 @@
                     options.body=JSON.stringify({requestSeen:workerRequestSeen,octopusNextAt:timing.octopusNextAt,foxessNextAt:timing.foxessScheduleNextAt,octopusBusy:Boolean(busy.octopus),foxessBusy:Boolean(busy.foxess)});
                 }
                 remote=await fetchJson('/api/integration-status',options);
+                window.linuxServiceEnabled=remote.serviceEnabled!==false;
                 if(window.linuxRole==='worker' && remote.refreshRequestId>workerRequestSeen) {
                     workerRequestSeen=remote.refreshRequestId;requestWorkerDataRefresh();
                 }

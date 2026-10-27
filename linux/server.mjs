@@ -12,6 +12,7 @@ import { FoxessLiveTelemetry } from './foxess-live.mjs';
 import { CompactHistory } from './history.mjs';
 import { AutomationPause } from './automation-pause.mjs';
 import { IntegrationState } from './integration-state.mjs';
+import { ServiceControl } from './service-control.mjs';
 import { RequestBudget, retryDelay } from './request-budget.mjs';
 
 const appRoot = path.dirname(fileURLToPath(import.meta.url));
@@ -53,6 +54,8 @@ const packageInfo = JSON.parse(packageContents);
 const version = packageInfo.version;
 
 await mkdir(stateRoot, { recursive: true });
+const serviceControl = new ServiceControl(path.join(stateRoot, 'service-control.json'));
+await serviceControl.load();
 
 // Only timestamps are persisted. A restart cannot bypass the Octopus budget.
 const octopusBudgetFile = path.join(stateRoot, 'octopus-request-budget.json');
@@ -83,7 +86,10 @@ const cacheSuccessfulJson = packet => {
   catch { return false; }
 };
 async function octopusFetch(key, target, options, ttl = 0) {
-  const packet = await octopusBudget.run(key, async () => {
+  serviceControl.assertEnabled();
+  const revision=serviceControl.revision;
+  const packet = await octopusBudget.run(`${revision}:${key}`, async () => {
+    serviceControl.assertEnabled(revision);
     const result = await responsePacket(await fetch(target, { ...options, signal: AbortSignal.timeout(20_000) }));
     let data;
     try { data = JSON.parse(result.text); } catch { /* Invalid upstream data remains an error. */ }
@@ -210,7 +216,7 @@ function saveIntegrationHealth(force = false) {
 }
 let integrationRefreshRequestId = 0;
 let integrationWorker = null;
-function integrationSnapshot() { return { ...integrationHealth.snapshot(), storageError: integrationStorageError, refreshRequestId: integrationRefreshRequestId, worker: integrationWorker }; }
+function integrationSnapshot() { return { ...integrationHealth.snapshot(), serviceEnabled:serviceControl.enabled, storageError: integrationStorageError, refreshRequestId: integrationRefreshRequestId, worker: integrationWorker }; }
 function publicProblem(error) {
   const text = String(error?.message || error || '');
   const http = text.match(/HTTP (\d{3})/);
@@ -244,7 +250,7 @@ function publicIntegrationStatus(name, configured) {
     && (!current.lastSuccessAt || new Date(current.lastErrorAt) > new Date(current.lastSuccessAt));
   return {
     configured,
-    state: !configured ? 'not-configured' : (hasCurrentError ? 'error' : (current.lastSuccessAt ? 'ok' : 'waiting')),
+    state: !serviceControl.enabled ? 'disabled' : !configured ? 'not-configured' : (hasCurrentError ? 'error' : (current.lastSuccessAt ? 'ok' : 'waiting')),
     lastSuccessAt: current.lastSuccessAt,
     lastErrorAt: current.lastErrorAt,
     lastError: hasCurrentError ? current.lastError : null
@@ -263,10 +269,16 @@ async function readJsonBody(request) {
   return JSON.parse(Buffer.concat(chunks).toString('utf8'));
 }
 
+const desktopEncryptionKey = globalThis.desktopEncryptionKey;
+delete globalThis.desktopEncryptionKey;
 const encryptionKeyPath = path.join(stateRoot, 'config.key');
 const encryptedConfigPath = path.join(stateRoot, 'config.enc');
 
 async function getEncryptionKey() {
+  if (process.env.OCTOPUS_DESKTOP === '1') {
+    if (!Buffer.isBuffer(desktopEncryptionKey) || desktopEncryptionKey.length !== 32) throw new Error('Desktop encrypted storage is unavailable');
+    return desktopEncryptionKey;
+  }
   try {
     const key = await readFile(encryptionKeyPath);
     if (key.length !== 32) throw new Error('Invalid configuration key');
@@ -344,6 +356,7 @@ function getClientState(state) {
   const { remoteAccess, ...clientState } = state;
   return {
     ...clientState,
+    serviceEnabled: serviceControl.enabled,
     liveWsEnabled: isLiveWsEnabled(state),
     liveWsPolicy,
     liveWsOnDemand: liveWsPolicy === 'on-demand',
@@ -407,6 +420,7 @@ function relayUpstreamResponse(upstream, response) {
 }
 
 async function proxyFoxRequest(request, response) {
+  serviceControl.assertEnabled();
   const payload = await readJsonBody(request);
   const target = new URL(payload.url);
   if (
@@ -428,6 +442,8 @@ async function proxyFoxRequest(request, response) {
 }
 
 async function requestFoxOpenApi(state, pathname, requestedBody = {}, { readback = false } = {}) {
+  serviceControl.assertEnabled();
+  const controlRevision=serviceControl.revision;
   const foxSN = state.credentials?.foxSN;
   const foxToken = state.credentials?.foxToken;
   if (!foxSN || !foxToken) {
@@ -441,7 +457,10 @@ async function requestFoxOpenApi(state, pathname, requestedBody = {}, { readback
   const body = { ...requestedBody };
   if (Object.hasOwn(body, 'sn')) body.sn = foxSN;
   if (Object.hasOwn(body, 'deviceSN')) body.deviceSN = foxSN;
-  const send = () => fetch(`https://${allowedFoxHost}${pathname}`, {
+  if (Array.isArray(body.variables)) body.variables = [...new Set(body.variables)].sort();
+  const send = () => {
+    serviceControl.assertEnabled(controlRevision);
+    return fetch(`https://${allowedFoxHost}${pathname}`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -452,7 +471,8 @@ async function requestFoxOpenApi(state, pathname, requestedBody = {}, { readback
     },
     body: JSON.stringify(body),
     signal: AbortSignal.timeout(20_000)
-  });
+    });
+  };
   if (pathname === '/op/v3/device/scheduler/enable') {
     const upstream = await automationPause.runWrite(send);
     const result = await upstream.clone().json().catch(() => null);
@@ -491,6 +511,7 @@ async function foxOpenApiJson(state, pathname, body) {
 }
 
 async function proxyOctopusRequest(request, response) {
+  serviceControl.assertEnabled();
   const payload = await readJsonBody(request);
   const target = new URL(payload.url);
   if (
@@ -580,7 +601,8 @@ async function proxyOctopusRequest(request, response) {
 
 const foxessLive = new FoxessLiveTelemetry({
   loadState,
-  foxOpenApiJson
+  foxOpenApiJson,
+  fetchImpl: (url,options) => { serviceControl.assertEnabled(); return fetch(url,options); }
 });
 const history = new CompactHistory({ directory: path.join(stateRoot, 'history') });
 let historyErrorReported = false;
@@ -667,6 +689,23 @@ async function handleRequest(request, response) {
         return sendEmpty(response);
       }
     }
+    if (pathname === '/api/service-control') {
+      if (!isLoopback(request)) return sendJson(response,403,{error:'Service control is available in local Pi Configuration only'});
+      if (request.method === 'GET') return sendJson(response,200,serviceControl.snapshot());
+      if (request.method !== 'PUT') return sendJson(response,405,{error:'Use GET or PUT'});
+      if (request.headers.origin && request.headers.origin !== `http://${request.headers.host}`) return sendJson(response,403,{error:'Cross-site request rejected'});
+      const update=await readJsonBody(request);
+      if (!update || Object.keys(update).length!==1 || typeof update.enabled!=='boolean') return sendJson(response,400,{error:'Specify enabled as true or false'});
+      const previous=serviceControl.enabled;
+      const control=await serviceControl.change(update.enabled);
+      if (!control.enabled) foxessLive.stop();
+      else if (!previous) { await octopusBudget.defer(60_000); foxessLive.start(); }
+      if(previous!==control.enabled){
+        foxReadCache.cache.clear();foxCacheRevision++;
+        await history.recordEvent({type:control.enabled?'service_enabled':'service_disabled',at:new Date().toISOString(),revision:control.revision});
+      }
+      return sendJson(response,200,control);
+    }
     if (pathname === '/api/remote-access') {
       if (!isLoopback(request)) return sendJson(response, 403, { error: 'Remote access is managed on the Raspberry Pi only' });
       let state = await loadState();
@@ -698,6 +737,7 @@ async function handleRequest(request, response) {
       const credentials = state.credentials || {};
       return sendJson(response, 200, {
         status: 'ok',
+        serviceEnabled: serviceControl.enabled,
         version,
         lanUrls: getLanUrls(),
         accessRequired: state.lanAccessRequired !== false,
@@ -715,11 +755,13 @@ async function handleRequest(request, response) {
       const role = workerRequested && isLoopback(request) ? 'worker' : 'dashboard';
       return sendJson(response, 200, {
         mode: 'linux',
+        hostPlatform: process.env.OCTOPUS_DESKTOP === '1' ? 'desktop' : 'pi',
         version,
         role,
         localConfiguration,
         accessRequired,
-        authRequired: remote ? !(await isAuthorized(request)) : accessRequired && role !== 'worker' && !localConfiguration,
+        authRequired: remote ? !(await isAuthorized(request)) : accessRequired && role !== 'worker' && !localConfiguration
+          && !(process.env.OCTOPUS_DESKTOP === '1' && isLoopback(request) && request.headers['x-octopus-access-key'] === await getAccessKey()),
         remoteAccess: remote,
         lanUrls: remote ? [] : getLanUrls()
       });
@@ -752,6 +794,7 @@ async function handleRequest(request, response) {
         const state = await loadState();
         const liveWsPolicy = getLiveWsPolicy(state);
         return sendJson(response, 200, {
+          serviceEnabled: serviceControl.enabled,
           accessRequired: state.lanAccessRequired !== false,
           accessKey: await getAccessKey(),
           liveWsEnabled: isLiveWsEnabled(state),
@@ -798,7 +841,7 @@ async function handleRequest(request, response) {
           revision: Date.now()
         };
         await saveState(next);
-        void foxessLive.reconcile({ force: true });
+        if(serviceControl.enabled) void foxessLive.reconcile({ force: true });
         return sendJson(response, 200, {
           saved: true,
           revision: next.revision,
@@ -830,7 +873,7 @@ async function handleRequest(request, response) {
         revision: Date.now()
       };
       await saveState(next);
-      void foxessLive.reconcile({ force: true });
+      if(serviceControl.enabled) void foxessLive.reconcile({ force: true });
       return sendJson(response, 200, {
         saved: true,
         active,
@@ -883,7 +926,7 @@ async function handleRequest(request, response) {
         revision: Date.now()
       };
       await saveState(next);
-      void foxessLive.reconcile({ force: true });
+      if(serviceControl.enabled) void foxessLive.reconcile({ force: true });
       return sendJson(response, 200, { saved: true, revision: next.revision });
     }
     if (pathname === '/api/config' && request.method === 'DELETE') {
@@ -891,7 +934,7 @@ async function handleRequest(request, response) {
         return sendJson(response, 403, { error: 'Service configuration can only be wiped from the Raspberry Pi Settings app' });
       }
       await saveState({ revision: Date.now() });
-      void foxessLive.reconcile({ force: true });
+      if(serviceControl.enabled) void foxessLive.reconcile({ force: true });
       return sendEmpty(response);
     }
     if (pathname === '/api/dispatch-snapshot' && request.method === 'GET') {
@@ -953,7 +996,7 @@ async function handleRequest(request, response) {
       try {
         return await proxyOctopusRequest(request, response);
       } catch (error) {
-        markIntegrationError('octopus', error);
+        if(error.statusCode!==423) markIntegrationError('octopus', error);
         throw error;
       }
     }
@@ -966,10 +1009,11 @@ async function handleRequest(request, response) {
       }
     }
     if (pathname === '/api/foxess/live/status' && request.method === 'GET') {
-      await foxessLive.reconcile();
-      return sendJson(response, 200, foxessLive.getPublicStatus());
+      if(serviceControl.enabled) await foxessLive.reconcile();
+      return sendJson(response, 200, serviceControl.enabled ? foxessLive.getPublicStatus() : { ...foxessLive.getPublicStatus(), state:'disabled', source:'disabled' });
     }
     if (pathname === '/api/foxess/live' && request.method === 'GET') {
+      serviceControl.assertEnabled();
       const telemetry = await foxessLive.getTelemetry({ forceRest: requestUrl.searchParams.get('refresh') === '1' });
       // Reuse the worker's existing readings. History must not add API calls or
       // prevent live telemetry/automation if the storage device is unavailable.
@@ -1045,6 +1089,7 @@ async function handleRequest(request, response) {
       if (!isLoopback(request)) {
         return sendJson(response, 403, { error: 'FoxESS live self-test can only run from the Raspberry Pi Settings app' });
       }
+      serviceControl.assertEnabled();
       return sendJson(response, 200, await foxessLive.selfTest());
     }
     if (pathname.startsWith('/api/')) {
@@ -1055,7 +1100,7 @@ async function handleRequest(request, response) {
     }
     return await serveStatic(request, response, pathname);
   } catch (error) {
-    console.error(new Date().toISOString(), error);
+    if(error.statusCode!==423) console.error(new Date().toISOString(), error);
     const status = error.statusCode || (error instanceof SyntaxError ? 400 : 500);
     return sendJson(response, status, {
       error: status >= 400 && status < 500
@@ -1081,21 +1126,26 @@ remoteServer.on('error', error => {
 
 server.listen(port, host, () => {
   console.log(`Octopus FoxESS Linux server v${version} listening on ${host}:${port}`);
-  foxessLive.start();
+  if(serviceControl.enabled) foxessLive.start();
 });
 
+let shuttingDown = false;
 for (const signal of ['SIGINT', 'SIGTERM']) {
-  process.on(signal, () => {
+  process.on(signal, async () => {
+    if (shuttingDown) return;
+    shuttingDown = true;
     clearInterval(historyCleanupTimer);
     clearInterval(historySaveTimer);
     clearInterval(pauseExpiryTimer);
     foxessLive.stop();
     quickTunnel.stop();
+    // Flush before closing clients. An Octopus queue can contain long waits.
+    await history.close().catch(() => {});
+    await integrationSaveQueue;
+    server.closeAllConnections();
+    remoteServer.closeAllConnections();
+    server.close();
     remoteServer.close();
-    server.close(async () => {
-      await history.close().catch(() => {});
-      await integrationSaveQueue;
-      process.exit(0);
-    });
+    process.exit(0);
   });
 }

@@ -273,6 +273,7 @@ async function detectLinuxRuntime() {
         const runtime = await response.json();
         if (runtime.mode !== 'linux') return;
 
+        window.desktopRuntime = runtime.hostPlatform === 'desktop';
         window.linuxRemoteAccess = runtime.remoteAccess === true;
         window.linuxRuntime = true;
         window.linuxRole = runtime.role;
@@ -296,7 +297,7 @@ async function detectLinuxRuntime() {
             await loadFoxLiveStatus();
         }
         document.querySelectorAll('[data-linux-version]').forEach(element => {
-            element.textContent = `Raspberry Pi v${runtime.version}`;
+            element.textContent = `${window.desktopRuntime ? 'Windows desktop' : 'Raspberry Pi'} v${runtime.version}`;
         });
         document.querySelectorAll('[data-linux-lan-url]').forEach(element => {
             const clientUrl = runtime.lanUrls?.[0] || window.location.origin;
@@ -349,6 +350,7 @@ async function loadLinuxState() {
     if (!response.ok) throw new Error(`Unable to load Raspberry Pi configuration (HTTP ${response.status})`);
     const state = await response.json();
     window.linuxRevision = state.revision || null;
+    window.linuxServiceEnabled = state.serviceEnabled !== false;
     window.automationControl?.accept(state.automationPause || { paused: false, until: null, revision: 0 });
     if (state.automations) {
         localStorage.setItem('foxAutomations', JSON.stringify(state.automations));
@@ -637,8 +639,9 @@ function startLinuxWorkerConfigPoll() {
     linuxConfigPollId = setInterval(async () => {
         try {
             const previousRevision = window.linuxRevision;
+            const previousEnabled = window.linuxServiceEnabled;
             const state = await loadLinuxState();
-            if (state.credentials && state.revision !== previousRevision) {
+            if (state.credentials && (state.revision !== previousRevision || previousEnabled !== window.linuxServiceEnabled)) {
                 window.location.reload();
             }
         } catch (error) {
@@ -648,7 +651,7 @@ function startLinuxWorkerConfigPoll() {
 }
 
 function canRunAutomaticActions() {
-    return !window.automationControl?.isPaused() && (!window.linuxRuntime || window.linuxRole === 'worker');
+    return window.linuxServiceEnabled !== false && !window.automationControl?.isPaused() && (!window.linuxRuntime || window.linuxRole === 'worker');
 }
 
 function populateCredentialInputs(credentials) {
@@ -987,7 +990,8 @@ async function handleConnectClick() {
         btnText.textContent = "CONNECT";
         btn.style.backgroundColor = ""; 
         timerUI.style.display = "none";
-    } else {
+    }
+    {
         try {
             if (!(await ensureLinuxAccess())) return;
             if (window.linuxRuntime) {
@@ -1390,6 +1394,7 @@ function initDashboard(isAutoRefresh = false, retryCount = 1) {
 }
 
 async function refreshDashboard(isAutoRefresh = false, retryCount = 1) {
+    if (window.linuxRuntime && window.linuxServiceEnabled === false) return;
     const credentials = window.linuxRuntime
         ? activeCredentials
         : getCredentialInputs();
@@ -1412,8 +1417,9 @@ async function refreshDashboard(isAutoRefresh = false, retryCount = 1) {
         const loader = document.getElementById('loading-overlay');
         loader.style.display = 'flex';
         
-        // Fallback: auto-close loading overlay after 5 seconds
-        setTimeout(() => { 
+        // A queued Octopus request can intentionally wait longer than five seconds.
+        // Keep the connection action pending until it completes.
+        if (!window.requestPolicy) setTimeout(() => {
             if (loader.style.display === 'flex') {
                 loader.style.display = 'none';
                 btn.textContent = 'Refresh Now';
@@ -1999,7 +2005,7 @@ function renderProtectionOverview(now = new Date()) {
     } else if (sync?.status === 'waiting') {
         stateBadge.textContent = 'WAITING';
         stateBadge.className = 'badge neutral';
-        stateMessage.textContent = 'Waiting for the Pi worker to publish and verify the authoritative Octopus Smart Dispatch schedule.';
+        stateMessage.textContent = `Waiting for the ${window.desktopRuntime ? 'desktop' : 'Pi'} worker to publish and verify the authoritative Octopus Smart Dispatch schedule.`;
     } else if (sync?.status === 'syncing') {
         stateBadge.textContent = 'SYNCING';
         stateBadge.className = 'badge peak';
@@ -2024,7 +2030,7 @@ function renderProtectionOverview(now = new Date()) {
         stateBadge.textContent = sync?.status === 'confirmed' ? 'CONFIRMED' : 'SCHEDULED';
         stateBadge.className = sync?.status === 'confirmed' ? 'badge off-peak' : 'badge live';
         stateMessage.textContent = sync?.status === 'confirmed'
-            ? 'The Pi worker applied this exact Octopus schedule and confirmed it through the FoxESS REST scheduler readback.'
+            ? `The ${window.desktopRuntime ? 'desktop' : 'Pi'} worker applied this exact Octopus schedule and confirmed it through the FoxESS REST scheduler readback.`
             : 'The next Octopus dynamic charge is scheduled. Confirm the FoxESS Forced Charge period below covers the same time.';
     } else {
         stateBadge.textContent = 'STANDBY';

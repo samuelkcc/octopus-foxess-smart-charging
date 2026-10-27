@@ -79,7 +79,7 @@
       pager.querySelector('span').textContent=`${start+1}–${Math.min(start+pageSize,events.length)} of ${events.length}`;
       for(const event of events.slice(start,start+pageSize)) {
         const row=document.createElement('div');row.className='next-activity-row';
-        const title=document.createElement('strong');title.textContent=({automation_paused:'Automation paused',automation_resumed:'Automation resumed',pause_expired:'Timed pause ended'})[event.type] || event.type;
+        const title=document.createElement('strong');title.textContent=({automation_paused:'Automation paused',automation_resumed:'Automation resumed',pause_expired:'Timed pause ended',service_enabled:'Pi service enabled',service_disabled:'Pi service disabled'})[event.type] || event.type;
         const detail=document.createElement('p');detail.textContent=`${new Date(event.at).toLocaleString()}${event.type==='automation_paused'?(event.until?` · Until ${new Date(event.until).toLocaleString()}`:' · Until manually resumed'):''}`;row.append(title,detail);activity.append(row);
       }
       if(!activity.children.length)activity.textContent='No automation activity recorded for this month.';

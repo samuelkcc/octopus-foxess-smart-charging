@@ -332,6 +332,7 @@ export class FoxessLiveTelemetry {
     } catch (error) {
       throw new Error(`FoxESS REST plant discovery failed: ${normalizeError(error)}`);
     }
+    if (generation !== this.connectionGeneration) throw new Error('Live connection configuration changed');
     const token = await this.loginToPortal(credentials, { force: forceLogin });
     if (generation !== this.connectionGeneration) throw new Error('Live connection configuration changed');
 

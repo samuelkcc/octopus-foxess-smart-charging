@@ -2,3 +2,5 @@
 node_modules/
 dist/
 *.log
+desktop/.cache/
+prototype/ui-ux-review/Smart_Charging_Web_Test.html

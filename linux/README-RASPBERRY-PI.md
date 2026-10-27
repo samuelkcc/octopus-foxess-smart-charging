@@ -349,3 +349,28 @@ New Smart Dispatch schedules apply immediately when automation is active.
 Official scheduler readback remains fresh after a command.
 A successful schedule command restarts the normal FoxESS interval.
 The explicit automation pause still blocks commands.
+
+## Stop Pi API access during another edition's test
+
+1. Select the charger icon in the Pi taskbar.
+2. Open **Configuration…**.
+3. Select **Disable Pi Service**.
+4. Check that the connection rows show **Disabled**.
+5. Test the standalone web or Windows edition.
+6. Before returning to the Pi, close the other edition.
+7. Select **Enable Pi Service**.
+
+Disable stops new Octopus, FoxESS REST, and Live WS requests.
+It also blocks schedule commands.
+The current inverter schedule stays in place.
+The local server remains available for configuration.
+The disabled state survives a restart.
+History records service disable and enable actions.
+After enable, Octopus waits at least 60 seconds before a new request.
+
+This control differs from **Pause automation**.
+Pause blocks schedule writes but continues API monitoring.
+Only the local Configuration window can change service enablement.
+Remote clients can see the disabled state.
+They cannot enable the service.
+Older public versions do not support this control.

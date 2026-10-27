@@ -194,7 +194,7 @@ export class CompactHistory {
   recordEvent(event) {
     return this.enqueue(async () => {
       await this.initialize();
-      if (!['automation_paused', 'automation_resumed', 'pause_expired'].includes(event?.type)
+      if (!['automation_paused', 'automation_resumed', 'pause_expired', 'service_enabled', 'service_disabled'].includes(event?.type)
           || !Number.isFinite(Date.parse(event.at)) || !Number.isSafeInteger(event.revision)) throw new Error('Invalid activity event');
       const row = [event.at, event.type, event.until || null, event.revision];
       const file = path.join(this.directory, `${monthOf(Date.parse(event.at))}.events.jsonl`);
@@ -303,7 +303,7 @@ export class CompactHistory {
         for (const line of data.split('\n')) {
           try {
             const [at, type, until, revision] = JSON.parse(line);
-            if (!['automation_paused', 'automation_resumed', 'pause_expired'].includes(type)) continue;
+            if (!['automation_paused', 'automation_resumed', 'pause_expired', 'service_enabled', 'service_disabled'].includes(type)) continue;
             if (Date.parse(at) >= cutoff && Date.parse(at) <= now && monthOf(Date.parse(at)) === requestedMonth) events.push({ at, type, until, revision });
           } catch { /* Ignore incomplete append. */ }
         }

@@ -11,6 +11,15 @@ const lock = JSON.parse(await readFile('package-lock.json', 'utf8'));
 lock.version = version;
 lock.packages[''].version = version;
 await writeFile('package-lock.json', JSON.stringify(lock, null, 2) + '\n');
+// Desktop metadata follows the same version when that optional package exists.
+for (const file of ['desktop/package.json', 'desktop/package-lock.json']) {
+  try {
+    const desktop = JSON.parse(await readFile(file, 'utf8'));
+    desktop.version = version;
+    if (desktop.packages?.['']) desktop.packages[''].version = version;
+    await writeFile(file, JSON.stringify(desktop, null, 2) + '\n');
+  } catch (error) { if (error.code !== 'ENOENT') throw error; }
+}
 // Match both legacy calendar labels and the new three-part version.
 const markup = await readFile('src/index.html', 'utf8');
 await writeFile('src/index.html', markup.replace(/\?v=\d+(?:\.\d+){2,3}/g, `?v=${version}`)

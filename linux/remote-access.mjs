@@ -49,7 +49,7 @@ export class QuickTunnel {
     this.enabled = true;
     if (this.child || this.retry) return;
     this.status = { state: 'starting', url: null, error: null };
-    const child = this.spawnProcess(this.binary, ['tunnel', '--no-autoupdate', '--config', '/dev/null', '--url', this.target], { stdio: ['ignore', 'pipe', 'pipe'] });
+    const child = this.spawnProcess(this.binary, ['tunnel', '--no-autoupdate', '--config', process.platform === 'win32' ? 'NUL' : '/dev/null', '--url', this.target], { stdio: ['ignore', 'pipe', 'pipe'], windowsHide: true });
     this.child = child;
     let buffer = '';
     const onData = chunk => {

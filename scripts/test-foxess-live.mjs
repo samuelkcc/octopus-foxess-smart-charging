@@ -380,3 +380,21 @@ assert.equal(restOnlyTelemetry.values.SoC, 55);
 restOnlyService.stop();
 
 console.log('FoxESS Live WebSocket mapping, one-shot subscription, heartbeat, token reuse, race-free temporary self-test, on-demand, always-live, REST-only, caching, and fallback checks passed.');
+
+
+// Disabling the host during discovery must not start a later portal login.
+{
+  let finishDiscovery;
+  let portalRequests=0;
+  const blocked=new FoxessLiveTelemetry({
+    loadState:async()=>({}),
+    foxOpenApiJson:()=>new Promise(resolve=>{finishDiscovery=resolve;}),
+    fetchImpl:async()=>{portalRequests++;throw new Error('Unexpected portal login');}
+  });
+  blocked.connectionGeneration=1;
+  const connecting=blocked.connect({}, {}, 1);
+  blocked.stop();
+  finishDiscovery({errno:0,result:{data:[{stationID:'mock-plant'}]}});
+  await assert.rejects(connecting,/configuration changed/);
+  assert.equal(portalRequests,0,'A stopped connection must not create a new FoxCloud login');
+}

@@ -53,6 +53,7 @@ window.installLaunchScreen = ({ pi, login, parking, byId, make, button, onEnter 
   [...login.children].forEach(node => parking.append(node));
   login.className = 'next-login launch-screen';
   login.dataset.mode = 'welcome';
+  const hostName = document.documentElement.dataset.devEdition === 'desktop' ? 'PC' : 'Pi';
   const welcome = make('section', 'launch-welcome');
   const brand = document.querySelector('.dev-brand img').cloneNode(true);
   brand.width = 58; brand.height = 58; brand.alt = '';
@@ -74,7 +75,7 @@ window.installLaunchScreen = ({ pi, login, parking, byId, make, button, onEnter 
     const copy = make('div'); copy.append(make('strong', '', title), make('small', '', text)); node.append(copy); flow.append(node);
   }
   welcome.append(flow);
-  const operation = make('p', 'launch-operation', pi ? 'Your Pi runs the automation. You can close this dashboard.' : 'Automation runs in this browser. Keep it open and awake.');
+  const operation = make('p', 'launch-operation', pi ? `Your ${hostName} runs the automation. You can close this dashboard.` : 'Automation runs in this browser. Keep it open and awake.');
   welcome.append(operation);
   const welcomeTools = make('div', 'launch-links');
   welcomeTools.append(button(pi ? 'Access guide' : 'Setup guide', () => toggleDrawer('setup-guide-panel'), true), button('About & licences', () => openLicenseModal(false), true));
@@ -132,6 +133,8 @@ window.installLaunchScreen = ({ pi, login, parking, byId, make, button, onEnter 
   });
   const connect = byId('btn');
   connect.style.removeProperty('margin-top');
+  // A deliberate Connect also requests entry after the async connection finishes.
+  connect.addEventListener('click', onEnter);
   actions.append(back, next, connect); auth.append(actions);
   const tools = make('div', 'launch-links');
   tools.append(button(pi ? 'Access help' : 'Setup guide', () => toggleDrawer('setup-guide-panel'), true), button('About & licences', () => openLicenseModal(false), true));
@@ -164,7 +167,7 @@ window.installLaunchScreen = ({ pi, login, parking, byId, make, button, onEnter 
     login.dataset.ready=String(connected);
     start.textContent=connected?'Open dashboard':pi?'Continue to sign in':'Set up Smart Charging';
     introArt.querySelector('p').textContent=connected
-      ? pi?'Your Pi is connected. Open the dashboard to review your home energy.':'Your accounts are connected. Open the dashboard to review your home energy.'
+      ? pi?`Your ${hostName} is connected. Open the dashboard to review your home energy.`:'Your accounts are connected. Open the dashboard to review your home energy.'
       : 'Connect your accounts, review charging windows, and keep your home battery protected.';
   } };
 };

@@ -6,6 +6,7 @@ import path from 'node:path';
 import { createGasRelay } from './fixtures/gas-relay.mjs';
 import { IntegrationState } from '../linux/integration-state.mjs';
 const web = process.argv.includes('--web');
+const desktop = process.env.OCTOPUS_FIXTURE_DESKTOP === '1';
 const port = Number(process.env.OCTOPUS_FIXTURE_PORT) || (web ? 65524 : 65523);
 const origin = `http://127.0.0.1:${port}`;
 const root = process.cwd();
@@ -15,7 +16,7 @@ const workerStartedAt = Date.now();
 const health = new IntegrationState();
 const faults = {octopus:false,foxess:false};
 const gasRelay = web ? await createGasRelay() : null;
-if (gasRelay) http.createServer((request,response) => { void gasRelay.handle(request,response); }).listen(65525,'127.0.0.1');
+if (gasRelay) http.createServer((request,response) => { void gasRelay.handle(request,response); }).listen(port+1,'127.0.0.1');
 const readings = { pvPower:0.4, loadsPower:0.6, gridConsumptionPower:0.2, feedinPower:0, batChargePower:0, batDischargePower:0, SoC:64 };
 let pauseState = { paused:false, until:null, revision:0 };
 let retentionMonths = 12;
@@ -24,6 +25,9 @@ let lowStorage=false,historyCleared=false;
 const historyStats=()=>({retentionMonths,saveIntervalMinutes,storageBytes:historyCleared?0:150,allocatedBytes:historyCleared?0:4096,bufferedIntervals:historyCleared?0:1,lastSavedAt:null,freeBytes:lowStorage?3e9:16e9,reserveBytes:4e9,lowStorage,automaticCleanup:true});
 const activity = process.env.OCTOPUS_FIXTURE_ACTIVITY==='1' ? Array.from({length:8},(_,index)=>({type:index%2?'automation_resumed':'automation_paused',at:new Date(Date.now()-index*3600000).toISOString(),until:null})) : [];
 const config = { credentials:{ acc:'A-MOCK', api:'pi-managed', foxSN:'pi-managed', foxToken:'pi-managed' }, automations:{dispatchCheck:false}, liveWsEnabled:false, liveWsPolicy:'rest', revision:1 };
+const seeded=process.env.OCTOPUS_FIXTURE_SCHEDULES==='1';
+const dispatches=seeded?Array.from({length:5},(_,index)=>({startDt:new Date(Date.now()+(index*2-.5)*3600000).toISOString(),endDt:new Date(Date.now()+(index*2+.5)*3600000).toISOString()})):[];
+const seededGroups=seeded?[{enable:1,startHour:0,startMinute:0,endHour:23,endMinute:59,workMode:'ForceCharge',extraParam:{schSources:['weekly']}},{enable:1,startHour:0,startMinute:0,endHour:5,endMinute:30,workMode:'ForceCharge',extraParam:{schSources:['dispatch']}}]:[];
 const device = {status:'LIVE',vehicleMake:'Example',vehicleModel:'Mock EV'};
 http.createServer(async (request,response) => {
   const json = (value,status=200) => { response.writeHead(status,{'Content-Type':'application/json','Cache-Control':'no-store'});response.end(JSON.stringify(value)); };
@@ -73,7 +77,7 @@ http.createServer(async (request,response) => {
       if (request.method !== 'GET') return json({error:'Fixture configuration is read-only'},405);
       return json({...config, automationPause:pauseState});
     }
-    if (url.pathname === '/api/dispatch-snapshot') return json({dispatches:[],status:'confirmed',revision:1,fetchedAt:timestamp,confirmedAt:timestamp});
+    if (url.pathname === '/api/dispatch-snapshot') return json({dispatches,status:'confirmed',revision:1,fetchedAt:timestamp,confirmedAt:timestamp});
     if (url.pathname === '/api/foxess/live/status') return json({source:'rest',state:'standby',policy:'rest'});
     if (url.pathname === '/api/foxess/live' && faults.foxess) {health.failure('foxess','api','Mock FoxESS unavailable');return json({error:'Mock FoxESS unavailable'},503);}
     if (url.pathname === '/api/foxess/live') {health.success('foxess');return json({source:'rest',updatedAt:timestamp,values:readings,cached:true});}
@@ -93,7 +97,7 @@ http.createServer(async (request,response) => {
       const data = url.pathname === '/api/octopus' ? payload.body || {} : payload;
       if (target.includes('graphql')) return json(data.query?.includes('obtainKrakenToken')
         ? {data:{obtainKrakenToken:{token:'mock-token'}}}
-        : {data:{registeredKrakenflexDevice:device,vehicleChargingPreferences:{weekdayTargetTime:'07:00',weekdayTargetSoc:80},plannedDispatches:[]}});
+        : {data:{registeredKrakenflexDevice:device,vehicleChargingPreferences:{weekdayTargetTime:'07:00',weekdayTargetSoc:80},plannedDispatches:dispatches}});
       if (target.includes('accounts')) return json({properties:[{electricity_meter_points:[{is_export:false,agreements:[{tariff_code:'E-1R-DEMO-26-A',valid_from:'2020-01-01T00:00:00Z',valid_to:null}]}]}]});
       return json({results:[{value_inc_vat:8,valid_from:new Date(Date.now()-86400000).toISOString(),valid_to:new Date(Date.now()+86400000).toISOString()}]});
     }
@@ -102,17 +106,22 @@ http.createServer(async (request,response) => {
       health.success('foxess');
       const target = payload.url || '';
       if (target.includes('scheduler/enable')) { if (pauseState.paused && !web) return json({error:'Paused'},423); writes += 1; }
-      const result = target.includes('scheduler/get') ? {groups:[]}
+      const result = target.includes('scheduler/get') ? {groups:seededGroups}
         : target.includes('/real/query') ? [{datas:Object.entries(readings).map(([variable,value])=>({variable,value}))}]
         : {value:'SelfUse'};
       return json({errno:0,result});
     }
     if (url.pathname === '/dev/index.html' || url.pathname === '/app/index.html' || url.pathname === '/web/index.html' || url.pathname === '/octopus-foxess-smart-charging/index.html') {
-      let html = await readFile(path.join(root,'dist',web?'Smart_Charging_UI_DEV.html':'pi-dev.html'),'utf8');
+      let html = await readFile(path.join(root,'dist',desktop?'Smart_Charging_Desktop.html':web?'Smart_Charging_UI_DEV.html':'pi-dev.html'),'utf8');
       html = html.replaceAll('https://api.octopus.energy',`${origin}/mock-octopus`).replace("target.includes('api.octopus.energy')", "(target.includes('api.octopus.energy') || target.includes('/mock-octopus/'))");
       const noticeFixture = url.searchParams.get('firstUse') === '1'
         ? 'localStorage.removeItem("licenseAccepted");'
         : 'localStorage.setItem("licenseAccepted","true");';
+      if(desktop)html=html.replace('<head>',`<head><script>
+      let fixtureRemote={enabled:false,state:'disabled',url:null,key:'mock-key-for-layout-only'};
+      const fixtureConfig={accessRequired:true,accessKey:'mock-LAN-code',liveWsEnabled:false,credentials:{acc:'A-MOCK',api:'mock-octopus-key',foxSN:'mock-device',foxToken:'mock-fox-token'}};
+      window.desktopHost={platform:'windows',configuration:async()=>fixtureConfig,saveConfiguration:async()=>({saved:true}),status:async()=>({lanUrls:['http://192.0.2.1:8787']}),remoteAccess:async()=>fixtureRemote,setRemoteAccess:async value=>(fixtureRemote={...fixtureRemote,...value,state:value.enabled?'running':'disabled',url:value.enabled?'https://mock-url.example.test':null}),copyRemoteKey:async()=>true,copyPublicUrl:async()=>true,copyLanCode:async()=>true};
+      </script>`);
       html = html.replace('<head>',`<head><script>${noticeFixture}</script>`)
         .replace('<body>','<body><p style="position:fixed;bottom:0;left:0;z-index:10020;padding:4px;margin:0;color:#b91c1c;background:white;font-size:10px;pointer-events:none">LOCAL TEST · MOCK DATA · No real credentials or inverter commands</p>');
       response.writeHead(200,{'Content-Type':'text/html','Cache-Control':'no-store'});return response.end(html);
