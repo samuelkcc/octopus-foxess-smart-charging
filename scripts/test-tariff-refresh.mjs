@@ -8,7 +8,7 @@ const elements=new Map();
 const element=id=>{if(!elements.has(id))elements.set(id,{style:{},dataset:{},getContext:()=>({id}),classList:{add(){}}});return elements.get(id);};
 const charts=[],timers=[],events=[];
 const context=vm.createContext({console,Date:Clock,URL,Map,Number,
- window:{linuxRuntime:true,linuxRole:'dashboard',addEventListener(){},integrationMonitor:{success:(...args)=>events.push(['success',...args]),failure:(...args)=>events.push(['failure',...args])}},
+ window:{linuxRuntime:true,linuxRole:'worker',location:{href:'http://127.0.0.1/'},addEventListener(){},integrationMonitor:{success:(...args)=>events.push(['success',...args]),failure:(...args)=>events.push(['failure',...args])}},
  document:{addEventListener(){},documentElement:{getAttribute:()=> 'dark'},getElementById:element},
  localStorage:{getItem:()=>null},sessionStorage:{getItem:()=>null},
  btoa:value=>Buffer.from(value).toString('base64'),
@@ -36,10 +36,10 @@ assert.match(element('tariff-data-status').textContent,/Loading/);
 assert.equal(element('importPriceChart').style.display,'none');
 assert.equal(element('exportPriceChart').style.display,'none');
 await finish(pending);
-assert.equal(charts.length,2,'Delayed rates must redraw without another dashboard refresh.');
+assert(charts.length >= 2,'Delayed rates must redraw without another dashboard refresh.');
 assert.equal(run('window.currentLivePrice'),29.82);
-assert.equal(charts[0].config.data.datasets[0].data[0],29.82);
-assert.equal(charts[1].config.data.datasets[0].data[0],12);
+assert.equal(charts.filter(row=>row.canvas.id==='importPriceChart').at(-1).config.data.datasets[0].data[0],29.82);
+assert.equal(charts.filter(row=>row.canvas.id==='exportPriceChart').at(-1).config.data.datasets[0].data[0],12);
 assert.equal(element('tariff-data-status').dataset.state,'ready');
 const count=charts.length;
 await run("refreshOctopusTariffs('A-DEMO','mock-key')");
@@ -67,3 +67,34 @@ run('window.importRates=[];window.exportRates=[];octopusTariffPromise=null;octop
 assert.equal(element('importPriceChart').style.display,'none','Smart Dispatch must not invent a price when rates are unavailable.');
 assert.match(element('import-chart-empty').textContent,/unavailable/);
 console.log('Cold/delayed tariff rendering, no synthetic zeros, independent recovery, automatic retry, cached reads, real zero/negative prices, and no dashboard API replay passed.');
+
+// Exercise the actual fixed-IOG standard/day/night transport, with one direction
+// queued while the other completes. The earlier cases intentionally inject rates.
+now+=30*60000;
+let finishNight;
+context.actualTransport=async url=>{
+ if(url.includes('/accounts/'))return {properties:[{electricity_meter_points:[
+  {...agreement('E-1R-IOG-FIX-B'),is_export:false}, {...agreement('E-1R-OUTGOING-B'),is_export:true}]}]};
+ if(url.includes('OUTGOING'))return {results:[{value_inc_vat:12,valid_from:'2000-01-01T00:00:00Z'}]};
+ if(url.includes('standard-unit-rates'))return {results:[]};
+ if(url.includes('night-unit-rates'))await new Promise(resolve=>{finishNight=resolve;});
+ return {results:[{value_inc_vat:url.includes('night-')?7.62:29.82,valid_from:'2000-01-01T00:00:00Z'}]};
+};
+const source=await readFile(new URL('../src/app.js',import.meta.url),'utf8');
+run(source.slice(source.indexOf('async function fetchTariffRates('),source.indexOf('function buildIntelligentGoFixedRates(')));
+run("window.linuxRuntime=true;window.linuxRole='worker';publishTariffSnapshot=async()=>{};fetchOctopusJson=actualTransport;octopusTariffState=null;window.importRates=[];window.exportRates=[];");
+pending=run("refreshOctopusTariffs('A-DEMO','mock-key')");
+await new Promise(setImmediate);
+assert.equal(run('window.exportRates[0].value_inc_vat'),12,'Ready export is shown before queued fixed IOG import finishes.');
+assert.match(element('tariff-data-status').textContent,/1\/2 ready/);
+assert.equal(run('window.currentLivePrice'),null);
+finishNight();await pending;
+assert.equal(run('window.currentLivePrice'),29.82);
+assert.equal(run('window.importRates.length'),144,'Real fixed IOG conversion completes all three days.');
+console.log('Actual fixed IOG standard/day/night transport and partial direction rendering passed.');
+
+context.snapshotRead=async url=>{assert.equal(url,'/api/tariff-snapshot');return {state:{importRates:[{value_inc_vat:29.82}],exportRates:[],minRate:29.82,maxRate:29.82,updatedAt:now}};};
+run("window.linuxRole='dashboard';fetchJson=snapshotRead;fetchOctopusJson=()=>{throw Error('A dashboard must never request Octopus tariffs');};");
+await run("refreshOctopusTariffs('ignored','ignored')");
+assert.equal(run('window.currentLivePrice'),29.82);
+console.log('Dashboard tariff refresh reads only the host snapshot.');

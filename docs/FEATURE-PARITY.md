@@ -151,3 +151,13 @@ The replacement public URL returned the v2.0.4 runtime without a credential subm
 Both GitHub workflows passed. All downloaded release files matched the published checksums.
 The local distribution contains one HTML file and one Windows EXE.
 Native Windows execution remains a user check.
+
+
+## 2.0.5 tariff recovery review
+
+- Fixed IOG standard/day/night transport and independent direction rendering: mock verified.
+- Multiple dashboard tariff reads consume no Octopus requests: local server mock verified.
+- Worker publication guard and snapshot field filtering: local server mock verified.
+- Public-rate restart cache, expiry, failed responses, and private-data exclusion: verified.
+- Live Pi installation and post-update snapshot checks: pending.
+- Native Windows execution: not repeated by Codex.

@@ -357,3 +357,15 @@ Browser records use the existing local integration-state storage.
 Diagnostic exports contain generic error categories, timestamps, counts, and tariff loading metadata.
 They contain no raw upstream messages, account identifiers, credentials, serial numbers, or private URLs.
 Exporting a diagnostic file does not request upstream data.
+
+
+## Shared tariff snapshot
+
+Only the host worker reads account and tariff data for hosted dashboards.
+The authenticated tariff snapshot endpoint performs no upstream request.
+Only an explicit loopback worker can publish its allowlisted numeric rates and timestamps.
+Publication is ordered. Each completed direction becomes visible while other requests remain queued.
+The worker starts tariff work after dispatch reconciliation.
+Public unit-rate responses have a private restart cache with a strict 30-minute expiry.
+Account replies and authentication tokens are excluded.
+The cache does not bypass service disablement or outbound spacing for expired data.

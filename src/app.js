@@ -1384,13 +1384,35 @@ let octopusTariffPromise = null;
 let octopusTariffNextAt = 0;
 let octopusTariffRetryTimer = null;
 let octopusTariffProblem = false;
+let octopusTariffProgress = 0;
+let octopusTariffHostPending = false;
+let tariffPublicationPromise = Promise.resolve();
+function publishTariffSnapshot(pending) {
+    if (!window.linuxRuntime || window.linuxRole !== 'worker') return Promise.resolve();
+    const body = JSON.stringify({state:octopusTariffState,pending,problem:octopusTariffProblem,progress:octopusTariffProgress});
+    tariffPublicationPromise = tariffPublicationPromise.catch(() => {}).then(() => fetchJson('/api/tariff-snapshot', {
+        method:'POST',headers:{'Content-Type':'application/json','X-Octopus-Worker':'1'},body
+    })).catch(() => { console.warn('Tariff snapshot publication failed; the next update will retry.'); });
+    return tariffPublicationPromise;
+}
+async function readTariffSnapshot() {
+    try {
+        const snapshot = await fetchJson('/api/tariff-snapshot', {cache:'no-store'});
+        if (snapshot.state) octopusTariffState = snapshot.state;
+        octopusTariffProgress = snapshot.progress || 0;
+        octopusTariffHostPending = snapshot.pending === true;
+        octopusTariffProblem = snapshot.problem === true;
+    } catch { octopusTariffProblem = true; }
+}
 function refreshOctopusTariffs(acc, api) {
     if (window.linuxRuntime && window.linuxServiceEnabled === false) return null;
-    if (octopusTariffPromise || Date.now() < octopusTariffNextAt) return octopusTariffPromise;
+    if (octopusTariffPromise || (Date.now() < octopusTariffNextAt && !(window.linuxRuntime && window.linuxRole !== 'worker'))) return octopusTariffPromise;
     if (octopusTariffRetryTimer !== null) clearTimeout(octopusTariffRetryTimer);
     octopusTariffRetryTimer = null;
     octopusTariffProblem = false;
+    octopusTariffProgress = 0;
     octopusTariffPromise = (async () => {
+        if (window.linuxRuntime && window.linuxRole !== 'worker') { await readTariffSnapshot(); return; }
         const accData = await fetchOctopusJson(`https://api.octopus.energy/v1/accounts/${encodeURIComponent(acc)}/`, {
             headers: { 'Authorization': 'Basic ' + btoa(api + ':') }
         }, 'basic');
@@ -1398,29 +1420,30 @@ function refreshOctopusTariffs(acc, api) {
         const importTariffCode = importTariff?.agreement?.tariff_code || 'Data unavailable';
         const exportTariffCode = exportTariff?.agreement?.tariff_code || 'Not available';
         const previous = octopusTariffState;
-        const results = await Promise.allSettled([
-            fetchTariffRates(importTariff?.agreement?.tariff_code),
-            fetchTariffRates(exportTariff?.agreement?.tariff_code)
-        ]);
-        const rates = results.map((result, index) => {
-            const channel = index === 0 ? 'import-tariff' : 'export-tariff';
-            if (result.status === 'fulfilled') {
-                window.integrationMonitor?.success('octopus', channel);
-                return result.value;
+        octopusTariffState = { importTariffCode, exportTariffCode,
+            importRates: previous?.importTariffCode === importTariffCode ? previous.importRates : [],
+            exportRates: previous?.exportTariffCode === exportTariffCode ? previous.exportRates : [] };
+        renderOctopusTariffs();
+        void publishTariffSnapshot(true);
+        await Promise.allSettled(['import', 'export'].map(async prefix => {
+            try {
+                const code = prefix === 'import' ? importTariff?.agreement?.tariff_code : exportTariff?.agreement?.tariff_code;
+                octopusTariffState[prefix + 'Rates'] = await fetchTariffRates(code);
+                window.integrationMonitor?.success('octopus', prefix + '-tariff');
+            } catch (error) {
+                octopusTariffProblem = true;
+                window.integrationMonitor?.failure('octopus', prefix + '-tariff', error);
+            } finally {
+                octopusTariffProgress++;
+                const prices = octopusTariffState.importRates.map(rate => rate.value_inc_vat).filter(Number.isFinite);
+                octopusTariffState.minRate = prices.length ? Math.min(...prices) : null;
+                octopusTariffState.maxRate = prices.length ? Math.max(...prices) : null;
+                // A queued import must not hide an export price that is ready.
+                renderOctopusTariffs();
+                void publishTariffSnapshot(true);
             }
-            octopusTariffProblem = true;
-            window.integrationMonitor?.failure('octopus', channel, result.reason);
-            // A failed refresh must not erase valid rates for the same agreement.
-            const prefix = index === 0 ? 'import' : 'export';
-            const code = index === 0 ? importTariffCode : exportTariffCode;
-            return previous?.[prefix + 'TariffCode'] === code ? previous[prefix + 'Rates'] : [];
-        });
-        const [importRates, exportRates] = rates;
-        const prices = importRates.map(rate => rate.value_inc_vat).filter(Number.isFinite);
-        octopusTariffState = { importTariffCode, exportTariffCode, importRates, exportRates,
-            minRate:prices.length ? Math.min(...prices) : null,
-            maxRate:prices.length ? Math.max(...prices) : null,
-            updatedAt:Date.now() };
+        }));
+        octopusTariffState.updatedAt = Date.now();
         window.integrationMonitor?.success('octopus', 'tariff-data');
     })().catch(error => {
         octopusTariffProblem = true;
@@ -1432,12 +1455,13 @@ function refreshOctopusTariffs(acc, api) {
         // Update presentation directly, even while initial dashboard startup is pending.
         // A redraw must not authenticate, fetch dispatches, or write a schedule.
         renderOctopusTariffs();
-        if (octopusTariffProblem) octopusTariffRetryTimer = setTimeout(() => {
+        void publishTariffSnapshot(false);
+        if (octopusTariffProblem || (window.linuxRuntime && window.linuxRole !== 'worker')) octopusTariffRetryTimer = setTimeout(() => {
             octopusTariffRetryTimer = null;
             void refreshOctopusTariffs(acc, api);
-        }, 60_000);
+        }, window.linuxRuntime && window.linuxRole !== 'worker' ? 5000 : 60_000);
     });
-    renderOctopusTariffs();
+    if (!(window.linuxRuntime && window.linuxRole !== 'worker')) renderOctopusTariffs();
     return octopusTariffPromise;
 }
 
@@ -1521,12 +1545,12 @@ function renderOctopusTariffs(dispatches = window.currentDispatches || []) {
 
     const status = document.getElementById('tariff-data-status');
     if (status) {
-        status.dataset.state = octopusTariffProblem ? 'error' : octopusTariffPromise ? 'loading' : 'ready';
+        status.dataset.state = octopusTariffProblem ? 'error' : (octopusTariffPromise || octopusTariffHostPending) ? 'loading' : 'ready';
         status.textContent = octopusTariffProblem
             ? 'Price update failed. Available rates remain shown. Automatic retry continues.'
-            : octopusTariffPromise
+            : (octopusTariffPromise || octopusTariffHostPending)
                 ? (window.linuxRuntime && !window.desktopRuntime
-                    ? 'Loading electricity prices… Pi API requests are at least 60 seconds apart.'
+                    ? `Loading electricity prices (${octopusTariffProgress}/2 ready)… Pi requests are queued at least 60 seconds apart. This can take several minutes.`
                     : 'Loading electricity prices…')
                 : octopusTariffState?.updatedAt
                     ? `Prices checked: ${new Date(octopusTariffState.updatedAt).toLocaleTimeString()}`
@@ -1674,10 +1698,10 @@ async function refreshDashboard(isAutoRefresh = false, retryCount = 1) {
             }
         }
 
-        // The always-on worker needs only the authoritative dispatch response
-        // and FoxESS synchronization. Avoid repeatedly querying static device,
-        // account, and tariff data from the headless browser.
+        // Only the worker performs hosted Octopus reads. Tariff work starts
+        // after dispatch reconciliation and publishes a shared display snapshot.
         if (workerOnlyQuery) {
+            void refreshOctopusTariffs(acc, api);
             if (!isAutoRefresh) {
                 loadAutomations(0, 0);
                 startAutoRefreshTimer();

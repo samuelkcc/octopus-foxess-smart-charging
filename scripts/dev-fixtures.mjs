@@ -38,6 +38,10 @@ http.createServer(async (request,response) => {
     let body = ''; for await (const chunk of request) body += chunk;
     const payload = body ? JSON.parse(body) : {};
     const timestamp = new Date().toISOString();
+    if (url.pathname === '/api/tariff-snapshot') return json({pending:false,progress:2,problem:false,state:{
+      importTariffCode:'DEMO-IMPORT',exportTariffCode:'DEMO-EXPORT',minRate:8,maxRate:29.82,updatedAt:Date.now(),
+      importRates:Array.from({length:48},(_,i)=>({value_inc_vat:i<11||i===47?8:29.82,valid_from:new Date(new Date().setHours(0,i*30,0,0)).toISOString(),valid_to:new Date(new Date().setHours(0,(i+1)*30,0,0)).toISOString()})),
+      exportRates:[{value_inc_vat:12,valid_from:'2020-01-01T00:00:00Z',valid_to:null}]}});
     if (url.pathname === '/api/dashboard-snapshot') return json({data:{registeredKrakenflexDevice:device,vehicleChargingPreferences:{weekdayTargetTime:'07:00',weekdayTargetSoc:80},plannedDispatches:dispatches},_serverSnapshot:{pending:false,fetchedAt:Date.now()}});
     if (url.pathname === '/test/capture') {
       const mobile=url.searchParams.get('mobile')==='1';

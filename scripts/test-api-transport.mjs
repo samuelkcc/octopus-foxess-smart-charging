@@ -52,6 +52,14 @@ try {
   assert(snapshots.every(value=>value._serverSnapshot.pending===false && Array.isArray(value.data.plannedDispatches)));
   assert.equal(await readFile(log,'utf8'),snapshotBefore,'Phone and dashboard clients consume no additional Octopus request slots');
   assert(!JSON.stringify(snapshots).includes('test-octo'),'Snapshot responses contain no API credential');
+  const priceState={importTariffCode:'DEMO',exportTariffCode:'DEMO',importRates:[{value_inc_vat:29.82}],exportRates:[],minRate:29.82,maxRate:29.82,updatedAt:Date.now(),secret:'never-export'};
+  assert.equal((await send('/api/tariff-snapshot',{state:priceState})).status,403);
+  assert.equal((await fetch(origin+'/api/tariff-snapshot',{method:'POST',headers:{'Content-Type':'application/json','X-Octopus-Worker':'1'},body:JSON.stringify({state:priceState,pending:false})})).status,200);
+  const priceLog=await readFile(log,'utf8');
+  const priceClients=await Promise.all(Array.from({length:8},()=>fetch(origin+'/api/tariff-snapshot').then(r=>r.json())));
+  assert(priceClients.every(value=>value.state.importRates[0].value_inc_vat===29.82));
+  assert(!JSON.stringify(priceClients).includes('never-export'));
+  assert.equal(await readFile(log,'utf8'),priceLog,'Multiple tariff clients must not request Octopus.');
   await octopus('basic','accounts/A-TEST/');
   await octopus('none','products/TEST/electricity-tariffs/TEST/standard-unit-rates/');
   const limited=await octopus('none','products/TEST/electricity-tariffs/TEST/night-unit-rates/');

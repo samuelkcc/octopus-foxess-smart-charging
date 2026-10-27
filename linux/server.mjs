@@ -14,6 +14,7 @@ import { AutomationPause } from './automation-pause.mjs';
 import { IntegrationState } from './integration-state.mjs';
 import { ServiceControl } from './service-control.mjs';
 import { RequestBudget, retryDelay } from './request-budget.mjs';
+import { TariffCache } from './tariff-cache.mjs';
 
 const appRoot = path.dirname(fileURLToPath(import.meta.url));
 const webRoot = process.env.OCTOPUS_WEB_ROOT || path.join(appRoot, 'web');
@@ -44,6 +45,7 @@ let octopusAuthPromise = null;
 let octopusAuthFingerprint = null;
 let octopusTokenCache = { apiKeyFingerprint: null, token: null, expiresAt: 0 };
 let octopusDisplaySnapshot = null;
+let tariffDisplaySnapshot = null;
 let packageContents;
 try {
   packageContents = await readFile(path.join(appRoot, 'package.json'), 'utf8');
@@ -79,6 +81,8 @@ const octopusBudget = new RequestBudget({
   }
 });
 const foxReadCache = new RequestBudget({ interval: 0 });
+const tariffRestartCache = new TariffCache(path.join(stateRoot, 'public-tariff-cache.json'));
+await tariffRestartCache.load();
 let foxCacheRevision = 0;
 let foxReadbackUntil = 0;
 let foxReadbackSerial = 0;
@@ -92,6 +96,9 @@ const cacheSuccessfulJson = packet => {
 };
 async function octopusFetch(key, target, options, ttl = 0) {
   serviceControl.assertEnabled();
+  const publicTariff = key.startsWith('tariff:');
+  const restored = publicTariff && tariffRestartCache.get(target.pathname);
+  if (restored) return unpackResponse(restored);
   const revision=serviceControl.revision;
   const packet = await octopusBudget.run(`${revision}:${key}`, async () => {
     serviceControl.assertEnabled(revision);
@@ -100,6 +107,7 @@ async function octopusFetch(key, target, options, ttl = 0) {
     try { data = JSON.parse(result.text); } catch { /* Invalid upstream data remains an error. */ }
     const delay = retryDelay(unpackResponse(result), data);
     if (delay) await octopusBudget.defer(delay);
+    if (publicTariff) await tariffRestartCache.put(target.pathname, result);
     return result;
   }, { ttl, cacheWhen: cacheSuccessfulJson });
   return unpackResponse(packet);
@@ -672,7 +680,7 @@ async function handleRequest(request, response) {
       response.setHeader('X-Frame-Options', 'DENY');
       const remote = (await loadState()).remoteAccess;
       if (!remote?.enabled) return sendJson(response, 503, { error: 'Remote access is disabled' });
-      const permitted = new Set(['/api/runtime', '/api/auth', '/api/logout', '/api/config', '/api/dashboard-snapshot', '/api/dispatch-snapshot', '/api/foxess', '/api/octopus', '/api/foxess/live', '/api/foxess/live/status', '/api/history', '/api/history/settings', '/api/history/clear', '/api/automation/pause', '/api/integration-status']);
+      const permitted = new Set(['/api/runtime', '/api/auth', '/api/logout', '/api/config', '/api/tariff-snapshot', '/api/dashboard-snapshot', '/api/dispatch-snapshot', '/api/foxess', '/api/octopus', '/api/foxess/live', '/api/foxess/live/status', '/api/history', '/api/history/settings', '/api/history/clear', '/api/automation/pause', '/api/integration-status']);
       if (pathname.startsWith('/api/') && !permitted.has(pathname)) return sendJson(response, 403, { error: 'This endpoint is only available on the Raspberry Pi' });
       if (!['GET', 'HEAD'].includes(request.method)) {
         const origin = request.headers.origin;
@@ -898,7 +906,7 @@ async function handleRequest(request, response) {
       });
     }
 
-    const protectedApi = ['/api/config', '/api/dashboard-snapshot', '/api/dispatch-snapshot', '/api/foxess', '/api/octopus', '/api/history'];
+    const protectedApi = ['/api/config', '/api/tariff-snapshot', '/api/dashboard-snapshot', '/api/dispatch-snapshot', '/api/foxess', '/api/octopus', '/api/history'];
     const isProtected = pathname === '/api/integration-status' || pathname === '/api/automation/pause' || protectedApi.includes(pathname) || pathname === '/api/history/settings' || pathname === '/api/history/clear' || pathname.startsWith('/api/foxess/live');
     if (isProtected && !(await isAuthorized(request))) {
       return sendJson(response, 401, { error: 'Invalid LAN access code' });
@@ -952,6 +960,37 @@ async function handleRequest(request, response) {
       await saveState({ revision: Date.now() });
       if(serviceControl.enabled) void foxessLive.reconcile({ force: true });
       return sendEmpty(response);
+    }
+    if (pathname === '/api/tariff-snapshot' && request.method === 'GET') {
+      const state = await loadState();
+      const identity = createHash('sha256').update(JSON.stringify(state.credentials || {})).digest('hex');
+      return sendJson(response, 200, tariffDisplaySnapshot?.identity === identity
+        ? tariffDisplaySnapshot.payload : { pending:true, state:null });
+    }
+    if (pathname === '/api/tariff-snapshot' && request.method === 'POST') {
+      if (!isLoopback(request) || !isExplicitWorkerRequest(request)) return sendJson(response,403,{error:'Only the worker can publish tariffs'});
+      const update = await readJsonBody(request);
+      const source = update.state;
+      const rates = values => Array.isArray(values) && values.length <= 500 && values.every(row =>
+        Number.isFinite(row.value_inc_vat) && (!row.valid_from || Number.isFinite(Date.parse(row.valid_from)))
+        && (!row.valid_to || Number.isFinite(Date.parse(row.valid_to))));
+      if (!source && update.problem === true) {
+        const state = await loadState();
+        tariffDisplaySnapshot = {identity:createHash('sha256').update(JSON.stringify(state.credentials || {})).digest('hex'),
+          payload:{pending:false,problem:true,state:null}};
+        return sendJson(response,200,{saved:true});
+      }
+      if (!source || !rates(source.importRates) || !rates(source.exportRates)) return sendJson(response,400,{error:'Invalid tariff snapshot'});
+      const cleanRates = values => values.map(row => ({value_inc_vat:row.value_inc_vat,valid_from:row.valid_from || null,valid_to:row.valid_to || null}));
+      const code = value => typeof value === 'string' && /^[A-Za-z0-9 -]{1,100}$/.test(value) ? value : 'Not available';
+      const state = await loadState();
+      tariffDisplaySnapshot = {identity:createHash('sha256').update(JSON.stringify(state.credentials || {})).digest('hex'),payload:{
+        pending:update.pending === true, problem:update.problem === true, progress:Math.min(2,Math.max(0,Number(update.progress)||0)),
+        state:{importTariffCode:code(source.importTariffCode),exportTariffCode:code(source.exportTariffCode),
+          importRates:cleanRates(source.importRates),exportRates:cleanRates(source.exportRates),
+          minRate:Number.isFinite(source.minRate)?source.minRate:null,maxRate:Number.isFinite(source.maxRate)?source.maxRate:null,
+          updatedAt:Number.isFinite(source.updatedAt)?source.updatedAt:null}}};
+      return sendJson(response,200,{saved:true});
     }
     if (pathname === '/api/dashboard-snapshot' && request.method === 'GET') {
       // Opening a dashboard never authenticates with Octopus or consumes a queue slot.

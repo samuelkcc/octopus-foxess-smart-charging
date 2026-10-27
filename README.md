@@ -251,6 +251,8 @@ Clearing history does not remove your account details or automation rules.
 ## Automation and API safeguards
 
 After a Pi restart, initial electricity prices can take several minutes to load through the shared request queue.
+The worker publishes tariff data for all dashboards.
+Phones and desktop dashboards do not make separate Octopus tariff requests.
 Prices and charts update automatically when those requests complete.
 Missing rates show a loading or unavailable message, never a synthetic zero price.
 
