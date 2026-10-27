@@ -13,11 +13,10 @@ The dashboard shows the requested schedule beside measured power readings, so yo
 This is free, independent software by **SCKC**, released under **GPL-3.0-or-later**.
 Octopus Energy and FoxESS do not endorse or support this project.
 
-[![Release](https://img.shields.io/github/v/release/samuelkcc/octopus-foxess-smart-charging)](https://github.com/samuelkcc/octopus-foxess-smart-charging/releases/latest)
 [![Licence](https://img.shields.io/badge/licence-GPL--3.0--or--later-blue)](LICENSE)
 [![Open web app](https://img.shields.io/badge/open-web%20app-e11d48)](https://samuelkcc.github.io/octopus-foxess-smart-charging/)
 
-[**Open the web app**](https://samuelkcc.github.io/octopus-foxess-smart-charging/) · [**Download v2.0.2**](https://github.com/samuelkcc/octopus-foxess-smart-charging/releases/tag/v2.0.2)
+[**Open the web app**](https://samuelkcc.github.io/octopus-foxess-smart-charging/) · [**Downloads and release notes**](https://github.com/samuelkcc/octopus-foxess-smart-charging/releases/latest)
 
 ![Smart Charging dashboard with example data](docs/screenshots/web-dashboard.png)
 
@@ -40,42 +39,19 @@ Use one active automation host for each inverter.
 Before testing another edition, select **Disable Pi Service** in native Pi Configuration.
 **Pause automation** stops schedule control but keeps monitoring active.
 
-## Safari compatibility update v2.0.2
+## What the app does
 
-The web edition now offers **Safari compatibility — my Google relay**.
-This routes Octopus requests through your own Google Apps Script deployment when direct Safari access fails.
-Google processes the Octopus credentials and data in this mode.
-Existing setups keep direct access until you select this option.
+- **Protect the home battery.** Follow valid Octopus Smart Dispatch windows and request Force Charge on FoxESS.
+- **Compare schedules and measured power.** Check Octopus charging windows beside the programmed FoxESS schedule and current readings.
+- **Control charging and discharging.** Use price rules, weekly schedules, and battery limits.
+- **Pause app control.** Pause for 6, 12, or 24 hours, or until resumed. Monitoring continues.
+- **Connect remotely.** Open a Pi or Windows dashboard through a protected Cloudflare URL.
+- **Review power history.** Compare four charts, expand a chart, or export a month on Pi and Windows.
+- **Limit storage writes.** Buffer readings in memory, compress monthly files, and remove older history when space is low.
+- **Check API health.** Header badges show connection status and refresh progress. A red border opens retained problem details.
+- **Use desktop or mobile.** Open the same dashboard on a computer, phone, or tablet.
 
-- Update your relay code with the [web guide](docs/WEB-GUIDE.md#update-an-existing-relay).
-- Deploy a new version of the existing Web App.
-- In Smart Charging, open **Modify setup → 3. Google relay**.
-- Select **Safari compatibility — my Google relay**.
-- Select **Connect**.
-
-Pi and Windows keep their existing host connection.
-Actual API rate limits remain active.
-
-![Safari compatibility setup with a demonstration relay URL](docs/screenshots/web-safari-setup.png)
-
-## Maintenance update v2.0.1
-
-- **Update URL** creates a replacement Quick Tunnel address on Pi and Windows. The Remote Access Key stays the same.
-- A **red API badge border** opens problem details. Reviewing or clearing an alert sends no API request.
-- Recovered alerts clear after **24 hours** by default. **Settings → API problem alerts** changes this period.
-- Active failures remain visible until the connection recovers.
-
-## What is new in v2.0.0
-
-- **One interface across desktop and mobile.** Dark and light themes, a compact phone Welcome screen, consistent controls, and an About drawer.
-- **Windows portable app.** The dashboard, local service, worker, and tunnel client run together in one app.
-- **Remote Access.** Open your Pi or Windows dashboard through a random HTTPS URL with a separate 256-bit key.
-- **Power history.** View solar, home demand, grid import/export, battery power, and charge level together. Expand any chart or export a month.
-- **Controlled storage use.** Compressed monthly files, configurable retention, hourly saves, disk-space reporting, and low-space cleanup.
-- **Pause and resume.** Choose 6, 12, or 24 hours, or pause until you resume. A red banner and history entry show the change.
-- **API status and refresh.** Header badges show health and interval progress. Select a badge to request an update.
-- **Retained problem alerts.** A recovered incident stays visible until you clear it or its configured period ends.
-- **Simpler return visits.** Saved web setup opens with Connect. Windows includes account setup instructions and local service controls.
+Version details and changes are listed on each [release download page](https://github.com/samuelkcc/octopus-foxess-smart-charging/releases).
 
 ## Get started
 
@@ -106,9 +82,27 @@ Updates retain the existing configuration and history directory.
 
 ![Native Pi Configuration with demonstration account details](docs/screenshots/pi-configuration.png)
 
+#### Uninstall from Raspberry Pi
+
+Uninstallation removes the app, services, taskbar icon, saved credentials, access keys, and history.
+
+- Save any required history or configuration backups.
+- Open a terminal on the Pi.
+- Run:
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/samuelkcc/octopus-foxess-smart-charging/main/linux/uninstall.sh | sudo sh
+```
+
+- Check the inverter schedule in the FoxESS app after removal.
+
+Uninstallation does not clear the schedule stored on the inverter.
+[Read the Pi removal guide](linux/README-RASPBERRY-PI.md#remove-the-pi-edition).
+
 ### Windows portable
 
-- Download [SmartCharging-2.0.2-Windows-x64.exe](https://github.com/samuelkcc/octopus-foxess-smart-charging/releases/download/v2.0.2/SmartCharging-2.0.2-Windows-x64.exe).
+- Open the [download page](https://github.com/samuelkcc/octopus-foxess-smart-charging/releases/latest).
+- Download the Windows x64 EXE from **Assets**.
 - Open the EXE.
 - Read the licence notice.
 - Select **Accept and Continue**.
@@ -152,6 +146,19 @@ You can also [download the standalone HTML](https://github.com/samuelkcc/octopus
 On later visits, saved setup gives you a Connect button.
 Select **Modify setup** when you need to change a value.
 Keep this browser open and awake while automation runs.
+
+#### Safari connection
+
+If Safari cannot connect directly to Octopus, select **Safari compatibility — my Google relay** during setup.
+This sends Octopus credentials and data through your own Google relay.
+Google processes those requests.
+
+- If your relay uses older code, follow the [relay upgrade guide](docs/WEB-GUIDE.md#update-an-existing-relay).
+- Open **Modify setup → 3. Google relay**.
+- Select **Safari compatibility — my Google relay**.
+- Select **Connect**.
+
+![Safari compatibility setup with a demonstration relay URL](docs/screenshots/web-safari-setup.png)
 
 [Read the complete web and Google relay guide](docs/WEB-GUIDE.md).
 
@@ -255,7 +262,7 @@ Host credentials stay on the Pi or Windows PC.
 The web edition saves encrypted setup in your browser and uses your own Google relay.
 Use one active automation host per inverter.
 
-[GPL-3.0-or-later licence](LICENSE) · [Third-party notices](THIRD_PARTY_NOTICES.md) · [Release notes](RELEASE_NOTES.md)
+[GPL-3.0-or-later licence](LICENSE) · [Third-party notices](THIRD_PARTY_NOTICES.md) · [Release notes](https://github.com/samuelkcc/octopus-foxess-smart-charging/releases)
 
 The optional Live WS module includes Nick Farrell's [foxess-control](https://github.com/nicois/foxess-control) work.
 Company names belong to their owners. This independent software has no warranty.

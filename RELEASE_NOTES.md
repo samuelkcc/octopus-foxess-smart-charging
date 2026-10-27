@@ -17,7 +17,7 @@ This patch adds optional Safari compatibility to the standalone web edition.
 ## Update your Google relay
 
 - Open your existing Apps Script project.
-- Replace its code with the code in the [web guide](docs/WEB-GUIDE.md#create-the-relay).
+- Replace its code with the code in the [web guide](https://github.com/samuelkcc/octopus-foxess-smart-charging/blob/v2.0.2/docs/WEB-GUIDE.md#create-the-relay).
 - Save the project.
 - Select **Deploy → Manage deployments → Edit → New version → Deploy**.
 - Keep the existing Web App URL.
@@ -29,8 +29,16 @@ Google processes Octopus credentials and data when this option is selected.
 Use only your own Google relay.
 Saving Apps Script source alone does not update the deployed Web App.
 
+## Documentation
+
+- The repository overview focuses on functions and setup. Version-specific changes stay on the release download pages.
+- The Safari setup image no longer includes viewport diagnostics or the local test strip.
+- Pi removal instructions explain the command, deleted local data, and retained inverter schedule.
+
 ## Verification
 
+Removal instructions were checked against the script.
+The uninstaller was not executed.
 The full regression suite passes with mock upstream APIs.
 Tests cover relay redirects, Octopus GET/POST, old-code detection, real rate-limit propagation, and unchanged FoxESS command safeguards.
 No test sends a command to a live inverter.

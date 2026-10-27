@@ -264,7 +264,7 @@ sudo systemctl restart octopus-foxess octopus-foxess-worker octopus-foxess-inhib
 
 ## Remove the Pi edition
 
-Uninstallation removes the application, services, credentials, access code, and history data.
+Uninstallation removes the application, services, taskbar icon, saved credentials, access keys, and history data.
 
 1. Save any required history or configuration backups.
 2. Run this command:
@@ -272,6 +272,11 @@ Uninstallation removes the application, services, credentials, access code, and 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/samuelkcc/octopus-foxess-smart-charging/main/linux/uninstall.sh | sudo sh
 ```
+
+3. Check the inverter schedule in the FoxESS app after removal.
+
+Uninstallation does not clear the schedule stored on the inverter.
+Installed system dependencies are not removed.
 
 ## Pause schedule control
 

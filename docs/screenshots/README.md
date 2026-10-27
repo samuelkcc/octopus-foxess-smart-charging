@@ -3,6 +3,7 @@
 Updated on 27 October 2026 for version 2.0.2.
 
 - Interface screenshots use dark appearance.
+- Published images omit viewport diagnostics and local test overlays.
 - The project owner supplied the four-phone mobile Remote Access montage.
 - That montage shows Welcome, remote sign-in, Overview, and History.
 - Other dashboard views use local mock services and demonstration values.
