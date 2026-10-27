@@ -159,11 +159,20 @@ Native Windows execution remains a user check.
 - Multiple dashboard tariff reads consume no Octopus requests: local server mock verified.
 - Worker publication guard and snapshot field filtering: local server mock verified.
 - Public-rate restart cache, expiry, failed responses, and private-data exclusion: verified.
-- Live Pi installation and post-update snapshot checks: pending.
+- Live Pi installation: superseded by the 2.0.6 verification below.
 - Native Windows execution: not repeated by Codex.
 
 ## 2.0.6 headless tariff review
 
 - Worker tariff calculation with unavailable DOM: verified.
 - Snapshot publication and retry precede visible chart rendering.
-- Exact installed commit and live results: recorded after installation.
+- Installed UI commit: `145e1d761631c9f37f18273c1b3cee4b5eac7f00`.
+- Official Pi updater completed successfully on 2026-10-27.
+- Post-restart shared snapshot: 144 import intervals and two export rate records, with no active tariff problem.
+- Live Overview: 29.82p import and 12p export; both charts rendered without manual API refresh.
+- Live Octopus and FoxESS service health: healthy after the update.
+- Welcome, Overview, and Settings navigation: verified through the Pi LAN dashboard.
+- Retained recovered alerts remain visible until acknowledgement or configured expiry.
+- Account credentials and access keys were verified unchanged during the 2.0.5 migration.
+- Display remained 1920 × 1080 with normal orientation and scale 1.
+- The existing native Chromium window was not reliably controllable through Pi Connect during the final check.
