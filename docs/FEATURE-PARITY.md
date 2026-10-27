@@ -161,3 +161,9 @@ Native Windows execution remains a user check.
 - Public-rate restart cache, expiry, failed responses, and private-data exclusion: verified.
 - Live Pi installation and post-update snapshot checks: pending.
 - Native Windows execution: not repeated by Codex.
+
+## 2.0.6 headless tariff review
+
+- Worker tariff calculation with unavailable DOM: verified.
+- Snapshot publication and retry precede visible chart rendering.
+- Exact installed commit and live results: recorded after installation.

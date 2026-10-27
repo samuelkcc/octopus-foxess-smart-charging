@@ -86,7 +86,7 @@ run("window.linuxRuntime=true;window.linuxRole='worker';publishTariffSnapshot=as
 pending=run("refreshOctopusTariffs('A-DEMO','mock-key')");
 await new Promise(setImmediate);
 assert.equal(run('window.exportRates[0].value_inc_vat'),12,'Ready export is shown before queued fixed IOG import finishes.');
-assert.match(element('tariff-data-status').textContent,/1\/2 ready/);
+assert.equal(run('octopusTariffProgress'),1);
 assert.equal(run('window.currentLivePrice'),null);
 finishNight();await pending;
 assert.equal(run('window.currentLivePrice'),29.82);
@@ -98,3 +98,10 @@ run("window.linuxRole='dashboard';fetchJson=snapshotRead;fetchOctopusJson=()=>{t
 await run("refreshOctopusTariffs('ignored','ignored')");
 assert.equal(run('window.currentLivePrice'),29.82);
 console.log('Dashboard tariff refresh reads only the host snapshot.');
+
+run("window.linuxRole='worker';");
+const originalGet=context.document.getElementById;
+context.document.getElementById=()=>{throw Error('Headless tariff calculation must not touch the interface');};
+run('renderOctopusTariffs()');
+context.document.getElementById=originalGet;
+console.log('Headless tariff calculation is independent of DOM and chart rendering.');

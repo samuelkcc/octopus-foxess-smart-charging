@@ -1454,12 +1454,12 @@ function refreshOctopusTariffs(acc, api) {
         octopusTariffNextAt = Date.now() + (octopusTariffProblem ? 60_000 : 30 * 60_000);
         // Update presentation directly, even while initial dashboard startup is pending.
         // A redraw must not authenticate, fetch dispatches, or write a schedule.
-        renderOctopusTariffs();
         void publishTariffSnapshot(false);
         if (octopusTariffProblem || (window.linuxRuntime && window.linuxRole !== 'worker')) octopusTariffRetryTimer = setTimeout(() => {
             octopusTariffRetryTimer = null;
             void refreshOctopusTariffs(acc, api);
         }, window.linuxRuntime && window.linuxRole !== 'worker' ? 5000 : 60_000);
+        renderOctopusTariffs();
     });
     if (!(window.linuxRuntime && window.linuxRole !== 'worker')) renderOctopusTariffs();
     return octopusTariffPromise;
@@ -1508,6 +1508,10 @@ function renderOctopusTariffs(dispatches = window.currentDispatches || []) {
     const liveExportPrice = currentExportBlock
         ? parseFloat(currentExportBlock.value_inc_vat.toFixed(2))
         : null;
+
+    // The unattended worker has no presentation role. Never create charts or
+    // mutate its legacy layout while publishing authoritative tariff data.
+    if (window.linuxRuntime && window.linuxRole === 'worker') return { importTariffCode, exportTariffCode, minRate, maxRate };
 
     let priceLabel = "🔴 STANDARD RATE";
     let badgeClass = "peak";
