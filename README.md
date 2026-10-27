@@ -17,7 +17,7 @@ Octopus Energy and FoxESS do not endorse or support this project.
 [![Licence](https://img.shields.io/badge/licence-GPL--3.0--or--later-blue)](LICENSE)
 [![Open web app](https://img.shields.io/badge/open-web%20app-e11d48)](https://samuelkcc.github.io/octopus-foxess-smart-charging/)
 
-[**Open the web app**](https://samuelkcc.github.io/octopus-foxess-smart-charging/) · [**Download v2.0.0**](https://github.com/samuelkcc/octopus-foxess-smart-charging/releases/tag/v2.0.0)
+[**Open the web app**](https://samuelkcc.github.io/octopus-foxess-smart-charging/) · [**Download v2.0.1**](https://github.com/samuelkcc/octopus-foxess-smart-charging/releases/tag/v2.0.1)
 
 ![Smart Charging dashboard with example data](docs/screenshots/web-dashboard.png)
 
@@ -40,6 +40,13 @@ Use one active automation host for each inverter.
 Before testing another edition, select **Disable Pi Service** in native Pi Configuration.
 **Pause automation** stops schedule control but keeps monitoring active.
 
+## Maintenance update v2.0.1
+
+- **Update URL** creates a replacement Quick Tunnel address on Pi and Windows. The Remote Access Key stays the same.
+- A **red API badge border** opens problem details. Reviewing or clearing an alert sends no API request.
+- Recovered alerts clear after **24 hours** by default. **Settings → API problem alerts** changes this period.
+- Active failures remain visible until the connection recovers.
+
 ## What is new in v2.0.0
 
 - **One interface across desktop and mobile.** Dark and light themes, a compact phone Welcome screen, consistent controls, and an About drawer.
@@ -49,7 +56,7 @@ Before testing another edition, select **Disable Pi Service** in native Pi Confi
 - **Controlled storage use.** Compressed monthly files, configurable retention, hourly saves, disk-space reporting, and low-space cleanup.
 - **Pause and resume.** Choose 6, 12, or 24 hours, or pause until you resume. A red banner and history entry show the change.
 - **API status and refresh.** Header badges show health and interval progress. Select a badge to request an update.
-- **Retained problem alerts.** A recovered incident stays visible until you review and clear it.
+- **Retained problem alerts.** A recovered incident stays visible until you clear it or its configured period ends.
 - **Simpler return visits.** Saved web setup opens with Connect. Windows includes account setup instructions and local service controls.
 
 ## Get started
@@ -83,7 +90,7 @@ Updates retain the existing configuration and history directory.
 
 ### Windows portable
 
-- Download [SmartCharging-2.0.0-Windows-x64.exe](https://github.com/samuelkcc/octopus-foxess-smart-charging/releases/download/v2.0.0/SmartCharging-2.0.0-Windows-x64.exe).
+- Download [SmartCharging-2.0.1-Windows-x64.exe](https://github.com/samuelkcc/octopus-foxess-smart-charging/releases/download/v2.0.1/SmartCharging-2.0.1-Windows-x64.exe).
 - Open the EXE.
 - Read the licence notice.
 - Select **Accept and Continue**.
@@ -170,6 +177,12 @@ Copying the masked field can copy dots instead of the key.
 | Remote Access Key | Stays valid until you replace it. It does not expire with the browser session. |
 | New key / Sign out all | Replaces the key and invalidates existing remote sessions. |
 | iOS Home Screen shortcut | Keeps the saved URL. Replace it when the tunnel URL changes. |
+
+If an address stops working, open **Remote Access** on the host.
+Select **Update URL**, then wait for the connection.
+Copy the new URL.
+Your Remote Access Key remains unchanged.
+Update saved bookmarks and Home Screen shortcuts.
 
 **Set up Raspberry Pi Connect before you depend on the public URL.**
 If a reboot changes the URL, sign in to [Pi Connect](https://connect.raspberrypi.com/).

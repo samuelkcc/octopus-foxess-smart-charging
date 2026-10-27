@@ -60,12 +60,13 @@ await serviceControl.load();
 
 // Pi keeps the all-request floor. Desktop login only waits after a real rate limit.
 const desktopHost = process.env.OCTOPUS_DESKTOP === '1';
-const octopusRequestInterval = desktopHost ? 0 : 60_000;
+// One second of margin protects the 60-second floor from clock granularity.
+const octopusRequestInterval = desktopHost ? 0 : 61_000;
 const octopusBudgetFile = path.join(stateRoot, desktopHost ? 'desktop-octopus-cooldown-v2.json' : 'octopus-request-budget.json');
 let savedOctopusNextAt = Date.now() + octopusRequestInterval;
 try {
   const saved = JSON.parse(await readFile(octopusBudgetFile, 'utf8'));
-  if (Number.isFinite(saved.nextAt)) savedOctopusNextAt = saved.nextAt;
+  if (Number.isFinite(saved.nextAt)) savedOctopusNextAt = Math.max(savedOctopusNextAt, saved.nextAt);
 } catch (error) { if (error.code !== 'ENOENT') throw error; }
 const octopusBudget = new RequestBudget({
   interval: octopusRequestInterval,
@@ -220,7 +221,9 @@ function saveIntegrationHealth(force = false) {
 }
 let integrationRefreshRequestId = 0;
 let integrationWorker = null;
-function integrationSnapshot() { return { ...integrationHealth.snapshot(), serviceEnabled:serviceControl.enabled, storageError: integrationStorageError, refreshRequestId: integrationRefreshRequestId, worker: integrationWorker }; }
+function integrationSnapshot() {
+  if (integrationHealth.expireAlerts()) void saveIntegrationHealth(true).catch(() => {});
+  return { ...integrationHealth.snapshot(), serviceEnabled:serviceControl.enabled, storageError: integrationStorageError, refreshRequestId: integrationRefreshRequestId, worker: integrationWorker }; }
 function publicProblem(error) {
   const text = String(error?.message || error || '');
   const http = text.match(/HTTP (\d{3})/);
@@ -719,12 +722,17 @@ async function handleRequest(request, response) {
       let state = await loadState();
       if (request.method === 'PUT') {
         const update = await readJsonBody(request);
+        if (!update || Array.isArray(update) || Object.keys(update).some(key => !['enabled', 'rotateKey', 'renewUrl'].includes(key))
+            || typeof update.enabled !== 'boolean' || ['rotateKey','renewUrl'].some(key => key in update && typeof update[key] !== 'boolean')
+            || update.renewUrl && (!update.enabled || update.rotateKey)) return sendJson(response,400,{error:'Invalid remote access update'});
+        if (request.headers['sec-fetch-site'] === 'cross-site' || request.headers.origin && request.headers.origin !== `http://${request.headers.host}`) return sendJson(response,403,{error:'Cross-site request rejected'});
         const remoteAccess = { enabled: update.enabled === true, key: state.remoteAccess?.key || createRemoteKey() };
         if (update.rotateKey === true) remoteAccess.key = createRemoteKey();
         state = { ...state, remoteAccess };
         await saveState(state);
-        remoteSessions.clear();
-        if (remoteAccess.enabled) quickTunnel.start(); else quickTunnel.stop();
+        if (update.rotateKey || !remoteAccess.enabled) remoteSessions.clear();
+        if (update.renewUrl) quickTunnel.restart();
+        else if (remoteAccess.enabled) quickTunnel.start(); else quickTunnel.stop();
       }
       if (['GET', 'PUT'].includes(request.method)) return sendJson(response, 200, { enabled: state.remoteAccess?.enabled === true, key: state.remoteAccess?.key || '', ...quickTunnel.status });
       return sendJson(response, 405, { error: 'Method not allowed' });
@@ -1065,6 +1073,12 @@ async function handleRequest(request, response) {
       if (update && Object.keys(update).length === 1 && update.action === 'refresh') {
         integrationRefreshRequestId = Math.max(Date.now(), integrationRefreshRequestId + 1);
         return sendJson(response,202,integrationSnapshot());
+      }
+      if (update && Object.keys(update).length === 2 && update.action === 'settings') {
+        const previous = structuredClone(integrationHealth.data);
+        integrationHealth.setAutoClearHours(update.autoClearHours);
+        try { await saveIntegrationHealth(true); } catch (error) { integrationHealth.data = previous; throw error; }
+        return sendJson(response,200,integrationSnapshot());
       }
       if (!update || Array.isArray(update) || Object.keys(update).length !== 2 || !Object.hasOwn(update, 'service') || !Number.isSafeInteger(update.alertId)) return sendJson(response, 400, { error: 'Specify service and alertId' });
       const previous = structuredClone(integrationHealth.data);

@@ -87,14 +87,14 @@
   const key=field('Remote Access Key','password');key.input.readOnly=true;
   const show=toggle('Show remote key');show.input.addEventListener('change',()=>{key.input.type=show.input.checked?'text':'password';});
   const operations=make('div','next-settings-actions desktop-remote-actions');
-  operations.append(button('Start Quick Tunnel',async()=>{await host.setRemoteAccess({enabled:true});await updateRemote();},false),button('Stop tunnel',async()=>{await host.setRemoteAccess({enabled:false});await updateRemote();}),button('Copy URL',()=>host.copyPublicUrl()),button('Copy Key',()=>host.copyRemoteKey()));
+  operations.append(button('Start Quick Tunnel',async()=>{await host.setRemoteAccess({enabled:true});await updateRemote();},false),button('Update URL',async()=>{await host.setRemoteAccess({enabled:true,renewUrl:true});await updateRemote();}),button('Stop tunnel',async()=>{await host.setRemoteAccess({enabled:false});await updateRemote();}),button('Copy URL',()=>host.copyPublicUrl()),button('Copy Key',()=>host.copyRemoteKey()));
   const rotate=button('New key / Sign out all',async()=>{
     const confirmed=await window.confirm('Replace the remote key and sign out every remote browser?');
     if(confirmed){await host.setRemoteAccess({enabled:true,rotateKey:true});await updateRemote();}
   });
   const security=make('div','desktop-remote-security');
   security.append(make('p','next-muted','Replacing the key signs out every remote browser.'),rotate);
-  tunnel.append(stateText,publicUrl.row,key.row,show.row,operations,security,make('p','next-muted','The URL stays while this tunnel runs. Restarting the app creates a new URL. Browser sessions last up to 12 hours.'));
+  tunnel.append(stateText,publicUrl.row,key.row,show.row,operations,security,make('p','next-muted','Update URL replaces the address and keeps your remote key. Copy the new URL after it connects. The URL stays while this tunnel runs. Restarting the app creates a new URL. Browser sessions last up to 12 hours.'));
   remote.append(tunnel);
   async function updateRemote(){
     const state=await host.remoteAccess();

@@ -20,12 +20,15 @@
   buttons.append(close,clear);dialog.append(dialogTitle,details,feedback,buttons);document.body.append(dialog);
   for(const [name,title] of [['octopus','Octopus Energy'],['foxess','FoxESS']]) {
     const card=make('section','','overview-update-card');
-    const refresh=action('',async()=>{await refreshOverviewNow();render();});refresh.className='overview-service-refresh';
+    const refresh=action('',async()=>{
+      const info=summary(window.integrationMonitor.snapshot(),name);
+      if(info.active || info.alerts.length) {selected=name;feedback.textContent='';render();dialog.showModal();return;}
+      await refreshOverviewNow();render();
+    });refresh.className='overview-service-refresh';
     const ring=make('span','','overview-api-ring');ring.setAttribute('aria-hidden','true');
     ring.innerHTML='<svg class="overview-api-clock" viewBox="0 0 24 24" fill="none"><circle class="overview-api-track" cx="12" cy="12" r="10"/><circle class="overview-api-progress" cx="12" cy="12" r="10" pathLength="100"/></svg><svg class="overview-api-symbol" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 7v5h-5M4 17v-5h5"/><path d="M6.1 7a7 7 0 0 1 11.6-1L20 9M4 15l2.3 3A7 7 0 0 0 17.9 17"/></svg>';
     refresh.append(ring,make('span',name==='octopus'?'Octopus':'FoxESS','overview-update-name'));
-    const incident=action('!',()=>{selected=name;feedback.textContent='';render();dialog.showModal();});incident.className='overview-error-button';incident.hidden=true;
-    card.append(refresh,incident);grid.append(card);views[name]={title,refresh,ring,incident,card,progress:ring.querySelector('.overview-api-progress')};
+    card.append(refresh);grid.append(card);views[name]={title,refresh,ring,card,progress:ring.querySelector('.overview-api-progress')};
   }
   document.querySelector('#dev-shell .dev-app-actions').append(panel);
   const formatTime=value=>value?new Date(value).toLocaleString():'No successful update recorded yet';
@@ -50,14 +53,13 @@
       view.progress.style.transition=reset?'none':'stroke-dashoffset 1s linear';
       view.progress.style.strokeDashoffset=String(remaining*100);
       view.nextAt=nextAt;
-      view.refresh.disabled=disabled || timing.running;
+      const warning=info.active || info.alerts.length>0;
+      view.refresh.disabled=!warning && (disabled || timing.running);
+      view.refresh.classList.toggle('has-warning',warning);
       view.refresh.setAttribute('aria-busy',String(running));
       view.ring.dataset.state=disabled?'waiting':info.active?'error':running?'updating':info.last?'ok':'waiting';
-      view.refresh.title=`${view.title}: ${stateText}. Last success: ${formatTime(info.last)}. Select to reload API data.`;
-      view.refresh.setAttribute('aria-label',`${view.title}: ${stateText}. Reload API data`);
-      view.incident.hidden=info.alerts.length===0;
-      view.incident.title=info.active?'Review connection problem':'Recovered. Review and clear saved alert.';
-      view.incident.setAttribute('aria-label',`${view.title}: ${info.active?'Review update problem':'Recovered, review and clear alert'}`);
+      view.refresh.title=`${view.title}: ${stateText}. Last success: ${formatTime(info.last)}. ${warning?'Select to review the problem.':'Select to reload API data.'}`;
+      view.refresh.setAttribute('aria-label',`${view.title}: ${stateText}. ${warning?'Review update problem':'Reload API data'}`);
       if(dialog.open && selected===name) renderDialog(info,view.title);
     }
     if(selected && !dialog.open)renderDialog(summary(snapshot,selected),views[selected].title);
@@ -74,7 +76,7 @@
       const current=new Set(info.failures.map(failure=>failure.message));
       for(const message of current)details.append(make('p',`Current problem: ${message}`));
     }
-    details.append(make('p',info.active?'The service still has a problem. Select the API refresh button to retry. This alert stays until the service recovers and you clear it.':'Updates have recovered. The saved alert remains until you select Clear alert.'));
+    details.append(make('p',info.active?'The service still has a problem. Automatic checks continue at the configured interval. This alert cannot be cleared until recovery.':'Updates have recovered. Select Clear alert to dismiss this problem. Automatic clearing follows your Settings preference.'));
     clear.disabled=info.active || info.alerts.length===0;
   }
   window.addEventListener('integration-status-change',render);

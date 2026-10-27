@@ -21,7 +21,13 @@
         start(name) {busy[name]++;notify();return()=>{busy[name]=Math.max(0,busy[name]-1);notify();};},
         success(name,channel='api') {const recovered=state.service(name).channels[channel]?.ok===false;state.success(name,channel);if(recovered)persist();else notify();},
         failure(name,channel,error) {if(leaving || window.linuxRuntime && window.linuxServiceEnabled===false)return;const revision=state.data.revision;state.failure(name,channel,clean(error));persist(state.data.revision!==revision);},
-        snapshot() {return {local:state.snapshot(),remote,busy:{...busy}};},
+        snapshot() {if(state.expireAlerts()) {try{localStorage.setItem(key,JSON.stringify(state.data));}catch{}} return {local:state.snapshot(),remote,busy:{...busy}};},
+        async setAutoClearHours(hours) {
+            if(window.linuxRuntime) {
+                remote=await fetchJson('/api/integration-status',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'settings',autoClearHours:hours})});
+            }
+            state.setAutoClearHours(hours);persist();
+        },
         async acknowledge(name) {
             const local=state.snapshot().services[name];const server=remote?.services[name];
             if (local.alert && local.state==='error' || server?.alert && server.state==='error') throw new Error('The service still has a problem. Update now to retry before clearing it.');
@@ -45,11 +51,15 @@
                 }
                 remote=await fetchJson('/api/integration-status',options);
                 window.linuxServiceEnabled=remote.serviceEnabled!==false;
+                if(Number.isInteger(remote.autoClearHours) && state.data.autoClearHours!==remote.autoClearHours) {state.setAutoClearHours(remote.autoClearHours);persist();}
                 if(window.linuxRole==='worker' && remote.refreshRequestId>workerRequestSeen) {
                     workerRequestSeen=remote.refreshRequestId;requestWorkerDataRefresh();
                 }
-                const recovered=['octopus','foxess'].some(name=>state.service(name).channels['pi-status']?.ok===false);
-                for(const name of ['octopus','foxess']) state.success(name,'pi-status');
+                const recovered=['octopus','foxess'].some(name=>['pi-status','worker-refresh'].some(channel=>state.service(name).channels[channel]?.ok===false));
+                for(const name of ['octopus','foxess']) {
+                    state.success(name,'pi-status');
+                    if(state.service(name).channels['worker-refresh']) state.success(name,'worker-refresh');
+                }
                 if(recovered)persist();else notify();
             } catch(error) {
                 if(leaving)return;

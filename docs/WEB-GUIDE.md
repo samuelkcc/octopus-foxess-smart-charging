@@ -180,3 +180,27 @@ FoxESS power data passes through your configured GAS relay.
 Grid and battery power require their corresponding variables in the FoxESS response.
 The new file requests those variables with solar, home power, and charge level.
 The browser must remain open and awake for countdowns and automation.
+
+## Identify a connection failure
+
+The welcome screen identifies Octopus sign-in, Octopus data, or FoxESS relay requests.
+An Octopus error selects the Octopus setup step.
+A network error means the browser did not receive a readable response.
+It does not prove that your credentials are wrong.
+
+1. Check the service named in the message.
+2. If Octopus reports a rate limit, wait for the displayed cooldown.
+3. If a network error remains, try another browser or network.
+4. If the relay returns a sign-in page, check its deployment access.
+
+A working Windows host can reuse an existing token while a browser needs a new login.
+Do not repeatedly select Connect during an API cooldown.
+
+### Safari preflight rejection
+
+During a Safari check, Octopus rejected the browser preflight with HTTP 403.
+The app could not receive an authentication response.
+The user confirmed that Chrome and the Windows host could connect.
+Content blockers did not explain the isolated failure.
+The app reports the affected Octopus request instead of displaying a generic GAS error.
+This patch does not claim to resolve the upstream Safari rejection.

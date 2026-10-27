@@ -632,7 +632,7 @@ class RemoteAccessWindow(Gtk.Window):
         root.pack_start(self.url, False, False, 0)
         url_note = Gtk.Label(
             label="This URL stays the same while the tunnel keeps running. A Pi reboot, app update, "
-                  "Stop/Start, or automatic tunnel restart creates a new URL. Closing your browser does not change it.",
+                  "Update URL, Stop/Start, or automatic tunnel restart creates a new URL. Closing your browser does not change it.",
             xalign=0,
         )
         url_note.set_line_wrap(True)
@@ -658,18 +658,20 @@ class RemoteAccessWindow(Gtk.Window):
         reveal = Gtk.CheckButton(label="Show remote key")
         reveal.connect("toggled", lambda button: self.key.set_visibility(button.get_active()))
         root.pack_start(reveal, False, False, 0)
-        buttons = Gtk.Box(spacing=8)
+        buttons = Gtk.Grid(column_spacing=8, row_spacing=8, column_homogeneous=True)
         root.pack_start(buttons, False, False, 0)
-        for label, callback in [
+        for index, (label, callback) in enumerate([
             ("Start Quick Tunnel", lambda _button: self.change(True)),
+            ("Update URL", lambda _button: self.change(True, renew=True)),
             ("Stop", lambda _button: self.change(False)),
             ("New Key / Sign Out All", lambda _button: self.change(self.enabled, True)),
+            ("Copy URL", lambda _button: Gtk.Clipboard.get_default(self.get_display()).set_text(self.url.get_text(), -1)),
             ("Copy Key", lambda _button: Gtk.Clipboard.get_default(self.get_display()).set_text(self.key.get_text(), -1)),
             ("Refresh", lambda _button: self.refresh()),
-        ]:
+        ]):
             button = Gtk.Button(label=label)
             button.connect("clicked", callback)
-            buttons.pack_start(button, False, False, 0)
+            buttons.attach(button, index % 4, index // 4, 1, 1)
         availability_note = Gtk.Label(label="Cloudflare Quick Tunnel availability is not guaranteed.", xalign=0)
         availability_note.set_line_wrap(True)
         root.pack_start(availability_note, False, False, 0)
@@ -689,9 +691,9 @@ class RemoteAccessWindow(Gtk.Window):
     def refresh(self):
         run_in_background(lambda: api_json("/api/remote-access"), self.loaded, self.failed)
 
-    def change(self, enabled, rotate=False):
+    def change(self, enabled, rotate=False, renew=False):
         self.status.set_text("Updating remote access…")
-        run_in_background(lambda: api_json("/api/remote-access", "PUT", {"enabled": enabled, "rotateKey": rotate}), self.loaded, self.failed)
+        run_in_background(lambda: api_json("/api/remote-access", "PUT", {"enabled": enabled, "rotateKey": rotate, "renewUrl": renew}), self.loaded, self.failed)
 
     def loaded(self, data):
         self.enabled = data.get("enabled", False)

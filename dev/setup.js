@@ -169,7 +169,11 @@ window.installLaunchScreen = ({ pi, login, parking, byId, make, button, onEnter 
   function closeSetup() { login.dataset.mode = 'welcome'; start.focus({ preventScroll: true }); }
   if (!pi) showStep(0, false);
   else { next.hidden = true; back.hidden = false; }
-  new MutationObserver(() => { if (error.style.display === 'block' && !pi) openSetup(); }).observe(error, { attributes: true, attributeFilter: ['style'] });
+  new MutationObserver(() => { if (error.style.display === 'block' && !pi) {
+    if(error.dataset.service==='octopus') currentStep=0;
+    else if(error.dataset.service==='foxess') currentStep=2;
+    openSetup();
+  } }).observe(error, { attributes: true, attributeFilter: ['style'] });
   const syncSavedSetup = () => {
     if (pi || !window.savedWebSetupAvailable || login.dataset.ready === 'true') return;
     start.textContent = 'Connect';

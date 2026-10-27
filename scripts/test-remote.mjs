@@ -5,7 +5,8 @@ import { once } from 'node:events';
 import os from 'node:os';
 import http from 'node:http';
 import path from 'node:path';
-import { RemoteSessions, createRemoteKey } from '../linux/remote-access.mjs';
+import { EventEmitter } from 'node:events';
+import { RemoteSessions, createRemoteKey, QuickTunnel } from '../linux/remote-access.mjs';
 
 const sessions = new RemoteSessions();
 const sessionKey = createRemoteKey();
@@ -16,11 +17,30 @@ assert.equal(sessions.valid(request, createRemoteKey()), false, 'Key rotation in
 sessions.sessions.values().next().value.until = Date.now() - 1;
 assert.equal(sessions.valid(request, sessionKey), false, 'Expired sessions must fail');
 
+// A printed URL alone does not prove that Cloudflare has connected.
+const spawned=[];
+const tunnel=new QuickTunnel({url:'http://127.0.0.1:8788',spawnProcess:(_binary,args)=>{
+ const process=new EventEmitter();process.stdout=new EventEmitter();process.stderr=new EventEmitter();process.kill=()=>{process.killed=true;};spawned.push({process,args});return process;
+}});
+tunnel.start();const old=spawned[0].process;
+old.stderr.emit('data','https://first.trycloudflare.com\n');
+assert.equal(tunnel.status.state,'connecting');assert.equal(tunnel.status.url,null);
+old.stderr.emit('data','Registered tunnel connec');old.stderr.emit('data','tion\n');
+assert.equal(tunnel.status.state,'running');assert.equal(tunnel.status.url,'https://first.trycloudflare.com');
+assert.equal(spawned[0].args.at(-1),'http://127.0.0.1:8788');
+tunnel.restart();assert.equal(old.killed,true);assert.equal(tunnel.status.url,null);
+old.stderr.emit('data','Registered tunnel connection\n');assert.equal(tunnel.status.state,'starting','Old process output cannot restore a stale URL');
+spawned[1].process.stderr.emit('data','https://second.trycloudflare.com\nRegistered tunnel connection\n');
+assert.equal(tunnel.status.url,'https://second.trycloudflare.com');
+spawned[1].process.stderr.emit('data','failed to serve tunnel connection\n');assert.equal(tunnel.status.url,null);
+spawned[1].process.stderr.emit('data','Registered tunnel connection\n');assert.equal(tunnel.status.state,'running');
+tunnel.stop();
+
 const root = await mkdtemp(path.join(os.tmpdir(), 'octopus-remote-test-'));
 const port = 30000 + Math.floor(Math.random() * 10000);
 const remotePort = port + 1;
 const binary = path.join(root, 'cloudflared-test');
-await writeFile(binary, `#!${process.execPath}\nprocess.stderr.write('https://test-only.trycloudflare.com\\n'); setInterval(() => {}, 1000);\n`, { mode: 0o700 });
+await writeFile(binary, `#!${process.execPath}\nprocess.stderr.write('https://test-only.trycloudflare.com\\nRegistered tunnel connection\\n'); setInterval(() => {}, 1000);\n`, { mode: 0o700 });
 await writeFile(path.join(root, 'access.key'), 'dummy-lan-key');
 const child = spawn(process.execPath, ['linux/server.mjs'], {
   env: { ...process.env, OCTOPUS_HOST: '127.0.0.1', OCTOPUS_PORT: String(port), OCTOPUS_REMOTE_PORT: String(remotePort), OCTOPUS_STATE_DIR: root, OCTOPUS_WEB_ROOT: path.resolve('src'), OCTOPUS_CLOUDFLARED: binary },
@@ -117,6 +137,13 @@ try {
   assert.equal((await call(remote, '/api/config', { method: 'DELETE', headers: keyHeaders })).status, 403);
   assert.equal((await call(remote, '/api/logout', { method: 'POST', headers: sessionHeaders })).status, 204);
   assert.equal((await call(remote, '/api/config', { headers: sessionHeaders })).status, 401);
+  const renewed = await call(local, '/api/remote-access', put({enabled:true,renewUrl:true})).then(r=>r.json());
+  assert.equal(renewed.key,enabled.key,'URL renewal must preserve the remote key');
+  assert.equal(renewed.state,'starting','A replacement URL is not ready before edge connection');
+  assert.equal((await call(remote,'/api/config',{headers:keyHeaders})).status,200);
+  assert.equal((await call(local,'/api/remote-access',put({enabled:true,renewUrl:true,rotateKey:true}))).status,400);
+  assert.equal((await call(local,'/api/remote-access',put({enabled:true,renewUrl:'yes'}))).status,400);
+  assert.equal((await call(local,'/api/remote-access',{...put({enabled:true}),headers:{Origin:'https://attacker.invalid'}})).status,403);
   const rotated = await call(local, '/api/remote-access', put({ enabled: true, rotateKey: true })).then(r => r.json());
   assert.notEqual(rotated.key, enabled.key);
   assert.equal((await call(remote, '/api/config', { headers: keyHeaders })).status, 401);

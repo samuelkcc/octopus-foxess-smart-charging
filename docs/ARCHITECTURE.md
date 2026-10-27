@@ -2,8 +2,7 @@
 
 ## Versions
 
-The public release is v2026.10.26.5.
-The current development version is 2.0.0.
+The current release version is 2.0.1.
 New versions use MAJOR.MINOR.PATCH.
 Legacy calendar versions remain in the release history.
 The development branch is `codex/ui-ux-preview`.
@@ -190,7 +189,9 @@ These checks cannot prove the permissions or quota of a user deployment.
 The shared monitor separates service health from a retained problem alert.
 A failed channel remains unhealthy until that channel succeeds.
 A successful tariff request must not hide a failed dispatch request.
-Recovery keeps the alert until the user acknowledges it.
+Recovery retains the alert until acknowledgement or the configured expiry period.
+The default period is 24 hours from the last failure.
+Expiry never removes an active failure.
 An active failure cannot be acknowledged as healthy.
 The acknowledgement includes an alert ID to protect a newer incident.
 
@@ -244,7 +245,8 @@ The Pi proxy owns one queue for all connected clients.
 On Pi, every outbound Octopus request consumes one slot.
 Its authentication, dispatch, account, and tariff requests remain at least 60 seconds apart.
 The Pi persists only the next permitted send time.
-A restart does not reset that limit.
+A Pi restart waits at least one full interval, including a one-second safety margin.
+The next in-memory slot is measured after reservation storage completes.
 Browser storage and Web Locks coordinate tabs on the same origin where supported.
 Independent browsers and other applications cannot share this local budget.
 
@@ -309,3 +311,17 @@ The worker still checks local configuration so enablement can resume operation.
 A disabled service keeps its local administration server available.
 History records both service state changes.
 Explicit automation pause remains separate and continues monitoring.
+
+## Remote URL recovery
+
+The host-only remote access endpoint accepts an explicit `renewUrl` operation.
+It restarts the dedicated Quick Tunnel without changing the remote key.
+Remote clients cannot invoke this operation.
+The manager waits for a registered Cloudflare connection before publishing the URL as ready.
+A startup that does not connect within two minutes restarts through the existing retry path.
+Old process output cannot restore a replaced URL.
+
+Alert expiry preferences use the integration state file on Pi and Windows.
+Standalone web preferences use browser storage.
+Authenticated dashboards can change the period through an explicit settings allowlist.
+A warning badge opens its incident dialog without invoking the refresh path.

@@ -47,6 +47,12 @@ try {
  assert.equal((await fetch(origin+'/api/integration-status',{...put({service:'foxess',alertId:id}),headers:{'Content-Type':'application/json',Origin:'https://attacker.invalid'}})).status,403);
  assert.equal((await fetch(origin+'/api/integration-status',put({service:'foxess',alertId:id}))).status,200);
  assert.equal((await status()).services.foxess.alert,null);
+ const preference=()=>fetch(origin+'/api/integration-status',put({action:'settings',autoClearHours:0}));
+ assert.equal((await preference()).status,200);
+ assert.equal((await status()).autoClearHours,0);
+ assert.equal((await fetch(origin+'/api/integration-status',put({action:'settings',autoClearHours:721}))).status,400);
+ assert.equal((await fetch(origin+'/api/integration-status',{...put({action:'settings',autoClearHours:24}),headers:{Origin:'https://attacker.invalid'}})).status,403);
+ await stop();await start();assert.equal((await status()).autoClearHours,0,'Alert preference survives service restart');
  const refresh=await fetch(origin+'/api/integration-status',put({action:'refresh'}));
  assert.equal(refresh.status,202);
  const requestId=(await refresh.json()).refreshRequestId;

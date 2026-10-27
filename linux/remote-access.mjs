@@ -51,26 +51,49 @@ export class QuickTunnel {
     this.status = { state: 'starting', url: null, error: null };
     const child = this.spawnProcess(this.binary, ['tunnel', '--no-autoupdate', '--config', process.platform === 'win32' ? 'NUL' : '/dev/null', '--url', this.target], { stdio: ['ignore', 'pipe', 'pipe'], windowsHide: true });
     this.child = child;
+    let startupTimer;
+    this.clearStartup = () => clearTimeout(startupTimer);
     let buffer = '';
+    let publicUrl = null;
+    const connections = new Set();
+    let connected = false;
     const onData = chunk => {
       if (this.child !== child) return;
       buffer = (buffer + chunk.toString()).slice(-8192);
-      const match = buffer.match(/https:\/\/[a-z0-9-]+\.trycloudflare\.com\b/);
-      if (match) this.status = { state: 'running', url: match[0], error: null };
+      const lines = buffer.split('\n');
+      buffer = lines.pop();
+      for (const line of lines) {
+        const match = line.match(/https:\/\/[a-z0-9-]+\.trycloudflare\.com\b/);
+        if (match) publicUrl = match[0];
+        const index = line.match(/connIndex[=:]\s*([0-9]+)/)?.[1] || 'default';
+        if (/Registered tunnel connection/.test(line)) {connections.add(index);clearTimeout(startupTimer);}
+        if (/failed to serve tunnel connection|connection terminated|Unable to establish connection/i.test(line)) connections.delete(index);
+        connected = connections.size > 0;
+      }
+      this.status = { state: connected && publicUrl ? 'running' : publicUrl ? 'connecting' : 'starting',
+        url: connected ? publicUrl : null, error: publicUrl && !connected ? 'Connecting to Cloudflare. The URL is not ready yet.' : null };
     };
     child.stdout.on('data', onData);
     child.stderr.on('data', onData);
     const ended = error => {
       if (this.child !== child) return;
+      clearTimeout(startupTimer);
       this.child = null;
       this.status = { state: 'error', url: null, error: error?.code === 'ENOENT' ? 'cloudflared is not installed. Run the updated Pi installer.' : 'Tunnel disconnected; retrying in 30 seconds.' };
       if (this.enabled) this.retry = setTimeout(() => { this.retry = null; this.start(); }, 30_000);
     };
+    startupTimer = setTimeout(() => { if (this.child === child && !connected) {ended();child.kill('SIGTERM');} }, 120_000);
+    startupTimer.unref?.();
     child.once('error', ended);
     child.once('exit', () => ended());
   }
+  restart() {
+    this.stop();
+    this.start();
+  }
   stop() {
     this.enabled = false;
+    this.clearStartup?.();
     clearTimeout(this.retry);
     this.retry = null;
     const child = this.child;

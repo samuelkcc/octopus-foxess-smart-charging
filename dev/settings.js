@@ -52,6 +52,27 @@
   }
   refreshSettings.append(make('p','next-muted','Minimum intervals: Octopus 60 seconds. FoxESS 600 seconds. Smart Dispatch commands apply immediately.'));
 
+  const alerts=card('API problem alerts','Recovered problems clear automatically after the selected period. Active failures keep their red border.');
+  const alertLabel=make('label','next-field','Automatically clear recovered alerts');
+  const alertSelect=make('select');alertSelect.id='api-alert-clear-hours';
+  for(const [value,label] of [[24,'After 24 hours'],[6,'After 6 hours'],[12,'After 12 hours'],[48,'After 48 hours'],[0,'Only when I clear them']]) {
+    const option=make('option','',label);option.value=String(value);alertSelect.append(option);
+  }
+  alertLabel.htmlFor=alertSelect.id;alertLabel.append(alertSelect);
+  const alertFeedback=make('p','next-muted');alertFeedback.setAttribute('role','status');
+  const alertSave=action('Save',async()=>{
+    alertSave.disabled=true;
+    try{await window.integrationMonitor.setAutoClearHours(Number(alertSelect.value));alertFeedback.textContent='Alert preference saved.';}
+    catch(error){alertFeedback.textContent=error.message;}
+    finally{alertSave.disabled=false;}
+  });
+  const syncAlerts=()=>{const snapshot=window.integrationMonitor.snapshot();alertSelect.value=String(snapshot.remote?.autoClearHours ?? snapshot.local.autoClearHours);};
+  // Do not replace an unsaved choice on each health update.
+  let alertEditing=false;alertSelect.addEventListener('change',()=>{alertEditing=true;});
+  alertSave.addEventListener('click',()=>{alertEditing=false;});
+  window.addEventListener('integration-status-change',()=>{if(!alertEditing)syncAlerts();});
+  syncAlerts();alerts.append(alertLabel,alertSave,alertFeedback,make('p','next-muted','The period starts at the last failure. Viewing or clearing an alert does not request API data.'));
+
   const visibleStates = [];
   const visibility = card('Visible panels', 'Choose which panels to show on this device. This does not disable automation.');
   for (const [key, label] of [

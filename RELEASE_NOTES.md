@@ -1,42 +1,41 @@
-# Smart Charging v2.0.0
+# Smart Charging v2.0.1
 
-A new shared interface for Raspberry Pi, Windows portable, and standalone web use.
-The app connects Intelligent Octopus Go charging windows to FoxESS battery schedules.
+This maintenance release improves remote access recovery and API problem alerts.
 
-## New functions
+## Changes
 
-- Windows portable app with an embedded dashboard, local server, and automation worker.
-- Protected Cloudflare remote access with a separate 256-bit key and expiring browser sessions.
-- Compact mobile Welcome and dashboard layouts, responsive desktop pages, and light/dark artwork.
-- Four history charts, chart expansion, CSV export, and storage reporting on Pi and Windows.
-- Compressed monthly history, hourly memory-buffer saves, 12-month default retention, and low-space cleanup below 4 GB.
-- Operator pause for 6, 12, or 24 hours, or until resumed, with a red banner and history entry.
-- Equal API health buttons with interval progress, individual refresh requests, and retained incident alerts.
-- Native Pi service enable/disable for testing another host without competing API connections.
-- Saved web setup returns directly to Connect. Windows includes account instructions and LAN-code visibility.
-- About and licence drawer with project background, developer details, GPL text, and component notices.
+- Pi and Windows Remote Access include **Update URL**. This creates a replacement address without changing the Remote Access Key.
+- Pi Remote Access includes **Copy URL** and grouped controls.
+- A tunnel shows **running** only after Cloudflare reports a connection. Startup failures retry automatically.
+- API badges use a red border for active failures and retained alerts.
+- Selecting a red badge opens problem details. It does not request API data or reset refresh intervals.
+- Recovered alerts clear after 24 hours by default. Settings provides other periods or manual clearing.
+- Pi request spacing includes a one-second safety margin. Storage latency cannot shorten the next request interval.
+- Browser sign-in failures identify the affected service. Octopus failures no longer point to the GAS setup step.
+- Active failures remain visible. Alert preferences survive host restarts and browser reloads.
 
-## Reliability
+## Remote access recovery
 
-- Pi dashboard clients read a protected host snapshot without another Octopus login or a 60-second queue.
-- Pi outbound Octopus requests retain a shared, durable 60-second minimum gap.
-- Web and Windows login have no artificial request gap. Real API rate-limit responses remain enforced.
-- Routine refresh settings cannot go below 60 seconds for Octopus or 600 seconds for FoxESS.
-- Changed valid Smart Dispatch schedules reconcile immediately, with a fresh official FoxESS REST confirmation.
-- Operator pause blocks all app schedule writes. Invalid dispatch responses retain the last valid schedule.
+1. On the host, open **Remote Access**.
+2. Select **Update URL**.
+3. Wait until the tunnel connects.
+4. Select **Copy URL**.
+5. Open that URL on your other device.
+6. Enter the existing Remote Access Key.
+7. Replace any bookmark or Home Screen shortcut that uses the previous URL.
 
-## Downloads and updates
-
-- The hosted web app uses the redesigned interface. Downloaded HTML still supports a personal Google Apps Script relay.
-- Existing Pi updater asset names remain compatible. Pi updates preserve configuration and history.
-- The Windows EXE targets x64 and is unsigned. Keep the app and PC running for automation.
-- Quick Tunnel URLs change after a tunnel or host restart. Use Pi Connect to recover the new URL and key.
+A Quick Tunnel address can change after a reboot, app update, or tunnel restart.
+The old address cannot redirect to its replacement.
+Pi Connect provides another way to retrieve the current address.
 
 ## Verification
 
-The automated suite covers scheduler safety, authentication, request budgets, history, service control, GAS transport, and desktop IPC.
-The user tested the web and Windows editions, including Windows 11 ARM through UTM.
-Final interface changes use mock account data for browser checks and public screenshots.
-Tests do not prove measured behaviour on every FoxESS model or independent Windows DPAPI certification.
+Mock tests cover tunnel reconnection, URL renewal, authentication boundaries, retained alerts, expiry, settings persistence, and badge interaction.
+The complete scheduler, history, transport, and desktop regression suite also passes.
+Tests do not send commands to a live inverter.
+Windows packaging checks do not replace native Windows verification of this patch.
+Safari returned HTTP 403 during the direct Octopus preflight in an isolated check.
+Chrome and Windows connections were confirmed by the user.
+This release improves that error message but does not claim to resolve the upstream Safari rejection.
 
 [Setup and screenshots](https://github.com/samuelkcc/octopus-foxess-smart-charging#readme)

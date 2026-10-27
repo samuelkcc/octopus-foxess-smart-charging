@@ -1,4 +1,4 @@
-# Version 2.0.0 release verification
+# Version 2.0.1 release verification
 
 The user approved publication after testing the Windows and web editions.
 The redesigned interface is the default in all release assets.
@@ -47,3 +47,23 @@ The taskbar icon was visible, and the display remained at 1920 × 1080.
 An unauthenticated request reached the correct release login entry.
 Dashboard authentication remains required.
 An authenticated test through that replacement URL was not performed.
+
+## Version 2.0.1 maintenance review
+
+- URL renewal preserves the remote key and uses the dedicated remote listener.
+- Tunnel status requires a registered Cloudflare connection before it reports running.
+- Warning badges open details without requesting API data.
+- Recovered alerts expire after 24 hours by default. Active failures remain visible.
+- The expiry preference persists across host and browser restarts.
+- Slow reservation tests verify the API spacing floor. Pi startup also retains a full interval.
+- New tests use mock tunnels and upstream services.
+- Native Windows verification of this patch remains a user check.
+- The Pi installation revision will be recorded after the public update.
+
+### Safari connection limit
+
+Safari returned HTTP 403 for the direct Octopus preflight during an isolated invalid-key check.
+Disabling content blockers did not resolve that response.
+The temporary Safari preference changes were restored.
+The user confirmed Chrome and Windows connections.
+No live account query or inverter command was needed for this reproduction.

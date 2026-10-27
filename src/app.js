@@ -157,6 +157,7 @@ async function fetchJsonUnblocked(url, options = {}, timeoutMs = REQUEST_TIMEOUT
     const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
     let service = null;
     let channel = 'api';
+    let requestLabel = '';
     try {
         const address = String(url);
         const payload = typeof options.body === 'string' ? JSON.parse(options.body) : {};
@@ -164,6 +165,7 @@ async function fetchJsonUnblocked(url, options = {}, timeoutMs = REQUEST_TIMEOUT
         if (address.startsWith('/api/octopus') || target.includes('api.octopus.energy')) service = 'octopus';
         if (address.startsWith('/api/foxess') || target.includes('www.foxesscloud.com')) service = 'foxess';
         if (service) {
+            requestLabel = service === 'octopus' ? (/obtainKrakenToken/.test(payload.query || '') ? 'Octopus sign-in' : 'Octopus data') : 'FoxESS via Google relay';
             channel = new URL(target, window.location.href).pathname;
             if (service === 'octopus') channel = channel.includes('/graphql') ? 'graphql' : channel.includes('/accounts/') ? 'account' : channel.includes('electricity-tariffs') ? 'tariff-request' : 'api';
         }
@@ -179,13 +181,16 @@ async function fetchJsonUnblocked(url, options = {}, timeoutMs = REQUEST_TIMEOUT
             signal: controller.signal
         });
         if (response.status === 401 && window.linuxRemoteAccess) window.location.reload();
+        // Read the body once. Stream cloning is unnecessary for rate-limit checks.
+        const result = await response.json().catch(error => {
+            if (!response.ok) return null;
+            throw error;
+        });
         if (service === 'octopus' && !window.linuxRuntime && window.requestPolicy) {
-            const sample = await response.clone().json().catch(() => null);
-            const delay = window.retryDelay(response, sample);
+            const delay = window.retryDelay(response, result);
             if (delay) await window.requestPolicy.octopus.defer(delay);
         }
         if (!response.ok) throw Object.assign(new Error(`HTTP ${response.status} from ${new URL(url, window.location.href).hostname}`), {statusCode:response.status});
-        const result = await response.json();
         const fetchedAt = Number(response.headers?.get?.('X-Smart-Charging-Fetched-At'));
         if (fetchedAt && result && typeof result === 'object') result._fetchedAt = fetchedAt;
         if (scheduleCommandSucceeded(url, options, result)) window.nextFoxTime = Date.now() + Math.max(600, foxRefreshInterval) * 1000;
@@ -197,6 +202,10 @@ async function fetchJsonUnblocked(url, options = {}, timeoutMs = REQUEST_TIMEOUT
         }
         return result;
     } catch (error) {
+        if (service && !window.linuxRuntime && /^(Load failed|Failed to fetch|NetworkError.*)$/.test(error.message || '')) {
+            error = Object.assign(new Error(`${requestLabel} could not connect. Your browser did not receive a readable response. Check network access, or retry later.`), {service,networkFailure:true});
+        }
+        if (service) error.service=service;
         if (service && error.statusCode !== 423) window.integrationMonitor?.failure(service, channel, error.name === 'AbortError' ? 'The service request timed out.' : error);
         if (error.name === 'AbortError') throw new Error(`Request timed out after ${Math.round(timeoutMs / 1000)} seconds`);
         throw error;
@@ -1704,14 +1713,14 @@ async function refreshDashboard(isAutoRefresh = false, retryCount = 1) {
             loadAutomations(0, 0);
             startAutoRefreshTimer();
         }
-        if (isAutoRefresh && (err.message === 'Load failed' || err.message === 'Failed to fetch') && retryCount > 0) {
+        if (isAutoRefresh && (err.networkFailure || err.message === 'Load failed' || err.message === 'Failed to fetch') && retryCount > 0) {
             console.warn("Network error caught, retrying automatically...");
             setTimeout(() => initDashboard(isAutoRefresh, retryCount - 1), 60_000);
             return;
         }
         if (!isAutoRefresh) {
             document.getElementById('loading-overlay').style.display = 'none';
-            showError(err.message);
+            showError(err.message, err.service || 'octopus');
         }
     } finally {
         if (connectionProgressTimer !== null) clearInterval(connectionProgressTimer);
@@ -3274,8 +3283,9 @@ function previewDischargeTimes() {
         : blocks.map(block => `🕒 ${block.start.toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })} - ${block.end.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`).join('<br>');
 }
 
-function showError(msg) {
+function showError(msg, service = '') {
     const errorDiv = document.getElementById('error');
+    errorDiv.dataset.service = service;
     errorDiv.textContent = 'Error: ' + msg;
     errorDiv.style.display = 'block';
 }

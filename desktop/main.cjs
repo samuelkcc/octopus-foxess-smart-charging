@@ -106,7 +106,7 @@ async function start() {
     }
     if(operation==='remoteAccess')return local('/api/remote-access');
     if(operation==='setRemoteAccess'){
-      if(!value || Object.keys(value).some(key=>!['enabled','rotateKey'].includes(key)))throw new Error('Invalid remote-access settings.');
+      if(!value || Object.keys(value).some(key=>!['enabled','rotateKey','renewUrl'].includes(key)))throw new Error('Invalid remote-access settings.');
       return local('/api/remote-access',value);
     }
     if(operation==='copyRemoteKey'){clipboard.writeText((await local('/api/remote-access')).key);return true;}

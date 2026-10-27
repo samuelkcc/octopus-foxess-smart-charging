@@ -338,7 +338,7 @@ body>#proxy-modal>div {max-width:850px!important;}
 #dev-shell .next-header-pause {width:148px;height:40px;min-height:40px;flex:0 0 148px;padding:7px 10px;margin:0;font-size:12px;line-height:1.2;order:1;}
 .dev-appbar {flex-wrap:wrap;}
 .overview-update-card {position:relative;width:148px;flex:0 0 148px;height:40px;}
-#dev-shell .overview-service-refresh {display:flex;align-items:center;gap:9px;width:148px;height:40px;min-height:40px;padding:7px 30px 7px 10px;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text-main);font-size:12px;font-weight:550;white-space:nowrap;}
+#dev-shell .overview-service-refresh {display:flex;align-items:center;gap:9px;width:148px;height:40px;min-height:40px;padding:7px 10px;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text-main);font-size:12px;font-weight:550;white-space:nowrap;}
 .overview-api-ring {position:relative;display:grid;place-items:center;width:24px;height:24px;flex:0 0 24px;border-radius:50%;color:var(--text-muted);}
 .overview-api-ring .overview-api-symbol {width:13px;height:13px;}
 .overview-api-clock {position:absolute;inset:0;width:100%;height:100%;transform:rotate(-90deg);stroke:currentColor;stroke-width:2;}
@@ -348,7 +348,6 @@ body>#proxy-modal>div {max-width:850px!important;}
 [data-theme=dark] .overview-api-ring[data-state=ok],[data-theme=dark] .overview-api-ring[data-state=updating] {color:#4ade80;}
 .overview-api-ring[data-state=error] {color:#ef4444;}
 
-#dev-shell .overview-error-button {position:absolute;right:6px;top:9px;display:grid;place-items:center;width:22px;height:22px;min-height:22px;padding:0;margin:0;border:0;border-radius:50%;background:#b91c1c!important;color:white!important;font-size:13px;font-weight:700;line-height:1;}
 .overview-incident-details section {border-bottom:1px solid var(--border);padding:16px 0;}
 .overview-incident-details strong {font-size:13px;overflow-wrap:anywhere;}
 .next-refresh-setting {display:flex;align-items:flex-end;gap:12px;margin:18px 0;}
@@ -358,10 +357,9 @@ body>#proxy-modal>div {max-width:850px!important;}
   .overview-update-grid {gap:6px;}
   .dev-app-actions {gap:8px;flex-wrap:wrap;flex-basis:100%;justify-content:flex-end;}
   .overview-update-card,#dev-shell .overview-service-refresh {width:106px;flex-basis:106px;}
-  #dev-shell .overview-service-refresh {gap:5px;padding-left:7px;padding-right:24px;font-size:11px;}
+  #dev-shell .overview-service-refresh {gap:5px;padding-left:7px;padding-right:7px;font-size:11px;}
   .overview-api-ring {width:20px;height:20px;flex-basis:20px;}
   .overview-api-ring .overview-api-symbol {width:11px;height:11px;}
-  #dev-shell .overview-error-button {right:4px;width:18px;height:18px;min-height:18px;top:11px;font-size:12px;}
   #dev-shell .next-header-pause {width:124px;flex-basis:124px;padding:7px 6px;font-size:11px;}
 }
 @media(prefers-reduced-motion:reduce) {.overview-api-progress {transition:none!important;}}
@@ -684,3 +682,5 @@ html.desktop-viewport,html.desktop-viewport body {height:100%;min-height:0;overf
 
 .next-service-disabled {padding:12px 24px;background:#7f1d1d;color:white;font-size:var(--workspace-text,14px);line-height:1.5;flex:none;}
 .next-service-disabled[hidden] {display:none!important;}
+
+#dev-shell .overview-service-refresh.has-warning {border:2px solid #ef4444;box-shadow:0 0 0 1px #ef444426;}

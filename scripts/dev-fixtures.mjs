@@ -71,8 +71,10 @@ http.createServer(async (request,response) => {
     if (url.pathname === '/api/integration-status') {
       if(request.method==='PUT') {
         if(payload.action==='refresh') refreshRequestId=Date.now();
+        else if(payload.action==='settings') health.setAutoClearHours(payload.autoClearHours);
         else health.acknowledge(payload.service,payload.alertId);
       }
+      health.expireAlerts();
       const now=Date.now(),epoch=refreshRequestId||workerStartedAt;
       const nextDeadline=seconds=>epoch+(Math.floor((now-epoch)/(seconds*1000))+1)*seconds*1000;
       return json({...health.snapshot(),refreshRequestId,worker:{updatedAt:now,octopusNextAt:nextDeadline(config.automations.refreshIntervals?.octopus || 60),foxessNextAt:nextDeadline(config.automations.refreshIntervals?.foxess || 600),octopusBusy:false,foxessBusy:process.env.OCTOPUS_FIXTURE_BUSY_CYCLE==='1' && now%4000<2000}});

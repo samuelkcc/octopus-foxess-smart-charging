@@ -69,3 +69,67 @@ lifecycleHandlers.pageshow();
 lifecycleWindow.integrationMonitor.failure('octopus','dispatch',new Error('Service unavailable'));
 assert.equal(lifecycleWindow.integrationMonitor.snapshot().local.services.octopus.state,'error','Real failures after a restored page remain visible');
 console.log('Page-exit cancellation is ignored; resumed-page service failures remain retained.');
+
+// Expiry applies only to recovered alerts. Time is measured from the last failure.
+clock=Date.parse('2026-10-27T00:00:00Z');
+state=new IntegrationState(null,()=>clock);
+assert.equal(state.snapshot().autoClearHours,24);
+state.failure('octopus','dispatch','Temporary failure');
+clock+=25*3600000;
+assert.equal(state.expireAlerts(),false,'An active failure cannot expire as healthy');
+state.success('octopus','dispatch');
+assert.equal(state.expireAlerts(),true);
+assert.equal(state.snapshot().services.octopus.alert,null);
+state.setAutoClearHours(0);state.failure('foxess','api','Temporary failure');state.success('foxess');
+clock+=48*3600000;
+assert.equal(state.expireAlerts(),false,'Manual-only preference retains recovered alerts');
+state.setAutoClearHours(48);
+state=new IntegrationState(JSON.parse(JSON.stringify(state.data)),()=>clock);
+assert.equal(state.expireAlerts(),true,'Preference and timestamps survive restart');
+state.setAutoClearHours(24);state.failure('foxess','api','Another failure');state.success('foxess');
+clock+=24*3600000-1;assert.equal(state.expireAlerts(),false);
+clock++;assert.equal(state.expireAlerts(),true,'Expiry includes the exact boundary');
+for(const value of [-1,721,1.5,'24',null])assert.throws(()=>state.setAutoClearHours(value),{statusCode:400});
+console.log('Configurable recovered-alert expiry, active failure protection, manual-only mode, restart and boundary checks passed.');
+
+// Exercise actual badge handlers without making an API call.
+class TestNode {
+ constructor(tag='div'){this.tag=tag;this.children=[];this.handlers={};this.style={};this.dataset={};this.classList={toggle(){},contains(){return false;}};}
+ append(...nodes){this.children.push(...nodes);} setAttribute(){} after(){} replaceChildren(){this.children=[];}
+ addEventListener(type,fn){this.handlers[type]=fn;} querySelector(){return new TestNode();}
+ showModal(){this.open=true;}close(){this.open=false;}
+}
+const nodes=[];let refreshes=0;
+const health=new IntegrationState();health.success('octopus');health.success('foxess');
+const badgeContext=vm.createContext({document:{createElement:tag=>{const node=new TestNode(tag);nodes.push(node);return node;},body:new TestNode(),querySelector:()=>new TestNode(),getElementById:()=>new TestNode()},window:{integrationMonitor:{snapshot:()=>({local:health.snapshot(),remote:null,busy:{}})},addEventListener(){}},MutationObserver:class{observe(){}},Date,setInterval(){},getEffectiveOctopusRefreshInterval:()=>60,foxRefreshInterval:600,getOverviewRefreshStatus:()=>({workerBusy:{}}),refreshOverviewNow:async()=>{refreshes++;}});
+vm.runInContext(await readFile(new URL('../dev/monitor.js',import.meta.url),'utf8'),badgeContext);
+const badges=nodes.filter(node=>node.className==='overview-service-refresh');
+await badges[0].handlers.click();assert.equal(refreshes,1);
+health.failure('octopus','api','Unavailable');
+await badges[0].handlers.click();assert.equal(refreshes,1,'Warning badge must open details without refreshing or resetting intervals');
+assert.equal(nodes.find(node=>node.tag==='dialog').open,true);
+health.success('octopus');await badges[0].handlers.click();assert.equal(refreshes,1,'Recovered retained warning must also open details only');
+console.log('Healthy badge refresh and warning/recovered badge review-only interactions passed.');
+
+// A Safari network failure must identify its service, rather than implicating GAS.
+const networkFields={error:{dataset:{},style:{}}};
+const networkContext=vm.createContext({URL,AbortController,setTimeout,clearTimeout,setInterval(){},Date,console,
+ fetch:async()=>{throw new TypeError('Load failed');},
+ window:{linuxRuntime:false,location:{href:'https://example.test/app/'},addEventListener(){}},
+ document:{addEventListener(){},getElementById:id=>networkFields[id]||null},localStorage:{getItem:()=>null},sessionStorage:{getItem:()=>null}});
+vm.runInContext(await readFile(new URL('../src/app.js',import.meta.url),'utf8'),networkContext);
+await assert.rejects(vm.runInContext(`fetchJsonUnblocked('https://api.octopus.energy/v1/graphql/',{method:'POST',body:JSON.stringify({query:'mutation { obtainKrakenToken(input:{APIKey:"dummy-private-key"}) {token} }'})})`,networkContext),error=>{
+ assert.match(error.message,/Octopus sign-in could not connect/);
+ assert.equal(error.service,'octopus');assert.equal(error.networkFailure,true);
+ assert.equal(error.message.includes('dummy-private-key'),false);return true;
+});
+vm.runInContext(`showError('Example network problem','octopus')`,networkContext);
+assert.equal(networkFields.error.dataset.service,'octopus');
+console.log('Service-specific browser network errors and secret-free sign-in diagnostics passed.');
+let bodyReads=0,deferrals=0;
+networkContext.fetch=async()=>({ok:true,status:200,headers:{get:()=>null},json:async()=>{bodyReads++;return {errors:[{message:'Too many requests.'}]};},clone:()=>{throw new Error('Response cloning must not be needed');}});
+networkContext.window.requestPolicy={octopus:{defer:async()=>{deferrals++;}}};
+networkContext.window.retryDelay=()=>60000;
+await vm.runInContext(`fetchJsonUnblocked('https://api.octopus.energy/v1/graphql/')`,networkContext);
+assert.equal(bodyReads,1);assert.equal(deferrals,1,'Single-read responses still enforce actual rate limits');
+console.log('Browser response bodies are read once; rate-limit deferral remains active.');

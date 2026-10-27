@@ -8,7 +8,7 @@ The EXE is unsigned.
 
 ## Start
 
-1. Open `SmartCharging-2.0.0-Windows-x64.exe`.
+1. Open `SmartCharging-2.0.1-Windows-x64.exe`.
 2. Read the application licence notice.
 3. Select **Accept and Continue**.
 4. Open the account setup from Welcome.
@@ -98,3 +98,25 @@ A mock host key is used in those tests.
 Automated mock checks do not certify native Windows DPAPI, firewall, sleep, or shutdown behaviour.
 The design preview uses fake data.
 It does not prove real Windows operation.
+
+## Replace a public URL
+
+1. Open **Remote Access**.
+2. Select **Update URL**.
+3. Wait for the tunnel connection.
+4. Select **Copy URL**.
+5. Update your bookmark or Home Screen shortcut.
+
+The Remote Access Key stays unchanged.
+The previous address stops working.
+
+## Review an API problem
+
+1. Select the API badge with a red border.
+2. Read the problem details.
+3. After recovery, select **Clear alert**.
+
+Viewing or clearing the alert does not request API data.
+Recovered alerts clear automatically after 24 hours by default.
+**Settings → API problem alerts** changes this preference.
+Active failures remain visible.

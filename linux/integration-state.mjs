@@ -3,7 +3,7 @@
 export class IntegrationState {
   constructor(saved, now = Date.now) {
     this.now = now;
-    this.data = { v:1, revision:0, services:{ octopus:{channels:{},alert:null}, foxess:{channels:{},alert:null} } };
+    this.data = { v:1, revision:0, autoClearHours:24, services:{ octopus:{channels:{},alert:null}, foxess:{channels:{},alert:null} } };
     if (saved?.v === 1 && Number.isSafeInteger(saved.revision) && saved.services?.octopus && saved.services?.foxess) {
       for (const name of ['octopus','foxess']) {
         const source = saved.services[name];
@@ -13,6 +13,7 @@ export class IntegrationState {
         }
       }
       this.data = JSON.parse(JSON.stringify(saved));
+      if (!Number.isInteger(this.data.autoClearHours) || this.data.autoClearHours < 0 || this.data.autoClearHours > 720) this.data.autoClearHours=24;
     }
   }
   service(name) {
@@ -34,6 +35,21 @@ export class IntegrationState {
       service.alert.lastAt=at; service.alert.count++;
     }
   }
+  setAutoClearHours(hours) {
+    if (!Number.isInteger(hours) || hours < 0 || hours > 720) throw Object.assign(new Error('Choose 0 to 720 hours. Zero disables automatic clearing.'),{statusCode:400});
+    this.data.autoClearHours=hours;
+  }
+  expireAlerts() {
+    if (!this.data.autoClearHours) return false;
+    let changed=false;
+    for (const service of Object.values(this.data.services)) {
+      if (service.alert && !Object.values(service.channels).some(value=>!value.ok)
+          && this.now()-Date.parse(service.alert.lastAt) >= this.data.autoClearHours*3600000) {
+        service.alert=null; changed=true;
+      }
+    }
+    return changed;
+  }
   snapshot() {
     const services = {};
     for (const name of ['octopus','foxess']) {
@@ -43,7 +59,7 @@ export class IntegrationState {
         lastSuccessAt:values.map(value=>value.lastSuccessAt || (value.ok ? value.at : null)).filter(Boolean).sort().at(-1)||null,
         alert:source.alert?{...source.alert}:null };
     }
-    return {version:1,services};
+    return {version:1,autoClearHours:this.data.autoClearHours,services};
   }
   acknowledge(name, id) {
     const service=this.service(name);

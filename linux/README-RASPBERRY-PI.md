@@ -138,6 +138,20 @@ A private VPN is another access option.
 API clients can send the key in the `X-Octopus-Remote-Key` header over HTTPS.
 The key must not appear in a URL.
 
+## Replace an unavailable public URL
+
+1. Open **Remote Access…** from the charger menu.
+2. Select **Update URL**.
+3. Wait for **Tunnel status: running**.
+4. Select **Copy URL**.
+5. Open the new address on your remote device.
+6. Enter the existing Remote Access Key.
+
+**Update URL** stops the previous tunnel and creates a replacement address.
+The Remote Access Key stays unchanged.
+The app does not show an address as ready before Cloudflare connects.
+A failed startup retries automatically.
+
 ## Recover a changed public URL
 
 Set up [Raspberry Pi Connect](https://www.raspberrypi.com/documentation/services/connect.html) before relying on Quick Tunnel.
@@ -283,11 +297,13 @@ History records pause, manual resume, and timed expiry.
 2. Find the Octopus and FoxESS badges in the shared header.
 3. Check their health indicators and circular interval progress.
 4. To request fresh data, select the related API badge.
-5. If a red problem button appears, select it.
+5. If a badge has a red border, select it.
 6. Read the reported problem.
 7. After recovery, select **Clear alert**.
 
-The red button remains after recovery until you clear it.
+The red border remains after recovery until you clear it or its configured period ends.
+The default period is 24 hours from the last failure.
+**Settings → API problem alerts** changes this period or disables automatic clearing.
 An active failure cannot be cleared as healthy.
 The last successful update time remains visible during a failure.
 A power value of `0.00 kW` means measured zero.
@@ -296,7 +312,8 @@ Data refresh does not cancel an automation pause.
 
 The same controls appear on desktop and mobile dashboards.
 The circles use Pi worker timing when it is available.
-Selecting a badge also requests a worker refresh.
+Selecting a healthy badge requests a worker refresh.
+Selecting a warning badge opens problem details without requesting API data.
 The worker retains control of automatic schedule changes.
 Server problem alerts survive a service restart.
 Clearing a server alert clears it for all connected Pi dashboards.

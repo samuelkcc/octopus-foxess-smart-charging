@@ -1,6 +1,6 @@
 # DEV guide
 
-Version **2.0.0** is published. These tools support future source-based development.
+Version **2.0.1** is the current maintenance update. These tools support future source-based development.
 The source branch is `codex/ui-ux-preview`.
 This branch does not publish GitHub Pages or create a release tag.
 
@@ -648,3 +648,26 @@ The headless display remained at 1920 × 1080 with normal rotation.
 The replacement public URL served the correct Pi interface and release revision.
 No authenticated login was performed through that replacement URL.
 No live inverter command, operator pause, or history deletion was used as a test action.
+
+## Version 2.0.1 checks
+
+The local mock checks cover URL replacement without remote-key rotation.
+A tunnel needs a registered edge connection before its URL appears ready.
+The red API border opens the incident dialog without refreshing data.
+Recovered alerts use the selected expiry period, with a 24-hour default.
+Active failures remain visible.
+Both browser and host preferences survive restarts.
+
+Safari network errors identify Octopus sign-in separately from GAS transport.
+An Octopus connection error selects the Octopus setup step.
+A failed browser request cannot prove whether a network filter or unreadable upstream response caused the failure.
+The user's GAS deployment returned a readable JSON response to an empty request.
+That check sent no credentials or inverter commands.
+Native Windows execution of this patch remains unverified.
+
+Safari diagnostics reproduced HTTP 403 during the Octopus CORS preflight with a dummy invalid key.
+The request failed before an account authentication response was available.
+The same test failed with content blockers disabled.
+Content blockers and the temporary developer-menu preference were restored.
+The user confirmed successful Chrome and Windows connections.
+This evidence does not establish why the upstream preflight differs for Safari.

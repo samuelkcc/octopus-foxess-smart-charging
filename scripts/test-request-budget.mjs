@@ -35,3 +35,12 @@ now += 600_000;
 await fox.run('schedule', async () => ++reads, { ttl: 600_000 });
 assert.equal(reads, 2);
 console.log('Shared outbound spacing, concurrent deduplication, restart guard, rate-limit cooldown, failed-request spacing and FoxESS cache expiry passed.');
+
+// A slow durable reservation must not shorten the gap between real operations.
+let slowNow=1000000,slowStored=0;const slowStarts=[];
+const slow=new RequestBudget({now:()=>slowNow,sleep:async ms=>{slowNow+=ms;},readNext:()=>slowStored,
+ saveNext:async value=>{slowStored=value;slowNow+=slowStarts.length===0?20:1;}});
+await slow.run('first',async()=>slowStarts.push(slowNow));
+await slow.run('next',async()=>slowStarts.push(slowNow));
+assert.ok(slowStarts[1]-slowStarts[0]>=60000,'Persistence latency cannot shorten the send gap');
+console.log('Slow reservation storage preserves the full request interval.');

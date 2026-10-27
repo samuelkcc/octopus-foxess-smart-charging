@@ -38,6 +38,10 @@ export class RequestBudget {
             job.startedAt = this.now();
             this.nextAt = job.startedAt + this.interval;
             await this.saveNext(this.nextAt);
+            // Persistence can take time. Keep the next slot relative to the
+            // actual operation start, rather than the earlier reservation.
+            job.startedAt = this.now();
+            this.nextAt = Math.max(this.nextAt, job.startedAt + this.interval);
             this.activity = 'requesting';
             return job.operation();
           });
