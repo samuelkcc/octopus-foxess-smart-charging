@@ -2,6 +2,18 @@
 
 The web edition runs in your browser.
 It needs your own Octopus account, FoxESS account, and Google Apps Script relay.
+
+## Prepare the FoxESS app
+
+- Open your inverter's **Work Mode** page.
+- Under **Advanced**, enable **Mode Scheduler**.
+- Open its settings.
+- Set **Remaining Time Mode** to **Self-use**.
+- Save the settings.
+
+Mode Scheduler applies the periods that Smart Charging programs.
+Outside scheduled periods, the inverter uses **Self-use**.
+
 The Pi edition does not need the Google relay.
 
 ## Create the relay

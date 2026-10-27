@@ -55,6 +55,20 @@ Version details and changes are listed on each [release download page](https://g
 
 ## Get started
 
+### Prepare FoxESS work modes
+
+Complete this setup for the Pi, Windows, and web editions.
+
+- Open your inverter's **Work Mode** page in the FoxESS app.
+- Under **Advanced**, enable **Mode Scheduler**.
+- Open the **Mode Scheduler** settings.
+- Set **Remaining Time Mode** to **Self-use**.
+- Save the settings.
+
+Mode Scheduler applies the charging periods that Smart Charging programs.
+Outside scheduled periods, **Remaining Time Mode** keeps the inverter in **Self-use**.
+The scheduler's **Current Work Mode** can change during a scheduled period.
+
 ### Raspberry Pi
 
 Raspberry Pi OS with a graphical desktop and systemd is required.

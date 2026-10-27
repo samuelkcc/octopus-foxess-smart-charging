@@ -31,6 +31,8 @@ The default LAN port is `8787`.
 
 ## Configure accounts
 
+Before configuring this edition, complete the [FoxESS work mode setup](../README.md#prepare-foxess-work-modes).
+
 1. Select the charger icon in the Pi taskbar.
 2. Select **Configuration…**.
 3. Enter the Octopus account number and API key.

@@ -8,6 +8,8 @@ The EXE is unsigned.
 
 ## Start
 
+Before configuring this edition, complete the [FoxESS work mode setup](../README.md#prepare-foxess-work-modes).
+
 1. Open `SmartCharging-2.0.1-Windows-x64.exe`.
 2. Read the application licence notice.
 3. Select **Accept and Continue**.
