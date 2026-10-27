@@ -215,7 +215,7 @@ Remote browsers cannot manage host credentials, rotate keys, or perform native P
 
 ![Windows Remote Access with demonstration values](docs/screenshots/windows-remote-access.png)
 
-![Compact mobile Welcome and dashboard with example data](docs/screenshots/mobile-interface.png)
+![Mobile Remote Access: Welcome, sign-in, Overview, and History](docs/screenshots/mobile-interface.png)
 
 ## History without frequent SD-card writes
 

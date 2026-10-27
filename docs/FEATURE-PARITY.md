@@ -103,3 +103,13 @@ Native Windows execution of this patch remains a user check.
 - Safari received HTTP 200 with the expected invalid-key response through that deployment.
 - The live connection check used an invalid demonstration key and no inverter command.
 - No live inverter command is used for verification.
+
+### Public v2.0.2 verification
+
+The release UI revision is `356720b9c661718684310749af10d77141a715d7`.
+Both GitHub workflows completed successfully.
+The published app's Copy relay code action returned the exact canonical GAS source.
+The personal deployment and downloadable relay source use that same code.
+All downloaded release assets matched the published checksums.
+The local distribution contains one HTML file and one Windows EXE.
+Interface images use dark appearance. The mobile montage was supplied by the project owner.
