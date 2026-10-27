@@ -58,7 +58,7 @@ An authenticated test through that replacement URL was not performed.
 - Slow reservation tests verify the API spacing floor. Pi startup also retains a full interval.
 - New tests use mock tunnels and upstream services.
 - Native Windows verification of this patch remains a user check.
-- The Pi installation revision will be recorded after the public update.
+- The Pi installed revision is `b1ffb035e850df1c6e4fd95e67e3c99840857e49`.
 
 ### Safari connection limit
 
@@ -67,3 +67,23 @@ Disabling content blockers did not resolve that response.
 The temporary Safari preference changes were restored.
 The user confirmed Chrome and Windows connections.
 No live account query or inverter command was needed for this reproduction.
+
+### Public patch installation
+
+The normal Pi updater installed v2.0.1 on 27 October 2026.
+The three system services were active after installation.
+Octopus and FoxESS both reported healthy state.
+Private fingerprints confirmed that account settings, LAN access, and the Remote Access Key remained unchanged.
+History was backed up before the update.
+The screen remained at 1920 × 1080 with normal orientation.
+
+The live URL renewal returned a starting state without a ready address.
+After Cloudflare connected, the host reported a different URL and the same key.
+The replacement public URL returned the v2.0.1 dashboard runtime.
+Authentication through the dedicated listener returned a secure session cookie during a loopback test.
+No key was submitted through the new Cloudflare address during verification.
+
+Both GitHub workflows passed for the release revision.
+All downloaded release assets matched the published checksums.
+The final local distribution contains one HTML file and one Windows EXE.
+Native Windows execution of this patch remains a user check.

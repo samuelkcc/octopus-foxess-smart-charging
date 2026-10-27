@@ -671,3 +671,19 @@ The same test failed with content blockers disabled.
 Content blockers and the temporary developer-menu preference were restored.
 The user confirmed successful Chrome and Windows connections.
 This evidence does not establish why the upstream preflight differs for Safari.
+
+## Public Pi patch verification
+
+Version 2.0.1 was installed through the normal updater on 27 October 2026.
+The installed UI revision is `b1ffb035e850df1c6e4fd95e67e3c99840857e49`.
+The service, worker, and sleep inhibitor were active.
+Credentials and access settings matched their private pre-update fingerprints.
+Live URL renewal changed the address and preserved the key.
+The replacement address returned the correct remote runtime.
+The dedicated listener accepted local authentication and issued a secure cookie.
+An authenticated request through the replacement Cloudflare address was not performed.
+
+The release workflow was `40474867802`.
+The Pages workflow was `40474867463`.
+Both passed.
+The official HTML, Pi archive, Windows EXE, and scripts passed checksum verification.
