@@ -112,7 +112,11 @@ http.createServer(async (request,response) => {
       if (target.includes('graphql')) return json(data.query?.includes('obtainKrakenToken')
         ? {data:{obtainKrakenToken:{token:'mock-token'}}}
         : {data:{registeredKrakenflexDevice:device,vehicleChargingPreferences:{weekdayTargetTime:'07:00',weekdayTargetSoc:80},plannedDispatches:dispatches}});
-      if (target.includes('accounts')) return json({properties:[{electricity_meter_points:[{is_export:false,agreements:[{tariff_code:'E-1R-DEMO-26-A',valid_from:'2020-01-01T00:00:00Z',valid_to:null}]},{is_export:true,agreements:[{tariff_code:'E-1R-OUTGOING-26-A',valid_from:'2020-01-01T00:00:00Z',valid_to:null}]}]}]});
+      if (target.includes('accounts')) {
+        const delay=Math.max(0,Math.min(10000,Number(process.env.OCTOPUS_FIXTURE_TARIFF_DELAY_MS)||0));
+        if(delay) await new Promise(resolve=>setTimeout(resolve,delay));
+        return json({properties:[{electricity_meter_points:[{is_export:false,agreements:[{tariff_code:'E-1R-DEMO-26-A',valid_from:'2020-01-01T00:00:00Z',valid_to:null}]},{is_export:true,agreements:[{tariff_code:'E-1R-OUTGOING-26-A',valid_from:'2020-01-01T00:00:00Z',valid_to:null}]}]}]});
+      }
       const day=new Date().setHours(0,0,0,0);
       return json({results:Array.from({length:48},(_,i)=>({value_inc_vat:target.includes('OUTGOING')?12:i<11||i>46?8:29.8,valid_from:new Date(day+i*1800000).toISOString(),valid_to:new Date(day+(i+1)*1800000).toISOString()}))});
     }

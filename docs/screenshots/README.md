@@ -13,6 +13,7 @@ Updated on 27 October 2026.
 - No live account configuration or desktop theme was changed for these images.
 - Desktop previews use 1920 × 1080 or 1280 × 720 layouts.
 - The History image shows signed power directions from version 2.0.3 with demonstration readings.
+- The overview image includes automatic tariff updates and the last-check message from version 2.0.4.
 - Screenshots contain no real account numbers, serial numbers, API keys, or remote keys.
 
 A screenshot demonstrates the interface, not verified inverter behaviour.

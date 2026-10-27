@@ -1382,62 +1382,162 @@ async function executeImport() {
 let octopusTariffState = null;
 let octopusTariffPromise = null;
 let octopusTariffNextAt = 0;
+let octopusTariffRetryTimer = null;
+let octopusTariffProblem = false;
 function refreshOctopusTariffs(acc, api) {
+    if (window.linuxRuntime && window.linuxServiceEnabled === false) return null;
     if (octopusTariffPromise || Date.now() < octopusTariffNextAt) return octopusTariffPromise;
-    octopusTariffNextAt = Date.now() + 30 * 60_000;
+    if (octopusTariffRetryTimer !== null) clearTimeout(octopusTariffRetryTimer);
+    octopusTariffRetryTimer = null;
+    octopusTariffProblem = false;
     octopusTariffPromise = (async () => {
-        let importTariffCode = 'Data unavailable';
-        let exportTariffCode = 'Not available';
-        let minRate = 0;
-        let maxRate = 0;
-        let importRates = [];
-        let exportRates = [];
-
-        try {
-            const accData = await fetchOctopusJson(`https://api.octopus.energy/v1/accounts/${encodeURIComponent(acc)}/`, {
-                headers: { 'Authorization': 'Basic ' + btoa(api + ':') }
-            }, 'basic');
-            const { importTariff, exportTariff } = selectActiveElectricityTariffs(accData);
-            importTariffCode = importTariff?.agreement?.tariff_code || importTariffCode;
-            exportTariffCode = exportTariff?.agreement?.tariff_code || exportTariffCode;
-
-            const [importResult, exportResult] = await Promise.allSettled([
-                fetchTariffRates(importTariff?.agreement?.tariff_code),
-                fetchTariffRates(exportTariff?.agreement?.tariff_code)
-            ]);
-
-            if (importResult.status === 'fulfilled') {
-                importRates = importResult.value;
-                window.integrationMonitor?.success('octopus', 'import-tariff');
-            } else {
-                window.integrationMonitor?.failure('octopus', 'import-tariff', importResult.reason);
-                console.warn('Failed import tariff rate fetch', importResult.reason);
+        const accData = await fetchOctopusJson(`https://api.octopus.energy/v1/accounts/${encodeURIComponent(acc)}/`, {
+            headers: { 'Authorization': 'Basic ' + btoa(api + ':') }
+        }, 'basic');
+        const { importTariff, exportTariff } = selectActiveElectricityTariffs(accData);
+        const importTariffCode = importTariff?.agreement?.tariff_code || 'Data unavailable';
+        const exportTariffCode = exportTariff?.agreement?.tariff_code || 'Not available';
+        const previous = octopusTariffState;
+        const results = await Promise.allSettled([
+            fetchTariffRates(importTariff?.agreement?.tariff_code),
+            fetchTariffRates(exportTariff?.agreement?.tariff_code)
+        ]);
+        const rates = results.map((result, index) => {
+            const channel = index === 0 ? 'import-tariff' : 'export-tariff';
+            if (result.status === 'fulfilled') {
+                window.integrationMonitor?.success('octopus', channel);
+                return result.value;
             }
-            if (exportResult.status === 'fulfilled') {
-                exportRates = exportResult.value;
-                window.integrationMonitor?.success('octopus', 'export-tariff');
-            } else {
-                window.integrationMonitor?.failure('octopus', 'export-tariff', exportResult.reason);
-                console.warn('Failed export tariff rate fetch', exportResult.reason);
-            }
-
-            if (importRates.length > 0) {
-                const sorted = [...importRates].sort((a,b) => a.value_inc_vat - b.value_inc_vat);
-                minRate = parseFloat(sorted[0].value_inc_vat.toFixed(2));
-                maxRate = parseFloat(sorted[sorted.length-1].value_inc_vat.toFixed(2));
-            }
-        } catch (err) { throw err; }
-
-        octopusTariffState = { importTariffCode, exportTariffCode, minRate, maxRate, importRates, exportRates };
+            octopusTariffProblem = true;
+            window.integrationMonitor?.failure('octopus', channel, result.reason);
+            // A failed refresh must not erase valid rates for the same agreement.
+            const prefix = index === 0 ? 'import' : 'export';
+            const code = index === 0 ? importTariffCode : exportTariffCode;
+            return previous?.[prefix + 'TariffCode'] === code ? previous[prefix + 'Rates'] : [];
+        });
+        const [importRates, exportRates] = rates;
+        const prices = importRates.map(rate => rate.value_inc_vat).filter(Number.isFinite);
+        octopusTariffState = { importTariffCode, exportTariffCode, importRates, exportRates,
+            minRate:prices.length ? Math.min(...prices) : null,
+            maxRate:prices.length ? Math.max(...prices) : null,
+            updatedAt:Date.now() };
+        window.integrationMonitor?.success('octopus', 'tariff-data');
     })().catch(error => {
+        octopusTariffProblem = true;
         window.integrationMonitor?.failure('octopus', 'tariff-data', error);
-        console.warn('Tariff data remains unchanged until a later update.', error);
+        console.warn('Tariff update failed; available prices remain unchanged.');
     }).finally(() => {
         octopusTariffPromise = null;
-        // Render the new prices without waiting for another dispatch interval.
-        if (octopusTariffState) void initDashboard(true, 0);
+        octopusTariffNextAt = Date.now() + (octopusTariffProblem ? 60_000 : 30 * 60_000);
+        // Update presentation directly, even while initial dashboard startup is pending.
+        // A redraw must not authenticate, fetch dispatches, or write a schedule.
+        renderOctopusTariffs();
+        if (octopusTariffProblem) octopusTariffRetryTimer = setTimeout(() => {
+            octopusTariffRetryTimer = null;
+            void refreshOctopusTariffs(acc, api);
+        }, 60_000);
     });
+    renderOctopusTariffs();
     return octopusTariffPromise;
+}
+
+function renderOctopusTariffs(dispatches = window.currentDispatches || []) {
+    const { importTariffCode = 'Data unavailable', exportTariffCode = 'Not available', minRate = null, maxRate = null,
+        importRates = window.importRates || [], exportRates = window.exportRates || [] } = octopusTariffState || {};
+
+    // Import is always the primary/default tariff. Keep todayRates as a
+    // compatibility alias for existing chart and target-price behaviour.
+    window.importRates = importRates;
+    window.exportRates = exportRates;
+    window.todayRates = window.importRates;
+    window.dailyMinPrice = minRate;
+    window.dailyMaxPrice = maxRate;
+
+    // --- FIXED PRICING LOGIC ---
+    // Look up the exact live price based on current time
+    const nowTime = new Date().getTime();
+    let livePrice = null;
+    let isOffPeak = false;
+    let activeDispatch = false;
+
+    if (window.importRates.length > 0) {
+        const currentBlock = getRateAtTime(window.importRates, nowTime);
+        if (currentBlock) {
+            livePrice = parseFloat(currentBlock.value_inc_vat.toFixed(2));
+            // Determine 'off-peak' status using robust timestamp comparisons
+            activeDispatch = dispatches.some(d => {
+                const start = new Date(d.startDt).getTime();
+                const end = new Date(d.endDt).getTime();
+                return nowTime >= start && nowTime < end;
+            });
+
+            // Override with lowest daily off-peak price if inside a smart dispatch window
+            if (activeDispatch) {
+                livePrice = minRate;
+            }
+
+            isOffPeak = (livePrice <= minRate + 0.1) || activeDispatch;
+        }
+    }
+    window.currentLivePrice = livePrice;
+    const currentExportBlock = getRateAtTime(window.exportRates, nowTime);
+    const liveExportPrice = currentExportBlock
+        ? parseFloat(currentExportBlock.value_inc_vat.toFixed(2))
+        : null;
+
+    let priceLabel = "🔴 STANDARD RATE";
+    let badgeClass = "peak";
+    if (activeDispatch) {
+        priceLabel = "⚡ SMART DISPATCH";
+        badgeClass = "live";
+    } else if (isOffPeak) {
+        priceLabel = "🟢 OFF-PEAK ACTIVE";
+        badgeClass = "off-peak";
+    }
+    const displayPrice = livePrice !== null ? livePrice + 'p' : '--p';
+
+    document.getElementById('ui-pricing').innerHTML = `
+        <div class="tariff-live-grid">
+            <div class="tariff-live-card tariff-live-import">
+                <div class="tariff-live-heading">
+                    <span>⬇ Import tariff</span>
+                    <span class="badge ${badgeClass}">${priceLabel}</span>
+                </div>
+                <div class="tariff-live-price">${displayPrice}</div>
+                <div class="tariff-live-unit">Live grid purchase rate · p/kWh</div>
+                <div class="tariff-live-note">Lowest daily import: <strong>${Number.isFinite(minRate) ? minRate + 'p' : 'Pending'}</strong></div>
+            </div>
+            <div class="tariff-live-card tariff-live-export">
+                <div class="tariff-live-heading">
+                    <span>⬆ Export tariff</span>
+                    <span class="tariff-direction-badge">SEG</span>
+                </div>
+                <div class="tariff-live-price">${liveExportPrice !== null ? liveExportPrice + 'p' : '--p'}</div>
+                <div class="tariff-live-unit">Live grid payment rate · p/kWh</div>
+                <div class="tariff-live-note">${liveExportPrice !== null ? 'Paid for electricity sent to the grid' : 'Waiting for active export rate data'}</div>
+            </div>
+        </div>
+    `;
+
+    const status = document.getElementById('tariff-data-status');
+    if (status) {
+        status.dataset.state = octopusTariffProblem ? 'error' : octopusTariffPromise ? 'loading' : 'ready';
+        status.textContent = octopusTariffProblem
+            ? 'Price update failed. Available rates remain shown. Automatic retry continues.'
+            : octopusTariffPromise
+                ? (window.linuxRuntime && !window.desktopRuntime
+                    ? 'Loading electricity prices… Pi API requests are at least 60 seconds apart.'
+                    : 'Loading electricity prices…')
+                : octopusTariffState?.updatedAt
+                    ? `Prices checked: ${new Date(octopusTariffState.updatedAt).toLocaleTimeString()}`
+                    : 'Waiting for electricity prices…';
+    }
+    for (const [id, code] of [['dashboard-import-tariff', importTariffCode], ['dashboard-export-tariff', exportTariffCode]]) {
+        const element = document.getElementById(id);
+        if (element) element.textContent = code;
+    }
+    drawPriceCharts(maxRate, minRate, dispatches);
+    return { importTariffCode, exportTariffCode, minRate, maxRate };
 }
 
 let dashboardRefreshPromise = null;
@@ -1607,48 +1707,7 @@ async function refreshDashboard(isAutoRefresh = false, retryCount = 1) {
         }
 
         void refreshOctopusTariffs(acc, api);
-        const { importTariffCode = 'Data unavailable', exportTariffCode = 'Not available', minRate = 0, maxRate = 0,
-            importRates = window.importRates || [], exportRates = window.exportRates || [] } = octopusTariffState || {};
-
-        // Import is always the primary/default tariff. Keep todayRates as a
-        // compatibility alias for existing chart and target-price behaviour.
-        window.importRates = importRates;
-        window.exportRates = exportRates;
-        window.todayRates = window.importRates;
-        window.dailyMinPrice = minRate;
-        window.dailyMaxPrice = maxRate;
-
-        // --- FIXED PRICING LOGIC ---
-        // Look up the exact live price based on current time
-        const nowTime = new Date().getTime();
-        let livePrice = null;
-        let isOffPeak = false;
-        let activeDispatch = false;
-
-        if (window.importRates.length > 0) {
-            const currentBlock = getRateAtTime(window.importRates, nowTime);
-            if (currentBlock) {
-                livePrice = parseFloat(currentBlock.value_inc_vat.toFixed(2));
-                // Determine 'off-peak' status using robust timestamp comparisons
-                activeDispatch = dispatches.some(d => {
-                    const start = new Date(d.startDt).getTime();
-                    const end = new Date(d.endDt).getTime();
-                    return nowTime >= start && nowTime < end;
-                });
-                
-                // Override with lowest daily off-peak price if inside a smart dispatch window
-                if (activeDispatch) {
-                    livePrice = minRate;
-                }
-                
-                isOffPeak = (livePrice <= minRate + 0.1) || activeDispatch; 
-            }
-        }
-        window.currentLivePrice = livePrice;
-        const currentExportBlock = getRateAtTime(window.exportRates, nowTime);
-        const liveExportPrice = currentExportBlock
-            ? parseFloat(currentExportBlock.value_inc_vat.toFixed(2))
-            : null;
+        const { importTariffCode, exportTariffCode, minRate, maxRate } = renderOctopusTariffs(dispatches);
 
         // --- UI RENDERING ---
         if (!isAutoRefresh) {
@@ -1662,40 +1721,6 @@ async function refreshDashboard(isAutoRefresh = false, retryCount = 1) {
         if (octoText) octoText.textContent = gqlData._serverSnapshot?.pending ? 'WAITING FOR SERVER DATA' : '🟢 API CONNECTED';
         if (octoBadge) octoBadge.className = gqlData._serverSnapshot?.pending ? 'badge neutral' : 'badge off-peak countdown-border';
 
-        let priceLabel = "🔴 STANDARD RATE";
-        let badgeClass = "peak";
-        if (activeDispatch) {
-            priceLabel = "⚡ SMART DISPATCH";
-            badgeClass = "live";
-        } else if (isOffPeak) {
-            priceLabel = "🟢 OFF-PEAK ACTIVE";
-            badgeClass = "off-peak";
-        }
-        const displayPrice = livePrice !== null ? livePrice + 'p' : '--p';
-
-        document.getElementById('ui-pricing').innerHTML = `
-            <div class="tariff-live-grid">
-                <div class="tariff-live-card tariff-live-import">
-                    <div class="tariff-live-heading">
-                        <span>⬇ Import tariff</span>
-                        <span class="badge ${badgeClass}">${priceLabel}</span>
-                    </div>
-                    <div class="tariff-live-price">${displayPrice}</div>
-                    <div class="tariff-live-unit">Live grid purchase rate · p/kWh</div>
-                    <div class="tariff-live-note">Lowest daily import: <strong>${minRate}p</strong></div>
-                </div>
-                <div class="tariff-live-card tariff-live-export">
-                    <div class="tariff-live-heading">
-                        <span>⬆ Export tariff</span>
-                        <span class="tariff-direction-badge">SEG</span>
-                    </div>
-                    <div class="tariff-live-price">${liveExportPrice !== null ? liveExportPrice + 'p' : '--p'}</div>
-                    <div class="tariff-live-unit">Live grid payment rate · p/kWh</div>
-                    <div class="tariff-live-note">${liveExportPrice !== null ? 'Paid for electricity sent to the grid' : 'Waiting for active export rate data'}</div>
-                </div>
-            </div>
-        `;
-
         window.dashboardAccountNumber = acc;
         document.getElementById('ui-account-details').innerHTML = `
             <li class="account-number-row">
@@ -1706,8 +1731,8 @@ async function refreshDashboard(isAutoRefresh = false, retryCount = 1) {
                 </span>
             </li>
             <li><span class="label">Linked Device</span> <span class="val" style="color: var(--accent);">${escapeHtml(getLinkedDeviceLabel(device))}</span></li>
-            <li><span class="label">Import Tariff Code</span> <span class="val" style="font-size: 0.8rem; font-family: monospace;">${escapeHtml(importTariffCode)}</span></li>
-            <li><span class="label">Export Tariff Code</span> <span class="val" style="font-size: 0.8rem; font-family: monospace;">${escapeHtml(exportTariffCode)}</span></li>
+            <li><span class="label">Import Tariff Code</span> <span id="dashboard-import-tariff" class="val" style="font-size: 0.8rem; font-family: monospace;">${escapeHtml(importTariffCode)}</span></li>
+            <li><span class="label">Export Tariff Code</span> <span id="dashboard-export-tariff" class="val" style="font-size: 0.8rem; font-family: monospace;">${escapeHtml(exportTariffCode)}</span></li>
         `;
 
         if (device) {
@@ -1722,7 +1747,6 @@ async function refreshDashboard(isAutoRefresh = false, retryCount = 1) {
             `;
         }
 
-        drawPriceCharts(maxRate, minRate, dispatches);
         previewDischargeTimes();
         
         renderDispatchScheduleList(dispatches);
@@ -3112,6 +3136,9 @@ async function setV3Schedule(mode) {
 // Tariff Chart Builders
 function drawPriceCharts(peak, offPeak, dispatches) {
     const chartState = JSON.stringify({
+        day: new Date().toDateString(),
+        pending: Boolean(octopusTariffPromise),
+        problem: octopusTariffProblem,
         peak,
         offPeak,
         dispatches,
@@ -3142,15 +3169,8 @@ function drawPriceCharts(peak, offPeak, dispatches) {
             const slotTime = slotDate.getTime();
             
             // Import prices are the default series and drive target-price charging.
-            let importSlotPrice = peak;
-            if (window.importRates?.length) {
-                const found = getRateAtTime(window.importRates, slotTime);
-                importSlotPrice = found ? parseFloat(found.value_inc_vat.toFixed(2)) : null;
-            } else {
-                // Fallback dummy chart logic
-                let isOffPeak = (h === 23 && m >= 30) || (h < 5) || (h === 5 && m < 30) || (h === 24);
-                importSlotPrice = isOffPeak ? offPeak : peak;
-            }
+            const importRate = getRateAtTime(window.importRates, slotTime);
+            let importSlotPrice = importRate ? parseFloat(importRate.value_inc_vat.toFixed(2)) : null;
 
             // Export prices remain separate so SEG never replaces import pricing.
             const exportRate = getRateAtTime(window.exportRates, slotTime);
@@ -3161,7 +3181,7 @@ function drawPriceCharts(peak, offPeak, dispatches) {
             // Smart dispatch affects the import cost only, never the SEG rate.
             const slotEnd = slotTime + 30 * 60 * 1000; // Slot duration is 30 mins
             
-            if (dispatches && dispatches.some(d => {
+            if (importSlotPrice !== null && Number.isFinite(offPeak) && dispatches && dispatches.some(d => {
                 const start = new Date(d.startDt).getTime();
                 const end = new Date(d.endDt).getTime();
                 return (start < slotEnd && end > slotTime); // True overlap condition
@@ -3216,6 +3236,7 @@ function drawPriceCharts(peak, offPeak, dispatches) {
     const hasImportChartData = importDataPoints.some(value => value !== null);
     importCanvas.style.display = hasImportChartData ? 'block' : 'none';
     importEmpty.style.display = hasImportChartData ? 'none' : 'grid';
+    importEmpty.textContent = octopusTariffPromise ? 'Loading import tariff…' : octopusTariffProblem ? 'Import tariff unavailable. Automatic retry continues.' : 'No import tariff data available.';
 
     if (hasImportChartData) {
         importPriceChartInst = new Chart(importCanvas.getContext('2d'), {
@@ -3243,6 +3264,7 @@ function drawPriceCharts(peak, offPeak, dispatches) {
     const hasExportChartData = exportDataPoints.some(value => value !== null);
     exportCanvas.style.display = hasExportChartData ? 'block' : 'none';
     exportEmpty.style.display = hasExportChartData ? 'none' : 'grid';
+    exportEmpty.textContent = octopusTariffPromise ? 'Loading export tariff…' : octopusTariffProblem ? 'Export tariff unavailable. Automatic retry continues.' : 'No active export tariff rate available.';
 
     if (hasExportChartData) {
         exportPriceChartInst = new Chart(exportCanvas.getContext('2d'), {

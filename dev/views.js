@@ -58,6 +58,7 @@
   const priceRow=make('div','next-price-row');
   for(const [label,id] of [['Import now','next-import-price'],['Export now','next-export-price']]) {const item=make('div');item.append(make('span','next-kicker',label),make('strong','', '—'));item.lastChild.id=id;item.append(make('small','','p/kWh'));priceRow.append(item);}
   prices.append(priceRow);
+  prices.append(byId('tariff-data-status'));
   const charts=make('div','next-chart-grid');
   for(const [title,canvas,empty] of [['Import tariff','importPriceChart','import-chart-empty'],['SEG export tariff','exportPriceChart','export-chart-empty']]) {
     const figure=make('section','next-tariff');figure.append(make('h3','',title));

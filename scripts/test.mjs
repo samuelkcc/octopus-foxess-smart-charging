@@ -427,6 +427,7 @@ const chartElements = {
 const drawPriceCharts = new Function('window', 'document', 'Chart', `
   let importPriceChartInst = null;
   let exportPriceChartInst = null;
+  const octopusTariffPromise = null, octopusTariffProblem = false;
   ${extractFunction('getRateAtTime')}
   ${extractFunction('drawPriceCharts')}
   return drawPriceCharts;

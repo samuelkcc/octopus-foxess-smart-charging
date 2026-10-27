@@ -2,7 +2,7 @@
 
 ## Versions
 
-The current release version is 2.0.2.
+The current release version is 2.0.4.
 New versions use MAJOR.MINOR.PATCH.
 Legacy calendar versions remain in the release history.
 The development branch is `codex/ui-ux-preview`.
@@ -340,3 +340,20 @@ Redirects at the upstream boundary are disabled.
 Octopus replies retain their HTTP status and Retry-After value in a JSON envelope.
 The browser unwraps that envelope before the engine reads the data.
 The normal request policy still handles authentication caching and actual rate limits.
+
+## Tariff presentation and diagnostics
+
+Tariff completion renders prices directly without another dashboard request.
+Missing rates remain unavailable. The chart must not invent a zero price.
+Failed updates retain available rates for the same agreement and retry after one minute.
+Every retry still passes through the existing host or browser request policy.
+Successful tariff reads retain the 30-minute cache.
+
+Integration state retains the latest 100 error groups.
+Healthy polling adds no diagnostic entries.
+Repeated failures update their group through the existing persistence throttle.
+Host records use the existing private integration-state file.
+Browser records use the existing local integration-state storage.
+Diagnostic exports contain generic error categories, timestamps, counts, and tariff loading metadata.
+They contain no raw upstream messages, account identifiers, credentials, serial numbers, or private URLs.
+Exporting a diagnostic file does not request upstream data.

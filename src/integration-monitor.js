@@ -22,6 +22,14 @@
         success(name,channel='api') {const recovered=state.service(name).channels[channel]?.ok===false;state.success(name,channel);if(recovered)persist();else notify();},
         failure(name,channel,error) {if(leaving || window.linuxRuntime && window.linuxServiceEnabled===false)return;const revision=state.data.revision;state.failure(name,channel,clean(error));persist(state.data.revision!==revision);},
         snapshot() {if(state.expireAlerts()) {try{localStorage.setItem(key,JSON.stringify(state.data));}catch{}} return {local:state.snapshot(),remote,busy:{...busy}};},
+        diagnosticReport() {
+            return {format:1,createdAt:new Date().toISOString(),appVersion:document.querySelector('meta[name="smart-charging-version"]')?.content || 'unknown',
+                edition:window.linuxRuntime ? (window.desktopRuntime?'windows':'pi') : 'web',
+                host:remote?.diagnostics || {limit:100,errors:[]},browser:state.diagnostics(),
+                prices:{loading:Boolean(octopusTariffPromise),retryPending:octopusTariffProblem,
+                    checkedAt:octopusTariffState?.updatedAt ? new Date(octopusTariffState.updatedAt).toISOString() : null,
+                    importRateCount:window.importRates?.length || 0,exportRateCount:window.exportRates?.length || 0}};
+        },
         async setAutoClearHours(hours) {
             if(window.linuxRuntime) {
                 remote=await fetchJson('/api/integration-status',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'settings',autoClearHours:hours})});

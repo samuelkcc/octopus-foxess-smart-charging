@@ -250,6 +250,10 @@ Clearing history does not remove your account details or automation rules.
 
 ## Automation and API safeguards
 
+After a Pi restart, initial electricity prices can take several minutes to load through the shared request queue.
+Prices and charts update automatically when those requests complete.
+Missing rates show a loading or unavailable message, never a synthetic zero price.
+
 - Changed valid Smart Dispatch schedules reconcile immediately, before tariff work.
 - Smart Dispatch has priority over ordinary charge/discharge rules.
 - Invalid responses retain the last valid dispatch.
@@ -261,6 +265,16 @@ Clearing history does not remove your account details or automation rules.
 - Routine settings cannot go below **60 seconds for Octopus** or **600 seconds for FoxESS**.
 
 [Read the architecture and safety details](docs/ARCHITECTURE.md).
+
+### Save a diagnostic log
+
+- Open **Settings → API refresh intervals → API problem alerts**.
+- Select **Save diagnostic log**.
+
+The JSON file contains recent API errors, grouped counts, timestamps, and tariff-loading information.
+Only errors create diagnostic entries. The latest 100 groups are retained.
+Credentials, account numbers, serial numbers, private URLs, and raw upstream messages are excluded.
+Saving this file does not request API data.
 
 ## Security, licence, and maintenance
 

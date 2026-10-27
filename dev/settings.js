@@ -52,7 +52,9 @@
   }
   refreshSettings.append(make('p','next-muted','Minimum intervals: Octopus 60 seconds. FoxESS 600 seconds. Smart Dispatch commands apply immediately.'));
 
-  const alerts=card('API problem alerts','Recovered problems clear automatically after the selected period. Active failures keep their red border.');
+  const alerts=make('details','next-api-diagnostics');
+  alerts.append(make('summary','','API problem alerts'),make('p','next-muted','Recovered problems clear automatically after the selected period. Active failures keep their red border.'));
+  refreshSettings.append(alerts);
   const alertLabel=make('label','next-field','Automatically clear recovered alerts');
   const alertSelect=make('select');alertSelect.id='api-alert-clear-hours';
   for(const [value,label] of [[24,'After 24 hours'],[6,'After 6 hours'],[12,'After 12 hours'],[48,'After 48 hours'],[0,'Only when I clear them']]) {
@@ -72,6 +74,13 @@
   alertSave.addEventListener('click',()=>{alertEditing=false;});
   window.addEventListener('integration-status-change',()=>{if(!alertEditing)syncAlerts();});
   syncAlerts();alerts.append(alertLabel,alertSave,alertFeedback,make('p','next-muted','The period starts at the last failure. Viewing or clearing an alert does not request API data.'));
+  alerts.append(action('Save diagnostic log',()=>{
+    const report=window.integrationMonitor.diagnosticReport();
+    const url=URL.createObjectURL(new Blob([JSON.stringify(report,null,2)],{type:'application/json'}));
+    const link=document.createElement('a');link.href=url;link.download=`smart-charging-diagnostics-${new Date().toISOString().slice(0,10)}.json`;
+    link.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
+    alertFeedback.textContent='Diagnostic log saved. Account details, keys, serial numbers, and private URLs are excluded.';
+  }),make('p','next-muted','Only errors are recorded, up to 100 entries. Repeated failures are grouped. Healthy polling does not add log entries.'));
 
   const visibleStates = [];
   const visibility = card('Visible panels', 'Choose which panels to show on this device. This does not disable automation.');

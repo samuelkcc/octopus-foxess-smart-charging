@@ -125,3 +125,17 @@ Interface images use dark appearance. The mobile montage was supplied by the pro
 - Tests cover missing readings, measured zero, original records, and CSV magnitudes.
 - This presentation change does not modify telemetry, storage, authentication, or scheduler behaviour.
 - Native Windows execution and installation on the user's Pi remain unverified for this patch.
+
+## Version 2.0.4 tariff and diagnostics review
+
+- Delayed tariff completion redraws charts during startup without replaying dashboard requests.
+- Missing rates remain unavailable. Real zero and negative tariffs remain valid.
+- Failed updates retain available rates and retry through the existing request budget.
+- Successful tariff reads keep their 30-minute cache.
+- Diagnostic records contain errors only, with grouping and a 100-entry cap.
+- Restart and acknowledgement preserve diagnostic records.
+- Export tests exclude account details, credentials, serial numbers, and private URLs.
+- The user's Pi was running v2.0.3 during read-only diagnosis.
+- All three Pi services were active. Both API services reported healthy live state.
+- Recent Chromium graphics and desktop-bus warnings did not coincide with an active API failure.
+- No live inverter command is used for verification.

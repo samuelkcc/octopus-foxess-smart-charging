@@ -1,6 +1,6 @@
 {
   "name": "octopus-foxess-smart-charging",
-  "version": "2.0.3",
+  "version": "2.0.4",
   "private": true,
   "type": "module",
   "dependencies": {
@@ -9,7 +9,7 @@
   "scripts": {
     "build": "node scripts/build.mjs",
     "build:linux": "node scripts/build-linux.mjs",
-    "test": "node scripts/test.mjs && node scripts/test-foxess-live.mjs && node scripts/test-linux.mjs && node scripts/test-remote.mjs && node scripts/test-safety.mjs && node scripts/test-history.mjs && node scripts/test-history-charts.mjs && node scripts/test-dev-route.mjs && node scripts/test-pause.mjs && node scripts/test-web-relay.mjs && node scripts/test-version.mjs && node scripts/test-refresh-preferences.mjs && node scripts/test-integration-status.mjs && node scripts/test-integration-server.mjs && node scripts/test-request-budget.mjs && node scripts/test-web-request-policy.mjs && node scripts/test-api-transport.mjs && node scripts/test-api-transport.mjs --desktop && node scripts/test-desktop.mjs && node scripts/test-service-control.mjs",
+    "test": "node scripts/test.mjs && node scripts/test-foxess-live.mjs && node scripts/test-linux.mjs && node scripts/test-remote.mjs && node scripts/test-safety.mjs && node scripts/test-history.mjs && node scripts/test-history-charts.mjs && node scripts/test-tariff-refresh.mjs && node scripts/test-diagnostics.mjs && node scripts/test-dev-route.mjs && node scripts/test-pause.mjs && node scripts/test-web-relay.mjs && node scripts/test-version.mjs && node scripts/test-refresh-preferences.mjs && node scripts/test-integration-status.mjs && node scripts/test-integration-server.mjs && node scripts/test-request-budget.mjs && node scripts/test-web-request-policy.mjs && node scripts/test-api-transport.mjs && node scripts/test-api-transport.mjs --desktop && node scripts/test-desktop.mjs && node scripts/test-service-control.mjs",
     "build:dev": "node scripts/build-dev.mjs && node scripts/test-dev-build.mjs",
     "docs:check": "node scripts/check-docs.mjs",
     "check": "node --check desktop/main.cjs && node --check desktop/preload.cjs && node --check desktop/service.mjs && node --check dev/desktop.js && node --check src/refresh-preferences.js && node --check src/integration-monitor.js && node --check dev/monitor.js && node --check dev/viewport.js && node --check dev/history.js && node --check src/automation-control.js && node --check dev/controls.js && node --check src/app.js && node --check linux/server.mjs && node --check dev/ui.js && node --check dev/about.js && node --check dev/setup.js && node --check dev/views.js && node --check dev/settings.js && npm run docs:check && npm test && npm run build && npm run build:linux",
