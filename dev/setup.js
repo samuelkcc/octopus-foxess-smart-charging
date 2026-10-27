@@ -34,12 +34,24 @@
   proxy.replaceChildren();
   proxy.append(closeProxy);
   const relayHeading = document.createElement('h3'); relayHeading.textContent = 'Google Apps Script relay setup';
-  const relayIntro = document.createElement('p'); relayIntro.textContent = 'The web edition needs a relay for FoxESS requests. The relay runs in your Google account.';
+  const relayIntro = document.createElement('p'); relayIntro.textContent = 'The relay runs in your Google account. Safari compatibility also sends Octopus credentials and data through this relay.';
   const beforeCode = document.createElement('ol');
   beforeCode.innerHTML = '<li>Open <a href="https://script.google.com/" target="_blank" rel="noopener noreferrer">Google Apps Script</a>.</li><li>Sign in to your Google account.</li><li>Create a project.</li><li>Replace the example code with this code.</li>';
   const afterCode = document.createElement('ol'); afterCode.start = 5;
   afterCode.innerHTML = '<li>Select <strong>Deploy → New deployment</strong>.</li><li>Select <strong>Web app</strong> as the deployment type.</li><li>Set <strong>Execute as</strong> to <strong>Me</strong>.</li><li>Set <strong>Who has access</strong> to <strong>Anyone</strong>.</li><li>Deploy the project.</li><li>Complete the Google permission steps.</li><li>Copy the Web App URL that ends in <code>/exec</code>.</li><li>Paste that URL into <strong>Google Apps Script Relay URL</strong>.</li>';
-  proxy.append(relayHeading,relayIntro,beforeCode,relayCode,afterCode,done);
+  const updateHeading = document.createElement('h4'); updateHeading.textContent = 'Update an existing relay';
+  const update = document.createElement('ol');
+  update.innerHTML = '<li>Select <strong>Copy relay code</strong>.</li><li>Open your existing Apps Script project.</li><li>Replace all code in <code>Code.gs</code>.</li><li>Save the project.</li><li>Select <strong>Deploy → Manage deployments</strong>.</li><li>Select your existing Web App deployment.</li><li>Select <strong>Edit → New version → Deploy</strong>.</li><li>Keep the existing Web App URL in Smart Charging.</li><li>In setup, select <strong>Safari compatibility — my Google relay</strong>.</li><li>Select <strong>Connect</strong>.</li>';
+  const updateNote = document.createElement('p'); updateNote.textContent = 'Saving code alone does not update the deployed Web App. Updating its existing deployment keeps the URL.';
+  const copy = document.createElement('button'); copy.type='button'; copy.className='next-button'; copy.textContent='Copy relay code';
+  const copyState = document.createElement('p'); copyState.setAttribute('role','status');
+  copy.addEventListener('click', async () => {
+    try { await navigator.clipboard.writeText(relayCode.textContent); copyState.textContent='Relay code copied. Paste it into Code.gs.'; }
+    catch { const selection=window.getSelection(); const range=document.createRange(); range.selectNodeContents(relayCode); selection.removeAllRanges(); selection.addRange(range); copyState.textContent='Code selected. Use your browser Copy command, then paste it into Code.gs.'; }
+  });
+  const createHeading = document.createElement('h4'); createHeading.textContent='Create a new relay';
+  relayCode.style.maxHeight='320px'; relayCode.style.overflow='auto';
+  proxy.append(relayHeading,relayIntro,copy,copyState,updateHeading,update,updateNote,createHeading,beforeCode,relayCode,afterCode,done);
   for (const id of ['acc','api','fox-sn','fox-token','gas-url','local-access-key']) {
     const input = document.getElementById(id);
     input.closest('.input-group')?.querySelector('label')?.setAttribute('for',id);
@@ -122,7 +134,11 @@ window.installLaunchScreen = ({ pi, login, parking, byId, make, button, onEnter 
         if (id === 'acc') control.append(byId('octopus-account-toggle'));
         row.append(caption, control); section.append(row);
       }
-      if (index === 2) section.append(button('How to create the relay', () => { closeAllDrawers(); byId('proxy-modal').style.display = 'flex'; }, true));
+      if (index === 2) {
+        const transport = byId('octopus-transport-field');
+        transport.className = 'next-field';
+        section.append(transport, button('Create or update the relay', () => { closeAllDrawers(); byId('proxy-modal').style.display = 'flex'; }, true));
+      }
       stepStack.append(section); sections.push(section);
       const step = button(`${index + 1}. ${title}`, () => showStep(index)); step.className = 'launch-step-tab'; steps.append(step); stepButtons.push(step);
     });
@@ -170,7 +186,8 @@ window.installLaunchScreen = ({ pi, login, parking, byId, make, button, onEnter 
   if (!pi) showStep(0, false);
   else { next.hidden = true; back.hidden = false; }
   new MutationObserver(() => { if (error.style.display === 'block' && !pi) {
-    if(error.dataset.service==='octopus') currentStep=0;
+    if(error.textContent.includes('Google relay')) currentStep=2;
+    else if(error.dataset.service==='octopus') currentStep=0;
     else if(error.dataset.service==='foxess') currentStep=2;
     openSetup();
   } }).observe(error, { attributes: true, attributeFilter: ['style'] });

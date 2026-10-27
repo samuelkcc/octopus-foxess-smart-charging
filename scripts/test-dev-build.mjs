@@ -26,6 +26,11 @@ for (const html of [pi, web]) {
   assert(html.includes('One Settings view.'), 'Both editions need the Settings adapter.');
 }
 const pkg=JSON.parse(await read('package.json'));
+const relayCode=await read('src/gas-relay.gs');
+const escapedRelay=relayCode.replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;');
+assert(web.includes(escapedRelay),'The web guide must embed the exact canonical GAS source.');
+assert(web.includes('Copy relay code') && web.includes('Manage deployments') && web.includes('New version → Deploy'),'Web help needs copy and existing-deployment upgrade instructions.');
+assert.equal((web.match(/id="octopus-transport"/g)||[]).length,1,'The engine transport selector must remain unique.');
 assert.equal(await read(`dist/Smart_Charging_v${pkg.version}.html`),web);
 assert.equal(app, pi);
 assert(pi.includes('DEV is always a dashboard'));

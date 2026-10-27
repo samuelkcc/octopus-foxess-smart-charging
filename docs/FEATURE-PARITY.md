@@ -87,3 +87,19 @@ Both GitHub workflows passed for the release revision.
 All downloaded release assets matched the published checksums.
 The final local distribution contains one HTML file and one Windows EXE.
 Native Windows execution of this patch remains a user check.
+
+## Version 2.0.2 Safari compatibility review
+
+- Existing browser setups retain direct Octopus access.
+- Setup and Settings disclose Google relay processing before compatibility mode is selected.
+- Saved browser setup and configuration backups retain the transport selection.
+- Relay capabilities are checked before forwarding Octopus credentials.
+- Mock tests cover Octopus sign-in, GraphQL data, account GET, and tariff GET.
+- HTTP 429 and Retry-After remain visible to the request policy.
+- Unsupported targets and methods cannot reach UrlFetchApp.
+- FoxESS signatures, pause blocking, and fresh schedule readback retain regression coverage.
+- Pi and Windows requests still use the local host API.
+- The existing personal GAS deployment was updated to Version 2 without changing its URL.
+- Safari received HTTP 200 with the expected invalid-key response through that deployment.
+- The live connection check used an invalid demonstration key and no inverter command.
+- No live inverter command is used for verification.

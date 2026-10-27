@@ -17,7 +17,7 @@ Octopus Energy and FoxESS do not endorse or support this project.
 [![Licence](https://img.shields.io/badge/licence-GPL--3.0--or--later-blue)](LICENSE)
 [![Open web app](https://img.shields.io/badge/open-web%20app-e11d48)](https://samuelkcc.github.io/octopus-foxess-smart-charging/)
 
-[**Open the web app**](https://samuelkcc.github.io/octopus-foxess-smart-charging/) · [**Download v2.0.1**](https://github.com/samuelkcc/octopus-foxess-smart-charging/releases/tag/v2.0.1)
+[**Open the web app**](https://samuelkcc.github.io/octopus-foxess-smart-charging/) · [**Download v2.0.2**](https://github.com/samuelkcc/octopus-foxess-smart-charging/releases/tag/v2.0.2)
 
 ![Smart Charging dashboard with example data](docs/screenshots/web-dashboard.png)
 
@@ -39,6 +39,24 @@ It does not need another Octopus API key or another automation worker.
 Use one active automation host for each inverter.
 Before testing another edition, select **Disable Pi Service** in native Pi Configuration.
 **Pause automation** stops schedule control but keeps monitoring active.
+
+## Safari compatibility update v2.0.2
+
+The web edition now offers **Safari compatibility — my Google relay**.
+This routes Octopus requests through your own Google Apps Script deployment when direct Safari access fails.
+Google processes the Octopus credentials and data in this mode.
+Existing setups keep direct access until you select this option.
+
+- Update your relay code with the [web guide](docs/WEB-GUIDE.md#update-an-existing-relay).
+- Deploy a new version of the existing Web App.
+- In Smart Charging, open **Modify setup → 3. Google relay**.
+- Select **Safari compatibility — my Google relay**.
+- Select **Connect**.
+
+Pi and Windows keep their existing host connection.
+Actual API rate limits remain active.
+
+![Safari compatibility setup with a demonstration relay URL](docs/screenshots/web-safari-setup.png)
 
 ## Maintenance update v2.0.1
 
@@ -90,7 +108,7 @@ Updates retain the existing configuration and history directory.
 
 ### Windows portable
 
-- Download [SmartCharging-2.0.1-Windows-x64.exe](https://github.com/samuelkcc/octopus-foxess-smart-charging/releases/download/v2.0.1/SmartCharging-2.0.1-Windows-x64.exe).
+- Download [SmartCharging-2.0.2-Windows-x64.exe](https://github.com/samuelkcc/octopus-foxess-smart-charging/releases/download/v2.0.2/SmartCharging-2.0.2-Windows-x64.exe).
 - Open the EXE.
 - Read the licence notice.
 - Select **Accept and Continue**.
@@ -254,7 +272,9 @@ Pi packages, checksums, and intermediate build files remain in `.build`.
 
 [Architecture](docs/ARCHITECTURE.md) · [Feature verification](docs/FEATURE-PARITY.md) · [Writing guide](docs/WRITING.md)
 
-Screenshots use demonstration data and contain no real account credentials or device identifiers.
+Interface screenshots use dark appearance and contain no account credentials or device identifiers.
+The mobile montage was supplied by the project owner.
+Other dashboard screenshots use demonstration data.
 The Pi Configuration screenshot uses the native Pi interface with demonstration values.
 
 ## Support the project ☕

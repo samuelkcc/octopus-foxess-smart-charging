@@ -102,6 +102,26 @@
     const signOut = action('Sign out', removeSavedAccessCode, true);
     signOut.classList.add('remove-access-button'); access.append(signOut);
   } else {
+    const connection = card('Octopus connection', 'Safari compatibility mode uses your own Google relay. Google processes your Octopus account, API key, and data.');
+    const transportLabel = make('label', 'next-field', 'Octopus connection method');
+    const transport = document.getElementById('octopus-transport').cloneNode(true);
+    transport.id = 'settings-octopus-transport';
+    transport.value = document.getElementById('octopus-transport').value;
+    transport.removeAttribute('aria-describedby');
+    transportLabel.htmlFor = transport.id; transportLabel.append(transport);
+    const transportFeedback = make('p', 'next-muted'); transportFeedback.setAttribute('role', 'status');
+    window.addEventListener('web-setup-restored', () => { transport.value = document.getElementById('octopus-transport').value; });
+    document.getElementById('octopus-transport').addEventListener('change', () => { transport.value = document.getElementById('octopus-transport').value; });
+    connection.append(transportLabel, action('Save connection method', async () => {
+      const source = document.getElementById('octopus-transport');
+      const previous = source.value;
+      if (transport.value === 'gas' && !document.getElementById('gas-url').value.trim()) {
+        transportFeedback.textContent = 'Add your Google relay URL in the setup form first.'; return;
+      }
+      source.value = transport.value;
+      try { await saveCredentials(getCredentialInputs()); transportFeedback.textContent = 'Saved. This method applies on the next refresh.'; }
+      catch { source.value = previous; transportFeedback.textContent = 'Could not save the connection method.'; }
+    }), action('Relay update instructions', () => { closeAllDrawers(); document.getElementById('proxy-modal').style.display = 'flex'; }), transportFeedback);
     const storage = card('Configuration backup', 'Save an encrypted copy of your setup, or load an existing configuration file.');
     const actions = make('div', 'next-settings-actions');
     actions.append(

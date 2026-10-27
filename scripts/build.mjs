@@ -21,7 +21,9 @@ const budgetJs = requestBudget.replace('export class RequestBudget', 'class Requ
 const js = `(()=>{${budgetJs}\nwindow.RequestBudget=RequestBudget;window.retryDelay=retryDelay;})();\n${requestPolicy}\n(()=>{${integrationState.replace('export class IntegrationState', 'class IntegrationState')}\nwindow.IntegrationState=IntegrationState;})();\n${pause}\n${monitor}\n${app}\n${refreshPreferences}`;
 const escapeText = text => text.replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;');
 const [license, notices] = await Promise.all(['LICENSE', 'THIRD_PARTY_NOTICES.md'].map(name => readFile(path.join(root, name), 'utf8')));
+const gasRelay = await readFile(path.join(src, 'gas-relay.gs'), 'utf8');
 const output = html
+  .replace('__GAS_RELAY__', () => escapeText(gasRelay))
   .replace('__FULL_LICENSE__', () => escapeText(license))
   .replace('__THIRD_PARTY_NOTICES__', () => escapeText(notices))
   .replace(/\s*<link rel="stylesheet" href="\.\/styles\.css(?:\?[^"]*)?">/, `\n    <style>\n${css}\n    </style>`)

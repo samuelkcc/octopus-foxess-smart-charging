@@ -16,7 +16,7 @@ let refreshRequestId = 0;
 const workerStartedAt = Date.now();
 const health = new IntegrationState();
 const faults = {octopus:false,foxess:false};
-const gasRelay = web ? await createGasRelay() : null;
+const gasRelay = web ? await createGasRelay({mockOctopusOrigin:origin}) : null;
 if (gasRelay) http.createServer((request,response) => { void gasRelay.handle(request,response); }).listen(port+1,'127.0.0.1');
 const readings = { pvPower:0.4, loadsPower:0.6, gridConsumptionPower:0.2, feedinPower:0, batChargePower:0, batDischargePower:0, SoC:64 };
 let pauseState = { paused:false, until:null, revision:0 };
@@ -128,7 +128,10 @@ http.createServer(async (request,response) => {
     }
     if (url.pathname === '/dev/index.html' || url.pathname === '/app/index.html' || url.pathname === '/web/index.html' || url.pathname === '/octopus-foxess-smart-charging/index.html') {
       let html = await readFile(path.join(root,'dist',desktop?'Smart_Charging_Desktop.html':web?'Smart_Charging_UI_DEV.html':'pi-dev.html'),'utf8');
+      const guideCode = html.match(/<code style="font-family: monospace;">[\s\S]*?<\/code>/)?.[0] || '';
+      if (guideCode) html = html.replace(guideCode, '__FIXTURE_RELAY_GUIDE__');
       html = html.replaceAll('https://api.octopus.energy',`${origin}/mock-octopus`).replace("target.includes('api.octopus.energy')", "(target.includes('api.octopus.energy') || target.includes('/mock-octopus/'))");
+      if (guideCode) html = html.replace('__FIXTURE_RELAY_GUIDE__', () => guideCode);
       const noticeFixture = url.searchParams.get('firstUse') === '1'
         ? 'localStorage.removeItem("licenseAccepted");'
         : 'localStorage.setItem("licenseAccepted","true");';

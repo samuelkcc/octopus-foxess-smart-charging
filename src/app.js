@@ -5,6 +5,8 @@ let lastDispatchesStr = null;
 let scheduleToDelete = -1;
 let globalFoxToken = "";
 let globalGasUrl = "";
+let globalOctopusTransport = 'direct';
+const octopusRelayChecks = new Map();
 let octoRefreshInterval = 300;
 let octoCountdown = 300;
 let foxRefreshInterval = 600;
@@ -165,7 +167,7 @@ async function fetchJsonUnblocked(url, options = {}, timeoutMs = REQUEST_TIMEOUT
         if (address.startsWith('/api/octopus') || target.includes('api.octopus.energy')) service = 'octopus';
         if (address.startsWith('/api/foxess') || target.includes('www.foxesscloud.com')) service = 'foxess';
         if (service) {
-            requestLabel = service === 'octopus' ? (/obtainKrakenToken/.test(payload.query || '') ? 'Octopus sign-in' : 'Octopus data') : 'FoxESS via Google relay';
+            requestLabel = service === 'octopus' ? (/obtainKrakenToken/.test(payload.query || payload.body?.query || '') ? 'Octopus sign-in' : 'Octopus data') : 'FoxESS via Google relay';
             channel = new URL(target, window.location.href).pathname;
             if (service === 'octopus') channel = channel.includes('/graphql') ? 'graphql' : channel.includes('/accounts/') ? 'account' : channel.includes('electricity-tariffs') ? 'tariff-request' : 'api';
         }
@@ -182,15 +184,27 @@ async function fetchJsonUnblocked(url, options = {}, timeoutMs = REQUEST_TIMEOUT
         });
         if (response.status === 401 && window.linuxRemoteAccess) window.location.reload();
         // Read the body once. Stream cloning is unnecessary for rate-limit checks.
-        const result = await response.json().catch(error => {
+        let result = await response.json().catch(error => {
             if (!response.ok) return null;
             throw error;
         });
+        let upstreamResponse = response;
+        if (service === 'octopus' && !window.linuxRuntime && globalOctopusTransport === 'gas') {
+            if (result?.relayVersion !== 2 || !Number.isInteger(result.status)) {
+                throw new Error('Update your Google relay code, then deploy a new version. See Google relay setup help.');
+            }
+            const envelope = result;
+            upstreamResponse = { status:envelope.status, ok:envelope.status >= 200 && envelope.status < 300,
+                headers:{get:name=>name.toLowerCase()==='retry-after'?String(envelope.retryAfter || ''):null} };
+            result = envelope.body;
+        }
         if (service === 'octopus' && !window.linuxRuntime && window.requestPolicy) {
-            const delay = window.retryDelay(response, result);
+            const delay = window.retryDelay(upstreamResponse, result);
             if (delay) await window.requestPolicy.octopus.defer(delay);
         }
         if (!response.ok) throw Object.assign(new Error(`HTTP ${response.status} from ${new URL(url, window.location.href).hostname}`), {statusCode:response.status});
+        if (!upstreamResponse.ok) throw Object.assign(new Error(`HTTP ${upstreamResponse.status} from Octopus`), {statusCode:upstreamResponse.status});
+        if (service === 'octopus' && !result) throw new Error('Octopus returned an unreadable response. Try again later.');
         const fetchedAt = Number(response.headers?.get?.('X-Smart-Charging-Fetched-At'));
         if (fetchedAt && result && typeof result === 'object') result._fetchedAt = fetchedAt;
         if (scheduleCommandSucceeded(url, options, result)) window.nextFoxTime = Date.now() + Math.max(600, foxRefreshInterval) * 1000;
@@ -216,10 +230,35 @@ async function fetchJsonUnblocked(url, options = {}, timeoutMs = REQUEST_TIMEOUT
 }
 
 async function fetchOctopusJson(url, options = {}, authMode = 'none') {
-    if (!window.linuxRuntime) return fetchJson(url, options);
+    if (!window.linuxRuntime && globalOctopusTransport !== 'gas') return fetchJson(url, options);
     let body = options.body || null;
     if (typeof body === 'string') {
         body = JSON.parse(body);
+    }
+    if (!window.linuxRuntime) {
+        try {
+            if (!globalGasUrl) throw new Error('Enter your Google relay URL to use Safari compatibility mode.');
+            if (!octopusRelayChecks.has(globalGasUrl)) {
+                const check = fetchJson(globalGasUrl, {method:'POST', body:JSON.stringify({action:'capabilities'})})
+                    .then(result => {
+                        if (result?.relayVersion !== 2 || result.octopus !== true) throw new Error('Update your Google relay code, then deploy a new version. See Google relay setup help.');
+                    });
+                octopusRelayChecks.set(globalGasUrl, check);
+                const relayUrl = globalGasUrl;
+                check.catch(() => octopusRelayChecks.delete(relayUrl));
+            }
+            await octopusRelayChecks.get(globalGasUrl);
+            // No custom browser headers: this simple POST avoids Safari's Octopus preflight.
+            return await fetchJson(globalGasUrl, {method:'POST', body:JSON.stringify({url,
+                method:options.method || 'GET', headers:options.headers || {}, body})});
+        } catch (error) {
+            if (/^(Load failed|Failed to fetch|NetworkError.*)$/.test(error.message || '')) {
+                error = new Error('Google relay could not connect. Check its deployment access and Web App URL.');
+            }
+            error.service = 'octopus';
+            error.relaySetup = true;
+            throw error;
+        }
     }
     return fetchJson(LINUX_OCTOPUS_ENDPOINT, {
         method: 'POST',
@@ -677,6 +716,8 @@ function populateCredentialInputs(credentials) {
     document.getElementById('gas-url').value = window.linuxRuntime
         ? '/api/foxess'
         : (credentials?.gasUrl || '');
+    const transport = document.getElementById('octopus-transport');
+    if (transport) transport.value = credentials?.octopusTransport === 'gas' ? 'gas' : 'direct';
     updateFoxLiveSettingsVisibility();
 }
 
@@ -686,6 +727,7 @@ function getCredentialInputs() {
         api: document.getElementById('api')?.value.trim() || '',
         foxSN: document.getElementById('fox-sn')?.value.trim() || '',
         foxToken: document.getElementById('fox-token')?.value.trim() || '',
+        octopusTransport: document.getElementById('octopus-transport')?.value === 'gas' ? 'gas' : 'direct',
         foxLiveMode: document.getElementById('fox-live-mode')?.value === 'rest' ? 'rest' : 'live-ws',
         foxWebUsername: document.getElementById('fox-web-username')?.value.trim() || '',
         foxWebPassword: document.getElementById('fox-web-password')?.value.trim() || '',
@@ -1277,7 +1319,8 @@ function executeExport() {
         api: document.getElementById('api').value,
         foxSN: document.getElementById('fox-sn').value,
         foxToken: document.getElementById('fox-token').value,
-        gasUrl: document.getElementById('gas-url').value
+        gasUrl: document.getElementById('gas-url').value,
+        octopusTransport: document.getElementById('octopus-transport')?.value === 'gas' ? 'gas' : 'direct'
     };
 
     // Encrypt object
@@ -1414,6 +1457,7 @@ async function refreshDashboard(isAutoRefresh = false, retryCount = 1) {
     globalFoxSN = credentials?.foxSN || '';
     globalFoxToken = credentials?.foxToken || '';
     globalGasUrl = window.linuxRuntime ? '/api/foxess' : (credentials?.gasUrl || '');
+    globalOctopusTransport = credentials?.octopusTransport === 'gas' ? 'gas' : 'direct';
     
     const btn = document.getElementById('btn');
     const errorDiv = document.getElementById('error');
@@ -1483,7 +1527,7 @@ async function refreshDashboard(isAutoRefresh = false, retryCount = 1) {
                 body: JSON.stringify(dashboardQuery)
             }, 'graphql');
         } else {
-            const authData = await fetchJson(GRAPHQL_URL, {
+            const authData = await fetchOctopusJson(GRAPHQL_URL, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ query: `mutation { obtainKrakenToken(input: { APIKey: ${JSON.stringify(api)} }) { token } }` })
@@ -1492,7 +1536,7 @@ async function refreshDashboard(isAutoRefresh = false, retryCount = 1) {
                 throw new Error(authData.errors?.[0]?.message || 'Octopus authentication failed.');
             }
             connectionStep = 'Reading charging windows';
-            gqlData = await fetchJson(GRAPHQL_URL, {
+            gqlData = await fetchOctopusJson(GRAPHQL_URL, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', 'Authorization': authData.data.obtainKrakenToken.token },
                 body: JSON.stringify(dashboardQuery)

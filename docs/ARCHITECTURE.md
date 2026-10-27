@@ -2,7 +2,7 @@
 
 ## Versions
 
-The current release version is 2.0.1.
+The current release version is 2.0.2.
 New versions use MAJOR.MINOR.PATCH.
 Legacy calendar versions remain in the release history.
 The development branch is `codex/ui-ux-preview`.
@@ -13,6 +13,7 @@ A development commit does not publish GitHub Pages or create a release.
 | File | Responsibility |
 |---|---|
 | `src/app.js` | Shared account, tariff, scheduler, storage, and dashboard behaviour. |
+| `src/gas-relay.gs` | Canonical Google relay source. The HTML build embeds this code in setup help. |
 | `src/index.html` | Shared interface elements and their stable IDs. |
 | `src/styles.css` | Existing interface appearance. |
 | `linux/server.mjs` | Authentication, protected APIs, credential storage, and service integration. |
@@ -325,3 +326,17 @@ Alert expiry preferences use the integration state file on Pi and Windows.
 Standalone web preferences use browser storage.
 Authenticated dashboards can change the period through an explicit settings allowlist.
 A warning badge opens its incident dialog without invoking the refresh path.
+
+## Optional web Octopus relay
+
+Direct Octopus access remains the default for existing browser configurations.
+The operator can select Safari compatibility during setup or in Settings.
+That choice sends Octopus credentials and API data through the operator's Google relay.
+Pi and Windows always retain the local host transport.
+
+A credential-free capability request checks the deployed relay before Octopus forwarding.
+The relay permits listed Octopus reads, Octopus GraphQL POST, and the existing four FoxESS operations.
+Redirects at the upstream boundary are disabled.
+Octopus replies retain their HTTP status and Retry-After value in a JSON envelope.
+The browser unwraps that envelope before the engine reads the data.
+The normal request policy still handles authentication caching and actual rate limits.

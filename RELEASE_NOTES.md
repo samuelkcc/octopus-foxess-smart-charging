@@ -1,41 +1,40 @@
-# Smart Charging v2.0.1
+# Smart Charging v2.0.2
 
-This maintenance release improves remote access recovery and API problem alerts.
+This patch adds optional Safari compatibility to the standalone web edition.
 
 ## Changes
 
-- Pi and Windows Remote Access include **Update URL**. This creates a replacement address without changing the Remote Access Key.
-- Pi Remote Access includes **Copy URL** and grouped controls.
-- A tunnel shows **running** only after Cloudflare reports a connection. Startup failures retry automatically.
-- API badges use a red border for active failures and retained alerts.
-- Selecting a red badge opens problem details. It does not request API data or reset refresh intervals.
-- Recovered alerts clear after 24 hours by default. Settings provides other periods or manual clearing.
-- Pi request spacing includes a one-second safety margin. Storage latency cannot shorten the next request interval.
-- Browser sign-in failures identify the affected service. Octopus failures no longer point to the GAS setup step.
-- Active failures remain visible. Alert preferences survive host restarts and browser reloads.
+- Setup and Settings include an Octopus connection selector.
+- The in-app guide includes **Copy relay code** and steps to update an existing deployment.
+- Compatibility mode sends Octopus sign-in, charging-window, account, and tariff requests through your own Google relay.
+- Direct connection remains the default for existing setups.
+- The selected method stays in saved browser setup and encrypted backups.
+- A capability check detects an old relay before forwarding Octopus credentials.
+- The updated relay restricts targets and methods and does not follow upstream redirects.
+- Octopus HTTP status and Retry-After values reach the existing browser rate-limit policy.
+- Pi and Windows retain their existing host transport.
 
-## Remote access recovery
+## Update your Google relay
 
-1. On the host, open **Remote Access**.
-2. Select **Update URL**.
-3. Wait until the tunnel connects.
-4. Select **Copy URL**.
-5. Open that URL on your other device.
-6. Enter the existing Remote Access Key.
-7. Replace any bookmark or Home Screen shortcut that uses the previous URL.
+- Open your existing Apps Script project.
+- Replace its code with the code in the [web guide](docs/WEB-GUIDE.md#create-the-relay).
+- Save the project.
+- Select **Deploy → Manage deployments → Edit → New version → Deploy**.
+- Keep the existing Web App URL.
+- In Smart Charging, open **Modify setup → 3. Google relay**.
+- Select **Safari compatibility — my Google relay**.
+- Select **Connect**.
 
-A Quick Tunnel address can change after a reboot, app update, or tunnel restart.
-The old address cannot redirect to its replacement.
-Pi Connect provides another way to retrieve the current address.
+Google processes Octopus credentials and data when this option is selected.
+Use only your own Google relay.
+Saving Apps Script source alone does not update the deployed Web App.
 
 ## Verification
 
-Mock tests cover tunnel reconnection, URL renewal, authentication boundaries, retained alerts, expiry, settings persistence, and badge interaction.
-The complete scheduler, history, transport, and desktop regression suite also passes.
-Tests do not send commands to a live inverter.
-Windows packaging checks do not replace native Windows verification of this patch.
-Safari returned HTTP 403 during the direct Octopus preflight in an isolated check.
-Chrome and Windows connections were confirmed by the user.
-This release improves that error message but does not claim to resolve the upstream Safari rejection.
-
-[Setup and screenshots](https://github.com/samuelkcc/octopus-foxess-smart-charging#readme)
+The full regression suite passes with mock upstream APIs.
+Tests cover relay redirects, Octopus GET/POST, old-code detection, real rate-limit propagation, and unchanged FoxESS command safeguards.
+No test sends a command to a live inverter.
+Safari received a readable HTTP 200 Octopus reply through the updated personal GAS deployment.
+An invalid demonstration key was rejected as expected.
+No real account credentials were used in that check.
+Native Windows execution of this patch remains a user check.

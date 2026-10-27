@@ -563,6 +563,8 @@ html.desktop-viewport,html.desktop-viewport body {height:100%;min-height:0;overf
 .desktop-viewport .launch-welcome .launch-flow {margin:10px 0;}
 .desktop-viewport .launch-setup>h2 {font-size:30px;}
 .desktop-viewport .launch-step-stack {min-height:280px;}
+.desktop-viewport .launch-setup>* {flex-shrink:0;}
+#dev-shell #octopus-transport-note {font-size:var(--workspace-small,12px);line-height:1.5;margin:8px 0 0;color:var(--text-muted);}
 .desktop-viewport .launch-setup .launch-links {margin-top:24px;}
 
 .launch-welcome .launch-art-orbit svg {width:100%;max-width:350px;stroke:#b7aecb;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;}

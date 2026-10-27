@@ -19,6 +19,7 @@ if (!web.includes("dataset.devEdition='web'") || !pi.includes("dataset.devEditio
 await cp(path.join('dist', html), path.join(destination, html));
 // Preserve the download name used by existing users and links.
 await cp(path.join('dist', html), path.join(destination, 'Octopus_IGO_Smart_Charging_Detector.html'));
+await cp('src/gas-relay.gs', path.join(destination, 'Smart_Charging_Google_Relay.gs'));
 await run('tar', ['-czf', path.join(destination, 'Octopus_FoxESS_Raspberry_Pi.tar.gz'), '-C', 'dist/linux-package', 'octopus-foxess']);
 for (const name of ['install.sh', 'uninstall.sh']) await cp(path.join('linux', name), path.join(destination, name));
 await cp(path.join('dist/windows', exe), path.join(destination, exe));

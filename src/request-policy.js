@@ -18,7 +18,7 @@
       const target = String(payload.url || url);
       // Pi requests share the service queue across every desktop and phone.
       if (!window.linuxRuntime && target.startsWith('https://api.octopus.energy/')) {
-        const auth = /obtainKrakenToken/.test(payload.query || '');
+        const auth = /obtainKrakenToken/.test(payload.query || payload.body?.query || '');
         const ttl = auth ? 10 * 60_000 : target.includes('/graphql') ? 0 : 30 * 60_000;
         return octopus.run(JSON.stringify([url, options.body, options.headers]), operation, { ttl });
       }

@@ -10,25 +10,57 @@ The Pi edition does not need the Google relay.
 - Create a project.
 - Add this code:
 
+The [relay source download](https://github.com/samuelkcc/octopus-foxess-smart-charging/releases/latest/download/Smart_Charging_Google_Relay.gs) contains the same code.
+
 ```javascript
+// Copyright (C) 2026 SCKC. GPL-3.0-or-later.
 function doPost(e) {
-  try {
-    var requestData = JSON.parse(e.postData.contents);
-    var options = {
-      method: 'post',
-      contentType: 'application/json',
-      headers: requestData.headers,
-      payload: JSON.stringify(requestData.body),
-      muteHttpExceptions: true
-    };
-    var response = UrlFetchApp.fetch(requestData.url, options);
-    return ContentService.createTextOutput(response.getContentText())
+  function json(value) {
+    return ContentService.createTextOutput(JSON.stringify(value))
       .setMimeType(ContentService.MimeType.JSON);
-  } catch (err) {
-    return ContentService.createTextOutput(JSON.stringify({
-      errno: 999,
-      msg: err.toString()
-    })).setMimeType(ContentService.MimeType.JSON);
+  }
+  try {
+    var request = JSON.parse(e.postData.contents);
+    if (request.action === 'capabilities') {
+      return json({ relayVersion: 2, octopus: true });
+    }
+    var url = String(request.url || '');
+    var method = String(request.method || 'post').toLowerCase();
+    var octopus = /^https:\/\/api\.octopus\.energy\/v1\//.test(url);
+    var allowedOctopus = method === 'post'
+      ? url === 'https://api.octopus.energy/v1/graphql/'
+      : method === 'get' && /^https:\/\/api\.octopus\.energy\/v1\/(accounts\/[A-Za-z0-9_-]+\/|products\/[A-Za-z0-9_-]+\/electricity-tariffs\/[A-Za-z0-9_-]+\/(standard-unit-rates|day-unit-rates|night-unit-rates)\/)(\?[^#]*)?$/.test(url);
+    var allowedFox = method === 'post' && /^https:\/\/www\.foxesscloud\.com\/op\/(v0\/device\/(real\/query|setting\/get)|v3\/device\/scheduler\/(get|enable))$/.test(url);
+    if (!(octopus && allowedOctopus) && !allowedFox) {
+      return json({ errno: 999, msg: 'Unsupported relay target or method.' });
+    }
+    var options = {
+      method: method,
+      headers: request.headers || {},
+      muteHttpExceptions: true,
+      followRedirects: false
+    };
+    if (method === 'post') {
+      options.contentType = 'application/json';
+      options.payload = JSON.stringify(request.body);
+    }
+    var response = UrlFetchApp.fetch(url, options);
+    if (!octopus) {
+      return ContentService.createTextOutput(response.getContentText())
+        .setMimeType(ContentService.MimeType.JSON);
+    }
+    var headers = response.getAllHeaders();
+    var retryAfter = '';
+    Object.keys(headers).forEach(function(name) {
+      if (name.toLowerCase() === 'retry-after') retryAfter = String(headers[name]);
+    });
+    var body;
+    try { body = JSON.parse(response.getContentText()); }
+    catch (_) { body = null; }
+    return json({ relayVersion: 2, status: response.getResponseCode(), retryAfter: retryAfter, body: body });
+  } catch (_) {
+    // Do not return exception text: upstream errors can contain request details.
+    return json({ errno: 999, msg: 'Relay request failed. Check the deployment and try again.' });
   }
 }
 ```
@@ -43,6 +75,45 @@ function doPost(e) {
 
 The relay runs in your Google account.
 It forwards the signed FoxESS requests from this app.
+Safari compatibility mode also forwards Octopus requests through this relay.
+Google processes the credentials and data in those requests.
+Use only a relay that you own.
+
+## Update an existing relay
+
+- In Smart Charging, open **Create or update the relay** from the Google relay setup stage.
+- Select **Copy relay code**.
+- Open your existing Apps Script project.
+- Replace its code with the code above.
+- Save the project.
+- Select **Deploy → Manage deployments**.
+- Select your existing Web App deployment.
+- Select **Edit → New version → Deploy**.
+- Keep the same `/exec` URL in Smart Charging.
+
+Saving source code alone does not update a deployed Web App.
+Editing the existing deployment keeps its URL.
+Creating another deployment gives you another URL.
+
+## Safari compatibility mode
+
+Safari can reject Octopus's direct connection before sign-in finishes.
+Compatibility mode sends those requests through your own Google relay.
+It uses the same relay URL as FoxESS.
+Pi and Windows use their own host service and do not need this mode.
+
+- Update your relay with the code above.
+- Open **Modify setup** from Welcome.
+- Select **3. Google relay**.
+- Select **Safari compatibility — my Google relay** under **Octopus connection**.
+- Select **Connect**.
+
+Settings also includes **Octopus connection → Save connection method**.
+The selected method stays in saved browser setup and encrypted configuration backups.
+Existing configurations continue to use direct connection until you change this option.
+The app checks relay support before forwarding Octopus credentials.
+An old deployment shows an update instruction instead of attempting unsupported requests.
+Actual API rate limits still apply through the relay.
 
 ## Connect the app
 
