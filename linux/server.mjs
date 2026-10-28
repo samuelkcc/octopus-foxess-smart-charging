@@ -15,6 +15,7 @@ import { IntegrationState } from './integration-state.mjs';
 import { ServiceControl } from './service-control.mjs';
 import { RequestBudget, retryDelay } from './request-budget.mjs';
 import { TariffCache } from './tariff-cache.mjs';
+import { TariffSnapshotCache } from './tariff-snapshot-cache.mjs';
 
 const appRoot = path.dirname(fileURLToPath(import.meta.url));
 const webRoot = process.env.OCTOPUS_WEB_ROOT || path.join(appRoot, 'web');
@@ -93,6 +94,8 @@ const octopusBudget = new RequestBudget({
 const foxReadCache = new RequestBudget({ interval: 0 });
 const tariffRestartCache = new TariffCache(path.join(stateRoot, 'public-tariff-cache.json'));
 await tariffRestartCache.load();
+const tariffDisplayCache = new TariffSnapshotCache(path.join(stateRoot, 'tariff-display-cache.json'));
+let tariffRecoverySnapshot = null;
 let foxCacheRevision = 0;
 let foxReadbackUntil = 0;
 let foxReadbackSerial = 0;
@@ -1004,8 +1007,18 @@ async function handleRequest(request, response) {
     if (pathname === '/api/tariff-snapshot' && request.method === 'GET') {
       const state = await loadState();
       const identity = createHash('sha256').update(JSON.stringify(state.credentials || {})).digest('hex');
-      return sendJson(response, 200, tariffDisplaySnapshot?.identity === identity
-        ? {...tariffDisplaySnapshot.payload,transport:{...tariffTransportStatus(),servedAt:Date.now()}}
+      let payload = tariffDisplaySnapshot?.identity === identity ? tariffDisplaySnapshot.payload : null;
+      if (tariffRecoverySnapshot && !tariffDisplayCache.clean(tariffRecoverySnapshot.identity,tariffRecoverySnapshot.payload)) tariffRecoverySnapshot=null;
+      if ((!payload?.state || payload.pending || payload.problem) && tariffRecoverySnapshot?.identity === identity) {
+        const previous = tariffRecoverySnapshot.payload.state;
+        const current = payload?.state;
+        payload = {...payload,pending:payload?.pending ?? true,cached:true,state:{...previous,...current,
+          importRates:current?.importRates?.length ? current.importRates : !current || current.importTariffCode===previous.importTariffCode ? previous.importRates : [],
+          exportRates:current?.exportRates?.length ? current.exportRates : !current || current.exportTariffCode===previous.exportTariffCode ? previous.exportRates : [],
+          updatedAt:previous.updatedAt}};
+      }
+      return sendJson(response, 200, payload
+        ? {...payload,transport:{...tariffTransportStatus(),servedAt:Date.now()}}
         : { pending:true, state:null,transport:{hostInstance,revision:0,servedAt:Date.now()} });
     }
     if (pathname === '/api/tariff-snapshot' && request.method === 'POST') {
@@ -1031,6 +1044,10 @@ async function handleRequest(request, response) {
           importRates:cleanRates(source.importRates),exportRates:cleanRates(source.exportRates),
           minRate:Number.isFinite(source.minRate)?source.minRate:null,maxRate:Number.isFinite(source.maxRate)?source.maxRate:null,
           updatedAt:Number.isFinite(source.updatedAt)?source.updatedAt:null}}};
+      if (!tariffDisplaySnapshot.payload.pending && !tariffDisplaySnapshot.payload.problem) {
+        tariffRecoverySnapshot = tariffDisplayCache.clean(tariffDisplaySnapshot.identity,tariffDisplaySnapshot.payload);
+        void tariffDisplayCache.put(tariffDisplaySnapshot.identity,tariffDisplaySnapshot.payload);
+      }
       return sendJson(response,200,{saved:true});
     }
     if (pathname === '/api/dashboard-snapshot' && request.method === 'GET') {
@@ -1223,6 +1240,7 @@ async function handleRequest(request, response) {
   }
 }
 
+tariffRecoverySnapshot = await tariffDisplayCache.load(createHash('sha256').update(JSON.stringify((await loadState()).credentials || {})).digest('hex'));
 const server = http.createServer(handleRequest);
 const remoteServer = http.createServer((request, response) => {
   remoteRequests.add(request);

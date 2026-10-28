@@ -1,5 +1,5 @@
 // Copyright (C) 2026 SCKC. GPL-3.0-or-later.
-// Keep only the two user-facing files in dist. Preserve build work separately.
+// Keep only the requested user-facing files in dist. Preserve build work separately.
 import { mkdir, mkdtemp, readFile, readdir, rename, stat } from 'node:fs/promises';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
@@ -20,7 +20,12 @@ export async function prepareDeliverables(root = process.cwd()) {
     const info = await stat(file);
     if (!info.isFile() || !info.size) throw new Error(`Missing deliverable: ${file}`);
   }
-  const keep = new Set([html, exe]);
+  const mac = `SmartCharging-${version}-macOS-universal.zip`;
+  let macFile;
+  for(const candidate of [path.join(dist,mac),path.join(dist,'macos',mac)]) {
+    try{if((await stat(candidate)).isFile()){macFile=candidate;break;}}catch(error){if(error.code!=='ENOENT')throw error;}
+  }
+  const keep = new Set([html, exe, ...(macFile?[mac]:[])]);
   const extras = (await readdir(dist)).filter(name => !keep.has(name));
   let archive;
   if (extras.length) {
@@ -29,12 +34,14 @@ export async function prepareDeliverables(root = process.cwd()) {
     archive = await mkdtemp(path.join(work, 'artifacts-'));
   }
   if (executable !== path.join(dist, exe)) await rename(executable, path.join(dist, exe));
+  if(macFile && macFile!==path.join(dist,mac))await rename(macFile,path.join(dist,mac));
   for (const name of extras) await rename(path.join(dist, name), path.join(archive, name));
-  return { html: path.join(dist, html), exe: path.join(dist, exe), archive };
+  return { html: path.join(dist, html), exe: path.join(dist, exe), mac:macFile?path.join(dist,mac):null, archive };
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(path.resolve(process.argv[1])).href) {
   const result = await prepareDeliverables();
   console.log(`Ready: ${result.html}\nReady: ${result.exe}`);
+  if(result.mac)console.log(`Ready: ${result.mac}`);
   if (result.archive) console.log(`Build files retained: ${result.archive}`);
 }

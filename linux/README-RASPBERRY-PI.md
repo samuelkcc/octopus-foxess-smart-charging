@@ -429,3 +429,20 @@ Only the local Configuration window can change service enablement.
 Remote clients can see the disabled state.
 They cannot enable the service.
 Version 2.0.0 includes this control.
+
+
+## Prices after restart
+
+The worker loads account and tariff data through one shared request queue.
+Initial import prices can require several minutes, especially for separate day and night rates.
+All dashboards read the same worker snapshot.
+Opening another dashboard does not create another tariff request.
+
+After a complete price update, the host saves a private display snapshot.
+After restart, **Last-known prices** identifies this recovery data until worker confirmation.
+Display snapshots expire after 24 hours.
+They never supply automatic price rules.
+The first successful update must finish before this recovery file exists.
+
+If the desktop client cannot open, inspect `~/.local/state/octopus-foxess/dashboard-launch.log`.
+The launcher supports both Wayland and X11 desktop sessions.

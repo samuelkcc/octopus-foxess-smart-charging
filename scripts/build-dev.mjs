@@ -2,7 +2,7 @@
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 const root = process.cwd();
-const [baseText, css, js, about, setup, views, packageText, icon, defaultRoute, settings, touchIcon, controls, monitor, historyView, viewport, lightIcon, desktopUI, lanRemote] = await Promise.all([
+const [baseText, css, js, about, setup, views, packageText, icon, defaultRoute, settings, touchIcon, controls, monitor, historyView, viewport, lightIcon, desktopUI, lanRemote, activityView] = await Promise.all([
   readFile(path.join(root, 'dist/Octopus_IGO_Smart_Charging_Detector.html'), 'utf8'),
   readFile(path.join(root, 'dev/ui.css'), 'utf8'),
   readFile(path.join(root, 'dev/ui.js'), 'utf8'),
@@ -20,7 +20,8 @@ const [baseText, css, js, about, setup, views, packageText, icon, defaultRoute, 
   readFile(path.join(root, 'dev/viewport.js'), 'utf8'),
   readFile(path.join(root, 'linux/octopus-foxess-light.svg'), 'utf8'),
   readFile(path.join(root, 'dev/desktop.js'), 'utf8'),
-  readFile(path.join(root, 'dev/lan-remote.js'), 'utf8')
+  readFile(path.join(root, 'dev/lan-remote.js'), 'utf8'),
+  readFile(path.join(root, 'dev/activity.js'), 'utf8')
 ]);
 // A UI-only update reads the installed root file. Never copy its Pi router into web builds.
 const base = baseText.replace(/<script id="dev-default-route">[\s\S]*?<\/script>\s*/g, '');
@@ -43,7 +44,7 @@ let output = base.replace('<head>', `<head>\n${pi ? '<base href="/">' : ''}\n<me
   .replace(/<link rel="icon"[^>]*>/, `<link rel="icon" href="${darkIconUrl}" ${themeIconAttributes} type="image/svg+xml">`)
   .replace(/<link rel="apple-touch-icon"[^>]*>/, `<link rel="apple-touch-icon" sizes="180x180" href="data:image/png;base64,${touchIcon.toString('base64')}">`)
   .replace('</head>', `<style>${css}</style></head>`)
-  .replace('</body>', `<script>${historyView}\n${js}\n${about}\n${setup}\n${views}\n${settings}\n${controls}\n${monitor}\n${viewport}\n${desktopUI}\n${lanRemote}</script></body>`)
+  .replace('</body>', `<script>${historyView}\n${activityView}\n${js}\n${about}\n${setup}\n${views}\n${settings}\n${controls}\n${monitor}\n${viewport}\n${desktopUI}\n${lanRemote}</script></body>`)
   .replaceAll('src="/octopus-foxess.svg"', `src="${darkIconUrl}" ${themeIconAttributes}`);
 if (!pi) output = output.replace('href="/app/site.webmanifest"', 'href="./site.webmanifest"')
   .replace('src="/octopus-foxess.svg"', `src="${darkIconUrl}" ${themeIconAttributes}`);

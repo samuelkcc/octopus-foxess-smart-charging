@@ -129,7 +129,7 @@ The Windows portable edition bundles Electron 45.0.0 under the MIT licence.
 Electron and Chromium licence files remain beside the application resources.
 Source: https://github.com/electron/electron/tree/v45.0.0
 
-The Windows edition bundles cloudflared 2026.10.4 under Apache-2.0.
+The Windows and macOS editions bundle cloudflared 2026.10.4 under Apache-2.0.
 The complete licence is included in `desktop-assets/cloudflared-LICENSE.txt`.
 The pinned download and SHA-256 digest are recorded in `desktop/vendor.json`.
 Source: https://github.com/cloudflare/cloudflared/tree/2026.10.4

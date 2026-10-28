@@ -3,7 +3,7 @@
  * values and handlers. Old presentation nodes are retained in one hidden host.
  */
 (() => {
-  const hostName = document.documentElement.dataset.devEdition === 'desktop' ? 'PC' : 'Pi';
+  const hostName = document.documentElement.dataset.devEdition === 'desktop' ? 'computer' : 'Pi';
   const pi = document.documentElement.dataset.devEdition !== 'web';
   const shell = document.getElementById('dev-shell');
   const dashboard = document.getElementById('dashboard');
@@ -136,7 +136,7 @@
     const editionLabel=shell.querySelector('.dev-service');
     editionLabel.hidden=pi || viewing;
     editionLabel.textContent=pi?'':'Web edition';
-    if(pi && !window.desktopHost) byId('login-layout').querySelector('.launch-setup>.next-auth-copy').textContent=window.linuxRemoteAccess?(hostName==='PC'?'Enter the Remote Access Key from Windows app → Remote Access.':'Enter the separate Remote Access Key shown in Pi Configuration.'):'Enter your LAN access code if protection is enabled.';
+    if(pi && !window.desktopHost) byId('login-layout').querySelector('.launch-setup>.next-auth-copy').textContent=window.linuxRemoteAccess?(hostName==='computer'?'Enter the Remote Access Key from desktop app → Remote Access.':'Enter the separate Remote Access Key shown in Pi Configuration.'):'Enter your LAN access code if protection is enabled.';
     session.textContent=pi?(window.linuxRemoteAccess?'Browser login lasts up to 12 hours. Use the same remote key after expiry.':`Your ${hostName} stores the account setup and runs the automation.`):'Keep this browser open and awake while automation runs.';
   };
   new MutationObserver(syncAuth).observe(dashboard,{attributes:true,attributeFilter:['class']});
@@ -148,10 +148,10 @@
       shell.style.setProperty('--schedule-summary-height',summaryHeight);
       schedulePriceChartResize();
     }
-    const importPrice=window.currentLivePrice;
+    const importPrice=window.tariffPresentation?.importPrice ?? window.currentLivePrice;
     byId('next-import-price').textContent=window.priceDisplay.number(importPrice);
     const exportRate=getRateAtTime(window.exportRates || [],Date.now());
-    byId('next-export-price').textContent=window.priceDisplay.number(exportRate?.value_inc_vat);
+    byId('next-export-price').textContent=window.priceDisplay.number(window.tariffPresentation?.exportPrice ?? exportRate?.value_inc_vat);
     priceRow.querySelectorAll('small').forEach(node=>{node.textContent=window.priceDisplay.unit();});
     if(!dashboard.classList.contains('visible'))syncAuth();
   };

@@ -10,7 +10,7 @@ The EXE is unsigned.
 
 Before configuring this edition, complete the [FoxESS work mode setup](../README.md#prepare-foxess-work-modes).
 
-1. Open the downloaded `SmartCharging-2.1.0-Windows-x64.exe`.
+1. Open the downloaded `SmartCharging-2.2.0-Windows-x64.exe`.
 2. Read the application licence notice.
 3. Select **Accept and Continue**.
 4. Open the account setup from Welcome.
@@ -88,9 +88,10 @@ This release is unsigned.
 3. Run `npm run build:desktop`.
 
 The build validates the pinned Cloudflare binary checksum.
-The `dist` folder contains one standalone HTML file and one portable EXE.
+The `dist` folder contains the standalone HTML file and portable EXE.
+After a macOS build, it also retains the Universal ZIP.
 Build directories, checksums, and Pi packages remain in `.build/artifacts-*`.
-After a separate packaging run, use `npm run package:deliverables` to organize the two files.
+After a separate packaging run, use `npm run package:deliverables` to organize the deliverables.
 This build does not publish a release.
 
 ## Verification limits

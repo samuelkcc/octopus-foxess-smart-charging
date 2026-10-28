@@ -192,3 +192,21 @@ Native Windows execution remains a user check.
 - Browser checks verified Pi Welcome entry, web account setup, web prices, manual currency display, and LAN management with mock values.
 - A 390-pixel phone fixture verified the Settings entry and six-item navigation without horizontal overflow.
 - LAN key reveal was checked with a demonstration key only.
+
+
+## Version 2.2.0 review
+
+- Live Pi diagnostics showed complete import/export data after startup queuing, with recent HTTP 200 responses and no observed 429.
+- The Pi launcher log identified missing X11 display configuration in a Wayland session.
+- The repaired launcher opened native Welcome without restarting the worker or tunnel.
+- Restart display tests cover private storage, expiry, account/agreement isolation, and fresh-worker replacement.
+- Cached display values remain absent from scheduler price arrays and live-price inputs.
+- Web Activity tests cover backup validation, round trips, duplicates, retention, size limits, and unchanged pause state.
+- Browser review verified web Welcome entry, Activity recording, JSON download, and duplicate-free import.
+- Pi and desktop retain the host History view.
+- The macOS package includes verified arm64 and x86_64 app, framework, and Cloudflare binaries.
+- The macOS ad-hoc signature and bundled service/licence checks passed.
+- Native Keychain, Intel execution, and current Windows execution require operator verification.
+- No GAS change or live inverter test command is included.
+- The full automated suite and both interface builds passed before publication.
+- The [standard QA checklist](QA.md) distinguishes mock tests, package checks, and native review.

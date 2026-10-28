@@ -5,7 +5,7 @@ const root = process.cwd();
 const src = path.join(root, 'src');
 const dist = path.join(root, 'dist');
 
-const [html, css, app, pause, integrationState, monitor, refreshPreferences, requestBudget, requestPolicy, priceDisplay] = await Promise.all([
+const [html, css, app, pause, integrationState, monitor, refreshPreferences, requestBudget, requestPolicy, priceDisplay, activityStore] = await Promise.all([
   readFile(path.join(src, 'index.html'), 'utf8'),
   readFile(path.join(src, 'styles.css'), 'utf8'),
   readFile(path.join(src, 'app.js'), 'utf8'),
@@ -16,10 +16,11 @@ const [html, css, app, pause, integrationState, monitor, refreshPreferences, req
   readFile(path.join(root, 'linux/request-budget.mjs'), 'utf8'),
   readFile(path.join(src, 'request-policy.js'), 'utf8'),
   readFile(path.join(src, 'price-display.js'), 'utf8'),
+  readFile(path.join(src, 'activity-store.js'), 'utf8'),
 ]);
 
 const budgetJs = requestBudget.replace('export class RequestBudget', 'class RequestBudget').replace('export function retryDelay', 'function retryDelay');
-const js = `(()=>{${budgetJs}\nwindow.RequestBudget=RequestBudget;window.retryDelay=retryDelay;})();\n${requestPolicy}\n(()=>{${integrationState.replace('export class IntegrationState', 'class IntegrationState')}\nwindow.IntegrationState=IntegrationState;})();\n${pause}\n${priceDisplay}\n${monitor}\n${app}\n${refreshPreferences}`;
+const js = `(()=>{${budgetJs}\nwindow.RequestBudget=RequestBudget;window.retryDelay=retryDelay;})();\n${requestPolicy}\n(()=>{${integrationState.replace('export class IntegrationState', 'class IntegrationState')}\nwindow.IntegrationState=IntegrationState;})();\n${activityStore}\n${pause}\n${priceDisplay}\n${monitor}\n${app}\n${refreshPreferences}`;
 const escapeText = text => text.replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;');
 const [license, notices] = await Promise.all(['LICENSE', 'THIRD_PARTY_NOTICES.md'].map(name => readFile(path.join(root, name), 'utf8')));
 const gasRelay = await readFile(path.join(src, 'gas-relay.gs'), 'utf8');

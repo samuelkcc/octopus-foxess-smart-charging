@@ -1,6 +1,6 @@
 {
   "name": "smart-charging-desktop",
-  "version": "2.1.0",
+  "version": "2.2.0",
   "description": "Smart Charging for Octopus Energy and FoxESS",
   "author": "SCKC",
   "license": "GPL-3.0-or-later",
@@ -8,7 +8,8 @@
   "main": "main.cjs",
   "scripts": {
     "start": "electron .",
-    "build:win": "electron-builder --win portable --x64 --publish never"
+    "build:win": "electron-builder --win portable --x64 --publish never",
+    "build:mac": "electron-builder --mac zip --universal --publish never"
   },
   "devDependencies": {
     "electron": "45.0.0",
@@ -59,6 +60,24 @@
     "portable": {
       "artifactName": "SmartCharging-${version}-Windows-x64.exe",
       "requestExecutionLevel": "user"
+    },
+    "mac": {
+      "target": [
+        {
+          "target": "zip",
+          "arch": [
+            "universal"
+          ]
+        }
+      ],
+      "artifactName": "SmartCharging-${version}-macOS-universal.zip",
+      "icon": "../src/icons/icon-512.png",
+      "category": "public.app-category.utilities",
+      "identity": "-",
+      "hardenedRuntime": true,
+      "notarize": false,
+      "gatekeeperAssess": false,
+      "minimumSystemVersion": "12.0"
     }
   }
 }

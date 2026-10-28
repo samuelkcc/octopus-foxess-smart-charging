@@ -44,7 +44,7 @@
       const state=await host.configuration();
       for(const [name,control] of Object.entries(fields))control.input.value=state.credentials?.[name]||'';
       access.input.checked=state.accessRequired;code.input.value=state.accessKey||'';live.input.checked=state.liveWsEnabled;
-      status.textContent='These credentials stay on this PC. Remote clients cannot change them.';
+      status.textContent='These credentials stay on this computer. Remote clients cannot change them.';
     };
     form.addEventListener('submit',async event=>{
       event.preventDefault();if(!form.reportValidity())return;
@@ -62,24 +62,24 @@
     return form;
   };
   const settings=document.querySelector('.dev-page[data-page="settings"] .dev-page-grid');
-  const account=panel('Service configuration','Manage this PC’s energy accounts and local dashboard protection.');
+  const account=panel('Service configuration','Manage this computer’s energy accounts and local dashboard protection.');
   account.dataset.setting='desktop-service';const accountDetails=make('details');accountDetails.append(make('summary','','Accounts, LAN access and live telemetry'),configuration());account.append(accountDetails);settings.prepend(account);
   const login=document.getElementById('login-layout');
   const setup=login.querySelector('.launch-setup');
   const parking=document.getElementById('dev-engine-elements');
   [...setup.children].forEach(node=>parking.append(node));
-  setup.append(make('span','launch-eyebrow','SET UP THIS PC'),make('h2','','Connect your energy accounts'),make('p','next-auth-copy','No Google relay is required. Use one automation host for each inverter.'),configuration());
+  setup.append(make('span','launch-eyebrow','SET UP THIS COMPUTER'),make('h2','','Connect your energy accounts'),make('p','next-auth-copy','No Google relay is required. Use one automation host for each inverter.'),configuration());
   const actions=make('div','next-settings-actions');actions.append(button('Account setup guide',()=>toggleDrawer('setup-guide-panel')),button('Back to Welcome',()=>{login.dataset.mode='welcome';}));setup.append(actions);
   login.querySelector('.launch-operation').textContent='Keep Smart Charging open. Minimizing continues automation. Closing the app stops the service.';
-  const configure=button('Configure this PC',()=>{login.dataset.mode='setup';});
+  const configure=button('Configure this computer',()=>{login.dataset.mode='setup';});
   login.querySelector('.launch-art .launch-links').prepend(configure);
   document.querySelector('[data-setting="updates"]')?.remove();
   document.querySelector('[data-setting="access-on-this-device"]')?.remove();
   const updates=panel('Application updates','Smart Charging runs while this desktop app stays open.');
-  updates.append(make('p','next-muted','To update, close Smart Charging and replace the portable EXE. Settings and history remain in your Windows user profile.'));
+  updates.append(make('p','next-muted','To update, close Smart Charging and replace the downloaded app. Settings and history remain in your user profile.'));
   settings.append(updates);
   const remote=window.dashboardNavigation.register('remote','Remote Access','Connect another device over your local network or a protected Cloudflare URL.');
-  const localPanel=panel('Local network','Your PC and the app must stay on. Allow access only on your trusted private network.');
+  const localPanel=panel('Local network','Your computer and the app must stay on. Allow access only on your trusted private network.');
   const addresses=make('div','desktop-lan-addresses');localPanel.append(addresses,button('Copy LAN code',()=>host.copyLanCode()));remote.append(localPanel);
   const tunnel=panel('Cloudflare Quick Tunnel','Create a random HTTPS URL. Remote access uses its own 256-bit key.');
   const stateText=make('p','next-muted');stateText.setAttribute('role','status');

@@ -332,10 +332,10 @@ async function detectLinuxRuntime() {
         document.body.classList.add('linux-runtime', `linux-role-${runtime.role}`);
         if (window.linuxRemoteAccess) {
             document.querySelector('.linux-access-group label').textContent = '🔐 Remote Access Key';
-            document.getElementById('local-access-key').placeholder = window.desktopRuntime ? 'Paste the key from Windows app → Remote Access' : 'Paste the remote key from Pi Configuration';
+            document.getElementById('local-access-key').placeholder = window.desktopRuntime ? 'Paste the key from desktop app → Remote Access' : 'Paste the remote key from Pi Configuration';
             document.querySelector('.linux-access-group small').textContent = 'Use your remote key. Your LAN access code is not needed.';
             document.querySelector('.linux-client-note strong').textContent = 'Secure remote dashboard';
-            document.querySelector('.access-protected-copy').textContent = window.desktopRuntime ? 'Enter the Remote Access Key from Windows app → Remote Access.' : 'Enter the separate Remote Access Key shown on your Pi.';
+            document.querySelector('.access-protected-copy').textContent = window.desktopRuntime ? 'Enter the Remote Access Key from desktop app → Remote Access.' : 'Enter the separate Remote Access Key shown on your Pi.';
             document.querySelector('.remove-access-button').textContent = '🔐 Sign Out';
         }
         if (runtime.authRequired) document.body.classList.add('linux-auth-required');
@@ -346,7 +346,7 @@ async function detectLinuxRuntime() {
             await loadFoxLiveStatus();
         }
         document.querySelectorAll('[data-linux-version]').forEach(element => {
-            element.textContent = `${window.desktopRuntime ? 'Windows desktop' : 'Raspberry Pi'} v${runtime.version}`;
+            element.textContent = `${window.desktopRuntime ? 'Desktop host' : 'Raspberry Pi'} v${runtime.version}`;
         });
         document.querySelectorAll('[data-linux-lan-url]').forEach(element => {
             const clientUrl = runtime.lanUrls?.[0] || window.location.origin;
@@ -1387,6 +1387,7 @@ let octopusTariffRetryTimer = null;
 let octopusTariffProblem = false;
 let octopusTariffProgress = 0;
 let octopusTariffHostPending = false;
+let octopusTariffCached = false;
 let tariffPublicationPromise = Promise.resolve();
 const tariffClientDiagnostics = {attemptAt:null,receivedAt:null,renderedAt:null,readError:false,readStatus:null,renderError:false,transport:null};
 function renderTariffsSafely(dispatches) {
@@ -1416,6 +1417,7 @@ async function readTariffSnapshot() {
         else if (!snapshot.problem) octopusTariffState = null;
         octopusTariffProgress = snapshot.progress || 0;
         octopusTariffHostPending = snapshot.pending === true;
+        octopusTariffCached = snapshot.cached === true;
         octopusTariffProblem = snapshot.problem === true;
         tariffClientDiagnostics.receivedAt=Date.now();tariffClientDiagnostics.readError=false;tariffClientDiagnostics.readStatus=200;
         const meta=snapshot.transport || {};
@@ -1496,11 +1498,12 @@ function renderOctopusTariffs(dispatches = window.currentDispatches || []) {
 
     // Import is always the primary/default tariff. Keep todayRates as a
     // compatibility alias for existing chart and target-price behaviour.
-    window.importRates = importRates;
-    window.exportRates = exportRates;
+    // Restart recovery is presentation only. Never expose cached rates to rules.
+    window.importRates = octopusTariffCached ? [] : importRates;
+    window.exportRates = octopusTariffCached ? [] : exportRates;
     window.todayRates = window.importRates;
-    window.dailyMinPrice = minRate;
-    window.dailyMaxPrice = maxRate;
+    window.dailyMinPrice = octopusTariffCached ? null : minRate;
+    window.dailyMaxPrice = octopusTariffCached ? null : maxRate;
 
     // --- FIXED PRICING LOGIC ---
     // Look up the exact live price based on current time
@@ -1509,8 +1512,8 @@ function renderOctopusTariffs(dispatches = window.currentDispatches || []) {
     let isOffPeak = false;
     let activeDispatch = false;
 
-    if (window.importRates.length > 0) {
-        const currentBlock = getRateAtTime(window.importRates, nowTime);
+    if (importRates.length > 0) {
+        const currentBlock = getRateAtTime(importRates, nowTime);
         if (currentBlock) {
             livePrice = parseFloat(currentBlock.value_inc_vat.toFixed(2));
             // Determine 'off-peak' status using robust timestamp comparisons
@@ -1528,11 +1531,13 @@ function renderOctopusTariffs(dispatches = window.currentDispatches || []) {
             isOffPeak = (livePrice <= minRate + 0.1) || activeDispatch;
         }
     }
-    window.currentLivePrice = livePrice;
-    const currentExportBlock = getRateAtTime(window.exportRates, nowTime);
+    window.currentLivePrice = octopusTariffCached ? null : livePrice;
+    const currentExportBlock = getRateAtTime(exportRates, nowTime);
     const liveExportPrice = currentExportBlock
         ? parseFloat(currentExportBlock.value_inc_vat.toFixed(2))
         : null;
+
+    window.tariffPresentation = {importPrice:livePrice,exportPrice:liveExportPrice,cached:octopusTariffCached};
 
     // The unattended worker has no presentation role. Never create charts or
     // mutate its legacy layout while publishing authoritative tariff data.
@@ -1576,7 +1581,9 @@ function renderOctopusTariffs(dispatches = window.currentDispatches || []) {
     const status = document.getElementById('tariff-data-status');
     if (status) {
         status.dataset.state = octopusTariffProblem ? 'error' : (octopusTariffPromise || octopusTariffHostPending) ? 'loading' : 'ready';
-        status.textContent = octopusTariffProblem
+        status.textContent = octopusTariffCached
+            ? `Last-known prices (${new Date(octopusTariffState.updatedAt).toLocaleString()}). Waiting for worker confirmation${octopusTariffProblem ? '; the latest update failed' : ''}.`
+            : octopusTariffProblem
             ? 'Price update failed. Available rates remain shown. Automatic retry continues.'
             : (octopusTariffPromise || octopusTariffHostPending)
                 ? (window.linuxRuntime && !window.desktopRuntime
@@ -1590,7 +1597,7 @@ function renderOctopusTariffs(dispatches = window.currentDispatches || []) {
         const element = document.getElementById(id);
         if (element) element.textContent = code;
     }
-    drawPriceCharts(maxRate, minRate, dispatches);
+    drawPriceCharts(maxRate, minRate, dispatches, importRates, exportRates);
     return { importTariffCode, exportTariffCode, minRate, maxRate };
 }
 
@@ -3188,7 +3195,7 @@ async function setV3Schedule(mode) {
 }
 
 // Tariff Chart Builders
-function drawPriceCharts(peak, offPeak, dispatches) {
+function drawPriceCharts(peak, offPeak, dispatches, importRates = window.importRates || [], exportRates = window.exportRates || []) {
     const chartState = JSON.stringify({
         day: new Date().toDateString(),
         currency: window.priceDisplay?.read(),
@@ -3197,11 +3204,11 @@ function drawPriceCharts(peak, offPeak, dispatches) {
         peak,
         offPeak,
         dispatches,
-        importRates: window.importRates || [],
-        exportRates: window.exportRates || []
+        importRates: importRates,
+        exportRates: exportRates
     });
     const chartsAlreadyRendered = importPriceChartInst
-        && (!window.exportRates?.length || exportPriceChartInst);
+        && (!exportRates.length || exportPriceChartInst);
     if (window.lastChartState === chartState && chartsAlreadyRendered) return;
     window.lastChartState = chartState;
     
@@ -3224,11 +3231,11 @@ function drawPriceCharts(peak, offPeak, dispatches) {
             const slotTime = slotDate.getTime();
             
             // Import prices are the default series and drive target-price charging.
-            const importRate = getRateAtTime(window.importRates, slotTime);
+            const importRate = getRateAtTime(importRates, slotTime);
             let importSlotPrice = importRate ? parseFloat(importRate.value_inc_vat.toFixed(2)) : null;
 
             // Export prices remain separate so SEG never replaces import pricing.
-            const exportRate = getRateAtTime(window.exportRates, slotTime);
+            const exportRate = getRateAtTime(exportRates, slotTime);
             const exportSlotPrice = exportRate
                 ? parseFloat(exportRate.value_inc_vat.toFixed(2))
                 : null;

@@ -3,6 +3,16 @@
     "version": "2026.10.4",
     "url": "https://github.com/cloudflare/cloudflared/releases/download/2026.10.4/cloudflared-windows-amd64.exe",
     "sha256": "411b16d40c8d872243efeb52c550053d00af0a8a97fbb32e730fb8aba429eaa8",
-    "license": "https://raw.githubusercontent.com/cloudflare/cloudflared/2026.10.4/LICENSE"
+    "license": "https://raw.githubusercontent.com/cloudflare/cloudflared/2026.10.4/LICENSE",
+    "mac": {
+      "amd64": {
+        "url": "https://github.com/cloudflare/cloudflared/releases/download/2026.10.4/cloudflared-darwin-amd64.tgz",
+        "sha256": "f11fbef4207d715892331917dafd437f032cf4b7137ed64dea3008338c1c613d"
+      },
+      "arm64": {
+        "url": "https://github.com/cloudflare/cloudflared/releases/download/2026.10.4/cloudflared-darwin-arm64.tgz",
+        "sha256": "68b6bc4080ac1330234db2a9002d07f98b000537a1bd531a687b660d4160fa7f"
+      }
+    }
   }
 }

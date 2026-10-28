@@ -18,6 +18,7 @@ await Promise.all([
   cp(path.join(root, 'linux', 'remote-access.mjs'), path.join(packageRoot, 'remote-access.mjs')),
   cp(path.join(root, 'linux', 'service-control.mjs'), path.join(packageRoot, 'service-control.mjs')),
   cp(path.join(root, 'linux', 'request-budget.mjs'), path.join(packageRoot, 'request-budget.mjs')),
+  cp(path.join(root, 'linux', 'tariff-snapshot-cache.mjs'), path.join(packageRoot, 'tariff-snapshot-cache.mjs')),
   cp(path.join(root, 'linux', 'tariff-cache.mjs'), path.join(packageRoot, 'tariff-cache.mjs')),
   cp(path.join(root, 'linux', 'server.mjs'), path.join(packageRoot, 'server.mjs')),
   cp(path.join(root, 'linux', 'automation-pause.mjs'), path.join(packageRoot, 'automation-pause.mjs')),

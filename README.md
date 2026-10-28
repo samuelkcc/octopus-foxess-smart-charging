@@ -22,16 +22,16 @@ Octopus Energy and FoxESS do not endorse or support this project.
 
 ## Choose how to run it
 
-| | Raspberry Pi | Windows portable | Standalone web |
+| | Raspberry Pi | Windows / macOS | Standalone web |
 |---|---|---|---|
 | Runs automation | Always-on background worker | Embedded worker while the app stays open | This browser while it stays open and awake |
 | Main interface | Desktop, phone, or tablet browser | Built-in desktop dashboard | Hosted website or downloaded HTML |
 | FoxESS connection | Built-in local relay | Built-in local relay | Your Google Apps Script relay |
-| Account setup | Native Pi Configuration | Welcome or Settings in the Windows app | Guided browser setup |
+| Account setup | Native Pi Configuration | Welcome or Settings in the desktop app | Guided browser setup |
 | Remote phone access | LAN or protected Cloudflare URL | LAN or protected Cloudflare URL | Separate browser setup |
-| Power history | Compressed files on the Pi | Compressed files on the PC | No host power-history archive |
+| Records | Compressed power History | Compressed power History | Browser Activity with JSON export/import |
 
-The phone interface is a client of your Pi or Windows host.
+The phone interface is a client of your Pi, Windows, or macOS host.
 It uses the host's settings and data.
 It does not need another Octopus API key or another automation worker.
 
@@ -45,8 +45,8 @@ Before testing another edition, select **Disable Pi Service** in native Pi Confi
 - **Compare schedules and measured power.** Check Octopus charging windows beside the programmed FoxESS schedule and current readings.
 - **Control charging and discharging.** Use price rules, weekly schedules, and battery limits.
 - **Pause app control.** Pause for 6, 12, or 24 hours, or until resumed. Monitoring continues.
-- **Connect remotely.** Open a Pi or Windows dashboard through a protected Cloudflare URL.
-- **Review power history.** Compare four charts, expand a chart, or export a month on Pi and Windows.
+- **Connect remotely.** Open a Pi, Windows, or macOS dashboard through a protected Cloudflare URL.
+- **Review power history.** Compare four charts, expand a chart, or export a month on Pi, Windows, and macOS.
 - **Limit storage writes.** Buffer readings in memory, compress monthly files, and remove older history when space is low.
 - **Check API health.** Header badges show connection status and refresh progress. A red border opens retained problem details.
 - **Use desktop or mobile.** Open the same dashboard on a computer, phone, or tablet.
@@ -57,7 +57,7 @@ Version details and changes are listed on each [release download page](https://g
 
 ### Prepare FoxESS work modes
 
-Complete this setup for the Pi, Windows, and web editions.
+Complete this setup for all editions.
 
 - Open your inverter's **Work Mode** page in the FoxESS app.
 - Under **Advanced**, enable **Mode Scheduler**.
@@ -194,7 +194,7 @@ Remote access always uses its own key, even when LAN protection is off.
 ### Open the remote dashboard
 
 - On Pi, select **Remote Access…** from the charger taskbar menu.
-- On Windows, open **Remote Access** above Settings.
+- On Windows or macOS, open **Remote Access** above Settings.
 - Select **Start Quick Tunnel**.
 - Copy the public URL.
 - Select **Copy Key**.
@@ -257,7 +257,7 @@ The app does not send email notifications or include keys in emailed links.
 
 ## History without frequent SD-card writes
 
-Pi and Windows record compact 15-minute power averages and automation activity.
+Pi, Windows, and macOS record compact 15-minute power averages and automation activity.
 The History page shows all measurements together and reports storage use.
 These are observed averages, not billing-grade energy totals.
 Missing readings stay as gaps.
@@ -279,12 +279,51 @@ CSV exports retain the original recorded magnitudes.
 History is separate from account configuration.
 Clearing history does not remove your account details or automation rules.
 
+## macOS desktop host
+
+The macOS Universal download supports Apple Silicon and Intel Macs.
+It includes the same local host and dashboard as the Windows edition.
+No GAS relay is required.
+
+- Download the Universal ZIP from [Releases](https://github.com/samuelkcc/octopus-foxess-smart-charging/releases/latest).
+- Extract the app.
+- Move it to **Applications**.
+- Open **Configure this computer** from Welcome.
+- Follow the [macOS setup guide](desktop/README-MACOS.md).
+
+Keep the Mac awake and the app open.
+This build is ad-hoc signed and is not Apple notarised.
+The guide explains first-launch and Keychain considerations.
+
+## Browser Activity and backups
+
+The standalone web edition uses **Activity**, instead of host power History.
+It records browser pause, resume, and pause-expiry events.
+It retains up to **2,000 records** for **12 months** in browser storage.
+Storage use appears on the Activity page.
+
+- Select **Export activity** to save all retained records as JSON.
+- Select **Import activity** to merge a previous backup.
+- Continue using the same browser to add new activity.
+- Export before clearing browser storage or changing browsers.
+
+Imports remove duplicates and apply the same retention limits.
+Backups exclude accounts, credentials, access keys, and power measurements.
+Import does not restore pause state or send inverter commands.
+Pi, Windows, and macOS retain their existing History page.
+
+![Browser Activity with demonstration pause data](docs/screenshots/web-activity.jpg)
+
 ## Automation and API safeguards
 
 After a Pi restart, initial electricity prices can take several minutes to load through the shared request queue.
 The worker publishes tariff data for all dashboards.
 Phones and desktop dashboards do not make separate Octopus tariff requests.
 Prices and charts update automatically when those requests complete.
+After a successful update, the host saves a private display snapshot.
+After restart, available prices appear as **Last-known prices** until the worker confirms new data.
+Display snapshots expire after 24 hours and never supply automation rules.
+The first update after installation must complete before this recovery file exists.
 Missing rates show a loading or unavailable message, never a synthetic zero price.
 
 - Changed valid Smart Dispatch schedules reconcile immediately, before tariff work.

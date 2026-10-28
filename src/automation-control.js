@@ -3,20 +3,16 @@
  */
 (() => {
     const key = 'smartChargingPauseV1';
-    const eventKey = 'smartChargingActivityV1';
     let state = { paused: false, until: null, revision: 0 };
     let ready = false;
     let authenticated = false;
     let pending = false;
     let inFlight = Promise.resolve();
     const notify = () => window.dispatchEvent(new CustomEvent('automation-control-change'));
-    const localEvents = () => { try { return JSON.parse(localStorage.getItem(eventKey) || '[]'); } catch { return []; } };
+    const localEvents = () => window.browserActivity.events();
     const log = type => {
         const at = new Date().toISOString();
-        const cutoff = new Date(); cutoff.setMonth(cutoff.getMonth() - 12);
-        const events = [{ at, type, until: state.until, revision: state.revision }, ...localEvents()]
-            .filter(event => Date.parse(event.at) >= cutoff.getTime()).slice(0, 2000);
-        localStorage.setItem(eventKey, JSON.stringify(events));
+        window.browserActivity.append({at,type,until:state.until,revision:state.revision});
     };
     function accept(next) {
         if (authenticated && window.linuxRuntime && next.revision < state.revision) return;

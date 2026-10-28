@@ -2,7 +2,7 @@
 const { contextBridge, ipcRenderer } = require('electron');
 const invoke = (operation, value) => ipcRenderer.invoke('desktop:service', operation, value);
 contextBridge.exposeInMainWorld('desktopHost', Object.freeze({
-  platform: 'windows',
+  platform: process.platform === 'darwin' ? 'macos' : 'windows',
   configuration: () => invoke('configuration'),
   saveConfiguration: value => invoke('saveConfiguration', value),
   status: () => invoke('status'),

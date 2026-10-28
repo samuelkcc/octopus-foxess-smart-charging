@@ -25,7 +25,7 @@ async function choosePort() {
   throw new Error('No local service port is available.');
 }
 async function storageKey(directory) {
-  if(!await safeStorage.isAsyncEncryptionAvailable()) throw new Error('Windows encrypted storage is unavailable.');
+  if(!await safeStorage.isAsyncEncryptionAvailable()) throw new Error('Operating-system encrypted storage is unavailable.');
   const file=path.join(directory,'desktop-key.bin');
   try {
     const encrypted=await fs.readFile(file);
@@ -72,7 +72,7 @@ async function start() {
   service=utilityProcess.fork(path.join(__dirname,'service.mjs'),[],{
     serviceName:'Smart Charging service',stdio:'ignore',env:{...process.env,OCTOPUS_DESKTOP:'1',OCTOPUS_SERVICE_ROOT:root,
       OCTOPUS_STATE_DIR:directory,OCTOPUS_WEB_ROOT:path.join(root,'web'),OCTOPUS_HOST:'0.0.0.0',OCTOPUS_PORT:String(port),
-      OCTOPUS_REMOTE_PORT:String(port+1),OCTOPUS_CLOUDFLARED:path.join(assets,'cloudflared.exe')}
+      OCTOPUS_REMOTE_PORT:String(port+1),OCTOPUS_CLOUDFLARED:path.join(assets,process.platform==='win32'?'cloudflared.exe':'cloudflared')}
   });
   service.postMessage({kind:'start',key});
   service.on('exit',()=>{service=null;if(!quitting){dialog.showErrorBox('Smart Charging stopped','The local service stopped. Reopen the app to resume monitoring.');app.quit();}});

@@ -179,7 +179,7 @@ html[data-theme] body { background:var(--bg); }
   .dev-rail nav {position:fixed;inset:auto 0 0;z-index:90;display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:0;padding:6px 4px max(6px,env(safe-area-inset-bottom));border-top:1px solid var(--border);background:var(--card-bg);}
   .dev-rail nav button {min-width:0;min-height:56px;padding:7px 1px;display:flex;flex-direction:column;gap:5px;border:0;font-size:9px;text-align:center;letter-spacing:-.15px;}
   .dev-rail nav button svg {width:19px;height:19px;}.dev-rail nav [data-page=settings] {margin-top:0;}
-  .dev-web-edition .dev-rail nav {grid-template-columns:repeat(5,minmax(0,1fr));}
+  .dev-web-edition .dev-rail nav {grid-template-columns:repeat(6,minmax(0,1fr));}
   .dev-appbar {min-height:52px;padding:12px 18px;}.dev-appbar .dev-breadcrumb,.dev-appbar .dev-breadcrumb-separator {display:none;}
   .dev-auth-mode .dev-appbar .dev-breadcrumb {display:block;}
   .dev-announcement {padding:8px 18px;font-size:10px;}
@@ -627,6 +627,12 @@ html.desktop-viewport,html.desktop-viewport body {height:100%;min-height:0;overf
 #dev-shell nav button[hidden] {display:none!important;}
 @media(max-width:760px) {#dev-shell nav button[data-page=remote] {display:none!important;}}
 .next-price-row small {overflow-wrap:anywhere;}
+.browser-activity-list {list-style:none;margin:12px 0;padding:0;display:grid;gap:10px;}
+.browser-activity-list .next-activity-row {padding:12px;border:1px solid var(--border);border-radius:10px;}
+.browser-activity-list p {margin:6px 0;}
+.browser-activity-pages {display:flex;align-items:center;gap:12px;justify-content:flex-end;}
+.browser-activity-pages[hidden] {display:none;}
+.desktop-viewport .browser-activity-list {flex:1;min-height:0;overflow:auto;align-content:start;}
 #dev-shell .desktop-remote-actions button {width:100%;height:44px;justify-content:center;}
 .desktop-remote-security {display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-top:20px;padding-top:16px;border-top:1px solid var(--border);}
 .desktop-remote-security p {margin:0;flex:1;min-width:180px;}

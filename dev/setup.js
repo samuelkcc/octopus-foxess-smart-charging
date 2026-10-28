@@ -9,13 +9,13 @@
   closeButton.type = 'button'; closeButton.textContent = '×'; closeButton.setAttribute('aria-label','Close setup guide');
   closeButton.addEventListener('click', closeAllDrawers); guideClose.replaceWith(closeButton);
   const heading = guide.querySelector('h3');
-  heading.childNodes[0].textContent = desktop ? 'Windows setup & access guide ' : pi ? 'Pi dashboard access ' : 'Web setup guide ';
+  heading.childNodes[0].textContent = desktop ? 'Desktop setup & access guide ' : pi ? 'Pi dashboard access ' : 'Web setup guide ';
   guide.querySelector('p').textContent = 'Independent home energy automation software under GPL-3.0-or-later. Configure the edition you are using below.';
   if(pi) {
     const title=guide.querySelector('h3');guide.replaceChildren(title);
     const content=document.createElement('div');
     content.innerHTML='<h4>Local network</h4><ol><li>Open the dashboard address shown in Pi Configuration.</li><li>If LAN protection is enabled, enter the LAN access code.</li></ol><h4>Remote access</h4><ol><li>Open Remote Access from the Pi taskbar.</li><li>Copy the public URL.</li><li>Select Copy Key.</li><li>If you use Pi Connect, select Copy from remote.</li><li>Open the URL on your device.</li><li>Enter the Remote Access Key.</li></ol><p>The remote key is different from the LAN access code.</p><h4>Access times</h4><ul><li>The browser login lasts up to 12 hours.</li><li>The same key remains valid until replaced.</li><li>The URL changes when the tunnel restarts.</li></ul><h4>Account setup</h4><p>Manage Octopus and FoxESS credentials in the native Pi Configuration window. This dashboard does not need those credentials.</p>';
-    if (desktop) content.innerHTML='<h4>1. Octopus Energy</h4><ol><li>Open your <a href="https://octopus.energy/dashboard/new/accounts/personal-details/api-access" target="_blank" rel="noopener noreferrer">Octopus API Access page</a>.</li><li>Copy your account number and API key.</li><li>In the Windows app, select Configure this PC from Welcome.</li><li>Enter both values in the Octopus fields.</li></ol><h4>2. FoxESS</h4><ol><li>Sign in to <a href="https://www.foxesscloud.com/login" target="_blank" rel="noopener noreferrer">FoxESSCloud</a>.</li><li>Open User Profile → API Management.</li><li>Create an API token.</li><li>Enter that token in FoxESS API token.</li><li>Find your inverter serial number in Device → Inverter.</li><li>Enter that number in FoxESS serial number.</li><li>Select Save configuration.</li></ol><p>No Google Apps Script relay is needed.</p><h4>Local network</h4><ol><li>In the Windows app, open Remote Access.</li><li>Open its local network address on your other device.</li><li>If protection is enabled, enter the LAN access code.</li></ol><h4>Internet access</h4><ol><li>In the Windows app, open Remote Access.</li><li>Select Start Quick Tunnel.</li><li>Select Copy URL.</li><li>Select Copy Key.</li><li>Open the URL on your other device.</li><li>Enter the Remote Access Key from the Windows app.</li></ol><p>The remote key is separate from the LAN code. Keep the PC and Smart Charging running.</p><h4>Access times</h4><p>Browser sessions last up to 12 hours. The same remote key remains valid until replaced. The URL changes when the tunnel restarts.</p>';
+    if (desktop) content.innerHTML='<h4>1. Octopus Energy</h4><ol><li>Open your <a href="https://octopus.energy/dashboard/new/accounts/personal-details/api-access" target="_blank" rel="noopener noreferrer">Octopus API Access page</a>.</li><li>Copy your account number and API key.</li><li>In the desktop app, select Configure this computer from Welcome.</li><li>Enter both values in the Octopus fields.</li></ol><h4>2. FoxESS</h4><ol><li>Sign in to <a href="https://www.foxesscloud.com/login" target="_blank" rel="noopener noreferrer">FoxESSCloud</a>.</li><li>Open User Profile → API Management.</li><li>Create an API token.</li><li>Enter that token in FoxESS API token.</li><li>Find your inverter serial number in Device → Inverter.</li><li>Enter that number in FoxESS serial number.</li><li>Select Save configuration.</li></ol><p>No Google Apps Script relay is needed.</p><h4>Local network</h4><ol><li>In the desktop app, open Remote Access.</li><li>Open its local network address on your other device.</li><li>If protection is enabled, enter the LAN access code.</li></ol><h4>Internet access</h4><ol><li>In the desktop app, open Remote Access.</li><li>Select Start Quick Tunnel.</li><li>Select Copy URL.</li><li>Select Copy Key.</li><li>Open the URL on your other device.</li><li>Enter the Remote Access Key from the desktop app.</li></ol><p>The remote key is separate from the LAN code. Keep the computer and Smart Charging running.</p><h4>Access times</h4><p>Browser sessions last up to 12 hours. The same remote key remains valid until replaced. The URL changes when the tunnel restarts.</p>';
     guide.append(content);
   } else {
     const title=guide.querySelector('h3');guide.replaceChildren(title);
@@ -57,7 +57,7 @@
     input.closest('.input-group')?.querySelector('label')?.setAttribute('for',id);
   }
   const menu = document.getElementById('app-menu-panel');
-  const guideButton = document.createElement('button'); guideButton.type = 'button'; guideButton.textContent = desktop ? 'Windows setup & access guide' : pi ? 'Pi access & setup help' : 'Web setup guide';
+  const guideButton = document.createElement('button'); guideButton.type = 'button'; guideButton.textContent = desktop ? 'Desktop setup & access guide' : pi ? 'Pi access & setup help' : 'Web setup guide';
   guideButton.addEventListener('click', () => { closeAllDrawers(); toggleDrawer('setup-guide-panel'); });
   menu.querySelector('div').append(guideButton);
 })();
@@ -67,7 +67,7 @@ window.installLaunchScreen = ({ pi, login, parking, byId, make, button, onEnter 
   [...login.children].forEach(node => parking.append(node));
   login.className = 'next-login launch-screen';
   login.dataset.mode = 'welcome';
-  const hostName = document.documentElement.dataset.devEdition === 'desktop' ? 'PC' : 'Pi';
+  const hostName = document.documentElement.dataset.devEdition === 'desktop' ? 'computer' : 'Pi';
   const welcome = make('section', 'launch-welcome');
   const brand = document.querySelector('.dev-brand img').cloneNode(true);
   brand.width = 58; brand.height = 58; brand.alt = '';
@@ -108,7 +108,7 @@ window.installLaunchScreen = ({ pi, login, parking, byId, make, button, onEnter 
   welcome.insertBefore(illustration, flow);
   introArt.replaceChildren(make('span', 'launch-eyebrow', 'YOUR HOME ENERGY WORKSPACE'), make('h2', '', 'Open your home energy workspace'), make('p', '', 'Connect your accounts, review charging windows, and keep your home battery protected.'), welcomeActions, welcomeTools);
   const auth = make('section', 'next-auth-card launch-setup');
-  auth.append(make('span', 'launch-eyebrow', pi ? `${hostName === 'PC' ? 'WINDOWS' : 'PI'} DASHBOARD ACCESS` : 'CONNECT YOUR ACCOUNTS'), make('h2', '', pi ? 'Open your dashboard' : 'A few details. Then you’re connected.'));
+  auth.append(make('span', 'launch-eyebrow', pi ? `${hostName === 'computer' ? 'DESKTOP' : 'PI'} DASHBOARD ACCESS` : 'CONNECT YOUR ACCOUNTS'), make('h2', '', pi ? 'Open your dashboard' : 'A few details. Then you’re connected.'));
   auth.append(make('p', 'next-auth-copy', pi ? 'Use your LAN access code or the separate Remote Access Key.' : 'Your Octopus account, FoxESS device, and Google relay work together here.'));
   const error = byId('error'); error.setAttribute('role', 'alert'); auth.append(error);
   const sections = [];

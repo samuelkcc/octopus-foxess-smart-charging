@@ -404,3 +404,39 @@ Status and mutation responses exclude the key.
 The interface retains its management code in memory for at most five minutes.
 Page exit or backgrounding clears its displayed key and code.
 Native Pi and Windows administration remains available through existing interfaces.
+
+
+## Browser activity backups
+
+`src/activity-store.js` owns the existing browser activity key and validates backup files.
+`dev/activity.js` provides the standalone Activity view and JSON export/import.
+Imports merge records without restoring pause state, credentials, or automation settings.
+Only pause, resume, and timed-pause expiry events are accepted.
+The limit is 12 months or 2,000 records.
+Import files have a one-megabyte limit.
+Pi and Windows keep the host History view.
+
+## Restart display recovery
+
+`linux/tariff-snapshot-cache.mjs` stores the last complete tariff publication with owner-only permissions.
+A credential fingerprint isolates accounts without storing their credentials in the display cache.
+Display recovery expires after 24 hours.
+Pending publications can retain cached rates only for the same agreement.
+Clients label those prices as last-known data.
+Cached display values remain separate from scheduler price arrays and live-price inputs.
+The worker never reads this display recovery endpoint.
+Fresh publications replace the cached display without changing the upstream request budget.
+
+The Pi desktop launcher selects Wayland when its socket exists.
+It otherwise uses an available X11 display.
+It changes to the user's home directory before Chromium starts.
+
+
+## macOS desktop host
+
+The macOS Universal app reuses the desktop host and private administration bridge.
+Electron safeStorage uses macOS Keychain instead of Windows encryption.
+The Universal app and bundled cloudflared include arm64 and x86_64 machine code.
+Build inputs use pinned Cloudflare archive hashes.
+The macOS build has an ad-hoc signature and no Apple notarisation.
+Both platforms stop their service and tunnel when the app closes.

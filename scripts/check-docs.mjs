@@ -1,6 +1,6 @@
 // Structural review only. This does not validate the complete STE dictionary.
 import { readFile } from 'node:fs/promises';
-const files = ['README.md', 'linux/README-RASPBERRY-PI.md', 'dev/README.md', 'docs/WEB-GUIDE.md', 'docs/ARCHITECTURE.md', 'docs/FEATURE-PARITY.md', 'docs/WRITING.md', 'desktop/README.md'];
+const files = ['README.md', 'linux/README-RASPBERRY-PI.md', 'dev/README.md', 'docs/WEB-GUIDE.md', 'docs/ARCHITECTURE.md', 'docs/FEATURE-PARITY.md', 'docs/WRITING.md', 'desktop/README.md', 'desktop/README-MACOS.md', 'docs/QA.md'];
 const problems = [];
 function check(text, file, line, limit) {
   const plain = text.replace(/`[^`]+`/g, 'TECHNICAL_TERM').replace(/\[([^\]]+)\]\([^)]*\)/g, '$1').replace(/[*_]/g, '');

@@ -1,25 +1,28 @@
-# Smart Charging v2.1.0
+# Smart Charging v2.2.0
 
-This release adds manual currency display and protected LAN remote-access management.
-It also separates tariff transport problems from price-rendering problems.
+This release adds a macOS Universal desktop host and browser Activity backups.
+It also repairs Pi desktop launching and preserves last-known price displays after host restarts.
 
-- Settings accepts a currency code, symbol, and manual exchange rate against GBP.
-- Overview prices and tariff charts use the display currency on the current browser.
-- Rule inputs retain UK p/kWh and show converted reference values.
-- Protected LAN clients can view or renew the public URL and reveal or rotate the remote key.
-- LAN management requires enabled access-code protection and explicit code verification.
-- Cloudflare clients cannot use LAN management, even with a valid remote key or session.
-- Key rotation revokes remote sessions. Ordinary LAN status replies exclude the key.
-- Price diagnostics include host publication, client receipt, rendering, and bounded request timing.
-- Host-price reload and foreground recovery read snapshots without additional Octopus requests.
-- Chart errors no longer stop hosted price polling.
-- Email notifications and additional Shell key-display commands are not included.
+- macOS includes one app for Apple Silicon and Intel, with the local host, dashboard, worker, and Cloudflare client.
+- macOS uses Keychain through Electron safeStorage. The app is ad-hoc signed and is not Apple notarised.
+- The standalone web edition replaces History with Activity.
+- Activity records pause, resume, and pause-expiry events in browser storage.
+- Activity export/import uses validated JSON, merges duplicates, and keeps up to 2,000 records for 12 months.
+- Activity import does not restore accounts, change pause state, or send inverter commands.
+- Pi and Windows keep their existing power History.
+- The Pi desktop launcher selects Wayland or X11 and avoids inaccessible installer working directories.
+- Hosts save the last complete price display with private permissions and account isolation.
+- Restart recovery clearly labels last-known prices and waits for worker confirmation.
+- Display recovery expires after 24 hours and never supplies scheduler price inputs.
+- The first successful update must complete before its display recovery file exists.
+- Dashboard reads do not add upstream tariff requests. Pi request spacing remains unchanged.
 - No GAS update is required.
 
-LAN HTTP remains unencrypted. Use a trusted private network or a secure private connection.
-The manual currency setting does not add support for Octopus accounts outside the UK.
-The earlier intermittent missing-price incident has not been reproduced on live hardware.
-These diagnostics support investigation without claiming a confirmed upstream cause.
-Native Windows and live Pi deployment require operator verification.
-The full automated checks and both interface builds passed.
-Browser checks used mock Pi, web, and 390-pixel mobile interfaces.
+Live Pi diagnostics confirmed complete import/export data after the startup queue finished, with recent HTTP 200 responses and no observed 429.
+The native Pi desktop launcher was repaired and successfully opened Welcome without restarting the worker or tunnel.
+This finding does not establish the cause of every earlier missing-price report.
+
+Automated checks cover restart recovery, stale-display isolation, Activity backups, desktop access restrictions, API budgets, authentication, and scheduler safety.
+Package checks verify both macOS architectures and the bundled tunnel client.
+Native macOS Keychain, Intel execution, and current Windows execution require operator verification.
+No live inverter command is used as a test.

@@ -2,7 +2,7 @@
  * One Settings view. Engine-owned controls keep their IDs and event handlers.
  */
 (() => {
-  const hostName = document.documentElement.dataset.devEdition === 'desktop' ? 'PC' : 'Pi';
+  const hostName = document.documentElement.dataset.devEdition === 'desktop' ? 'computer' : 'Pi';
   const pi = document.documentElement.dataset.devEdition !== 'web';
   const shell = document.getElementById('dev-shell');
   const grid = shell.querySelector('[data-page="settings"] .dev-page-grid');
@@ -68,7 +68,7 @@
   window.addEventListener('dashboard-visibility-change',syncThresholdHints);syncThresholdHints();
 
   const refreshSettings=card('API refresh intervals', pi
-    ? `These intervals apply to the ${hostName} worker. Octopus requests are at least 60 seconds apart.`
+    ? `These intervals apply to the ${hostName} worker. Routine Octopus refresh has a 60-second minimum.`
     : 'Set how often this browser reads each API. Keep this browser open and awake.');
   for(const [name,id,buttonId,title] of [['octopus','octo-interval-input','btn-apply-octo','Octopus Energy'],['foxess','fox-interval-input','btn-apply-fox','FoxESS']]) {
     const row=make('div','next-refresh-setting');

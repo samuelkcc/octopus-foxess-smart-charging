@@ -301,4 +301,23 @@ Overview prices and tariff charts use this browser preference.
 Rule inputs remain in UK p/kWh, with a converted reference value beside each input.
 This setting does not support accounts from other Octopus countries.
 No GAS update is required for currency display or the new diagnostics.
-Host snapshot recovery and LAN tunnel management apply only to Pi and Windows hosts.
+Host snapshot recovery and LAN tunnel management apply only to Pi, Windows, and macOS hosts.
+
+
+## Save browser Activity
+
+The standalone web edition records pause, resume, and timed-pause expiry in **Activity**.
+It keeps up to 2,000 records for 12 months in this browser.
+It does not collect host power History.
+
+1. Open **Activity**.
+2. Select **Export activity**.
+3. Save the JSON backup.
+4. To continue from a backup, select **Import activity**.
+5. Select the saved JSON file.
+
+Import merges activity records and removes duplicates.
+It does not restore account settings or change the current pause state.
+The Activity page reports estimated browser storage use.
+Export before clearing browser data or changing browsers.
+No GAS update is required.

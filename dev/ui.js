@@ -24,7 +24,7 @@
     connections:'<path d="m9 15 6-6m-7 9-1 1a4 4 0 0 1-6-6l5-5a4 4 0 0 1 6 0m0 8a4 4 0 0 0 6 0l5-5a4 4 0 0 0-6-6l-1 1"/>',
     settings:'<path d="M4 7h16M4 17h16"/><circle cx="9" cy="7" r="3"/><circle cx="15" cy="17" r="3"/>'
   };
-  const nav = Object.entries({overview:'Overview',schedules:'Schedules',rules:'Automations',history:'History',connections:'Connections',settings:'Settings'}).map(([page,label]) => `<button type="button" data-page="${page}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${navIcons[page]}</svg><span>${label}</span></button>`).join('');
+  const nav = Object.entries({overview:'Overview',schedules:'Schedules',rules:'Automations',history:piEdition?'History':'Activity',connections:'Connections',settings:'Settings'}).map(([page,label]) => `<button type="button" data-page="${page}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${navIcons[page]}</svg><span>${label}</span></button>`).join('');
   shell.innerHTML = `<aside class="dev-rail"><div class="dev-brand"><img src="/octopus-foxess.svg" alt="" width="42" height="42"><div><strong>Smart Charging</strong><small>for Octopus Energy &amp; FoxESS</small></div></div><span class="dev-tag">HOME ENERGY</span><nav aria-label="Main navigation">${nav}</nav><div class="dev-rail-bottom"><button id="dev-about">About &amp; licences</button></div></aside><div class="dev-workspace"><header class="dev-appbar"><div><span class="dev-breadcrumb">Smart Charging</span><span class="dev-breadcrumb-separator" aria-hidden="true">/</span><strong id="dev-page-name">Overview</strong></div><div class="dev-app-actions"><span class="dev-service" hidden></span><button id="dev-theme" aria-label="Toggle light and dark appearance">◐</button></div></header><div class="dev-announcement">Automation runs on your ${hostName}. You can close this dashboard.</div><div id="dev-content"></div></div>`;
   // The app theme selects both brand and browser-tab artwork.
   const syncBrandTheme = () => {
@@ -48,7 +48,7 @@
 
   }
   const sections = {};
-  const titles = { overview:'Overview', schedules:'Schedules', rules:'Automations', history:'History', connections:'Connections', settings:'Settings' };
+  const titles = { overview:'Overview', schedules:'Schedules', rules:'Automations', history:piEdition?'History':'Activity', connections:'Connections', settings:'Settings' };
   const descriptions = {
     overview:'Your current power flow, dispatch windows, and FoxESS confirmation.',
     schedules:'The current inverter schedule and manual controls. Actions here affect real hardware.',
@@ -66,7 +66,7 @@
     sections[name] = section;
   }
   if (!piEdition) {
-    sections.history.querySelector('header p').textContent = 'Pause and resume activity stored in this browser. The Pi edition also records power history.';
+    sections.history.querySelector('header p').textContent = 'Review, export, or import pause and resume activity stored in this browser.';
     sections.settings.querySelector('header p').textContent = 'Appearance, visible panels, configuration backups and browser data.';
     sections.connections.querySelector('header p').textContent = 'Account setup, Google relay, saved configuration and browser requirements.';
     sections.overview.querySelector('header p').textContent = 'Current power flow, Octopus dispatches and FoxESS schedules in this browser.';
@@ -105,7 +105,9 @@
   }
   const historyPanel = document.createElement('section');
   historyPanel.className = 'card dev-history';
-  const historyView = window.installHistoryView(historyPanel, {piEdition,isVisible:()=>currentPage === 'history' && dashboard.classList.contains('visible')});
+  const historyView = piEdition
+    ? window.installHistoryView(historyPanel, {piEdition,isVisible:()=>currentPage === 'history' && dashboard.classList.contains('visible')})
+    : window.installActivityView(historyPanel, {isVisible:()=>currentPage === 'history' && dashboard.classList.contains('visible')});
   const loadHistory = () => historyView.load();
   move(historyPanel, 'history');
   // Apply uses the unchanged scheduler engine, after an explicit review step.
@@ -192,7 +194,7 @@
     });
     document.getElementById('dev-page-name').textContent = titles[name];
     const viewUrl = new URL(location.href);
-    viewUrl.searchParams.set('view', name);
+    viewUrl.searchParams.set('view', !piEdition && name==='history'?'activity':name);
     history.replaceState(null, '', viewUrl);
     if (name === 'history') void loadHistory();
     schedulePriceChartResize();
@@ -219,9 +221,10 @@
     document.getElementById('dev-confirmed').textContent = format(snapshot?.confirmedAt);
     document.getElementById('dev-periods').textContent = `${(window.activeFoxGroups || []).length} / 5`;
     document.getElementById('dev-telemetry-at').textContent = format(window.lastFoxTelemetryUpdate);
-    if (currentPage === 'history' && historyView.needsLoad() && piEdition && window.linuxRuntime) void loadHistory();
+    if (currentPage === 'history' && historyView.needsLoad() && (!piEdition || window.linuxRuntime)) void loadHistory();
   }
   updateWorkerView(); setInterval(updateWorkerView, 5000);
-  const initialView = new URLSearchParams(location.search).get('view');
+  const requestedView = new URLSearchParams(location.search).get('view');
+  const initialView = !piEdition && requestedView==='activity'?'history':requestedView;
   navigate(Object.hasOwn(titles, initialView) ? initialView : 'overview');
 })();
