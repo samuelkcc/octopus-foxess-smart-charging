@@ -10,6 +10,10 @@ on:
         description: Release tag
         required: true
         default: v2.2.0
+      mac_only:
+        description: Build only the macOS asset for an existing release tag
+        type: boolean
+        default: false
 
 permissions:
   contents: write
@@ -20,6 +24,7 @@ concurrency:
 
 jobs:
   release:
+    if: ${{ inputs.mac_only != true }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -75,9 +80,14 @@ jobs:
 
   macos:
     needs: release
-    runs-on: macos-14
+    if: ${{ always() && (needs.release.result == 'success' || inputs.mac_only == true) }}
+    runs-on: macos-15
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.tag || github.ref }}
+      - name: Record packaged source commit
+        run: echo "OCTOPUS_UI_COMMIT=$(git rev-parse HEAD)" >> "$GITHUB_ENV"
       - uses: actions/setup-node@v4
         with:
           node-version: 22
@@ -86,8 +96,6 @@ jobs:
       - run: npm ci --prefix desktop
       - run: npm run check
       - run: npm run build:dev
-        env:
-          OCTOPUS_UI_COMMIT: ${{ github.sha }}
       - name: Build and verify macOS Universal app
         run: node scripts/build-desktop.mjs --mac
       - name: Add macOS download and checksum to the release
