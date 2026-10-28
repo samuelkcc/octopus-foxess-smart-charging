@@ -149,10 +149,15 @@
       schedulePriceChartResize();
     }
     const importPrice=window.currentLivePrice;
-    byId('next-import-price').textContent=Number.isFinite(importPrice)?Number(importPrice).toFixed(2):'—';
+    byId('next-import-price').textContent=window.priceDisplay.number(importPrice);
     const exportRate=getRateAtTime(window.exportRates || [],Date.now());
-    byId('next-export-price').textContent=exportRate?Number(exportRate.value_inc_vat).toFixed(2):'—';
+    byId('next-export-price').textContent=window.priceDisplay.number(exportRate?.value_inc_vat);
+    priceRow.querySelectorAll('small').forEach(node=>{node.textContent=window.priceDisplay.unit();});
     if(!dashboard.classList.contains('visible'))syncAuth();
   };
   refreshView();setInterval(refreshView,1000);
+  window.addEventListener('price-display-change',()=>{renderTariffsSafely();refreshView();});
+  const reloadHostPrices=()=>{if(window.linuxRuntime && window.linuxRole!=='worker')void refreshOctopusTariffs();};
+  window.addEventListener('pageshow',reloadHostPrices);
+  document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')reloadHostPrices();});
 })();

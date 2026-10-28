@@ -287,3 +287,18 @@ The user confirmed that Chrome and the Windows host could connect.
 Content blockers did not explain the isolated failure.
 The app reports the affected Octopus request instead of displaying a generic GAS error.
 This patch does not claim to resolve the upstream Safari rejection.
+
+## Display another currency
+
+1. Open **Settings → Price display**.
+2. Enable **Use a custom display currency**.
+3. Enter the currency code.
+4. Enter its display symbol.
+5. Enter the manual exchange rate against one GBP.
+6. Select **Save price display**.
+
+Overview prices and tariff charts use this browser preference.
+Rule inputs remain in UK p/kWh, with a converted reference value beside each input.
+This setting does not support accounts from other Octopus countries.
+No GAS update is required for currency display or the new diagnostics.
+Host snapshot recovery and LAN tunnel management apply only to Pi and Windows hosts.

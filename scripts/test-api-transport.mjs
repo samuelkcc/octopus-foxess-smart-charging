@@ -58,10 +58,15 @@ try {
   const priceLog=await readFile(log,'utf8');
   const priceClients=await Promise.all(Array.from({length:8},()=>fetch(origin+'/api/tariff-snapshot').then(r=>r.json())));
   assert(priceClients.every(value=>value.state.importRates[0].value_inc_vat===29.82));
+  assert(priceClients.every(value=>value.transport.revision>0 && value.transport.publishedAt>0 && value.transport.servedAt>0),'Host snapshots report publication and delivery timing');
   assert(!JSON.stringify(priceClients).includes('never-export'));
   assert.equal(await readFile(log,'utf8'),priceLog,'Multiple tariff clients must not request Octopus.');
   await octopus('basic','accounts/A-TEST/');
   await octopus('none','products/TEST/electricity-tariffs/TEST/standard-unit-rates/');
+  const diagnostics=await fetch(origin+'/api/integration-status').then(r=>r.json());
+  assert(diagnostics.octopusRequests.recent.some(row=>row.kind==='tariff' && row.source==='upstream'));
+  assert(!JSON.stringify(diagnostics.octopusRequests).includes('A-TEST'));
+  assert(!JSON.stringify(diagnostics.octopusRequests).includes('test-octo'));
   const limited=await octopus('none','products/TEST/electricity-tariffs/TEST/night-unit-rates/');
   assert.equal(limited.status,429);assert.equal(limited.headers.get('retry-after'),'180');
   await octopus('none','products/TEST/electricity-tariffs/TEST/day-unit-rates/');

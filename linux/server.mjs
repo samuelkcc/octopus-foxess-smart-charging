@@ -25,6 +25,7 @@ const port = Number(process.env.OCTOPUS_PORT || 8787);
 const remotePort = Number(process.env.OCTOPUS_REMOTE_PORT || port + 1);
 const remoteRequests = new WeakSet();
 const remoteSessions = new RemoteSessions();
+const lanManagementAttempts = new RemoteSessions();
 const quickTunnel = new QuickTunnel({ url: `http://127.0.0.1:${remotePort}` });
 const maxBodyBytes = 128 * 1024;
 const allowedFoxHost = 'www.foxesscloud.com';
@@ -46,6 +47,15 @@ let octopusAuthFingerprint = null;
 let octopusTokenCache = { apiKeyFingerprint: null, token: null, expiresAt: 0 };
 let octopusDisplaySnapshot = null;
 let tariffDisplaySnapshot = null;
+let tariffSnapshotRevision = 0;
+const hostInstance = randomBytes(8).toString('hex');
+function tariffTransportStatus() {
+  const snapshot=tariffDisplaySnapshot;
+  return {hostInstance,revision:snapshot?.revision || 0,publishedAt:snapshot?.publishedAt || null,
+    updatedAt:snapshot?.payload.state?.updatedAt || null,pending:snapshot?.payload.pending ?? true,
+    problem:snapshot?.payload.problem === true,importCount:snapshot?.payload.state?.importRates.length || 0,
+    exportCount:snapshot?.payload.state?.exportRates.length || 0};
+}
 let packageContents;
 try {
   packageContents = await readFile(path.join(appRoot, 'package.json'), 'utf8');
@@ -94,15 +104,26 @@ const cacheSuccessfulJson = packet => {
   try { const data = JSON.parse(packet.text); return packet.status === 200 && !data.errors && (data.errno === undefined || data.errno === 0); }
   catch { return false; }
 };
+// Bounded RAM trace. No URLs, credentials, request bodies, or account identifiers.
+const octopusRequestTrace = [];
+function traceOctopus(kind, source, startedAt, status = null) {
+  octopusRequestTrace.push({kind,source,startedAt,finishedAt:Date.now(),status});
+  if (octopusRequestTrace.length > 40) octopusRequestTrace.shift();
+}
 async function octopusFetch(key, target, options, ttl = 0) {
   serviceControl.assertEnabled();
   const publicTariff = key.startsWith('tariff:');
   const restored = publicTariff && tariffRestartCache.get(target.pathname);
-  if (restored) return unpackResponse(restored);
+  const kind = key.startsWith('tariff:') ? 'tariff' : key.startsWith('account:') ? 'account' : key.startsWith('auth:') ? 'authentication' : 'dispatch';
+  if (restored) {traceOctopus(kind,'restart-cache',Date.now(),restored.status);return unpackResponse(restored);}
   const revision=serviceControl.revision;
   const packet = await octopusBudget.run(`${revision}:${key}`, async () => {
     serviceControl.assertEnabled(revision);
-    const result = await responsePacket(await fetch(target, { ...options, signal: AbortSignal.timeout(20_000) }));
+    const startedAt=Date.now();
+    let result;
+    try {result = await responsePacket(await fetch(target, { ...options, signal: AbortSignal.timeout(20_000) }));}
+    catch(error){traceOctopus(kind,'network-error',startedAt);throw error;}
+    traceOctopus(kind,'upstream',startedAt,result.status);
     let data;
     try { data = JSON.parse(result.text); } catch { /* Invalid upstream data remains an error. */ }
     const delay = retryDelay(unpackResponse(result), data);
@@ -231,7 +252,8 @@ let integrationRefreshRequestId = 0;
 let integrationWorker = null;
 function integrationSnapshot() {
   if (integrationHealth.expireAlerts()) void saveIntegrationHealth(true).catch(() => {});
-  return { ...integrationHealth.snapshot(), serviceEnabled:serviceControl.enabled, storageError: integrationStorageError, refreshRequestId: integrationRefreshRequestId, worker: integrationWorker }; }
+  return { ...integrationHealth.snapshot(), serviceEnabled:serviceControl.enabled, storageError: integrationStorageError, refreshRequestId: integrationRefreshRequestId, worker: integrationWorker,
+    tariff:tariffTransportStatus(),octopusRequests:{activity:octopusBudget.activity,queued:octopusBudget.queue.length,nextAllowedAt:octopusBudget.nextAt,recent:octopusRequestTrace.slice()} }; }
 function publicProblem(error) {
   const text = String(error?.message || error || '');
   const http = text.match(/HTTP (\d{3})/);
@@ -725,8 +747,24 @@ async function handleRequest(request, response) {
       }
       return sendJson(response,200,control);
     }
-    if (pathname === '/api/remote-access') {
-      if (!isLoopback(request)) return sendJson(response, 403, { error: 'Remote access is managed on the Raspberry Pi only' });
+    if (pathname === '/api/remote-access' || pathname === '/api/lan-remote-access') {
+      const lanManagement = pathname === '/api/lan-remote-access';
+      if (lanManagement) {
+        // Never trust forwarded headers, loopback bypasses, or a remote session here.
+        const hostname = requestUrl.hostname;
+        const address=String(request.socket.remoteAddress || '').replace(/^::ffff:/,'');
+        const privateAddress=/^(127\.|10\.|192\.168\.|169\.254\.|172\.(1[6-9]|2\d|3[01])\.)/.test(address)
+          || address==='::1' || /^(f[cd][0-9a-f]{2}:|fe80:)/i.test(address);
+        const localHosts = new Set(['localhost','127.0.0.1','[::1]',...Object.values(networkInterfaces()).flat().filter(Boolean).map(item=>item.address)]);
+        if (remoteRequests.has(request) || !privateAddress || !localHosts.has(hostname) || !(await isLanAccessRequired())) {
+          return sendJson(response,403,{error:'Enable LAN access-code protection in host Configuration first. Cloudflare clients cannot manage remote access.'});
+        }
+        if (request.headers['sec-fetch-site'] === 'cross-site' || request.headers.origin && request.headers.origin !== `http://${request.headers.host}`) return sendJson(response,403,{error:'Cross-site request rejected'});
+        if (lanManagementAttempts.limited()) return sendJson(response,429,{error:'Too many attempts. Wait one minute.'});
+        if (!matchesRemoteKey(request.headers['x-octopus-access-key'],await getAccessKey())) {
+          lanManagementAttempts.fail();return sendJson(response,401,{error:'Enter the LAN access code to manage remote access.'});
+        }
+      } else if (!isLoopback(request)) return sendJson(response, 403, { error: 'Remote access is managed on the Raspberry Pi only' });
       let state = await loadState();
       if (request.method === 'PUT') {
         const update = await readJsonBody(request);
@@ -742,7 +780,8 @@ async function handleRequest(request, response) {
         if (update.renewUrl) quickTunnel.restart();
         else if (remoteAccess.enabled) quickTunnel.start(); else quickTunnel.stop();
       }
-      if (['GET', 'PUT'].includes(request.method)) return sendJson(response, 200, { enabled: state.remoteAccess?.enabled === true, key: state.remoteAccess?.key || '', ...quickTunnel.status });
+      if (['GET', 'PUT'].includes(request.method)) return sendJson(response, 200, { enabled: state.remoteAccess?.enabled === true,
+        ...(!lanManagement || request.method === 'GET' && requestUrl.searchParams.get('reveal') === '1' ? {key:state.remoteAccess?.key || ''} : {}), ...quickTunnel.status });
       return sendJson(response, 405, { error: 'Method not allowed' });
     }
 
@@ -787,6 +826,7 @@ async function handleRequest(request, response) {
         authRequired: remote ? !(await isAuthorized(request)) : accessRequired && role !== 'worker' && !localConfiguration
           && !(process.env.OCTOPUS_DESKTOP === '1' && isLoopback(request) && request.headers['x-octopus-access-key'] === await getAccessKey()),
         remoteAccess: remote,
+        lanRemoteManagement: !remote && accessRequired,
         lanUrls: remote ? [] : getLanUrls()
       });
     }
@@ -965,7 +1005,8 @@ async function handleRequest(request, response) {
       const state = await loadState();
       const identity = createHash('sha256').update(JSON.stringify(state.credentials || {})).digest('hex');
       return sendJson(response, 200, tariffDisplaySnapshot?.identity === identity
-        ? tariffDisplaySnapshot.payload : { pending:true, state:null });
+        ? {...tariffDisplaySnapshot.payload,transport:{...tariffTransportStatus(),servedAt:Date.now()}}
+        : { pending:true, state:null,transport:{hostInstance,revision:0,servedAt:Date.now()} });
     }
     if (pathname === '/api/tariff-snapshot' && request.method === 'POST') {
       if (!isLoopback(request) || !isExplicitWorkerRequest(request)) return sendJson(response,403,{error:'Only the worker can publish tariffs'});
@@ -976,7 +1017,7 @@ async function handleRequest(request, response) {
         && (!row.valid_to || Number.isFinite(Date.parse(row.valid_to))));
       if (!source && update.problem === true) {
         const state = await loadState();
-        tariffDisplaySnapshot = {identity:createHash('sha256').update(JSON.stringify(state.credentials || {})).digest('hex'),
+        tariffDisplaySnapshot = {revision:++tariffSnapshotRevision,publishedAt:Date.now(),identity:createHash('sha256').update(JSON.stringify(state.credentials || {})).digest('hex'),
           payload:{pending:false,problem:true,state:null}};
         return sendJson(response,200,{saved:true});
       }
@@ -984,7 +1025,7 @@ async function handleRequest(request, response) {
       const cleanRates = values => values.map(row => ({value_inc_vat:row.value_inc_vat,valid_from:row.valid_from || null,valid_to:row.valid_to || null}));
       const code = value => typeof value === 'string' && /^[A-Za-z0-9 -]{1,100}$/.test(value) ? value : 'Not available';
       const state = await loadState();
-      tariffDisplaySnapshot = {identity:createHash('sha256').update(JSON.stringify(state.credentials || {})).digest('hex'),payload:{
+      tariffDisplaySnapshot = {revision:++tariffSnapshotRevision,publishedAt:Date.now(),identity:createHash('sha256').update(JSON.stringify(state.credentials || {})).digest('hex'),payload:{
         pending:update.pending === true, problem:update.problem === true, progress:Math.min(2,Math.max(0,Number(update.progress)||0)),
         state:{importTariffCode:code(source.importTariffCode),exportTariffCode:code(source.exportTariffCode),
           importRates:cleanRates(source.importRates),exportRates:cleanRates(source.exportRates),

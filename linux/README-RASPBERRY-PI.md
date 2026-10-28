@@ -129,7 +129,7 @@ The browser uses a Secure, HttpOnly, SameSite session cookie.
 The app does not save the remote key in browser local storage.
 
 The tunnel uses a dedicated loopback listener, normally port `8788`.
-It blocks Pi administration, credential editing, key management, and worker publication.
+It blocks Pi administration, credential editing, key management, and worker publication through the tunnel.
 Do not expose the LAN/admin port `8787` to the internet.
 Do not point a public tunnel at that port.
 
@@ -165,6 +165,25 @@ Set up [Raspberry Pi Connect](https://www.raspberrypi.com/documentation/services
 5. Select **Copy Key**.
 6. Use Pi Connect's **Copy from remote** to transfer the key.
 7. Update the bookmark or Home Screen shortcut.
+
+## Manage the tunnel from your LAN
+
+1. In native Configuration, enable **Require a LAN access code**.
+2. Open the LAN dashboard.
+3. Open **Settings → Remote Access → Open Remote Access**.
+4. Enter the LAN access code.
+5. Select **Unlock LAN management**.
+6. Select the required URL or key action.
+
+The server requires the LAN code even when a browser already has a remote session.
+Key disclosure requires an explicit **Show key** or **Copy Key** action.
+Ordinary status replies do not contain a key.
+Management locks after five minutes, when the tab enters the background, or when you leave the page.
+The existing code grants management permissions to each person who knows it.
+LAN HTTP is not encrypted. Use a trusted private network or a secure private connection.
+Cloudflare requests cannot use this endpoint or gain local privileges with forwarded headers.
+Use Pi Connect if the LAN address is unavailable.
+Email delivery and additional Shell key-display commands are not included.
 
 ## Add a Home Screen shortcut
 

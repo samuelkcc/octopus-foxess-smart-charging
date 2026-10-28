@@ -328,6 +328,7 @@ async function detectLinuxRuntime() {
         window.linuxAuthRequired = runtime.authRequired;
         window.linuxAccessRequired = runtime.accessRequired !== false;
         window.linuxLocalConfiguration = runtime.localConfiguration === true;
+        window.dispatchEvent(new Event('host-runtime-ready'));
         document.body.classList.add('linux-runtime', `linux-role-${runtime.role}`);
         if (window.linuxRemoteAccess) {
             document.querySelector('.linux-access-group label').textContent = '🔐 Remote Access Key';
@@ -1387,6 +1388,17 @@ let octopusTariffProblem = false;
 let octopusTariffProgress = 0;
 let octopusTariffHostPending = false;
 let tariffPublicationPromise = Promise.resolve();
+const tariffClientDiagnostics = {attemptAt:null,receivedAt:null,renderedAt:null,readError:false,readStatus:null,renderError:false,transport:null};
+function renderTariffsSafely(dispatches) {
+    try {
+        renderOctopusTariffs(dispatches);
+        tariffClientDiagnostics.renderedAt=Date.now();tariffClientDiagnostics.renderError=false;
+        window.integrationMonitor?.success('octopus','tariff-render');
+    } catch(error) {
+        tariffClientDiagnostics.renderError=true;
+        window.integrationMonitor?.failure('octopus','tariff-render',new Error('Price display could not be rendered.'));
+    }
+}
 function publishTariffSnapshot(pending) {
     if (!window.linuxRuntime || window.linuxRole !== 'worker') return Promise.resolve();
     const body = JSON.stringify({state:octopusTariffState,pending,problem:octopusTariffProblem,progress:octopusTariffProgress});
@@ -1396,13 +1408,26 @@ function publishTariffSnapshot(pending) {
     return tariffPublicationPromise;
 }
 async function readTariffSnapshot() {
+    tariffClientDiagnostics.attemptAt=Date.now();
     try {
         const snapshot = await fetchJson('/api/tariff-snapshot', {cache:'no-store'});
+        if (snapshot.state && (!Array.isArray(snapshot.state.importRates) || !Array.isArray(snapshot.state.exportRates))) throw new Error('Invalid tariff snapshot');
         if (snapshot.state) octopusTariffState = snapshot.state;
+        else if (!snapshot.problem) octopusTariffState = null;
         octopusTariffProgress = snapshot.progress || 0;
         octopusTariffHostPending = snapshot.pending === true;
         octopusTariffProblem = snapshot.problem === true;
-    } catch { octopusTariffProblem = true; }
+        tariffClientDiagnostics.receivedAt=Date.now();tariffClientDiagnostics.readError=false;tariffClientDiagnostics.readStatus=200;
+        const meta=snapshot.transport || {};
+        tariffClientDiagnostics.transport={revision:Number.isSafeInteger(meta.revision)?meta.revision:null,
+            publishedAt:Number.isFinite(meta.publishedAt)?meta.publishedAt:null,servedAt:Number.isFinite(meta.servedAt)?meta.servedAt:null};
+        window.integrationMonitor?.success('octopus','tariff-snapshot');
+    } catch(error) {
+        octopusTariffProblem = true;tariffClientDiagnostics.readError=true;
+        tariffClientDiagnostics.readStatus=Number.isInteger(error.statusCode)?error.statusCode:null;
+        const safeProblem=tariffClientDiagnostics.readStatus?`Host price snapshot failed (HTTP ${tariffClientDiagnostics.readStatus}).`:/timed? ?out|timeout/i.test(error.message || '')?'Host price snapshot request timed out.':'Host price snapshot could not be read.';
+        window.integrationMonitor?.failure('octopus','tariff-snapshot',new Error(safeProblem));
+    }
 }
 function refreshOctopusTariffs(acc, api) {
     if (window.linuxRuntime && window.linuxServiceEnabled === false) return null;
@@ -1423,7 +1448,7 @@ function refreshOctopusTariffs(acc, api) {
         octopusTariffState = { importTariffCode, exportTariffCode,
             importRates: previous?.importTariffCode === importTariffCode ? previous.importRates : [],
             exportRates: previous?.exportTariffCode === exportTariffCode ? previous.exportRates : [] };
-        renderOctopusTariffs();
+        renderTariffsSafely();
         void publishTariffSnapshot(true);
         await Promise.allSettled(['import', 'export'].map(async prefix => {
             try {
@@ -1439,7 +1464,7 @@ function refreshOctopusTariffs(acc, api) {
                 octopusTariffState.minRate = prices.length ? Math.min(...prices) : null;
                 octopusTariffState.maxRate = prices.length ? Math.max(...prices) : null;
                 // A queued import must not hide an export price that is ready.
-                renderOctopusTariffs();
+                renderTariffsSafely();
                 void publishTariffSnapshot(true);
             }
         }));
@@ -1459,9 +1484,9 @@ function refreshOctopusTariffs(acc, api) {
             octopusTariffRetryTimer = null;
             void refreshOctopusTariffs(acc, api);
         }, window.linuxRuntime && window.linuxRole !== 'worker' ? 5000 : 60_000);
-        renderOctopusTariffs();
+        renderTariffsSafely();
     });
-    if (!(window.linuxRuntime && window.linuxRole !== 'worker')) renderOctopusTariffs();
+    if (!(window.linuxRuntime && window.linuxRole !== 'worker')) renderTariffsSafely();
     return octopusTariffPromise;
 }
 
@@ -1522,7 +1547,8 @@ function renderOctopusTariffs(dispatches = window.currentDispatches || []) {
         priceLabel = "🟢 OFF-PEAK ACTIVE";
         badgeClass = "off-peak";
     }
-    const displayPrice = livePrice !== null ? livePrice + 'p' : '--p';
+    const displayPrice = window.priceDisplay ? escapeHtml(window.priceDisplay.format(livePrice)) : livePrice !== null ? livePrice + 'p' : '--p';
+    const priceUnit = window.priceDisplay ? escapeHtml(window.priceDisplay.unit()) : 'p/kWh';
 
     document.getElementById('ui-pricing').innerHTML = `
         <div class="tariff-live-grid">
@@ -1532,16 +1558,16 @@ function renderOctopusTariffs(dispatches = window.currentDispatches || []) {
                     <span class="badge ${badgeClass}">${priceLabel}</span>
                 </div>
                 <div class="tariff-live-price">${displayPrice}</div>
-                <div class="tariff-live-unit">Live grid purchase rate · p/kWh</div>
-                <div class="tariff-live-note">Lowest daily import: <strong>${Number.isFinite(minRate) ? minRate + 'p' : 'Pending'}</strong></div>
+                <div class="tariff-live-unit">Live grid purchase rate · ${priceUnit}</div>
+                <div class="tariff-live-note">Lowest daily import: <strong>${Number.isFinite(minRate) ? window.priceDisplay ? escapeHtml(window.priceDisplay.format(minRate)) : minRate + 'p' : 'Pending'}</strong></div>
             </div>
             <div class="tariff-live-card tariff-live-export">
                 <div class="tariff-live-heading">
                     <span>⬆ Export tariff</span>
                     <span class="tariff-direction-badge">SEG</span>
                 </div>
-                <div class="tariff-live-price">${liveExportPrice !== null ? liveExportPrice + 'p' : '--p'}</div>
-                <div class="tariff-live-unit">Live grid payment rate · p/kWh</div>
+                <div class="tariff-live-price">${window.priceDisplay ? escapeHtml(window.priceDisplay.format(liveExportPrice)) : liveExportPrice !== null ? liveExportPrice + 'p' : '--p'}</div>
+                <div class="tariff-live-unit">Live grid payment rate · ${priceUnit}</div>
                 <div class="tariff-live-note">${liveExportPrice !== null ? 'Paid for electricity sent to the grid' : 'Waiting for active export rate data'}</div>
             </div>
         </div>
@@ -3165,6 +3191,7 @@ async function setV3Schedule(mode) {
 function drawPriceCharts(peak, offPeak, dispatches) {
     const chartState = JSON.stringify({
         day: new Date().toDateString(),
+        currency: window.priceDisplay?.read(),
         pending: Boolean(octopusTariffPromise),
         problem: octopusTariffProblem,
         peak,
@@ -3217,8 +3244,8 @@ function drawPriceCharts(peak, offPeak, dispatches) {
                 importSlotPrice = offPeak;
             }
             
-            importDataPoints.push(importSlotPrice);
-            exportDataPoints.push(exportSlotPrice);
+            importDataPoints.push(window.priceDisplay ? window.priceDisplay.convert(importSlotPrice) : importSlotPrice);
+            exportDataPoints.push(window.priceDisplay ? window.priceDisplay.convert(exportSlotPrice) : exportSlotPrice);
         }
     }
 
@@ -3237,7 +3264,7 @@ function drawPriceCharts(peak, offPeak, dispatches) {
                 displayColors: false,
                 callbacks: {
                     title: items => items[0]?.label || '',
-                    label: context => `${context.parsed.y.toFixed(2)}p/kWh`
+                    label: context => `${context.parsed.y.toFixed(window.priceDisplay?.read().enabled ? 4 : 2)} ${window.priceDisplay?.unit() || 'p/kWh'}`
                 }
             }
         },
@@ -3249,7 +3276,7 @@ function drawPriceCharts(peak, offPeak, dispatches) {
             y: {
                 beginAtZero: true,
                 border: { display: false },
-                title: { display: true, text: 'p/kWh', color: textColor },
+                title: { display: true, text: window.priceDisplay?.unit() || 'p/kWh', color: textColor },
                 ticks: { color: textColor, maxTicksLimit: 5 },
                 grid: { color: gridColor }
             }

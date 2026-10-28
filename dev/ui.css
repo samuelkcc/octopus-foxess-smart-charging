@@ -624,6 +624,9 @@ html.desktop-viewport,html.desktop-viewport body {height:100%;min-height:0;overf
 #dev-shell .desktop-configuration .next-field-grid {margin:0;gap:12px;}
 .desktop-configuration>.next-muted {margin:0;}
 .desktop-remote-actions {display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-top:18px;}
+#dev-shell nav button[hidden] {display:none!important;}
+@media(max-width:760px) {#dev-shell nav button[data-page=remote] {display:none!important;}}
+.next-price-row small {overflow-wrap:anywhere;}
 #dev-shell .desktop-remote-actions button {width:100%;height:44px;justify-content:center;}
 .desktop-remote-security {display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-top:20px;padding-top:16px;border-top:1px solid var(--border);}
 .desktop-remote-security p {margin:0;flex:1;min-width:180px;}

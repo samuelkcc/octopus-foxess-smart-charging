@@ -234,6 +234,23 @@ Quick Tunnel is a temporary access service with no uptime guarantee.
 Cloudflare handles the HTTPS connection, including remote-login traffic.
 Remote browsers cannot manage host credentials, rotate keys, or perform native Pi administration.
 
+### Manage remote access from the LAN
+
+- In host Configuration, enable **Require a LAN access code**.
+- Open the LAN dashboard on your phone or computer.
+- Open **Settings → Remote Access → Open Remote Access**.
+- Enter the LAN access code.
+- Select **Unlock LAN management**.
+
+Verified LAN clients can copy the public URL, replace the URL, reveal the key, or replace the key.
+Replacing the key signs out remote browsers.
+Management locks after five minutes or when you leave the page.
+Cloudflare clients cannot use this management endpoint, including with a valid remote key.
+The LAN code grants these management permissions to anyone who knows it.
+LAN HTTP is not encrypted. Use a trusted private network or a secure private connection.
+If the public URL fails, recover it through the LAN dashboard or Pi Connect.
+The app does not send email notifications or include keys in emailed links.
+
 ![Windows Remote Access with demonstration values](docs/screenshots/windows-remote-access.png)
 
 ![Mobile Remote Access: Welcome, sign-in, Overview, and History](docs/screenshots/mobile-interface.png)
@@ -282,6 +299,21 @@ Missing rates show a loading or unavailable message, never a synthetic zero pric
 
 [Read the architecture and safety details](docs/ARCHITECTURE.md).
 
+### Choose a display currency
+
+- Open **Settings → Price display**.
+- Enable **Use a custom display currency**.
+- Enter a three-letter currency code and its symbol.
+- Enter the exchange rate for **1 GBP**.
+- Select **Save price display**.
+
+For example, HKD with an exchange rate of 10 displays 29.82p/kWh as HK$2.9820/kWh.
+The rate is manual and applies only to this browser.
+Overview prices and price charts use the selected display currency.
+Rule inputs remain explicitly labelled in UK p/kWh, with a converted reference value beside each input.
+Scheduler comparisons and host snapshots retain the original UK values.
+This setting does not add support for Octopus accounts in other countries.
+
 ### Save a diagnostic log
 
 - Open **Settings → API refresh intervals → API problem alerts**.
@@ -291,6 +323,12 @@ The JSON file contains recent API errors, grouped counts, timestamps, and tariff
 Only errors create diagnostic entries. The latest 100 groups are retained.
 Credentials, account numbers, serial numbers, private URLs, and raw upstream messages are excluded.
 Saving this file does not request API data.
+It also includes host publication, client receipt, and price-rendering times.
+The host retains a maximum of 40 recent Octopus request summaries in memory.
+These summaries identify request categories and timing without account identifiers, URLs, or request bodies.
+Healthy request summaries are not written to the error journal.
+**Electricity price diagnostics → Reload host prices** reads the existing host snapshot without another Octopus request.
+Returning to a hosted dashboard also requests its latest price snapshot.
 
 ## Security, licence, and maintenance
 

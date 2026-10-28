@@ -147,6 +147,36 @@ try {
   const rotated = await call(local, '/api/remote-access', put({ enabled: true, rotateKey: true })).then(r => r.json());
   assert.notEqual(rotated.key, enabled.key);
   assert.equal((await call(remote, '/api/config', { headers: keyHeaders })).status, 401);
+  // LAN key management always needs enabled protection and the actual LAN code,
+  // even on loopback. A remote key, cookie, or forged worker header is insufficient.
+  const lanRoute='/api/lan-remote-access';
+  const lanHeaders={'X-Octopus-Access-Key':'dummy-lan-key'};
+  assert.equal((await call(local,lanRoute,{headers:lanHeaders})).status,403);
+  assert.equal((await call(local,'/api/native-config',put({accessRequired:true,accessKey:'dummy-lan-key',credentials:{}}))).status,200);
+  assert.equal((await call(local,lanRoute)).status,401);
+  assert.equal((await call(local,lanRoute,{headers:{'X-Octopus-Remote-Key':rotated.key,'X-Octopus-Worker':'1'}})).status,401);
+  const reboundLanStatus=await new Promise((resolve,reject)=>{
+    http.get(local+lanRoute,{headers:{...lanHeaders,Host:'attacker.invalid'}},response=>{response.resume();resolve(response.statusCode);}).on('error',reject);
+  });
+  assert.equal(reboundLanStatus,403);
+  assert.equal((await call(local,lanRoute,{headers:{...lanHeaders,Origin:'https://attacker.invalid'}})).status,403);
+  assert.equal((await call(remote,lanRoute+'?reveal=1',{headers:{...lanHeaders,'X-Octopus-Remote-Key':rotated.key,'X-Forwarded-For':'127.0.0.1'}})).status,403);
+  const lanStatus=await call(local,lanRoute,{headers:lanHeaders}).then(r=>r.json());
+  assert.equal(lanStatus.key,undefined,'Ordinary LAN status polls must not contain a key');
+  const lanReveal=await call(local,lanRoute+'?reveal=1',{headers:lanHeaders}).then(r=>r.json());
+  assert.equal(lanReveal.key,rotated.key);
+  const lanPut=data=>({...put(data),headers:{...put(data).headers,...lanHeaders}});
+  assert.equal((await call(local,lanRoute,{...lanPut({enabled:true,renewUrl:true}),headers:{...lanHeaders,Origin:'https://attacker.invalid'}})).status,403);
+  const lanRenew=await call(local,lanRoute,lanPut({enabled:true,renewUrl:true})).then(r=>r.json());
+  assert.equal(lanRenew.key,undefined);
+  assert.equal((await call(local,lanRoute+'?reveal=1',{headers:lanHeaders}).then(r=>r.json())).key,rotated.key);
+  const lanLogin=await call(remote,'/api/auth',{method:'POST',headers:{'X-Octopus-Remote-Key':rotated.key}});
+  const lanCookie=lanLogin.headers.get('set-cookie').split(';')[0];
+  assert.equal((await call(local,lanRoute,lanPut({enabled:true,rotateKey:true}))).status,200);
+  assert.equal((await call(remote,'/api/config',{headers:{Cookie:lanCookie}})).status,401,'LAN rotation revokes remote sessions');
+  assert.equal((await call(remote,'/api/config',{headers:{'X-Octopus-Remote-Key':rotated.key}})).status,401);
+  for(let i=0;i<8;i++)await call(local,lanRoute);
+  assert.equal((await call(local,lanRoute,{headers:lanHeaders})).status,429,'LAN management attempts are rate limited');
   for (let i = 0; i < 10; i++) await call(remote, '/api/auth', { method: 'POST' });
   assert.equal((await call(remote, '/api/auth', { method: 'POST' })).status, 429);
   await call(local, '/api/remote-access', put({ enabled: false }));

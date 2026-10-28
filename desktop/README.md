@@ -10,7 +10,7 @@ The EXE is unsigned.
 
 Before configuring this edition, complete the [FoxESS work mode setup](../README.md#prepare-foxess-work-modes).
 
-1. Open `SmartCharging-2.0.1-Windows-x64.exe`.
+1. Open the downloaded `SmartCharging-2.1.0-Windows-x64.exe`.
 2. Read the application licence notice.
 3. Select **Accept and Continue**.
 4. Open the account setup from Welcome.
@@ -122,3 +122,24 @@ Viewing or clearing the alert does not request API data.
 Recovered alerts clear automatically after 24 hours by default.
 **Settings → API problem alerts** changes this preference.
 Active failures remain visible.
+
+## Protected LAN management and price display
+
+The built-in Remote Access page remains available on the host PC.
+LAN browsers can manage its tunnel after LAN code protection is enabled.
+
+1. Open the LAN dashboard.
+2. Open **Settings → Remote Access → Open Remote Access**.
+3. Enter the LAN access code.
+4. Select **Unlock LAN management**.
+
+The code grants URL renewal, key disclosure, and key rotation permissions.
+Cloudflare clients cannot use these operations.
+Management locks after five minutes or when you leave the page.
+LAN HTTP is not encrypted. Use a trusted private network or a secure private connection.
+
+**Settings → Price display** provides browser-local manual currency conversion.
+The exchange rate means units of the selected currency for one GBP.
+Rule inputs and scheduler comparisons remain in UK p/kWh.
+Converted reference hints appear beside rule inputs.
+Email notifications are not included.

@@ -27,6 +27,7 @@
                 edition:window.linuxRuntime ? (window.desktopRuntime?'windows':'pi') : 'web',
                 host:remote?.diagnostics || {limit:100,errors:[]},browser:state.diagnostics(),
                 prices:{loading:Boolean(octopusTariffPromise),retryPending:octopusTariffProblem,
+                    client:{...tariffClientDiagnostics},host:remote?.tariff || null,requests:remote?.octopusRequests || null,
                     checkedAt:octopusTariffState?.updatedAt ? new Date(octopusTariffState.updatedAt).toISOString() : null,
                     importRateCount:window.importRates?.length || 0,exportRateCount:window.exportRates?.length || 0}};
         },

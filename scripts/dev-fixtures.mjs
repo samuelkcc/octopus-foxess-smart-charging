@@ -8,6 +8,8 @@ import { IntegrationState } from '../linux/integration-state.mjs';
 const web = process.argv.includes('--web');
 const desktop = process.env.OCTOPUS_FIXTURE_DESKTOP === '1';
 const screenshotMode=process.env.OCTOPUS_FIXTURE_SCREENSHOT==='1';
+const lanProtected=process.env.OCTOPUS_FIXTURE_LAN_PROTECTED==='1';
+let lanRemote={enabled:true,state:'running',url:'https://mock-url.example.test',key:'mock-key-for-layout-only'};
 const port = Number(process.env.OCTOPUS_FIXTURE_PORT) || (web ? 65524 : 65523);
 const origin = `http://127.0.0.1:${port}`;
 const root = process.cwd();
@@ -38,6 +40,12 @@ http.createServer(async (request,response) => {
     let body = ''; for await (const chunk of request) body += chunk;
     const payload = body ? JSON.parse(body) : {};
     const timestamp = new Date().toISOString();
+    if(url.pathname==='/api/lan-remote-access'){
+      if(!lanProtected)return json({error:'Enable LAN access-code protection first.'},403);
+      if(request.headers['x-octopus-access-key']!=='mock-LAN-code')return json({error:'Enter the LAN access code.'},401);
+      if(request.method==='PUT')lanRemote={...lanRemote,...payload,key:payload.rotateKey?'mock-rotated-key':lanRemote.key};
+      const {key,...status}=lanRemote;return json({...status,...(request.method==='GET'&&url.searchParams.get('reveal')==='1'?{key}:{})});
+    }
     if (url.pathname === '/api/tariff-snapshot') return json({pending:false,progress:2,problem:false,state:{
       importTariffCode:'DEMO-IMPORT',exportTariffCode:'DEMO-EXPORT',minRate:8,maxRate:29.82,updatedAt:Date.now(),
       importRates:Array.from({length:48},(_,i)=>({value_inc_vat:i<11||i===47?8:29.82,valid_from:new Date(new Date().setHours(0,i*30,0,0)).toISOString(),valid_to:new Date(new Date().setHours(0,(i+1)*30,0,0)).toISOString()})),
@@ -87,7 +95,7 @@ http.createServer(async (request,response) => {
     if (url.pathname === '/api/runtime') {
       if (web) return json({error:'No Pi runtime in the web fixture'},404);
       const locked=String(request.headers.referer || '').includes('locked=1');
-      return json({mode:'linux',role:'dashboard',authRequired:locked,accessRequired:locked,remoteAccess:locked,version:'2.0.0',lanUrls:[]});
+      return json({mode:'linux',role:'dashboard',authRequired:locked,accessRequired:lanProtected||locked,remoteAccess:locked,version:'2.1.0',lanUrls:[]});
     }
     if (url.pathname === '/api/auth') { response.writeHead(204);return response.end(); }
     if (url.pathname === '/api/config') {

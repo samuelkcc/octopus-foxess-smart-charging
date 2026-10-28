@@ -176,3 +176,19 @@ Native Windows execution remains a user check.
 - Account credentials and access keys were verified unchanged during the 2.0.5 migration.
 - Display remained 1920 × 1080 with normal orientation and scale 1.
 - The existing native Chromium window was not reliably controllable through Pi Connect during the final check.
+
+## Version 2.1.0 review
+
+- Currency conversion keeps API rates and scheduler thresholds in UK p/kWh.
+- Tests cover validation, persistence, negative rates, zero rates, chart conversion, and default recovery.
+- Snapshot tests cover read failure, last-valid-price retention, recovery, and chart exceptions.
+- Host transport tests verify snapshot metadata and zero additional upstream calls from dashboard reads.
+- LAN tests cover disabled protection, missing codes, remote credentials, cross-site requests, rebinding, rotation, and rate limiting.
+- The mock tunnel never creates public access.
+- GAS code remains unchanged.
+- No live Pi installation or native Windows execution is claimed for this release.
+- The previous intermittent price incident remains unconfirmed on live hardware.
+- Full `npm run check` and `npm run build:dev` passed before publication.
+- Browser checks verified Pi Welcome entry, web account setup, web prices, manual currency display, and LAN management with mock values.
+- A 390-pixel phone fixture verified the Settings entry and six-item navigation without horizontal overflow.
+- LAN key reveal was checked with a demonstration key only.

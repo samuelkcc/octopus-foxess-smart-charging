@@ -105,3 +105,23 @@ context.document.getElementById=()=>{throw Error('Headless tariff calculation mu
 run('renderOctopusTariffs()');
 context.document.getElementById=originalGet;
 console.log('Headless tariff calculation is independent of DOM and chart rendering.');
+
+run("window.linuxRole='dashboard';");
+context.snapshotRead=async()=>{throw Error('Simulated phone transport failure');};
+run('fetchJson=snapshotRead;');
+await run('refreshOctopusTariffs()');
+assert.equal(run('tariffClientDiagnostics.readError'),true);
+assert.equal(run('window.currentLivePrice'),29.82,'Transport failure preserves the last valid prices');
+assert(events.some(row=>row[0]==='failure' && row[2]==='tariff-snapshot'));
+context.snapshotRead=async()=>({pending:false,state:{importRates:[{value_inc_vat:30}],exportRates:[],updatedAt:now},transport:{revision:7,publishedAt:now,servedAt:now}});
+run('fetchJson=snapshotRead;');
+await run('refreshOctopusTariffs()');
+assert.equal(run('tariffClientDiagnostics.readError'),false);
+assert.equal(run('tariffClientDiagnostics.transport.revision'),7);
+assert.equal(run('window.currentLivePrice'),30);
+run("drawPriceCharts=()=>{throw Error('Simulated chart error');};");
+await run('refreshOctopusTariffs()');
+assert.equal(run('tariffClientDiagnostics.renderError'),true);
+assert.equal(run('octopusTariffPromise'),null,'A chart exception must not freeze snapshot polling');
+assert.equal(timers.at(-1).ms,5000,'Host recovery polling remains scheduled after a chart failure');
+console.log('Phone snapshot failure, retained prices, recovery metadata, render-error diagnosis and continued polling passed.');

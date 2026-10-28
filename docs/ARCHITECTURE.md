@@ -2,7 +2,7 @@
 
 ## Versions
 
-The current release version is 2.0.4.
+The current release version is 2.1.0.
 New versions use MAJOR.MINOR.PATCH.
 Legacy calendar versions remain in the release history.
 The development branch is `codex/ui-ux-preview`.
@@ -33,6 +33,8 @@ A development commit does not publish GitHub Pages or create a release.
 | `dev/about.js` | About panel and complete licence notices. |
 | `dev/setup.js` | Edition-specific welcome, guided login, and setup guide. |
 | `dev/settings.js` | Settings cards and existing preference controls. |
+| `src/price-display.js` | Browser-local manual currency conversion for presentation only. |
+| `dev/lan-remote.js` | Code-protected LAN tunnel management without the desktop administration bridge. |
 | `dev/views.js` | New visible views and the shared-engine element adapter. |
 | `dev/viewport.js` | Desktop media selection. Native text sizes and flexible CSS regions fill one frame without page scaling. |
 | `dev/ui.css` | Appearance of the development interface. |
@@ -369,3 +371,36 @@ The worker starts tariff work after dispatch reconciliation.
 Public unit-rate responses have a private restart cache with a strict 30-minute expiry.
 Account replies and authentication tokens are excluded.
 The cache does not bypass service disablement or outbound spacing for expired data.
+
+## Price transport diagnostics
+
+Host snapshots include a host instance, revision, publication time, and delivery time.
+Browser diagnostics record receipt, rendering, and separate read or rendering failures.
+Snapshot failures retain available prices and retry through the existing five-second local poll.
+Chart errors cannot cancel that poll.
+Returning to a visible dashboard also reads its host snapshot.
+These recovery reads do not request upstream data.
+The host retains 40 sanitised request summaries in RAM.
+Only categories, source, start time, completion time, and HTTP status are included.
+The existing error journal remains separate and error-only.
+
+## Display currency
+
+Browser preferences store a manual currency code, symbol, and exchange rate against GBP.
+Conversion uses UK pence divided by 100, multiplied by the selected rate.
+The chart receives converted presentation values without modifying source rates.
+Rule inputs and schedule comparisons remain in UK p/kWh.
+Converted reference hints appear beside rule inputs.
+This preference does not change API hosts, account regions, or tariff time zones.
+
+## LAN remote management
+
+The dedicated LAN management endpoint requires enabled LAN protection and the actual LAN code on every request.
+Loopback privileges and remote sessions cannot replace that code.
+The endpoint rejects public hosts, non-private source addresses, cross-site requests, and excess authentication failures.
+The dedicated tunnel listener rejects the endpoint before authentication.
+Only an explicit reveal request returns the remote key.
+Status and mutation responses exclude the key.
+The interface retains its management code in memory for at most five minutes.
+Page exit or backgrounding clears its displayed key and code.
+Native Pi and Windows administration remains available through existing interfaces.

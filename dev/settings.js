@@ -40,6 +40,33 @@
   displayActions.append(action('Full screen', toggleFullScreen), action('Screen saver', toggleScreenSaver));
   appearance.append(displayActions);
 
+  const currency=card('Price display','Convert UK prices for display on this browser. This does not add support for other Octopus countries.');
+  const currencyValues=window.priceDisplay.read();
+  const currencyFields={};
+  for(const [name,title,type] of [['enabled','Use a custom display currency','checkbox'],['code','Currency code','text'],['symbol','Currency symbol','text'],['fx','Exchange rate: 1 GBP equals','number']]){
+    const row=make('label',type==='checkbox'?'next-toggle':'next-field');
+    const input=make('input');input.id=`price-display-${name}`;input.type=type;
+    if(type==='checkbox')input.checked=currencyValues[name];else input.value=currencyValues[name];
+    if(name==='code')input.maxLength=3;
+    if(name==='symbol')input.maxLength=12;
+    if(name==='fx'){input.min='0.000001';input.max='1000000';input.step='any';}
+    row.htmlFor=input.id;row.append(make('span','',title),input);currency.append(row);currencyFields[name]=input;
+  }
+  const currencyFeedback=make('p','next-muted');currencyFeedback.setAttribute('role','status');
+  currency.append(make('p','next-muted','Manual rate. Example: HKD, HK$, 10 means 1 GBP = 10 HKD. Rule inputs stay in UK p/kWh.'),action('Save price display',()=>{
+    try{window.priceDisplay.save({enabled:currencyFields.enabled.checked,code:currencyFields.code.value.trim().toUpperCase(),symbol:currencyFields.symbol.value.trim(),fx:Number(currencyFields.fx.value)});currencyFeedback.textContent='Saved on this browser. Exchange rates are not updated automatically.';}
+    catch(error){currencyFeedback.textContent=error.message;}
+  }),currencyFeedback);
+  const thresholdHints=[];
+  for(const id of ['price-threshold','export-threshold']){
+    const input=document.getElementById(id);const hint=make('small','next-muted');input.after(hint);
+    const sync=()=>{hint.textContent=window.priceDisplay.read().enabled && input.value!==''?`Display equivalent: ${window.priceDisplay.format(Number(input.value))}. Control value stays in UK p/kWh.`:'';};
+    input.addEventListener('input',sync);thresholdHints.push(sync);
+  }
+  const syncThresholdHints=()=>thresholdHints.forEach(sync=>sync());
+  window.addEventListener('price-display-change',syncThresholdHints);
+  window.addEventListener('dashboard-visibility-change',syncThresholdHints);syncThresholdHints();
+
   const refreshSettings=card('API refresh intervals', pi
     ? `These intervals apply to the ${hostName} worker. Octopus requests are at least 60 seconds apart.`
     : 'Set how often this browser reads each API. Keep this browser open and awake.');
@@ -81,6 +108,21 @@
     link.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
     alertFeedback.textContent='Diagnostic log saved. Account details, keys, serial numbers, and private URLs are excluded.';
   }),make('p','next-muted','Only errors are recorded, up to 100 entries. Repeated failures are grouped. Healthy polling does not add log entries.'));
+
+  const priceDiagnostics=make('details','next-api-diagnostics');priceDiagnostics.append(make('summary','','Electricity price diagnostics'));
+  const priceHealth=make('p','next-muted');priceHealth.setAttribute('role','status');
+  const time=value=>value?new Date(value).toLocaleString():'Waiting';
+  const syncPriceHealth=()=>{
+    const report=window.integrationMonitor.diagnosticReport().prices;
+    const client=report.client;
+    priceHealth.textContent=`Prices checked: ${time(report.checkedAt)}. Host received: ${time(client.receivedAt)}. Display rendered: ${time(client.renderedAt)}. Import/export records: ${report.importRateCount}/${report.exportRateCount}. ${client.readError?'Host snapshot read failed. ':''}${client.renderError?'Price rendering failed. ':''}`;
+  };
+  const reloadPrices=action('Reload host prices',async()=>{if(window.linuxRuntime && window.linuxRole!=='worker'){await refreshOctopusTariffs();syncPriceHealth();}});
+  const syncPriceVisibility=()=>{reloadPrices.hidden=!window.linuxRuntime;syncPriceHealth();};
+  window.addEventListener('host-runtime-ready',syncPriceVisibility);
+  window.addEventListener('integration-status-change',syncPriceHealth);
+  priceDiagnostics.append(priceHealth,reloadPrices,make('p','next-muted','Reload host prices reads the existing Pi or Windows snapshot. It does not request Octopus data.'));
+  refreshSettings.append(priceDiagnostics);syncPriceVisibility();
 
   const visibleStates = [];
   const visibility = card('Visible panels', 'Choose which panels to show on this device. This does not disable automation.');
