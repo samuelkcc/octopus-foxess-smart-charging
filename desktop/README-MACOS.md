@@ -45,7 +45,7 @@ No automatic firewall change is made.
 
 ## Storage and updates
 
-Settings and History remain in `~/Library/Application Support/Smart Charging/service`.
+Settings and History remain in the macOS user profile under `~/Library/Application Support`.
 The app uses macOS Keychain through Electron safeStorage to protect its configuration key.
 The service does not write an unprotected configuration key.
 Ad-hoc signatures can cause another Keychain permission request after an update.
