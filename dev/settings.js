@@ -18,7 +18,7 @@ window.installSettingsSections=({page,generalContent,accountCards=[]})=>{
   if(document.documentElement.dataset.devEdition==='esp32-dashboard'){
     const D=window.esp32Dashboard,$=D.$;
     const page=document.querySelector('.dev-page[data-page="settings"]');
-    const accountCards=[...page.querySelectorAll('[data-setting]')].filter(node=>['device-setup','service-octopus','service-foxess','service-websocket','foxess-live','lan-access'].includes(node.dataset.setting));
+    const accountCards=[...page.querySelectorAll('[data-setting]')].filter(node=>['account-actions','device-setup','service-octopus','service-foxess','service-websocket','foxess-live','lan-access'].includes(node.dataset.setting));
     window.settingsSections=window.installSettingsSections({page,generalContent:$('esp-settings-form'),accountCards:accountCards.sort((a,b)=>(a.dataset.setting==='device-setup')-(b.dataset.setting==='device-setup'))});
     let accessEditing=false;
     $('esp-skip-welcome').addEventListener('change',()=>{
