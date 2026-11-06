@@ -11,7 +11,7 @@ const temp=await mkdtemp(path.join(os.tmpdir(),'sc-esp32-schedule-'));
 try {
   for(const suite of ['schedule','provision','automation']){
   const output=path.join(temp,suite+'-tests');
-  const built=spawnSync('cc',['-std=c11','-Wall','-Wextra','-Werror','-Wno-unused-parameter','-I'+path.join(root,'esp32/main'),'-I'+json,
+  const built=spawnSync('cc',['-std=c11','-D_DEFAULT_SOURCE','-Wall','-Wextra','-Werror','-Wno-unused-parameter','-I'+path.join(root,'esp32/main'),'-I'+json,
     path.join(root,'esp32/tests/'+suite+'_test.c'),...(suite==='schedule'?['schedule_policy.c','schedule_transaction.c']:suite==='provision'?['provision_policy.c']:['automation_policy.c','schedule_policy.c']).map(file=>path.join(root,'esp32/main',file)),path.join(json,'cJSON.c'),'-lm','-o',output],{encoding:'utf8'});
   if(built.status!==0)throw new Error(built.stderr||built.stdout||'Native compilation failed');
   const tested=spawnSync(output,[],{encoding:'utf8'});
