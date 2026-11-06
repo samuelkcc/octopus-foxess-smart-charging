@@ -33,8 +33,8 @@ Your phone, tablet, or computer displays the same worker data from the board.
 <table>
 <tr><th>Desktop dashboard</th><th>Mobile dashboard</th></tr>
 <tr>
-<td width="72%" valign="top"><img src="docs/screenshots/esp32-dashboard.png" alt="ESP32 desktop dashboard · demonstration data" width="100%"></td>
-<td width="28%" valign="top"><img src="docs/screenshots/mobile-interface.png" alt="ESP32 mobile dashboard · demonstration data" width="100%"></td>
+<td width="72%" valign="top"><img src="docs/screenshots/esp32-dashboard.png" alt="ESP32 desktop dashboard" width="100%"></td>
+<td width="28%" valign="top"><img src="docs/screenshots/mobile-interface.png" alt="ESP32 mobile dashboard" width="100%"></td>
 </tr>
 </table>
 
