@@ -6,6 +6,7 @@ const now=()=>Math.floor(Date.now()/1000);
 const port=Number(process.env.SC_PREVIEW_PORT||8790);
 const {version}=JSON.parse(await readFile(new URL('../package.json',import.meta.url)));
 let setupJob=null,ota={current:version,version,available:false,newer:false,busy:false,phase:'idle',status:'Demonstration update service.'},health={};
+let debug={enabled:false,available:true,expires_in_seconds:0,records:12,capacity:512,dropped:0,port:8788};
 let revision=1,writes=0,authenticated=false,lanEnabled=false,lanCode='';
 const rules={enabled:true,paused:false,pause_until:0,follow_dispatch:true,charge_price_enabled:false,charge_price_p:7,discharge_price_enabled:false,discharge_price_p:30,weekly_charge:true,charge_start:1410,charge_end:330,charge_days:127,weekly_discharge:false,discharge_start:960,discharge_end:1140,discharge_days:127,target_soc:100,charge_soc_enabled:true,dispatch_soc_enabled:false,dispatch_soc:100,min_soc:11,power_w:5000,auto_resume:true,octopus_seconds:60,foxess_seconds:600,history_days:14,history_flash_enabled:false,pause_discharge_dispatch:true,discharge_overrides_charge:true};
 const period={enable:1,startHour:23,startMinute:30,endHour:23,endMinute:59,workMode:'ForceCharge'};
@@ -39,7 +40,8 @@ const server=createServer(async(req,res)=>{
   }
   reply(ota);return;
  }
- if(url.pathname==='/api/state'){reply(state());return;}
+ if(url.pathname==='/api/debug-access'){debug={...debug,enabled:body.enabled,port:body.port||8788,expires_in_seconds:body.enabled?3600:0};reply({...debug,...(body.enabled?{api_key:'demonstration-only-not-a-real-key'}:{})});return;}
+ if(url.pathname==='/api/state'){reply({...state(),debug});return;}
  if(url.pathname==='/api/rules'&&req.method==='POST'){if(body.revision!==revision){reply({error:'Settings changed'},409);return;}Object.assign(rules,body.rules);revision++;if(rules.enabled&&!rules.paused)writes++;reply({saved:true,revision});return;}
  if(url.pathname==='/api/manual'&&req.method==='POST'){writes++;reply({});return;}
  if(url.pathname==='/api/history'){reply(Array.from({length:96},(_,i)=>({at:now()-(95-i)*900,solar:Math.max(0,Math.sin(i/12)),home:.6,grid:.3,battery:i%20<10?.2:-.2,soc:70+i/8})));return;}

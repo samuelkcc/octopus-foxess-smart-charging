@@ -100,10 +100,15 @@ window.installSharedConnections = ({grid,account,service,worker,extras=[]}) => {
     const clock=(h,m)=>String(h).padStart(2,'0')+':'+String(m).padStart(2,'0');
     const periodKeys=new Map();
     function periods(id,rows,dispatch,known){
-      const key=JSON.stringify([rows,known,D.state()?.confirmed,Math.floor(Date.now()/60000)]);
+      const key=JSON.stringify([rows,known,D.state()?.confirmed,D.state()?.revision,Math.floor(Date.now()/60000)]);
       if(periodKeys.get(id)===key)return;periodKeys.set(id,key);
       const parent=$(id);parent.replaceChildren();
-      if(!rows?.length){const p=document.createElement('p');p.textContent=known?(dispatch?'No upcoming charging windows.':'No active programmed periods.'):'Waiting for the first official update.';parent.append(p);return;}
+      if(!rows?.length){const p=document.createElement('p');p.textContent=known?(dispatch?'No upcoming charging windows.':'No active programmed periods.'):'Waiting for the first official update.';parent.append(p);
+        const state=D.state(),rules=state?.rules;
+        if(known&&!dispatch&&rules?.enabled&&!rules.paused&&state.dispatch_valid&&!state.dispatches?.length&&!rules.weekly_charge&&!rules.charge_price_enabled&&!rules.weekly_discharge&&!rules.discharge_price_enabled){
+          const reason=document.createElement('p');reason.className='next-muted';reason.textContent='No Smart Dispatch or ordinary charging or discharging rules currently require a scheduled period. Remaining Time Mode must be Self-Use.';parent.append(reason);
+        }
+        return;}
       for(const row of rows){
         const from=dispatch?Date.parse(row.startDt)/1000:0,to=dispatch?Date.parse(row.endDt)/1000:0;if(dispatch&&to<=Date.now()/1000)continue;
         const div=document.createElement('div');div.className='overview-schedule-row';const text=document.createElement('span'),title=document.createElement('strong'),detail=document.createElement('small'),tag=document.createElement('span');tag.className='overview-schedule-tag';
@@ -123,6 +128,7 @@ window.installSharedConnections = ({grid,account,service,worker,extras=[]}) => {
       if(state.fixture)D.notice('Demonstration data · No inverter connected.');
       $('esp-connection').textContent=state.fixture?'DEMO DATA':'ESP32 connected';$('esp-connection').dataset.state=state.fixture?'waiting':'good';
       D.syncAccess?.(state);
+      D.syncDebug?.(state.debug);
       const pauseState={paused:state.rules?.paused===true,pending:state.rules?.paused===true&&state.write_inflight===true,available:true,enabled:state.rules?.enabled!==false,until:state.rules?.pause_until?state.rules.pause_until*1000:null};
       D.syncPauseSwitch(pauseState);D.syncPauseBanner(pauseState);
       for(const name of ['octopus','foxess']){const interval=state.rules?.[name==='octopus'?'octopus_seconds':'foxess_seconds']||60,remaining=Math.max(0,(state[name+'_next']||state.now)-state.now);const pending=state[name+'_refresh_pending']===true,error=Boolean(D.serviceError(name)),button=$('esp-service-'+name);$('esp-ring-'+name).dataset.state=error?'error':pending?'updating':state[name+'_http']===200?'ok':'waiting';button.classList.toggle('has-warning',error);button.disabled=pending&&!error;button.setAttribute('aria-busy',String(pending));button.setAttribute('aria-label',(name==='octopus'?'Octopus Energy':'FoxESS')+': '+(error?'Review update problem':pending?'Reading API':'Reload API data'));button.title=error?D.serviceMessage(name):pending?'API refresh queued. Waiting for the service cooldown.':'Reload API data';$('esp-progress-'+name).style.strokeDashoffset=String(Math.min(100,remaining/interval*100));}

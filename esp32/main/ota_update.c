@@ -1,3 +1,4 @@
+#include "debug_log.h"
 // Copyright (C) 2026 SCKC. GPL-3.0-or-later.
 // Only this serialized worker writes inactive firmware. LAN handlers enqueue work.
 #include "ota_update.h"
@@ -31,7 +32,7 @@ static _Atomic bool control_hold;
 bool sc_ota_blocks_control(void){return control_hold;}
 static const char *phase="idle",*message="Check GitHub for an ESP32 firmware update.";
 typedef struct{uint32_t schema,address,erase;char version[24];} boot_intent_t;
-static void state(const char *next,const char *text){xSemaphoreTake(guard,portMAX_DELAY);phase=next;message=text;xSemaphoreGive(guard);}
+static void state(const char *next,const char *text){sc_debug_problem(SC_DEBUG_OTA,!strcmp(next,"error"),!strcmp(next,"error")?1:0);xSemaphoreTake(guard,portMAX_DELAY);phase=next;message=text;xSemaphoreGive(guard);}
 void sc_ota_init(bool ready){
  guard=xSemaphoreCreateMutex();server_ok=ready;boot_checked=false;
  const esp_partition_t *running=esp_ota_get_running_partition();esp_ota_img_states_t image_state;

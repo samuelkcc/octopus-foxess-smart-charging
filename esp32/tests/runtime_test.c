@@ -1,3 +1,5 @@
+#include "debug_log.h"
+void sc_debug_problem(enum sc_debug_source source,bool failed,int code){(void)source;(void)failed;(void)code;}
 // Copyright (C) 2026 SCKC. SPDX-License-Identifier: GPL-3.0-or-later
 #include <assert.h>
 #include <stdio.h>
@@ -166,7 +168,7 @@ int main(int argc,char **argv){fixed_tariff=argc>1&&!strcmp(argv[1],"fixed");set
   assert(strlen(cJSON_GetObjectItem(a,"import_tariff")->valuestring)>0);
   char *json=cJSON_PrintUnformatted(a);assert(!strstr(json,"must-not-publish")&&!strstr(json,"token"));free(json);cJSON_Delete(a);
   cJSON *r=rules();cJSON_SetBoolValue(cJSON_GetObjectItem(r,"paused"),true);assert(sc_runtime_update(r));cJSON_Delete(r);
-  device_error=true;step(3600);for(int i=0;i<3;i++)step(60);
+  device_error=true;step(3600);for(int i=0;i<12;i++)step(60);
   a=sc_runtime_account();assert(cJSON_IsTrue(cJSON_GetObjectItem(a,"update_error")));
   assert(!strcmp(cJSON_GetObjectItem(a,"provider")->valuestring,"OHME"));cJSON_Delete(a);
   assert(sc_runtime_paused()&&!writes);a=sc_runtime_state();assert(cJSON_IsTrue(cJSON_GetObjectItem(a,"dispatch_valid")));assert(!cJSON_HasObjectItem(a,"account_number"));cJSON_Delete(a);
@@ -188,7 +190,7 @@ int main(int argc,char **argv){fixed_tariff=argc>1&&!strcmp(argv[1],"fixed");set
   puts("Runtime History opt-in: default zero writes, one hourly batch, no per-sample writes, disable stops writes, monitoring remains active.");return 0;
  }
 
- if(fixed_tariff){for(int i=0;i<25;i++)step(60);cJSON *state=sc_runtime_state(),*rates=cJSON_GetObjectItem(state,"import_rates");assert(day_reads>0&&night_reads>0&&cJSON_GetArraySize(rates)>48);assert(cJSON_GetObjectItem(cJSON_GetArrayItem(rates,0),"start")->valuedouble==sc_timestamp("2026-11-05T00:00:00Z"));bool day=false,night=false;const cJSON *rate;cJSON_ArrayForEach(rate,rates){double v=cJSON_GetObjectItem(rate,"value")->valuedouble;assert(v==7||v==30);day|=v==30;night|=v==7;}assert(day&&night);assert(!writes);cJSON_Delete(state);puts("Fixed Intelligent Octopus Go day/night fallback and non-starving dispatch queue passed.");return 0;}
+ if(fixed_tariff){for(int i=0;i<12;i++)step(60);cJSON *state=sc_runtime_state(),*rates=cJSON_GetObjectItem(state,"import_rates");assert(day_reads>0&&night_reads>0&&cJSON_GetArraySize(rates)>48);assert(cJSON_GetObjectItem(cJSON_GetArrayItem(rates,0),"start")->valuedouble==sc_timestamp("2026-11-05T00:00:00Z"));bool day=false,night=false;const cJSON *rate;cJSON_ArrayForEach(rate,rates){double v=cJSON_GetObjectItem(rate,"value")->valuedouble;assert(v==7||v==30);day|=v==30;night|=v==7;}assert(day&&night);assert(!writes);cJSON_Delete(state);puts("Fixed Intelligent Octopus Go day/night fallback and non-starving dispatch queue passed.");return 0;}
  step(1);assert(writes==0&&telemetry_reads==1);step(60);assert(writes==0);
  cJSON *r=rules();cJSON_SetBoolValue(cJSON_GetObjectItem(r,"enabled"),true);assert(sc_runtime_update(r));cJSON_Delete(r);step(60);assert(writes==1);cJSON *s=sc_runtime_state();assert(cJSON_IsTrue(cJSON_GetObjectItem(s,"confirmed")));char *safe=cJSON_PrintUnformatted(s);assert(!strstr(safe,"test-token")&&!strstr(safe,"secret raw"));free(safe);cJSON_Delete(s);
  int old_writes=writes;invalid_dispatch=true;step(60);assert(writes==old_writes);s=sc_runtime_state();assert(cJSON_GetArraySize(cJSON_GetObjectItem(s,"dispatches"))==1);cJSON_Delete(s);

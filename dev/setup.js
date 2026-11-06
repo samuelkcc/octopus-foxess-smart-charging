@@ -36,7 +36,7 @@ window.createWelcomeFrame = ({make,brand,version,operation}) => {
     guide.append(header,copy);document.body.append(guide);
     const presentation=(view)=>{
       const dashboard=view==='dashboard';shell.classList.toggle('dev-auth-mode',!dashboard);
-      $('esp-startup').hidden=true;launch.hidden=dashboard;$('dashboard').hidden=!dashboard;
+      $('esp-startup').hidden=view!=='loading';launch.hidden=dashboard||view==='loading';$('dashboard').hidden=!dashboard;
       login.hidden=view!=='login';launch.dataset.mode=view==='login'?'setup':'welcome';
       $('esp-header-pause').hidden=!dashboard;$('dev-theme').hidden=dashboard;
       $('esp-logout').hidden=!dashboard||!D.state()?.lan_access_enabled;
@@ -46,9 +46,9 @@ window.createWelcomeFrame = ({make,brand,version,operation}) => {
     D.connectionProblem=()=>{if(!entered)frame.copy.textContent='No response from your ESP32. Check Wi-Fi, then select Retry connection.';};
     D.showDashboard=()=>{if(skipWelcome)entered=true;open.disabled=false;frame.copy.textContent='Your ESP32 is connected. Open the dashboard to review your home energy.';presentation(entered?'dashboard':'welcome');};
     D.showWelcome=()=>{entered=false;skipWelcome=false;D.maskAccount?.();presentation('welcome');open.disabled=!D.state();};
-    D.saveStartPage=enabled=>{try{localStorage.setItem('smartChargingEsp32SkipWelcome',String(enabled));return true;}catch{return false;}};
+    D.saveStartPage=enabled=>{try{localStorage.setItem('smartChargingEsp32SkipWelcome',String(enabled));skipWelcome=enabled;return true;}catch{return false;}};
     $('esp-skip-welcome').checked=skipWelcome;
-    presentation('welcome');frame.copy.textContent='Connecting to your ESP32…';
+    presentation(skipWelcome?'loading':'welcome');frame.copy.textContent='Connecting to your ESP32…';
     $('esp-login-form').addEventListener('submit',async event=>{
       event.preventDefault();$('esp-login-status').textContent='Connecting…';
       try{await D.login($('esp-pair-code').value);$('esp-pair-code').value='';$('esp-login-status').textContent='';}

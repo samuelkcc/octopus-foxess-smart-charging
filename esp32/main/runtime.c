@@ -1,3 +1,4 @@
+#include "debug_log.h"
 // Copyright (C) 2026 SCKC. SPDX-License-Identifier: GPL-3.0-or-later
 #include "runtime.h"
 #include "ota_update.h"
@@ -39,6 +40,8 @@ static _Atomic bool first_deployment_pending;
 static int64_t deployment_retry_at;
 static char token[8192], import_code[96], export_code[96];
 static int tariff_stage,tariff_http;
+static time_t tariff_attempt_at,tariff_completed_at;
+static unsigned tariff_failures;
 static time_t import_rates_at, export_rates_at;
 static unsigned previous_revision, dispatch_sequence, attempt_revision, attempt_dispatch_sequence;
 static _Atomic unsigned required_dispatch_revision = 1;
@@ -152,7 +155,7 @@ void sc_runtime_credentials_changed(void) {
     mbedtls_platform_zeroize(token, sizeof(token));
     import_code[0] = export_code[0] = 0;
     token_until = 0;
-    tariff_stage = 0;tariff_http=0;
+    tariff_stage = 0;tariff_http=0;tariff_attempt_at=tariff_completed_at=0;tariff_failures=0;
     import_rates_at = export_rates_at = 0;
     dispatch_valid = false;
     octopus_fault=foxess_fault=false;octopus_http=foxess_http=0;
@@ -378,6 +381,9 @@ static void history_persist(time_t now, int64_t us, const cJSON *rules) {
         history_flash_error = !history_reload_saved(now);
 }
 static void publish(time_t now, const cJSON *rules) {
+    sc_debug_problem(SC_DEBUG_OCTOPUS,octopus_fault,octopus_http);
+    sc_debug_problem(SC_DEBUG_FOXESS,foxess_fault,foxess_http);
+    sc_debug_problem(SC_DEBUG_STORAGE,history_flash_error,history_flash_error?1:0);
     cJSON *out = cJSON_CreateObject();
     if (!out)
         return;
@@ -419,6 +425,12 @@ static void publish(time_t now, const cJSON *rules) {
     cJSON_AddStringToObject(out, "octopus_status", octopus_status);
     const char *tariff_steps[]={"Tariff refresh idle", "Loading account tariff codes", "Loading import unit rates", "Loading export unit rates", "Loading import day rates", "Loading import night rates"};
     cJSON_AddNumberToObject(out,"tariff_http",tariff_http);
+    cJSON_AddNumberToObject(out,"tariff_stage",tariff_stage);
+    cJSON_AddNumberToObject(out,"tariff_attempt_at",tariff_attempt_at);
+    cJSON_AddNumberToObject(out,"tariff_completed_at",tariff_completed_at);
+    cJSON_AddNumberToObject(out,"tariff_failures",tariff_failures);
+    cJSON_AddNumberToObject(out,"import_rate_count",cJSON_GetArraySize(imports));
+    cJSON_AddNumberToObject(out,"export_rate_count",cJSON_GetArraySize(exports));
     cJSON_AddStringToObject(out,"tariff_status",!import_code[0]&&tariff_stage==0?"Waiting for tariff discovery after dispatch":tariff_steps[tariff_stage>=0&&tariff_stage<6?tariff_stage:0]);
     cJSON_AddStringToObject(out, "dispatch_error_code", dispatch_error);
     cJSON_AddStringToObject(out, "dispatch_time_sample", dispatch_time_sample);
@@ -600,6 +612,7 @@ static time_t tariff_day_start(time_t now){
 }
 static cJSON *tariff_read(const sc_config_t *config, const char *code, const char *kind, int *http,
                           int *retry) {
+    *http=0;
     if (!code[0])
         return NULL;
     size_t length = strlen(code);
@@ -743,7 +756,7 @@ static void octopus_poll(const sc_config_t *config, const cJSON *rules) {
                                        ? "Octopus sign-in token exceeds buffer limit"
                                        : "Octopus sign-in failed; retained previous dispatches");
         }
-    } else if (manual_refresh || !dispatch_valid || tariff_stage == 0 || time(NULL) - dispatch_at >= 120) {
+    } else if (manual_refresh || !dispatch_valid || (tariff_stage == 0 && us < next_device_info) || time(NULL) - dispatch_at >= 120) {
         cJSON_AddStringToObject(body, "query",
                                 "query getGoData($acc: String!) { plannedDispatches(accountNumber: "
                                 "$acc) { startDt endDt } }");
@@ -798,7 +811,7 @@ static void octopus_poll(const sc_config_t *config, const cJSON *rules) {
                 strcpy(octopus_status, "Octopus session expired; sign-in queued; previous windows retained");
             }
         }
-    } else if (us >= next_device_info) {
+    } else if (tariff_stage==0 && us >= next_device_info) {
         // Optional presentation data never shares the critical dispatch query.
         // A schema error here must not invalidate valid charging windows.
         next_device_info = us + 3600000000LL;
@@ -813,18 +826,25 @@ static void octopus_poll(const sc_config_t *config, const cJSON *rules) {
         if (octopus_http == 401 || octopus_http == 403 || graphql_auth_error(response))
             mbedtls_platform_zeroize(token, sizeof(token));
     } else if (tariff_stage == 1) {
+        tariff_attempt_at=time(NULL);
         char path[96];
         snprintf(path, sizeof(path), "/v1/accounts/%s/", config->account);
         response = sc_cloud_read(config, false, path, NULL, NULL, &octopus_http, &retry);
         if (octopus_http == 200)
             account_tariffs(response);
-        tariff_stage = 2;
+        tariff_http=octopus_http;
+        if(octopus_http!=200)tariff_failures++;
+        tariff_stage = import_code[0]?2:0;
     } else {
+        tariff_attempt_at=time(NULL);
         bool is_export = tariff_stage == 3;
         const char *code = is_export ? export_code : import_code;
         const char *kind = tariff_stage == 4 ? "day" : tariff_stage == 5 ? "night" : "standard";
         cJSON *rates = tariff_read(config, code, kind, &octopus_http, &retry);
         tariff_http=octopus_http;
+        bool failed=rates==NULL;
+        if(failed)tariff_failures++;
+        sc_debug_problem(SC_DEBUG_TARIFF,failed,tariff_http);
         if (tariff_stage == 4) {
             replace(&fixed_day, rates);
             tariff_stage = 5;
@@ -849,7 +869,7 @@ static void octopus_poll(const sc_config_t *config, const cJSON *rules) {
             }
             if (cJSON_GetArraySize(slots) > 0) {
                 replace(&imports, slots);
-                import_rates_at = time(NULL);
+                import_rates_at = time(NULL);tariff_completed_at=import_rates_at;
             } else
                 cJSON_Delete(slots);
             tariff_stage = 3;
@@ -859,8 +879,8 @@ static void octopus_poll(const sc_config_t *config, const cJSON *rules) {
         } else {
             if (rates && cJSON_GetArraySize(rates) > 0) {
                 replace(is_export ? &exports : &imports, rates);
-                if (is_export) export_rates_at = time(NULL);
-                else import_rates_at = time(NULL);
+                if (is_export) export_rates_at = tariff_completed_at = time(NULL);
+                else {import_rates_at = time(NULL);tariff_completed_at=import_rates_at;}
             } else
                 cJSON_Delete(rates);
             tariff_stage = is_export ? 0 : 3;

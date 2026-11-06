@@ -1,3 +1,5 @@
+#include "debug_log.h"
+#include "debug_http.h"
 // Copyright (C) 2026 SCKC. SPDX-License-Identifier: GPL-3.0-or-later
 // Connection tests and an explicitly authorised, USB-only future-period diagnostic.
 #include <stdio.h>
@@ -64,6 +66,7 @@ static void runtime_task(void *arg){
             sc_runtime_tick(copy,online);
             sc_service_setup_tick(copy,online&&time(NULL)>1700000000,save_service_configuration);
             sc_ota_tick(online&&time(NULL)>1700000000);
+            sc_debug_http_tick();
             mbedtls_platform_zeroize(copy,sizeof(*copy));
             xSemaphoreGive(network_io);
         }
@@ -77,10 +80,12 @@ static void *json_alloc(size_t size){void *out=heap_caps_malloc(size,MALLOC_CAP_
 static void wifi_event(void *arg, esp_event_base_t base, int32_t id, void *data) {
     if (base == IP_EVENT && id == IP_EVENT_STA_GOT_IP) {
         retries = 0;
+        sc_debug_problem(SC_DEBUG_WIFI,false,0);
         xEventGroupClearBits(wifi_events,FAILED);
         xEventGroupSetBits(wifi_events,CONNECTED);
         if (sntp_ready) esp_netif_sntp_start();
     } else if (base == WIFI_EVENT && id == WIFI_EVENT_STA_DISCONNECTED) {
+        sc_debug_problem(SC_DEBUG_WIFI,true,data?((wifi_event_sta_disconnected_t *)data)->reason:0);
         xEventGroupClearBits(wifi_events,CONNECTED);
         if (configured && retries++ < 5) esp_wifi_connect();
         else xEventGroupSetBits(wifi_events,FAILED);
@@ -123,7 +128,7 @@ static bool start_connection(void) {
 static cJSON *status_json(void) {
     cJSON *object = cJSON_CreateObject();
     cJSON_AddStringToObject(object,"firmware","Smart Charging ESP32");
-    cJSON_AddStringToObject(object,"version","2.5.1");
+    cJSON_AddStringToObject(object,"version","2.5.2");
     cJSON_AddBoolToObject(object,"automation_enabled",sc_runtime_enabled());
     cJSON_AddBoolToObject(object,"configured",settings_saved);
     cJSON_AddBoolToObject(object,"network_trial_active",network_trial_active);
@@ -570,6 +575,7 @@ static void handle_command(char *line) {
 void app_main(void) {
     esp_log_level_set("*",ESP_LOG_NONE);
     cJSON_Hooks json_hooks={.malloc_fn=json_alloc,.free_fn=free};cJSON_InitHooks(&json_hooks);
+    sc_debug_init();sc_debug_http_init();
     setenv("TZ","GMT0BST,M3.5.0/1,M10.5.0",1);tzset();
     uart_config_t uart={.baud_rate=115200,.data_bits=UART_DATA_8_BITS,.parity=UART_PARITY_DISABLE,.stop_bits=UART_STOP_BITS_1,.flow_ctrl=UART_HW_FLOWCTRL_DISABLE,.source_clk=UART_SCLK_DEFAULT};
     ESP_ERROR_CHECK(uart_driver_install(UART_NUM_0,8192,0,0,NULL,0));

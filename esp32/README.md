@@ -399,3 +399,27 @@ Pages copies the frozen release digest. CI-rebuilt USB binaries do not replace t
 The release binary must match the committed SHA-256 and size. Do not regenerate the frozen record from a different binary.
 OTA trusts verified HTTPS from the project publisher. It does not add hardware Secure Boot or an eFuse signing requirement.
 [ESP-IDF OTA documentation](https://docs.espressif.com/projects/esp-idf/en/v5.5/esp32s3/api-reference/system/ota.html) explains pending-image confirmation and rollback.
+
+## AI diagnostics
+
+1. Open Settings → General settings → AI diagnostics.
+2. Select an unused diagnostics port.
+3. Select Enable debug mode.
+4. Select Copy AI connection details.
+5. Share those details with your chosen local AI agent.
+6. After diagnosis, select Disable.
+
+The default diagnostics port is 8788. The dashboard port remains 8787.
+Access uses a random 256-bit Bearer key and expires after one hour.
+The URL contains no key. Send the key in the Authorization header.
+LAN HTTP is unencrypted. Do not forward the diagnostics port to the Internet.
+
+GET /diagnostics returns an allowlisted status snapshot and structured events.
+GET /events returns structured events. GET /status returns access and retention status.
+These routes do not request cloud data or accept control commands.
+Settings, accounts, browser sessions, API keys, and raw cloud responses are excluded.
+
+Events use RAM for up to 24 hours, with a maximum of 512 records.
+When full, the buffer replaces older events. The status reports the replacement count.
+Restart clears all events and revokes access. Disable or rotation also revokes the key.
+A page reload requires new connection details because the browser does not store the key.

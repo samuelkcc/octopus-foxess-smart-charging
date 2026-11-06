@@ -1,3 +1,22 @@
+# 2.5.2 — 6 November 2026
+
+ESP32 direct entry keeps Welcome hidden while the first authenticated state request is pending.
+Optional account metadata now follows pending tariff discovery. Octopus requests remain at least 60 seconds apart.
+Dashboard status includes tariff stages, cache counts, attempt times, completion times, and failure counts.
+Empty FoxESS schedules explain when no dispatch or ordinary rule requires a period.
+
+Settings adds optional read-only LAN diagnostics on a separate port, with 8788 as the default.
+A random 256-bit Bearer key expires after one hour. Disable, rotation, and restart revoke access.
+The connection details keep the key outside the URL. LAN HTTP is unencrypted.
+Structured numeric events use RAM for up to 24 hours, with a 512-event limit.
+Diagnostic responses exclude account details, credentials, browser sessions, and raw cloud responses.
+No diagnostic route sends upstream requests or changes settings or inverter schedules.
+
+Native mocks verify authentication, expiry, revocation, rate limits, bounded retention, redaction, and blocked mutations.
+The user confirmed a physical OTA update from 2.5.0 to 2.5.1 succeeded.
+The new diagnostic listener and native Windows runtime still require physical verification.
+The tutorial remains a private preview pending approval.
+
 ## 2.5.1 — 6 November 2026
 
 New ESP32 deployments start automation after verified Wi-Fi and IP settings are saved.

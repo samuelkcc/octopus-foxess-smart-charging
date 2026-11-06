@@ -1,3 +1,5 @@
+#include "debug_log.h"
+void sc_debug_problem(enum sc_debug_source source,bool failed,int code){(void)source;(void)failed;(void)code;}
 // Copyright (C) 2026 SCKC. GPL-3.0-or-later.
 #include <assert.h>
 #include <stdio.h>

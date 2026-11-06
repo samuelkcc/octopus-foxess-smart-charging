@@ -806,3 +806,7 @@ html.desktop-viewport,html.desktop-viewport body {height:100%;min-height:0;overf
 
 #dev-shell .dev-app-actions .overview-updates{order:1}
 #dev-shell .dev-app-actions .next-pause-switch{order:2}
+
+/* Read-only diagnostic sharing controls. */
+.settings-debug-actions{display:flex;flex-wrap:wrap;gap:10px;margin-top:14px}
+#esp-debug-details{width:100%;min-height:170px;box-sizing:border-box;font:inherit;overflow-wrap:anywhere}

@@ -4,6 +4,8 @@
 #include <stdlib.h>
 #include <string.h>
 #include "../main/dashboard_http.c"
+cJSON *sc_debug_access_status(void){return cJSON_CreateObject();}
+cJSON *sc_debug_access_update(const cJSON *r){(void)r;return NULL;}
 static uint16_t active_test_port=8787;
 uint16_t sc_dashboard_port_active(void){return active_test_port;}
 const unsigned char dashboard_start[] asm("_binary_dashboard_html_gz_start")={0};

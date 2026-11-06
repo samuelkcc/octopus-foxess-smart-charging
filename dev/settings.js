@@ -20,6 +20,35 @@ window.installSettingsSections=({page,generalContent,accountCards=[]})=>{
     const page=document.querySelector('.dev-page[data-page="settings"]');
     const accountCards=[...page.querySelectorAll('[data-setting]')].filter(node=>['account-actions','device-setup','service-octopus','service-foxess','service-websocket','foxess-live','lan-access'].includes(node.dataset.setting));
     window.settingsSections=window.installSettingsSections({page,generalContent:$('esp-settings-form'),accountCards:accountCards.sort((a,b)=>(a.dataset.setting==='device-setup')-(b.dataset.setting==='device-setup'))});
+    const debug=document.createElement('section');debug.className='next-panel';debug.dataset.setting='ai-diagnostics';
+    debug.innerHTML='<h3>AI diagnostics</h3><p>Share read-only status and recent issues with an AI agent on your local network.</p><label class="next-field">Diagnostics port<input id="esp-debug-port" type="number" min="1024" max="65535" value="8788"></label><div class="settings-debug-actions"><button id="esp-debug-enable" class="next-button secondary" type="button">Enable debug mode</button><button id="esp-debug-disable" class="next-button secondary" type="button" disabled>Disable</button><button id="esp-debug-copy" class="next-button" type="button" disabled>Copy AI connection details</button></div><p id="esp-debug-status" role="status">Debug mode is off.</p><textarea id="esp-debug-details" aria-label="AI connection details" readonly hidden></textarea><p>Records use RAM for up to 24 hours, with a maximum of 512 events. Restart clears them.</p><p>Access expires after one hour. Disable or restart to revoke the key. HTTP on your local network is unencrypted.</p>';
+    $('esp-settings-form').querySelector('.dev-page-grid').append(debug);
+    let debugKey='',debugInfo=null;
+    const clearDebugKey=()=>{debugKey='';$('esp-debug-details').value='';$('esp-debug-details').hidden=true;$('esp-debug-copy').disabled=true;};
+    D.syncDebug=info=>{
+      if(!info)return;debugInfo=info;
+      if(!info.enabled)clearDebugKey();
+      $('esp-debug-disable').disabled=!info.enabled;
+      $('esp-debug-enable').textContent=info.enabled?'Generate new connection details':'Enable debug mode';
+      $('esp-debug-status').textContent=info.enabled?'Read-only access enabled · expires in '+Math.ceil(info.expires_in_seconds/60)+' minutes · '+info.records+' events'+(info.dropped?' · '+info.dropped+' older events replaced':''):'Debug mode is off.';
+    };
+    const updateDebug=async enabled=>{
+      const button=$('esp-debug-'+(enabled?'enable':'disable'));button.disabled=true;
+      try{
+        const info=await D.request('/api/debug-access',{enabled,port:Number($('esp-debug-port').value)});
+        clearDebugKey();debugKey=info.api_key||'';D.syncDebug(info);$('esp-debug-copy').disabled=!debugKey;
+      }catch(error){$('esp-debug-status').textContent=error.message;}finally{button.disabled=false;}
+    };
+    $('esp-debug-enable').addEventListener('click',()=>updateDebug(true));
+    $('esp-debug-disable').addEventListener('click',()=>updateDebug(false));
+    $('esp-debug-copy').addEventListener('click',async()=>{
+      if(!debugKey||!debugInfo?.enabled)return;
+      const url=new URL(location.href);url.port=String(debugInfo.port);url.pathname='/diagnostics';url.search='';url.hash='';
+      const text='Smart Charging ESP32 — read-only LAN diagnostics\nURL: '+url.href+'\nAuthorization: Bearer '+debugKey+'\nExpires in approximately '+Math.ceil(debugInfo.expires_in_seconds/60)+' minutes.\nUse GET with the Authorization header. Do not put the key in a URL. No cloud calls or control commands are available.';
+      try{await navigator.clipboard.writeText(text);$('esp-debug-status').textContent='AI connection details copied. Share only with your chosen agent.';}
+      catch{$('esp-debug-details').value=text;$('esp-debug-details').hidden=false;$('esp-debug-details').focus();$('esp-debug-details').select();$('esp-debug-status').textContent='Connection details selected. Use Copy, then share with your chosen agent.';}
+    });
+    window.addEventListener('pagehide',clearDebugKey);
     // Each column flows independently: a tall card never leaves a hole in its neighbour.
     const stackCards=(grid,groups)=>{
       for(const keys of groups){
@@ -30,7 +59,7 @@ window.installSettingsSections=({page,generalContent,accountCards=[]})=>{
       grid.classList.add('settings-stacked-grid');
     };
     stackCards($('esp-settings-form').querySelector('.dev-page-grid'),[
-      ['automation-host','history','appearance'],['api-refresh-intervals','firmware-update','price-display']
+      ['automation-host','history','appearance'],['api-refresh-intervals','firmware-update','ai-diagnostics','price-display']
     ]);
     stackCards(window.settingsSections.account.querySelector('.settings-account-grid'),[
       ['service-octopus','service-foxess','lan-access'],['service-websocket','foxess-live','device-setup']

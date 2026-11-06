@@ -494,3 +494,20 @@ The inverter retains its existing schedule. Automatic firmware installation is n
 From 2.5.1, OTA suspends control automatically and restores the saved state after verified startup.
 A manual Pause stays active. Failed installation restores control with fresh data.
 When updating from 2.5.0, pause manually once and resume after the update.
+
+## ESP32 AI diagnostics
+
+Settings → General settings provides optional read-only LAN diagnostics. The default diagnostics port is 8788.
+
+1. Select Enable debug mode.
+2. Select Copy AI connection details.
+3. Share the details with your chosen local AI agent.
+4. After diagnosis, select Disable.
+
+The copied details contain a URL and a separate temporary Bearer key.
+The key expires after one hour. Restart, disable, and rotation revoke access.
+LAN HTTP is unencrypted. Do not expose the diagnostics port to the Internet.
+
+The agent can read structured issues and status. It cannot change settings or send inverter commands.
+Events use RAM for up to 24 hours, with a 512-record limit.
+The buffer replaces older events when full. Restart clears the records.

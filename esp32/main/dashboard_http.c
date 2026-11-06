@@ -1,3 +1,4 @@
+#include "debug_http.h"
 // Copyright (C) 2026 SCKC. SPDX-License-Identifier: GPL-3.0-or-later
 #include "esp_netif.h"
 #include "esp_random.h"
@@ -358,6 +359,7 @@ static esp_err_t api(httpd_req_t *r) {
         return failure(r, "401 Unauthorized", "Enter the LAN access code. USB setup can reset LAN protection.");
     if (!strcmp(r->uri, "/api/state") && !mutation) {
         cJSON *out = sc_runtime_state();
+        cJSON_AddItemToObject(out,"debug",sc_debug_access_status());
         xSemaphoreTake(session_guard, portMAX_DELAY);
         cJSON_AddStringToObject(out, "csrf", session == 6 ? open_csrf : sessions[session].csrf);
         cJSON_AddBoolToObject(out, "lan_access_enabled", protected_lan());
@@ -366,6 +368,12 @@ static esp_err_t api(httpd_req_t *r) {
     }
     if (!strcmp(r->uri, "/api/account") && !mutation)
         return json_reply(r, sc_runtime_account(), NULL);
+    if(!strcmp(r->uri,"/api/debug-access")){
+        if(!mutation)return json_reply(r,sc_debug_access_status(),NULL);
+        cJSON *body=body_json(r),*out=sc_debug_access_update(body);cJSON_Delete(body);
+        if(!out)return failure(r,"400 Bad Request","Diagnostics unavailable. Choose an unused port between 1024 and 65535.");
+        return json_reply(r,out,NULL);
+    }
     if(!strcmp(r->uri,"/api/ota")){
         if(!mutation)return json_reply(r,sc_ota_status(),NULL);
         cJSON *body=body_json(r);bool ok=sc_ota_submit(body);cJSON_Delete(body);
