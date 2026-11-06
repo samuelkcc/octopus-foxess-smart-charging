@@ -1,7 +1,7 @@
 {
   "date": "2026-11-06",
   "base_commit": "ebea84d86090b5fc977b62df4d49efb7ebe30247",
-  "source_state": "Installed network recovery checkpoint a5e3a9888cd53518666f35cdc70bdfea9c54f74c; c4dbf552b60e54cc43c7e0fd60b1be74208bc912 built but not installed",
+  "source_state": "Installed network recovery checkpoint a5e3a9888cd53518666f35cdc70bdfea9c54f74c; mobile help checkpoint 3c0752dac8707ee79b28201d6c9a33d421c6e391 built but not installed",
   "esp_idf": "v5.5.2",
   "firmware_version": "2.4.0",
   "firmware_kind": "Independent LAN worker; optional WebSocket telemetry; USB settings readback and optional Config Password",
@@ -172,9 +172,48 @@
     "dev_build": "passed",
     "rules_preserved": true,
     "concurrent_http_reads": "Complete HTML, JSON, icon and manifest; Connection close",
-    "physical_iphone": "Device Hub displays Safari network connection lost; Web Inspector disabled; unresolved",
-    "latest_diagnostics_build": "c4dbf552b60e54cc43c7e0fd60b1be74208bc912",
+    "physical_iphone": "Web Inspector enabled and attached. Device Hub shows Safari network connection lost. A temporary Mac LAN page loaded; ESP32 manifest and dashboard navigation failed. Cause unresolved.",
+    "latest_diagnostics_build": "3c0752dac8707ee79b28201d6c9a33d421c6e391",
     "latest_diagnostics_installed": false,
-    "reason_not_reflashed": "Retain current RAM caches and physical iPhone failure evidence"
+    "reason_not_reflashed": "Retain current RAM caches and physical iPhone failure evidence",
+    "usb_log_read": "Opening the USB serial port unexpectedly reset the board despite disabled DTR/RTS. Saved settings survived; RAM tariffs reloaded through the serialized worker queue.",
+    "latest_cache_read": {
+      "import_slots": 64,
+      "export_slots": 1,
+      "cloud_refresh_requested": false
+    },
+    "inspection_limit": "iPhone inspection window retained after user confirmation. A small-file fetch waited 12 seconds without response headers. TCP handshake inspection awaits explicit administrator authorization.",
+    "path_comparison": {
+      "mac_wifi_manifest": "HTTP 200, 297 bytes, 0.375 seconds",
+      "mac_ethernet_manifest": "HTTP 200, 297 bytes, 0.054 seconds",
+      "iphone_mac_lan_page": "Loaded without reboot",
+      "iphone_esp32_fetch": "No HTTP response headers before 12-second timeout"
+    }
+  },
+  "mobile_help_checkpoint": {
+    "ui_commit": "3c0752dac8707ee79b28201d6c9a33d421c6e391",
+    "firmware_sha256": "f9dec007a8226186e0ae72d525c86d2f7b32ea33039a14eb9b3698ff8ad02b7e",
+    "installed": false,
+    "published": false,
+    "checks": [
+      "npm run check",
+      ".build/check-240-mobile-help.log",
+      "npm run build:dev",
+      "ESP-IDF firmware build",
+      "Pi tray Python AST",
+      "390px ESP32 and Pi dashboard fixtures",
+      "390px USB deployment fixture",
+      "320px ESP32 header without horizontal overflow",
+      "Guide and About drawer open/close and focus return",
+      "Desktop sidebar restoration with unique IDs"
+    ],
+    "limits": [
+      "Physical iPhone loading remains unresolved.",
+      "Mac app is ad-hoc signed; no notarization.",
+      "Windows native execution is not verified."
+    ],
+    "packaged": true,
+    "deliverable_checksums_verified": 42,
+    "output": "dist/ESP32, dist/Windows Portable, dist/Web HTML, dist/Pi"
   }
 }
