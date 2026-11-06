@@ -2513,8 +2513,8 @@ function getWeeklyModePeriods(config, now, workMode, source, fdSoc) {
     return periods;
 }
 
-function getWeeklyForcedChargePeriods(config, now = new Date()) {
-    return getWeeklyModePeriods(config, now, 'ForceCharge', 'weekly', 100);
+function getWeeklyForcedChargePeriods(config, now = new Date(), fdSoc = 100) {
+    return getWeeklyModePeriods(config, now, 'ForceCharge', 'weekly', fdSoc);
 }
 
 function getWeeklyForcedDischargePeriods(config, now = new Date(), fdSoc = 11) {
@@ -2554,6 +2554,33 @@ function getRoundedSmartDispatchMinutes(startDt, endDt) {
     if (endMinute === 0 && end.getTime() > start.getTime()) endMinute = 1440;
 
     return { startMinute, endMinute };
+}
+
+// The hardware uses civil minutes. A repeated hour must not become an overnight day.
+function getSmartDispatchMinuteRanges(startDt, endDt, rounded = true) {
+    const start = new Date(rounded ? Math.floor(new Date(startDt).getTime() / 1800000) * 1800000 : startDt);
+    const end = new Date(rounded ? Math.ceil(new Date(endDt).getTime() / 1800000) * 1800000 : endDt);
+    if (!Number.isFinite(start.getTime()) || !Number.isFinite(end.getTime()) || end <= start || end - start > 90000000) return [];
+    const first = start.getHours() * 60 + start.getMinutes();
+    let last = end.getHours() * 60 + end.getMinutes();
+    const sameDay = start.getFullYear() === end.getFullYear() && start.getMonth() === end.getMonth() && start.getDate() === end.getDate();
+    if (sameDay && last <= first) {
+        const minutes = new Array(1440).fill(false);
+        for (let instant = start.getTime(); instant < end.getTime(); instant += 60000) {
+            const local = new Date(instant);
+            minutes[local.getHours() * 60 + local.getMinutes()] = true;
+        }
+        const ranges = [];
+        for (let i = 0; i < 1440;) {
+            if (!minutes[i]) { i++; continue; }
+            const from = i;
+            while (i < 1440 && minutes[i]) i++;
+            ranges.push([from, i]);
+        }
+        return ranges;
+    }
+    if (last === 0) last = 1440;
+    return first < last ? [[first, last]] : [[first, 1440], [0, last]];
 }
 
 function resolveAutomationMinute(existingState, incomingState, options) {
@@ -2969,7 +2996,9 @@ async function evaluateLocalAutomations(btn = null, isStartup = false) {
             }
         };
         
-        if (sMins >= eMins && eMins !== 1440) { // Crosses midnight
+        if (['dispatch', 'price', 'export'].includes(ruleSource)) {
+            for (const [start, end] of getSmartDispatchMinuteRanges(startDt, endDt, ruleSource === 'dispatch')) fill(start, end);
+        } else if (sMins >= eMins && eMins !== 1440) { // Crosses midnight
             fill(sMins, 1440);
             if (eMins > 0) fill(0, eMins);
         } else {
@@ -3001,7 +3030,7 @@ async function evaluateLocalAutomations(btn = null, isStartup = false) {
     }
 
     // Weekly forced charge runs even when Octopus tariff data is unavailable.
-    const weeklyPeriods = getWeeklyForcedChargePeriods(weeklyForce, now);
+    const weeklyPeriods = getWeeklyForcedChargePeriods(weeklyForce, now, applyLimit ? targetSoc : 100);
     weeklyPeriods.forEach(weeklyPeriod => {
         fillTimeline(
             new Date(now.getFullYear(), now.getMonth(), now.getDate(), weeklyPeriod.startHour, weeklyPeriod.startMinute),

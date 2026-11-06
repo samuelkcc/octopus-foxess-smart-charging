@@ -120,15 +120,15 @@ bool sc_dispatch_valid(const cJSON *rows) {
     return true;
 }
 typedef struct {
-    unsigned char mode, soc, priority;
+    unsigned char mode, soc, priority, source;
 } cell_t;
-static void fill(cell_t *cells, int start, int end, int mode, int soc, int priority) {
+static void fill(cell_t *cells, int start, int end, int mode, int soc, int priority, unsigned source) {
     for (int i = start; i < end; i++)
         if (priority >= cells[i].priority)
-            cells[i] = (cell_t){mode, soc, priority};
+            cells[i] = (cell_t){mode, soc, priority, source};
 }
 static bool same(cell_t a, cell_t b) { return a.mode == b.mode && a.soc == b.soc && a.priority == b.priority; }
-static void project(cell_t *cells, time_t start, time_t end, time_t now, int mode, int soc, int priority) {
+static void project(cell_t *cells, time_t start, time_t end, time_t now, int mode, int soc, int priority, unsigned source) {
     if (end <= now || start >= now + 86400 || end <= start)
         return;
     struct tm base;
@@ -155,11 +155,44 @@ static void project(cell_t *cells, time_t start, time_t end, time_t now, int mod
         localtime_r(&b, &local_b);
         int first = local_a.tm_hour * 60 + local_a.tm_min,
             last = b == day_end ? 1440 : local_b.tm_hour * 60 + local_b.tm_min;
-        if (first < last)
-            fill(cells, first, last, mode, soc, priority);
+        if (first < last) {
+            fill(cells, first, last, mode, soc, priority, source);
+        } else {
+            // A repeated UK hour can end at an earlier wall-clock minute.
+            // Project its actual minutes; never interpret that fold as an overnight day.
+            for (time_t instant = a / 60 * 60; instant < b; instant += 60) {
+                struct tm local;
+                localtime_r(&instant, &local);
+                int minute = local.tm_hour * 60 + local.tm_min;
+                fill(cells, minute, minute + 1, mode, soc, priority, source);
+            }
+        }
     }
 }
-static void weekly_periods(cell_t *cells, const cJSON *rules, const char *prefix, const struct tm *today, time_t now,
+// JavaScript Date chooses the earlier occurrence of a repeated local time and
+// advances a nonexistent spring time by the clock gap. Match that civil-time rule.
+static time_t civil_time(struct tm *value) {
+    struct tm requested = *value, best_local = {0};
+    time_t best = 0;
+    bool exact = false;
+    for (int dst = 0; dst <= 1; dst++) {
+        struct tm candidate = requested;
+        candidate.tm_isdst = dst;
+        time_t epoch = mktime(&candidate);
+        struct tm local;
+        localtime_r(&epoch, &local);
+        bool date = local.tm_year == requested.tm_year && local.tm_mon == requested.tm_mon && local.tm_mday == requested.tm_mday;
+        bool matches = date && local.tm_hour == requested.tm_hour && local.tm_min == requested.tm_min;
+        bool forward = date && local.tm_hour * 60 + local.tm_min > requested.tm_hour * 60 + requested.tm_min;
+        if ((matches && (!exact || epoch < best)) || (!exact && forward && (!best || epoch < best))) {
+            best = epoch; best_local = local; exact = matches;
+        }
+    }
+    if (!best) return mktime(value);
+    *value = best_local;
+    return best;
+}
+static void weekly_periods(cell_t *cells, const cJSON *rules, const char *prefix, const struct tm *today,
                            int mode, int target) {
     char key[32];
     snprintf(key, sizeof(key), "%s_start", prefix);
@@ -170,41 +203,59 @@ static void weekly_periods(cell_t *cells, const cJSON *rules, const char *prefix
     int days = number(rules, key, 0);
     if (start == end)
         return;
-    for (int day = -1; day <= 1; day++) {
-        struct tm from = *today;
-        from.tm_mday += day;
-        from.tm_hour = start / 60;
-        from.tm_min = start % 60;
-        from.tm_sec = 0;
-        from.tm_isdst = -1;
-        time_t a = mktime(&from);
-        if (!(days & (1 << from.tm_wday)))
-            continue;
-        struct tm to = from;
-        to.tm_hour = end / 60;
-        to.tm_min = end % 60;
-        to.tm_sec = 0;
-        to.tm_isdst = -1;
-        if (end <= start)
-            to.tm_mday++;
-        time_t b = mktime(&to);
-        project(cells, a, b, now, mode, target, 1);
+    if (start < end) {
+        if (days & (1 << today->tm_wday)) fill(cells, start, end, mode, target, 1, 2);
+    } else {
+        int previous = (today->tm_wday + 6) % 7;
+        if (days & (1 << previous)) fill(cells, 0, end, mode, target, 1, 2);
+        if (days & (1 << today->tm_wday)) fill(cells, start, 1440, mode, target, 1, 2);
     }
 }
 static void priced_periods(cell_t *cells, const cJSON *rates, time_t now, double threshold, bool upper, int mode,
                            int target) {
-    const cJSON *row;
-    cJSON_ArrayForEach(row, rates) {
-        double value = number(row, "value", NAN);
-        if (!isfinite(value) || (upper ? value < threshold : value > threshold))
-            continue;
-        time_t a = number(row, "start", 0), b = number(row, "end", 0);
-        if (a > 0 && b > a)
-            project(cells, a, b, now, mode, target, 1);
+    // Match the Pi tariff adapter: sample each civil half-hour's effective rate.
+    struct tm today; localtime_r(&now, &today);
+    for (int minute = 0; minute < 1440; minute += 30) {
+        struct tm local = today;
+        local.tm_hour = minute / 60; local.tm_min = minute % 60; local.tm_sec = 0; local.tm_isdst = -1;
+        time_t start = civil_time(&local), end = start + 1800;
+        if (end <= now) continue;
+        const cJSON *row;
+        cJSON_ArrayForEach(row, rates) {
+            time_t a = number(row, "start", 0), b = number(row, "end", 0);
+            if (a <= 0 || start < a || start >= b) continue;
+            double value = number(row, "value", NAN);
+            if (isfinite(value) && !(upper ? value < threshold : value > threshold))
+                project(cells, start, end, now, mode, target, 1, 1);
+            break;
+        }
     }
 }
 cJSON *sc_automation_plan(const cJSON *rules, const cJSON *dispatches, const cJSON *imports, const cJSON *exports,
                           const cJSON *manual, time_t now, double soc) {
+    sc_resume_state_t memory = {0};
+    return sc_automation_plan_stateful(rules, dispatches, imports, exports, manual, now, soc, &memory);
+}
+static time_t weekly_until(const cJSON *rules, const struct tm *today, time_t now) {
+    struct tm end = *today;
+    int a = number(rules, "charge_start", 0), z = number(rules, "charge_end", 0);
+    int minute = today->tm_hour * 60 + today->tm_min;
+    end.tm_hour = z / 60; end.tm_min = z % 60; end.tm_sec = 0; end.tm_isdst = -1;
+    if (a > z && minute >= a) end.tm_mday++;
+    time_t until = civil_time(&end);
+    return until > now ? until : now;
+}
+static void suppress(cell_t *cells, const sc_resume_state_t *memory, const struct tm *today) {
+    if (!memory || !memory->source) return;
+    for (int i = 0; i < 1440; i++) {
+        struct tm at = *today;
+        at.tm_hour = i / 60; at.tm_min = i % 60; at.tm_sec = 0; at.tm_isdst = -1;
+        if (cells[i].mode == 1 && cells[i].source == memory->source && civil_time(&at) < memory->until)
+            cells[i] = (cell_t){0};
+    }
+}
+cJSON *sc_automation_plan_stateful(const cJSON *rules, const cJSON *dispatches, const cJSON *imports, const cJSON *exports,
+                          const cJSON *manual, time_t now, double soc, sc_resume_state_t *memory) {
     if (!sc_rules_valid(rules) || !sc_dispatch_valid(dispatches))
         return NULL;
     cell_t *cells = calloc(1440, sizeof(*cells));
@@ -213,21 +264,24 @@ cJSON *sc_automation_plan(const cJSON *rules, const cJSON *dispatches, const cJS
     struct tm today;
     localtime_r(&now, &today);
     int current = today.tm_hour * 60 + today.tm_min;
+    if (memory && (now >= memory->until || !flag(rules, "auto_resume"))) *memory = (sc_resume_state_t){0};
     if (flag(rules, "charge_price_enabled"))
         priced_periods(cells, imports, now, number(rules, "charge_price_p", 7), false, 1,
                        (flag(rules, "charge_soc_enabled") ? number(rules, "target_soc", 80) : 100));
+    suppress(cells, memory, &today);
     if (flag(rules, "weekly_charge"))
-        weekly_periods(cells, rules, "charge", &today, now, 1, (flag(rules, "charge_soc_enabled") ? number(rules, "target_soc", 80) : 100));
+        weekly_periods(cells, rules, "charge", &today, 1, (flag(rules, "charge_soc_enabled") ? number(rules, "target_soc", 80) : 100));
+    suppress(cells, memory, &today);
     // A manual period is temporary, and Smart Dispatch still has priority.
     if (number(manual, "expires", 0) > now) {
         int a = number(manual, "start", -1), b = number(manual, "end", -1), mode = number(manual, "mode", 0);
         if (a >= 0 && a < 1440 && b >= 0 && b < 1440 && a != b && mode >= 0 && mode <= 2) {
             if (a < b)
-                fill(cells, a, b, mode, mode == 2 ? number(rules, "min_soc", 11) : (flag(rules, "charge_soc_enabled") ? number(rules, "target_soc", 80) : 100), 2);
+                fill(cells, a, b, mode, mode == 2 ? number(rules, "min_soc", 11) : (flag(rules, "charge_soc_enabled") ? number(rules, "target_soc", 80) : 100), 2, 4);
             else {
                 fill(cells, a, 1440, mode, mode == 2 ? number(rules, "min_soc", 11) : (flag(rules, "charge_soc_enabled") ? number(rules, "target_soc", 80) : 100),
-                     2);
-                fill(cells, 0, b, mode, mode == 2 ? number(rules, "min_soc", 11) : (flag(rules, "charge_soc_enabled") ? number(rules, "target_soc", 80) : 100), 2);
+                     2, 4);
+                fill(cells, 0, b, mode, mode == 2 ? number(rules, "min_soc", 11) : (flag(rules, "charge_soc_enabled") ? number(rules, "target_soc", 80) : 100), 2, 4);
             }
         }
     }
@@ -241,14 +295,14 @@ cJSON *sc_automation_plan(const cJSON *rules, const cJSON *dispatches, const cJS
             if (end <= now || start > now + 86400)
                 continue;
             project(cells, start, end, now, 1,
-                    flag(rules, "dispatch_soc_enabled") ? number(rules, "dispatch_soc", 100) : 100, 3);
+                    flag(rules, "dispatch_soc_enabled") ? number(rules, "dispatch_soc", 100) : 100, 3, 8);
         }
     // Match the Pi resolver: discharging replaces ordinary charging by default,
     // while the two explicit safeguard preferences control charge conflicts.
     cell_t *discharge = calloc(1440, sizeof(*discharge));
     if (!discharge) { free(cells); return NULL; }
     if (flag(rules, "weekly_discharge"))
-        weekly_periods(discharge, rules, "discharge", &today, now, 2, number(rules, "min_soc", 11));
+        weekly_periods(discharge, rules, "discharge", &today, 2, number(rules, "min_soc", 11));
     if (flag(rules, "discharge_price_enabled"))
         priced_periods(discharge, exports, now, number(rules, "discharge_price_p", 30), true, 2, number(rules, "min_soc", 11));
     for (int i = 0; i < 1440; i++) if (discharge[i].mode && cells[i].priority != 2) {
@@ -257,17 +311,18 @@ cJSON *sc_automation_plan(const cJSON *rules, const cJSON *dispatches, const cJS
         if (!protect) cells[i] = discharge[i];
     }
     free(discharge);
-    // Auto-Resume affects only the active ordinary charge block.
-    if (flag(rules, "auto_resume") && isfinite(soc) && cells[current].mode == 1 && cells[current].priority < 3 &&
-        soc >= cells[current].soc) {
+    // Completion remains suppressed when SOC falls, until the original source ends.
+    // A Smart Dispatch is never fulfilled by Auto-Resume.
+    if (memory && flag(rules, "auto_resume") && isfinite(soc) && cells[current].mode == 1 &&
+        (cells[current].source == 1 || cells[current].source == 2) && soc >= cells[current].soc) {
         cell_t active = cells[current];
-        int a = current, b = current + 1;
-        while (a > 0 && same(cells[a - 1], active))
-            a--;
-        while (b < 1440 && same(cells[b], active))
-            b++;
-        for (int i = a; i < b; i++)
-            cells[i] = (cell_t){0};
+        int end = current + 1;
+        while (end < 1440 && same(cells[end], active)) end++;
+        struct tm until = today;
+        until.tm_hour = end / 60; until.tm_min = end % 60; until.tm_sec = 0; until.tm_isdst = -1;
+        memory->source = active.source;
+        memory->until = active.source == 2 ? weekly_until(rules, &today, now) : civil_time(&until);
+        suppress(cells, memory, &today);
     }
     cJSON *out = cJSON_CreateObject(), *all = cJSON_CreateArray(), *groups = cJSON_CreateArray();
     int dispatch_count = 0;
@@ -336,12 +391,8 @@ cJSON *sc_automation_plan(const cJSON *rules, const cJSON *dispatches, const cJS
     if (!cJSON_AddItemToObject(out, "groups", groups))
         goto allocation_failed;
     groups = NULL;
-    time_t tomorrow = now + 86400;
-    struct tm next;
-    localtime_r(&tomorrow, &next);
     if (!cJSON_AddBoolToObject(out, "partial", total > 5) ||
         !cJSON_AddBoolToObject(out, "dispatch_capacity_exceeded", dispatch_count > 5) ||
-        !cJSON_AddBoolToObject(out, "clock_transition_unsupported", today.tm_isdst != next.tm_isdst) ||
         !cJSON_AddNumberToObject(out, "total_periods", total))
         goto allocation_failed;
     cJSON_Delete(all);

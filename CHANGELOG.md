@@ -1,5 +1,12 @@
 # 2.4.0 — Unreleased
 
+- Default ESP32 HTTP to port 8787 and add persistent USB port configuration to all deployment tools.
+- Remove the 24-hour UK clock-transition programming guard.
+- Retain completed ordinary charging until its original weekly or price source ends.
+- Match Pi civil weekdays and half-hour tariff sampling.
+- Correct shared weekly charge SOC limits and repeated-hour projection.
+- Add native persistence, access validation, and ESP32/Pi differential scheduler tests.
+
 - Place compact User guide (?) and About (!) controls at the right of the mobile header.
 - Retain desktop sidebar controls and the existing help drawers in every edition and USB deployment tool.
 - Bound ESP32 dashboard reads and JSON decoding to 12 seconds.

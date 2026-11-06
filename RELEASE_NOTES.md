@@ -17,7 +17,11 @@ Physical iPhone loading remains under investigation.
 Safari Web Inspector is enabled on the connected iPhone.
 The iPhone loaded a temporary Mac LAN page while ESP32 requests failed.
 The connection failure has no confirmed cause yet.
-Scheduler parity work and stable publication remain incomplete.
+The new ESP32 default is port 8787. USB deployment tools can save a different port for the next restart.
+UK clock changes no longer cause a 24-hour programming blackout.
+Auto-Resume remembers completed ordinary charging until its source ends.
+Native and Pi differential checks cover these changes without live inverter test commands.
+Stable publication and physical iPhone verification remain pending.
 
 # Smart Charging 2.3.1 Preview
 

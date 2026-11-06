@@ -29,8 +29,8 @@ function harness({ supported=true, rejectSelection=false, rejectSave=false, oldF
   get('config-form').reportValidity=()=>!inputIds.map(get).some(e=>!e.disabled&&(e.validity||e.required&&!e.value));
   const commands=[];
   let controller,configured=existing,closeCount=0,foxConfigured=false,liveMode='rest';
-  let protection=protectedConfig;let jobRequest,jobPoll=0;
-  const status=()=>({config_access:{enabled:protection},firmware:'Smart Charging ESP32 connection test',version:'2.2.0',configured,automation_enabled:automation,wifi_connected:configured,ip:configured?"192.168.8.188":undefined,psram_bytes:8388608,foxess_telemetry:{configured:foxConfigured,mode:liveMode},capabilities:oldFirmware?{}:{production_controller:true,usb_config_readback:true,optional_foxess_websocket:true,validate_before_save:true,network_trial:true,ip_suggestion:true}});
+  let savedPort=8787;let protection=protectedConfig;let jobRequest,jobPoll=0;
+  const status=()=>({config_access:{enabled:protection},firmware:oldFirmware?'Smart Charging ESP32 connection test':'Smart Charging ESP32',dashboard_port:8787,configured_dashboard_port:savedPort,dashboard_restart_required:savedPort!==8787,version:'2.2.0',configured,automation_enabled:automation,wifi_connected:configured,ip:configured?"192.168.8.188":undefined,psram_bytes:8388608,foxess_telemetry:{configured:foxConfigured,mode:liveMode},capabilities:oldFirmware?{}:{dashboard_port_configuration:true,production_controller:true,usb_config_readback:true,optional_foxess_websocket:true,validate_before_save:true,network_trial:true,ip_suggestion:true}});
   const device={
     async open(){
       this.readable=new ReadableStream({start(value){controller=value;}});
@@ -41,6 +41,7 @@ function harness({ supported=true, rejectSelection=false, rejectSave=false, oldF
         let ok=true;
         switch(request.command){
           case 'hello':case 'status': result=status();break;
+          case 'dashboard_port':savedPort=request.port;result=status();break;
           case 'runtime_state':result={now:1793916000};break;
           case 'scan':result=[{ssid:'Example-IoT',rssi:-45,security:'Secured'},{ssid:'Example-IoT',rssi:-70,security:'Secured'}];break;
           case 'config_read':if(protection&&request.config_password!=='example-config-password'){ok=false;break;}result={ssid:'saved-wifi',password:'saved-private-wifi',account:'saved-account',octopus_key:'saved-private-octopus',foxess_sn:'saved-serial',foxess_key:'saved-private-foxess',ip_mode:savedStatic?'static':'dhcp',ip:'192.168.8.188',gateway:'192.168.8.1',netmask:'255.255.255.0',dns:'192.168.8.1'};break;
@@ -175,3 +176,14 @@ console.log('Browser installer verifies SHA-256 downloads, requires flash MD5 ve
 const signals=[];
 await resetToApplication({async setDTR(value){signals.push(['BOOT',value]);},async setRTS(value){signals.push(['EN',value]);}},async ms=>signals.push(['pause',ms]));
 assert.deepEqual(signals,[['BOOT',false],['EN',true],['pause',100],['EN',false]],'Release BOOT before pulsing EN to leave the flashing stub');
+
+const portSetup=harness({existing:true,automation:true});await portSetup.click('connect');
+assert.equal(portSetup.get('dashboard-port-save').disabled,false,'USB port edits remain available while automation runs');
+portSetup.get('dashboard-port').value='8989';await portSetup.click('dashboard-port-save');
+assert.equal(portSetup.commands.at(-1).command,'dashboard_port');assert.equal(portSetup.commands.at(-1).port,8989);
+assert.match(portSetup.get('dashboard-port-status').textContent,/Restart/);
+assert.equal(portSetup.commands.filter(x=>x.command==='configure'||x.command==='service_setup').length,0,'Port save must not replace credentials or send cloud tests');
+assert.equal(portSetup.get('device-link').options[0].href,'http://192.168.8.188:8787/','Pending port does not change active links');
+portSetup.get('dashboard-port').value='65536';await portSetup.click('dashboard-port-save');assert.notEqual(portSetup.commands.at(-1).port,65536);
+await portSetup.click('disconnect');
+console.log('USB dashboard port: active URLs, pending restart, validation and independent save with automation enabled passed.');

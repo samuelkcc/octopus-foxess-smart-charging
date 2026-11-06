@@ -4,6 +4,8 @@
 #include <stdlib.h>
 #include <string.h>
 #include "../main/dashboard_http.c"
+static uint16_t active_test_port=8787;
+uint16_t sc_dashboard_port_active(void){return active_test_port;}
 const unsigned char dashboard_start[] asm("_binary_dashboard_html_gz_start")={0};
 const unsigned char dashboard_end[] asm("_binary_dashboard_html_gz_end")={0};
 const unsigned char touch_icon_start[] asm("_binary_apple_touch_icon_png_start")={137,80,78,71,0};
@@ -45,7 +47,10 @@ bool sc_runtime_manual(const cJSON *value){return cJSON_IsObject(value);}
 unsigned sc_runtime_revision(void){return 1;}
 bool sc_runtime_update_expected(const cJSON *value,unsigned expected){return cJSON_IsObject(value)&&expected==1;}
 static void call(request_data_t *data,const char *path,int method,const char *body){data->body=body?body:"";data->received=0;data->status[0]=0;data->closes=false;httpd_req_t req={.uri=path,.method=method,.content_len=(int)strlen(data->body),.user_ctx=data};assert(api(&req)!=ESP_OK&&data->closes);}
-int main(void){sc_runtime_register(NULL);request_data_t d={.host="192.168.8.188",.origin="http://192.168.8.188"};httpd_req_t manifest={.uri="/site.webmanifest",.method=HTTP_GET,.user_ctx=&d};app_asset(&manifest);assert(strstr(d.response,"icon-192.png")&&strstr(d.response,"standalone"));d.host="attacker.example";d.status[0]=0;app_asset(&manifest);assert(!strcmp(d.status,"403 Forbidden"));d.host="192.168.8.188";call(&d,"/api/state",HTTP_GET,NULL);assert(!d.status[0]&&"Fresh deployments are open on LAN");
+int main(void){sc_runtime_register(NULL);request_data_t d={.host="192.168.8.188:8787",.origin="http://192.168.8.188:8787"};d.host="192.168.8.188";call(&d,"/api/state",HTTP_GET,NULL);assert(strstr(d.status,"403"));
+ d.host="192.168.8.188:80";call(&d,"/api/state",HTTP_GET,NULL);assert(strstr(d.status,"403"));
+ d.host="192.168.8.188:8787";d.origin="http://192.168.8.188";call(&d,"/api/rules",HTTP_POST,"{}");assert(strstr(d.status,"403"));d.origin="http://192.168.8.188:8787";
+ httpd_req_t manifest={.uri="/site.webmanifest",.method=HTTP_GET,.user_ctx=&d};app_asset(&manifest);assert(strstr(d.response,"icon-192.png")&&strstr(d.response,"standalone"));d.host="attacker.example";d.status[0]=0;app_asset(&manifest);assert(!strcmp(d.status,"403 Forbidden"));d.host="192.168.8.188:8787";call(&d,"/api/state",HTTP_GET,NULL);assert(!d.status[0]&&"Fresh deployments are open on LAN");
  cJSON *open_state=cJSON_Parse(d.response);assert(cJSON_IsFalse(cJSON_GetObjectItem(open_state,"lan_access_enabled")));char open_token[65];strcpy(open_token,cJSON_GetObjectItem(open_state,"csrf")->valuestring);cJSON_Delete(open_state);
  call(&d,"/api/rules",HTTP_POST,"{}");assert(strstr(d.status,"401")&&"Open LAN mutations still require CSRF");
  call(&d,"/api/account",HTTP_GET,NULL);assert(!d.status[0]&&strstr(d.response,"A-TEST"));
@@ -65,9 +70,9 @@ int main(void){sc_runtime_register(NULL);request_data_t d={.host="192.168.8.188"
 
  call(&d,"/api/rules",HTTP_POST,"{\"revision\":1,\"rules\":{\"enabled\":true},\"acknowledge_control\":true}");assert(!d.status[0]);
  d.csrf=NULL;call(&d,"/api/rules",HTTP_POST,"{}");assert(strstr(d.status,"401"));d.csrf=csrf_copy;
- d.origin="https://attacker.example";call(&d,"/api/rules",HTTP_POST,"{}");assert(strstr(d.status,"403"));d.origin="http://192.168.8.188";
+ d.origin="https://attacker.example";call(&d,"/api/rules",HTTP_POST,"{}");assert(strstr(d.status,"403"));d.origin="http://192.168.8.188:8787";
  d.forwarded="127.0.0.1";call(&d,"/api/state",HTTP_GET,NULL);assert(strstr(d.status,"403"));d.forwarded=NULL;
- d.host="attacker.example";call(&d,"/api/state",HTTP_GET,NULL);assert(strstr(d.status,"403"));d.host="192.168.8.188";
+ d.host="attacker.example";call(&d,"/api/state",HTTP_GET,NULL);assert(strstr(d.status,"403"));d.host="192.168.8.188:8787";
  d.forwarded="127.0.0.1";call(&d,"/api/account",HTTP_GET,NULL);assert(strstr(d.status,"403"));d.forwarded=NULL;
  call(&d,"/api/config",HTTP_GET,NULL);assert(strstr(d.status,"404"));
  memset(sessions,0,sizeof(sessions));load_sessions();call(&d,"/api/state",HTTP_GET,NULL);assert(!d.status[0]&&"Hashed browser session survives device restart");state=cJSON_Parse(d.response);strcpy(csrf_copy,cJSON_GetObjectItem(state,"csrf")->valuestring);cJSON_Delete(state);

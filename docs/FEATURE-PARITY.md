@@ -1,3 +1,28 @@
+# 2.4.0 scheduler and deployment review — Unreleased
+
+ESP32 defaults to HTTP port 8787. Physical USB can save another port for the next restart.
+Port storage is independent of credentials, optional USB protection, and automation rules.
+Host and Origin checks require the active port. Dashboard configuration cannot change it.
+
+The former 24-hour UK clock-transition guard is removed.
+Weekly periods use civil weekdays and carry-over minutes, matching Pi scheduling.
+Repeated-hour dispatches cannot become an all-day period.
+The shared Pi scheduler also applies the selected ordinary SOC limit to weekly charging.
+
+Auto-Resume retains the completed weekly or price source until its original end.
+A falling SOC or missing reading does not reactivate that source.
+Smart Dispatch remains protected. New control rules, temporary periods, or explicit resume reset completion memory.
+General refresh and History settings do not reset completion memory.
+Only fresh telemetry can establish completion.
+
+Native tests cover falling SOC, overnight completion, source isolation, dispatch overlap, next-day expiry, and both UK clock transitions.
+Differential tests run the actual Pi evaluation function against the native ESP32 planner.
+The original known clock guard and non-latching Auto-Resume differences are superseded by this section.
+Earlier sections retain the historical verification record.
+
+Physical iPhone access remains unresolved. Port 8787 does not yet establish a network fix.
+Cloudflare remains excluded. Native Windows execution and long-term hardware operation remain unverified.
+
 # 2.4.0 mobile help review — Unreleased
 
 Mobile dashboards and USB setup use compact User guide (?) and About (!) buttons beside the brand heading.

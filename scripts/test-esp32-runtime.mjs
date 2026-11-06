@@ -11,6 +11,7 @@ try{
  if(built.status!==0)throw Error(built.stderr||built.stdout);
  const result=spawnSync(output,[],{encoding:'utf8'});process.stdout.write(result.stdout);if(result.status!==0)throw Error(result.stderr||'Worker mock tests failed');
 
+ const resume=spawnSync(output,['resume'],{encoding:'utf8'});process.stdout.write(resume.stdout);if(resume.status!==0)throw Error(resume.stderr||'Completion-memory integration failed');
  const budget=spawnSync(output,['setup-budget'],{encoding:'utf8'});process.stdout.write(budget.stdout);if(budget.status!==0)throw Error(budget.stderr||'Shared setup/worker budget failed');
  const timestamp=spawnSync(output,['timestamp'],{encoding:'utf8'});process.stdout.write(timestamp.stdout);if(timestamp.status!==0)throw Error(timestamp.stderr||'Live timestamp regression failed');
  const refresh=spawnSync(output,['refresh'],{encoding:'utf8'});process.stdout.write(refresh.stdout);if(refresh.status!==0)throw Error(refresh.stderr||'Manual refresh / token recovery failed');
@@ -19,6 +20,10 @@ try{
  const fixed=spawnSync(output,['fixed'],{encoding:'utf8'});process.stdout.write(fixed.stdout);if(fixed.status!==0)throw Error(fixed.stderr||'Fixed IOG fallback failed');
  const hourly=spawnSync(output,['history'],{encoding:'utf8'});process.stdout.write(hourly.stdout);if(hourly.status!==0)throw Error(hourly.stderr||'Hourly History opt-in test failed');
  const legacy=spawnSync(output,['legacy'],{encoding:'utf8'});process.stdout.write(legacy.stdout);if(legacy.status!==0)throw Error(legacy.stderr||'Legacy-rule migration failed');
+ const portTest=path.join(temp,'port-test');
+ const portBuilt=spawnSync('cc',[...flags,path.join(root,'esp32/tests/port_test.c'),'-o',portTest],{encoding:'utf8'});
+ if(portBuilt.status!==0)throw Error(portBuilt.stderr||portBuilt.stdout);
+ const portResult=spawnSync(portTest,[],{encoding:'utf8'});process.stdout.write(portResult.stdout);if(portResult.status!==0)throw Error(portResult.stderr||'Port persistence tests failed');
  const http=path.join(temp,'http-test');
  const httpBuilt=spawnSync('cc',['-std=gnu11','-D_DARWIN_C_SOURCE','-Wall','-Wextra','-Werror','-I'+path.join(root,'esp32/tests/stubs'),'-I'+path.join(root,'esp32/main'),'-I'+json,path.join(root,'esp32/tests/http_test.c'),path.join(json,'cJSON.c'),'-o',http],{encoding:'utf8'});
  if(httpBuilt.status!==0)throw Error(httpBuilt.stderr||httpBuilt.stdout);

@@ -10,6 +10,7 @@
 #include "provision_policy.h"
 #include "network_tools.h"
 #include "runtime.h"
+#include "dashboard_port.h"
 #include "foxess_live.h"
 #include "service_setup.h"
 #include "cloud_read.h"
@@ -119,13 +120,17 @@ static bool start_connection(void) {
 
 static cJSON *status_json(void) {
     cJSON *object = cJSON_CreateObject();
-    cJSON_AddStringToObject(object,"firmware","Smart Charging ESP32 connection test");
+    cJSON_AddStringToObject(object,"firmware","Smart Charging ESP32");
     cJSON_AddStringToObject(object,"version","2.4.0");
     cJSON_AddBoolToObject(object,"automation_enabled",sc_runtime_enabled());
     cJSON_AddBoolToObject(object,"configured",settings_saved);
     cJSON_AddBoolToObject(object,"network_trial_active",network_trial_active);
     cJSON *capabilities=cJSON_AddObjectToObject(object,"capabilities");
     cJSON_AddBoolToObject(capabilities,"production_controller",true);
+    cJSON_AddBoolToObject(capabilities,"dashboard_port_configuration",true);
+    cJSON_AddNumberToObject(object,"dashboard_port",sc_dashboard_port_active());
+    cJSON_AddNumberToObject(object,"configured_dashboard_port",sc_dashboard_port_saved());
+    cJSON_AddBoolToObject(object,"dashboard_restart_required",sc_dashboard_port_active()!=sc_dashboard_port_saved());
     cJSON_AddBoolToObject(capabilities,"usb_config_readback",true);
     cJSON_AddItemToObject(object,"config_access",sc_config_access_status());
     cJSON_AddBoolToObject(capabilities,"optional_foxess_websocket",true);
@@ -390,7 +395,7 @@ static void handle_command(char *line) {
     }
     int request_id=id->valueint;
     bool usb_access=!strcmp(command->valuestring,"config_read")||!strcmp(command->valuestring,"config_access_set");
-    bool fast=!strcmp(command->valuestring,"hello")||!strcmp(command->valuestring,"status")||!strcmp(command->valuestring,"reset_lan_access")||!strcmp(command->valuestring,"runtime_state")||!strcmp(command->valuestring,"service_setup")||!strcmp(command->valuestring,"service_setup_status");
+    bool fast=!strcmp(command->valuestring,"dashboard_port")||!strcmp(command->valuestring,"hello")||!strcmp(command->valuestring,"status")||!strcmp(command->valuestring,"reset_lan_access")||!strcmp(command->valuestring,"runtime_state")||!strcmp(command->valuestring,"service_setup")||!strcmp(command->valuestring,"service_setup_status");
     bool live_operation=!strcmp(command->valuestring,"foxess_live_configure");
     if(!fast&&!live_operation&&!usb_access&&sc_runtime_enabled()&&strcmp(command->valuestring,"reboot")){
         reply(request_id,false,NULL,"Disable ESP32 automation in the dashboard before USB network or diagnostic operations");
@@ -400,6 +405,12 @@ static void handle_command(char *line) {
     if(!locked){reply(request_id,false,NULL,"The ESP32 worker is completing a cloud request. Retry shortly.");wipe_json(root);cJSON_Delete(root);return;}
 
     if (!strcmp(command->valuestring,"hello") || !strcmp(command->valuestring,"status")) reply(request_id,true,status_json(),NULL);
+    else if(!strcmp(command->valuestring,"dashboard_port")) {
+        const cJSON *value=cJSON_GetObjectItemCaseSensitive(root,"port");
+        bool ok=cJSON_IsNumber(value)&&value->valuedouble>=1&&value->valuedouble<=65535&&
+                value->valuedouble==value->valueint&&sc_dashboard_port_save((unsigned)value->valueint);
+        reply(request_id,ok,ok?status_json():NULL,ok?NULL:"Port must be an integer from 1 to 65535 and storage must be available");
+    }
     else if(!strcmp(command->valuestring,"reset_lan_access")) {
         const cJSON *confirmation=cJSON_GetObjectItemCaseSensitive(root,"confirmation");
         bool ok=cJSON_IsString(confirmation)&&!strcmp(confirmation->valuestring,"RESET_LAN_ACCESS")&&sc_runtime_reset_lan_access();
@@ -572,7 +583,9 @@ void app_main(void) {
     sc_config_access_init();
     sc_runtime_init();
     sc_service_setup_init();
+    sc_dashboard_port_init();
     httpd_config_t http=HTTPD_DEFAULT_CONFIG();
+    http.server_port=sc_dashboard_port_active();
     http.uri_match_fn=httpd_uri_match_wildcard;
     http.stack_size=12288;
     http.max_uri_handlers=12;

@@ -182,7 +182,7 @@
       "export_slots": 1,
       "cloud_refresh_requested": false
     },
-    "inspection_limit": "iPhone inspection window retained after user confirmation. A small-file fetch waited 12 seconds without response headers. TCP handshake inspection awaits explicit administrator authorization.",
+    "inspection_limit": "User-authorized RVI TCP summary captured 40 outbound SYN attempts and no ESP32 SYN-ACK responses. No HTTP contents captured. RVI removed.",
     "path_comparison": {
       "mac_wifi_manifest": "HTTP 200, 297 bytes, 0.375 seconds",
       "mac_ethernet_manifest": "HTTP 200, 297 bytes, 0.054 seconds",
@@ -215,5 +215,26 @@
     "packaged": true,
     "deliverable_checksums_verified": 42,
     "output": "dist/ESP32, dist/Windows Portable, dist/Web HTML, dist/Pi"
+  },
+  "scheduler_port_checkpoint": {
+    "version": "2.4.0",
+    "state": "source checks passed; release artifacts pending",
+    "default_http_port": 8787,
+    "port_storage": "Separate sc_http NVS record; applied on restart; encrypted credential layout unchanged",
+    "scheduler_checks": [
+      "75 actual Pi evaluator/native ESP32 differential cases",
+      "Native source completion tests: falling SOC, missing reading, overnight expiry, dispatch overlap",
+      "Worker integration: fresh SOC only, General preferences retain completion, changed control rules reset it",
+      "Port native tests: legacy defaults, restart, validation and failed storage",
+      "HTTP active-port Host/Origin and USB independent-save regressions"
+    ],
+    "physical_iphone_retested": false,
+    "live_schedule_test_commands_sent": false,
+    "cloudflare_supported": false,
+    "ui_fixture_screenshot": "/tmp/esp32-deploy-port-8787.png",
+    "full_check": "passed; .build/check-240-parity-port.log",
+    "differential_cases": 75,
+    "live_installation": "not yet installed",
+    "installed_ui_commit": "pending"
   }
 }

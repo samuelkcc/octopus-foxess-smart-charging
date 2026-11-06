@@ -46,11 +46,38 @@ int main(void){
  // Six distinct Smart Dispatch periods cannot be represented as fully protected by five periods.
  cJSON_Delete(dispatch);dispatch=cJSON_CreateArray();for(int i=0;i<6;i++){char a[32],z[32];snprintf(a,sizeof(a),"2026-11-06T%02d:00:00Z",3+i*2);snprintf(z,sizeof(z),"2026-11-06T%02d:30:00Z",3+i*2);r=cJSON_CreateObject();cJSON_AddStringToObject(r,"startDt",a);cJSON_AddStringToObject(r,"endDt",z);cJSON_AddItemToArray(dispatch,r);}
  plan=sc_automation_plan(rules,dispatch,empty,empty,NULL,now,NAN);assert(cJSON_IsTrue(cJSON_GetObjectItem(plan,"dispatch_capacity_exceeded")));assert(cJSON_GetArraySize(groups(plan))==5);cJSON_Delete(plan);
- now=sc_timestamp("2026-10-24T12:00:00Z");plan=sc_automation_plan(rules,empty,empty,empty,NULL,now,NAN);assert(cJSON_IsTrue(cJSON_GetObjectItem(plan,"clock_transition_unsupported")));cJSON_Delete(plan);
+ now=sc_timestamp("2026-10-24T12:00:00Z");plan=sc_automation_plan(rules,empty,empty,empty,NULL,now,NAN);assert(!cJSON_HasObjectItem(plan,"clock_transition_unsupported"));cJSON_Delete(plan);
+ // Multi-cycle completion memory must survive falling SOC, missing telemetry and midnight.
+ cJSON *latched=sc_rules_default();boolean(latched,"weekly_charge",true);boolean(latched,"auto_resume",true);boolean(latched,"charge_soc_enabled",true);
+ sc_resume_state_t memory={0};time_t late=sc_timestamp("2026-11-05T23:45:00Z");
+ plan=sc_automation_plan_stateful(latched,empty,empty,empty,NULL,late,80,&memory);assert(!at(plan,1425));assert(memory.until==sc_timestamp("2026-11-06T05:30:00Z"));cJSON_Delete(plan);
+ plan=sc_automation_plan_stateful(latched,empty,empty,empty,NULL,now=sc_timestamp("2026-11-06T02:00:00Z"),79,&memory);assert(!at(plan,120)&&at(plan,1410));cJSON_Delete(plan);
+ plan=sc_automation_plan_stateful(latched,empty,empty,empty,NULL,now+60,NAN,&memory);assert(!at(plan,121));cJSON_Delete(plan);
+ cJSON *overlap=cJSON_Parse("[{\"startDt\":\"2026-11-06T02:00:00Z\",\"endDt\":\"2026-11-06T02:30:00Z\"}]");
+ plan=sc_automation_plan_stateful(latched,overlap,empty,empty,NULL,now,100,&memory);assert(at(plan,120)&&target(at(plan,120))==100&&!at(plan,180));cJSON_Delete(plan);cJSON_Delete(overlap);
+ plan=sc_automation_plan_stateful(latched,empty,empty,empty,NULL,sc_timestamp("2026-11-06T23:45:00Z"),79,&memory);assert(at(plan,1425)&&memory.source==0);cJSON_Delete(plan);
+ // Price completion is source-specific and ends at the original price block boundary.
+ boolean(latched,"weekly_charge",false);boolean(latched,"charge_price_enabled",true);
+ plan=sc_automation_plan_stateful(latched,empty,imports,empty,NULL,now=sc_timestamp("2026-11-06T02:15:00Z"),80,&memory);assert(!at(plan,135)&&memory.source==1);cJSON_Delete(plan);
+ plan=sc_automation_plan_stateful(latched,empty,imports,empty,NULL,now+60,79,&memory);assert(!at(plan,136));cJSON_Delete(plan);
+ // A full battery during Smart Dispatch must not create ordinary completion memory.
+ memory=(sc_resume_state_t){0};boolean(latched,"weekly_charge",true);
+ overlap=cJSON_Parse("[{\"startDt\":\"2026-11-06T02:00:00Z\",\"endDt\":\"2026-11-06T02:30:00Z\"}]");
+ plan=sc_automation_plan_stateful(latched,overlap,empty,empty,NULL,now,100,&memory);assert(memory.source==0&&at(plan,135));cJSON_Delete(plan);cJSON_Delete(overlap);
+ // Spring and autumn transitions retain civil weekly hours without a 24-hour write blackout.
+ boolean(latched,"auto_resume",false);boolean(latched,"charge_price_enabled",false);
+ const char *dates[]={"2026-03-28T23:45:00Z","2026-03-29T00:30:00Z","2026-03-29T01:30:00Z","2026-10-24T22:45:00Z","2026-10-25T00:30:00Z","2026-10-25T01:30:00Z"};
+ for(unsigned i=0;i<sizeof(dates)/sizeof(*dates);i++){plan=sc_automation_plan(latched,empty,empty,empty,NULL,sc_timestamp(dates[i]),40);assert(plan&&at(plan,0)&&at(plan,329)&&at(plan,1410)&&!at(plan,330));assert(!cJSON_HasObjectItem(plan,"clock_transition_unsupported"));cJSON_Delete(plan);}
+ // A dispatch spanning the repeated hour maps to that hour, never an all-day charge.
+ overlap=cJSON_Parse("[{\"startDt\":\"2026-10-25T00:30:00Z\",\"endDt\":\"2026-10-25T01:30:00Z\"}]");boolean(latched,"weekly_charge",false);
+ plan=sc_automation_plan(latched,overlap,empty,empty,NULL,sc_timestamp("2026-10-25T00:00:00Z"),40);assert(at(plan,60)&&at(plan,119)&&!at(plan,120)&&!at(plan,600));cJSON_Delete(plan);cJSON_Delete(overlap);
+ // Ambiguous weekly start selects the first occurrence, as JavaScript Date does.
+ boolean(latched,"weekly_charge",true);number(latched,"charge_start",90);number(latched,"charge_end",150);
+ plan=sc_automation_plan(latched,empty,empty,empty,NULL,sc_timestamp("2026-10-25T00:40:00Z"),40);assert(at(plan,100));cJSON_Delete(plan);cJSON_Delete(latched);
  // Allocation failure must never turn a required Smart Dispatch into an empty or incomplete schedule.
  cJSON *protected=cJSON_Parse("[{\"startDt\":\"2026-11-06T12:12:00Z\",\"endDt\":\"2026-11-06T13:02:00Z\"}]");now=sc_timestamp("2026-11-06T12:15:00Z");
  for(fail_at=1;fail_at<300;fail_at++){allocation_index=0;cJSON_Hooks hooks={fault_malloc,fault_free};cJSON_InitHooks(&hooks);cJSON *candidate=sc_automation_plan(rules,protected,empty,empty,NULL,now,NAN);cJSON_InitHooks(NULL);if(candidate){assert(at(candidate,735)&&target(at(candidate,735))==100);cJSON_Delete(candidate);}}
  cJSON_Delete(protected);
  cJSON_Delete(imports);cJSON_Delete(exports);cJSON_Delete(rules);cJSON_Delete(empty);cJSON_Delete(dispatch);
- puts("Automation policy passed: active outward rounding, overnight weekdays, dispatch priority, SOC resume, import/export rules, capacity, readback parameters and UK clock-transition guard.");
+ puts("Automation policy passed: active outward rounding, overnight weekdays, dispatch priority, SOC resume, import/export rules, capacity, readback parameters stateful source completion, and UK spring/autumn clock transitions.");
 }

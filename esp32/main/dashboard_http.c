@@ -9,6 +9,7 @@
 #include "mbedtls/sha256.h"
 #include "nvs.h"
 #include "runtime.h"
+#include "dashboard_port.h"
 #include "foxess_live.h"
 #include "service_setup.h"
 #include <stdio.h>
@@ -206,10 +207,11 @@ static bool local_request(httpd_req_t *r, bool mutation) {
     snprintf(bare, sizeof(bare), "%s", host);
     char *port = strchr(bare, ':');
     if (port) {
-        if (strcmp(port, ":80"))
-            return false;
+        char expected_port[8];
+        snprintf(expected_port, sizeof(expected_port), ":%u", (unsigned)sc_dashboard_port_active());
+        if (strcmp(port, expected_port)) return false;
         *port = 0;
-    }
+    } else if (sc_dashboard_port_active() != 80) return false;
     if (strcmp(bare, ip) && strcmp(bare, "smart-charging-esp32.local"))
         return false;
     if (mutation) {

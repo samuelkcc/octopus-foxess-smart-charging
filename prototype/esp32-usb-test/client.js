@@ -8,6 +8,7 @@
   let port = null, reader = null, readerTask = null, ready = false, busy = false, configured = false;
   let nextId = 0, safeSave = false, networkTrial = false, runtimeTrial = false, suggestion = null, lanResetSupported=false, lanAccessEnabled=false, controllerEnabled=false;
   let activeStep=0,furthestStep=0,liveSupported=false,webConfigured=false;
+  let dashboardPort=80,configuredDashboardPort=8787,portSupported=false;
   const pending = new Map();
   let readbackSupported=false,configProtected=false,configUnlocked=false,unlockPassword="",loadedSettings=false,savedConfig=null;
   const secretIds=["ssid","wifi-password","octopus-account","octopus-key","foxess-serial","foxess-key","fox-web-user","fox-web-password","fox-web-hash","config-current-password","config-new-password","config-confirm-password"];
@@ -22,6 +23,8 @@
   }
   function controls() {
     const locked = busy || window.esp32Flashing === true;
+    $('dashboard-port').disabled=!ready||locked||!portSupported;
+    $('dashboard-port-save').disabled=!ready||locked||!portSupported;
     $('connect').disabled = !supported || !!port || locked;
     $('disconnect').disabled = !port || busy;
     ['scan-wifi','device-status','restart'].forEach(id => $(id).disabled = !ready || locked || (id==='scan-wifi'&&controllerEnabled));
@@ -64,6 +67,7 @@
   function clearForm() {
     form.reset();
     [...form.querySelectorAll('input')].forEach(input => { input.value = ''; input.setCustomValidity(''); });
+    $("dashboard-port").value=String(configuredDashboardPort);
     unlockPassword="";configUnlocked=false;loadedSettings=false;savedConfig=null;
     for(const id of secretIds){$(id).type="password";$("eye-"+id).setAttribute("aria-pressed","false");}
     modeChanged();
@@ -141,8 +145,8 @@
     const ip = result?.ip || result?.checks?.network?.ip || result?.network?.ip;
     if (typeof ip === 'string' && /^(\d{1,3}\.){3}\d{1,3}$/.test(ip)) {
       const link = document.createElement('a');
-      link.href = 'http://' + ip + '/';
-      link.textContent = 'Open the ESP32 status page: ' + ip;
+      link.href = 'http://' + ip + (dashboardPort===80?'':':'+dashboardPort) + '/';
+      link.textContent = 'Open ESP32 dashboard: ' + link.href;
       link.target = '_blank'; link.rel = 'noopener noreferrer';
       $('device-link').append(link);
     }
@@ -201,7 +205,7 @@
       for (let attempt=0;attempt<2;attempt++) {
         try { hello = await send('hello',{},4000); break; } catch (error) { if (attempt===1) throw error; }
       }
-      if (hello?.firmware !== 'Smart Charging ESP32 connection test' || (hello.automation_enabled !== false && hello.capabilities?.production_controller !== true)) throw new Error('Compatible connection-test firmware was not detected.');
+      if (!['Smart Charging ESP32','Smart Charging ESP32 connection test'].includes(hello?.firmware) || (hello.automation_enabled !== false && hello.capabilities?.production_controller !== true)) throw new Error('Compatible connection-test firmware was not detected.');
       ready = true;updateDeviceState(hello);
       safeSave = hello.capabilities?.validate_before_save === true && hello.capabilities?.network_trial === true && hello.capabilities?.ip_suggestion === true;
       networkTrial = false; suggestion = null;
@@ -220,6 +224,12 @@
   });
   function updateDeviceState(device){
     configured=device.configured===true;controllerEnabled=device.automation_enabled===true;
+    portSupported=device.capabilities?.dashboard_port_configuration===true;
+    dashboardPort=Number.isInteger(device.dashboard_port)?device.dashboard_port:80;
+    const saved=Number.isInteger(device.configured_dashboard_port)?device.configured_dashboard_port:dashboardPort;
+    if(configuredDashboardPort!==saved||!ready)$('dashboard-port').value=String(saved);
+    configuredDashboardPort=saved;
+    $('dashboard-port-status').textContent=!portSupported?'Update firmware to configure the dashboard port.':device.dashboard_restart_required?'Port saved. Restart ESP32 from Device checks & diagnostics to apply it.':'Active dashboard port: '+dashboardPort+'. Changes apply after restart.';
     runtimeTrial=device.network_trial_active===true;lanResetSupported=device.capabilities?.lan_access_recovery===true;lanAccessEnabled=device.lan_access_enabled===true;
     liveSupported=device.capabilities?.optional_foxess_websocket===true;webConfigured=device.foxess_telemetry?.configured===true;
     readbackSupported=device.capabilities?.usb_config_readback===true;configProtected=device.config_access?.enabled===true;
@@ -429,8 +439,13 @@
     renderResult(await send('test',{},120000));
     const device=await send('status');
     if (device?.ip) {
-      $('device-link').textContent='ESP32 status page: http://'+device.ip+'/';
+      $('device-link').textContent='ESP32 dashboard: http://'+device.ip+(dashboardPort===80?'':':'+dashboardPort)+'/';
     }
+  }));
+  $('dashboard-port-save').addEventListener('click',()=>operation('Saving dashboard port…',async()=>{
+    const input=$('dashboard-port'),value=Number(input.value);
+    if(!input.value.trim()||!Number.isInteger(value)||value<1||value>65535)throw new Error('Enter a port from 1 to 65535.');
+    const result=await send('dashboard_port',{port:value});updateDeviceState(result);renderResult(result);
   }));
   $('device-status').addEventListener('click',() => operation('Reading status…',async () => {const current=await send('status');updateDeviceState(current);renderResult(current);}));
   $('restart').addEventListener('click',() => operation('Restarting ESP32…',async () => {

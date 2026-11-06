@@ -25,6 +25,7 @@ bool sc_history_flash_erase(size_t o,size_t n){assert(o+n<=sizeof(flash_memory))
 static time_t wall;
 static int64_t ticks;
 static int writes,reads,octopus_reads,telemetry_reads,tariff_reads;
+static double mock_soc=65;
 static bool invalid_dispatch,limited,intent_failure,bad_readback,revise_on_write,fixed_tariff,mirror_mode;
 static int day_reads,night_reads;static int64_t last_octopus_read=-60000000;
 static bool device_error, expired_token; static int device_reads,auth_reads;
@@ -43,7 +44,7 @@ bool sc_schedule_recovery_pending(void){return false;}
 cJSON *sc_schedule_read(const sc_config_t *config,int *http){(void)config;reads++;*http=200;if(bad_readback&&writes)return cJSON_CreateArray();return cJSON_Duplicate(inverter,true);}
 bool sc_schedule_program(const sc_config_t *config,const cJSON *groups,int *http){(void)config;assert(stored_intent&&"Durable intent required before any write");assert(!sc_runtime_paused());assert(cJSON_GetArraySize(groups)<=5);writes++;*http=200;cJSON_Delete(inverter);inverter=cJSON_Duplicate(groups,true);if(revise_on_write){revise_on_write=false;cJSON *state=sc_runtime_state();cJSON *rules=cJSON_Duplicate(cJSON_GetObjectItem(state,"rules"),true);cJSON_SetNumberValue(cJSON_GetObjectItem(rules,"dispatch_soc"),80);cJSON_SetBoolValue(cJSON_GetObjectItem(rules,"dispatch_soc_enabled"),true);assert(sc_runtime_update(rules));cJSON_Delete(rules);cJSON_Delete(state);}return true;}
 cJSON *sc_cloud_read(const sc_config_t *config,bool fox,const char *path,const cJSON *body,const char *token,int *http,int *retry){(void)config;(void)token;*http=200;*retry=0;
- if(fox){telemetry_reads++;return cJSON_Parse("{\"errno\":0,\"result\":[{\"datas\":[{\"variable\":\"SoC\",\"value\":65},{\"variable\":\"pvPower\",\"value\":0},{\"variable\":\"loadsPower\",\"value\":0.5}]}]}");}
+ if(fox){telemetry_reads++;cJSON *out=cJSON_Parse("{\"errno\":0,\"result\":[{\"datas\":[{\"variable\":\"SoC\",\"value\":65},{\"variable\":\"pvPower\",\"value\":0},{\"variable\":\"loadsPower\",\"value\":0.5}]}]}");cJSON_SetNumberValue(cJSON_GetObjectItem(cJSON_GetArrayItem(cJSON_GetObjectItem(cJSON_GetArrayItem(cJSON_GetObjectItem(out,"result"),0),"datas"),0),"value"),mock_soc);return out;}
  assert(ticks-last_octopus_read>=60000000);last_octopus_read=ticks;octopus_reads++;if(limited){*http=429;*retry=900;return cJSON_CreateObject();}
  const cJSON *query=cJSON_GetObjectItem(body,"query");
  if(cJSON_IsString(query)&&strstr(query->valuestring,"obtainKrakenToken")){auth_reads++;expired_token=false;return cJSON_Parse("{\"data\":{\"obtainKrakenToken\":{\"token\":\"test-token-not-a-real-key\"}}}");}
@@ -64,6 +65,19 @@ int main(int argc,char **argv){fixed_tariff=argc>1&&!strcmp(argv[1],"fixed");set
  if(legacy_mode){cJSON *old=sc_rules_default();cJSON_DeleteItemFromObjectCaseSensitive(old,"charge_soc_enabled");cJSON_DeleteItemFromObjectCaseSensitive(old,"history_flash_enabled");cJSON_DeleteItemFromObjectCaseSensitive(old,"pause_discharge_dispatch");cJSON_DeleteItemFromObjectCaseSensitive(old,"discharge_overrides_charge");cJSON_SetBoolValue(cJSON_GetObjectItem(old,"enabled"),true);cJSON_SetBoolValue(cJSON_GetObjectItem(old,"paused"),true);cJSON_SetNumberValue(cJSON_GetObjectItem(old,"history_days"),90);stored_rules=cJSON_PrintUnformatted(old);cJSON_Delete(old);}
  mirror_mode=argc>1&&!strcmp(argv[1],"mirror");
  sc_runtime_init();assert(!sc_runtime_claim_octopus_setup());
+ if(argc>1&&!strcmp(argv[1],"resume")){
+  wall=sc_timestamp("2026-11-06T02:00:00Z");cJSON_Delete(new_dispatch);new_dispatch=cJSON_CreateArray();
+  cJSON *r=rules();cJSON_SetBoolValue(cJSON_GetObjectItem(r,"enabled"),true);cJSON_SetBoolValue(cJSON_GetObjectItem(r,"weekly_charge"),true);cJSON_SetBoolValue(cJSON_GetObjectItem(r,"auto_resume"),true);cJSON_SetBoolValue(cJSON_GetObjectItem(r,"charge_soc_enabled"),true);cJSON_SetNumberValue(cJSON_GetObjectItem(r,"target_soc"),60);assert(sc_runtime_update(r));cJSON_Delete(r);
+  for(int i=0;i<36;i++)step(5);
+  assert(cJSON_GetArraySize(inverter)==1&&cJSON_GetObjectItem(cJSON_GetArrayItem(inverter,0),"startHour")->valueint==23);
+  mock_soc=59;assert(sc_runtime_request_refresh("foxess"));step(5);step(60);
+  assert(cJSON_GetArraySize(inverter)==1&&"Falling fresh SOC must not restart the fulfilled charge");
+  r=rules();cJSON_SetNumberValue(cJSON_GetObjectItem(r,"history_days"),30);assert(sc_runtime_update(r));cJSON_Delete(r);step(60);
+  assert(cJSON_GetArraySize(inverter)==1&&"General settings must retain completion memory");
+  r=rules();cJSON_SetNumberValue(cJSON_GetObjectItem(r,"target_soc"),70);assert(sc_runtime_update(r));cJSON_Delete(r);step(60);
+  assert(cJSON_GetArraySize(inverter)==2&&"Changed control rules must clear completion memory");
+  puts("Worker Auto-Resume: fresh target reading, falling SOC, General settings retention and deliberate control-rule reset passed.");return 0;
+ }
  if(mirror_mode){
   // Real five-second worker cadence; multiple dashboards only read published RAM.
   for(int i=0;i<180;i++)step(5);

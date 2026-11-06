@@ -68,7 +68,7 @@ The iPhone dashboard uses Wi-Fi after setup.
 Wi-Fi and IP changes require USB setup. Service credentials can be changed in the local Account setup tab.
 
 This Preview does not establish complete Pi scheduler equivalence.
-UK clock-transition handling and advanced Auto-Resume behaviour have documented differences.
+Version 2.4.0 adds UK clock-transition scheduling and source-specific Auto-Resume memory, verified against Pi scheduler fixtures.
 Windows execution and long-term Flash endurance require further verification.
 See the [ESP32 deployment chapter](docs/USER-GUIDE.md#3-deploy-esp32) and [feature review](docs/FEATURE-PARITY.md).
 

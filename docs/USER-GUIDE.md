@@ -23,7 +23,7 @@ Use only one active automation host for each inverter. Before changing hosts, di
 
 Dashboard sections use a shared design. Settings reflect each host's capabilities.
 
-This ESP32 build has known differences in advanced scheduler handling. The release review records these limits in FEATURE-PARITY.md.
+ESP32 scheduler checks compare UK clock changes and Auto-Resume with the Pi worker. The feature review records verification limits.
 
 ## 2. Prepare the inverter
 
@@ -71,7 +71,7 @@ The message beside Test all & save explains the requirement.
 
 Tests must pass before the initial configuration is stored. Failed checks keep the previous saved settings.
 
-Wi-Fi and IP changes require physical USB setup. A failed network change could otherwise remove access to the original dashboard address.
+Wi-Fi, IP, and dashboard port changes require physical USB setup. A failed network change could otherwise remove access to the original dashboard address.
 
 A router DHCP reservation is the preferred stable-address method. The optional fixed-IP suggestion starts at .188 where the subnet permits.
 
@@ -90,11 +90,26 @@ Before accepting a suggested IP, check the router's DHCP pool and reservations.
 | Bluetooth setup | Disabled |
 | OTA firmware update | Not supported, use USB |
 | Flash History | Optional, off by default, hourly averages for 60 days |
-| Advanced scheduler parity | Incomplete, see the feature review |
+| UK clock changes and Auto-Resume | Civil-time schedules and source completion memory |
 
-This build retains the existing schedule across a UK clock transition and blocks new programming during the transition guard.
-Advanced Auto-Resume handling is not equivalent to the Pi worker.
+UK clock changes do not block new schedule programming. Repeated clock hours are projected onto inverter clock minutes.
+Auto-Resume remembers a completed ordinary charge until its source ends. Falling SOC does not restart that source.
 A successful REST readback confirms schedule programming, not measured battery behaviour.
+
+### Set the dashboard port
+
+The default ESP32 dashboard port is 8787. Existing boards without a saved port also use 8787 after this firmware update.
+
+1. Connect the USB setup tool.
+2. Open Network.
+3. Enter the HTTP port.
+4. Select Save dashboard port.
+5. Open Device checks & diagnostics.
+6. Select Restart ESP32.
+7. Open the displayed dashboard address.
+
+For example, use `http://192.168.8.188:8787/`. Include the port in bookmarks and Home Screen shortcuts.
+Port changes do not replace credentials or change automation rules. Unsaved RAM History clears during restart.
 
 ### Add the iPhone dashboard to Home Screen
 
@@ -269,7 +284,7 @@ Changed dispatches trigger reconciliation before routine tariff work. Invalid or
 
 Overnight windows remain supported. Smart Dispatch times are rounded outward to half-hour boundaries where required.
 
-Auto-Resume must not cancel an active dispatch. Advanced ESP32 parity limits remain listed in the release review.
+Auto-Resume must not cancel an active dispatch. Rule changes or explicit resume clear its completion memory.
 
 ## 9. Pause and resume automation
 

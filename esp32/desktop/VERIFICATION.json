@@ -44,5 +44,13 @@
     "Continuous WebSocket mode soak; saved mode remains REST"
   ],
   "remote_access": "Omitted from ESP32 by user decision",
-  "account_tabs": "ESP32 and Portable browser fixtures passed; input retained across tabs"
+  "account_tabs": "ESP32 and Portable browser fixtures passed; input retained across tabs",
+  "port_8787_update": {
+    "version": "2.4.0",
+    "default_http_port": 8787,
+    "usb_network_control": true,
+    "mock_usb_browser_test": "passed; active port, independent save and restart guidance",
+    "native_windows_execution": "not verified",
+    "packaging": "pending"
+  }
 }

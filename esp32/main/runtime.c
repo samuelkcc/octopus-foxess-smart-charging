@@ -44,6 +44,10 @@ static char octopus_status[96] = "Waiting for first Octopus update",
             control_status[128] = "Automation is not enabled";
 static int octopus_http, foxess_http;
 static double soc = NAN;
+static sc_resume_state_t resume_memory;
+static unsigned resume_revision;
+static time_t resume_telemetry_at;
+static _Atomic unsigned resume_epoch = 1;
 typedef sc_history_row_t history_t;
 static history_t *history, *saved_history;
 static size_t history_used, history_head, saved_history_used;
@@ -99,6 +103,7 @@ static bool clear_intent(void) {
 }
 void sc_runtime_init(void) {
     guard = xSemaphoreCreateMutex();
+    resume_memory = (sc_resume_state_t){0}; resume_revision = 0; resume_telemetry_at = 0; resume_epoch = 1;
     sc_live_init();
     preferences = load("rules");
     // Add the opt-in field without resetting existing operator rules on upgrade.
@@ -138,7 +143,7 @@ void sc_runtime_credentials_changed(void) {
     dispatch_valid = false;
     confirmed = false;
     dispatch_at = telemetry_at = schedule_at = confirmed_at = 0;
-    soc = NAN;
+    soc = NAN; resume_epoch++;
     replace(&dispatches, cJSON_CreateArray());
     replace(&imports, cJSON_CreateArray());
     replace(&exports, cJSON_CreateArray());
@@ -192,6 +197,16 @@ bool sc_runtime_update_expected(const cJSON *rules, unsigned expected) {
     if (ok) {
         bool resume = (!b(copy, "paused") && b(preferences, "paused")) ||
                       (b(copy, "enabled") && !b(preferences, "enabled"));
+        // General refresh/history preferences do not restart a fulfilled charge.
+        bool changed_control = resume;
+        const cJSON *field;
+        cJSON_ArrayForEach(field, copy) {
+            if (!strcmp(field->string, "octopus_seconds") || !strcmp(field->string, "foxess_seconds") ||
+                !strcmp(field->string, "history_days") || !strcmp(field->string, "history_flash_enabled") ||
+                !strcmp(field->string, "pause_until") || !strcmp(field->string, "paused")) continue;
+            if (!cJSON_Compare(field, cJSON_GetObjectItemCaseSensitive(preferences, field->string), true)) changed_control = true;
+        }
+        if (changed_control) resume_epoch++;
         replace(&preferences, copy);
         revision++;
         confirmed = false;
@@ -515,6 +530,7 @@ bool sc_runtime_manual(const cJSON *value) {
     bool ok = store("manual", copy);
     if (ok) {
         replace(&manual, copy);
+        resume_epoch++;
         revision++;
         confirmed = false;
     } else
@@ -915,7 +931,13 @@ static void reconcile(const sc_config_t *config, const cJSON *rules, unsigned re
     xSemaphoreTake(guard, portMAX_DELAY);
     cJSON *manual_copy = cJSON_Duplicate(manual, true);
     xSemaphoreGive(guard);
-    cJSON *plan = sc_automation_plan(rules, dispatches, imports, exports, manual_copy, now, soc);
+    // Only the worker owns completion memory. Dashboards never run this planner.
+    unsigned completion_epoch = resume_epoch;
+    if (!current_revision(rev)) { cJSON_Delete(manual_copy); return; }
+    if (resume_revision != completion_epoch) { resume_memory = (sc_resume_state_t){0}; resume_revision = completion_epoch; }
+    double fresh_soc = telemetry_at && telemetry_at != resume_telemetry_at ? soc : NAN;
+    cJSON *plan = sc_automation_plan_stateful(rules, dispatches, imports, exports, manual_copy, now, fresh_soc, &resume_memory);
+    if (plan) resume_telemetry_at = telemetry_at;
     cJSON_Delete(manual_copy);
     if (!plan) {
         strcpy(control_status, "Schedule planning failed; existing schedule retained");
@@ -923,12 +945,6 @@ static void reconcile(const sc_config_t *config, const cJSON *rules, unsigned re
     }
     const cJSON *groups = cJSON_GetObjectItemCaseSensitive(plan, "groups");
     partial = b(plan, "partial");
-    if (b(plan, "clock_transition_unsupported")) {
-        confirmed = false;
-        strcpy(control_status, "UK clock transition in the next 24 hours; existing schedule retained");
-        cJSON_Delete(plan);
-        return;
-    }
     if (b(plan, "dispatch_capacity_exceeded")) {
         confirmed = false;
         strcpy(control_status, "More than five Smart Dispatch periods; no partial protection written");

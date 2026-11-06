@@ -96,6 +96,15 @@ Initial account and tariff loading can take several minutes.
 FoxESS reads and writes share request spacing and rate-limit cooldowns.
 Dashboard polling reads cached ESP32 state without extra upstream requests.
 
+## Dashboard port
+
+The default port is 8787, including existing devices without a saved port record.
+Open `http://DEVICE-IP:8787/` on the same local network.
+The USB Network step can save another port from 1 to 65535.
+Restart ESP32 to apply the saved port.
+Port storage is separate from encrypted credentials and saved automation rules.
+Wi-Fi, IP, and port changes remain USB-only.
+
 ## RAM History
 
 The worker collects 15-minute averages from its existing telemetry requests.
@@ -109,11 +118,10 @@ Rules, network settings, credentials, and browser sessions survive restart.
 
 ## Current limits
 
-A UK clock transition within the next 24 hours blocks new schedule programming.
-The existing inverter schedule remains in place during that guard.
-Full DST-transition parity needs further work.
+UK clock changes no longer block schedule programming. Repeated hours map onto civil inverter minutes.
+Auto-Resume retains source completion until its original end. Falling SOC does not restart a completed ordinary charge.
 Long-running reliability, physical battery behaviour, and maximum History retention need operator verification.
-LAN account editing remains separate work. USB setup manages account and network changes.
+Local Account setup supports Octopus, FoxESS REST, and optional WebSocket credentials and tests.
 The existing USB setup remains available for credential and network changes.
 
 ## Build
