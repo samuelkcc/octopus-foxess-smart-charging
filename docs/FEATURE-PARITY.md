@@ -1,10 +1,11 @@
-# 2.3.0 Preview release review — 6 November 2026
+# 2.3.1 Preview release review — 6 November 2026
 
 This section supersedes earlier development reviews below.
 
 ESP32 appears first in the introduction and edition comparison, followed by Pi, Portable, and Web HTML.
 The shared Welcome links include the ESP32 USB deployment website.
 The User guide contains a dedicated ESP32 deployment chapter and an explicit capability comparison.
+HTTPS deployment and download links render as links. Other URL schemes remain plain text.
 
 ESP32 and native Portable Settings separate General settings from Account setup.
 The Portable account editor requires the native desktop bridge. LAN clients do not receive that bridge.

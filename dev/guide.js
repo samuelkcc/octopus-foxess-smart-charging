@@ -9,7 +9,13 @@
   const dialog=document.createElement('dialog');dialog.className='sc-guide-drawer';dialog.setAttribute('aria-labelledby','sc-guide-title');
   const header=document.createElement('header'),title=document.createElement('h2'),close=document.createElement('button');title.id='sc-guide-title';title.textContent='User guide';title.tabIndex=-1;close.type='button';close.textContent='×';close.setAttribute('aria-label','Close User guide');header.append(title,close);
   const body=document.createElement('div');body.className='sc-guide-body';const toc=document.createElement('nav');toc.setAttribute('aria-label','Guide chapters');const content=document.createElement('article');content.className='sc-guide-content';const chooser=document.createElement('label');chooser.className='sc-guide-chooser';chooser.textContent='Chapter';const select=document.createElement('select');select.setAttribute('aria-label','Guide chapter');chooser.append(select);body.append(toc,chooser,content);
-  const inline=(node,text)=>{for(const part of text.split(/(\*\*[^*]+\*\*|`[^`]+`)/g)){const element=document.createElement(part.startsWith('**')?'strong':part.startsWith('`')?'code':'span');element.textContent=part.startsWith('**')?part.slice(2,-2):part.startsWith('`')?part.slice(1,-1):part;node.append(element);}};
+  const inline=(node,text)=>{for(const part of text.split(/(\*\*[^*]+\*\*|`[^`]+`|\[[^\]]+\]\(https:\/\/[^\s)]+\))/g)){
+   const link=part.match(/^\[([^\]]+)\]\((https:\/\/[^\s)]+)\)$/);
+   const element=document.createElement(link?'a':part.startsWith('**')?'strong':part.startsWith('`')?'code':'span');
+   element.textContent=link?link[1]:part.startsWith('**')?part.slice(2,-2):part.startsWith('`')?part.slice(1,-1):part;
+   if(link){element.href=link[2];element.target='_blank';element.rel='noopener noreferrer';}
+   node.append(element);
+  }};
   let list=null,table=null,chapter=0,panel=content;const chapters=[];
   const showChapter=index=>{chapters.forEach((item,i)=>{item.panel.hidden=i!==index;item.button.setAttribute('aria-current',i===index?'page':'false');});select.value=String(index);content.scrollTop=0;};
   select.addEventListener('change',()=>showChapter(Number(select.value)));

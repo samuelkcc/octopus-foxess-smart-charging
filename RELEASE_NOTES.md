@@ -1,4 +1,4 @@
-# Smart Charging 2.3.0 Preview
+# Smart Charging 2.3.1 Preview
 
 ESP32 now runs an independent local worker with a shared dashboard and USB deployment tools.
 The public introduction presents ESP32, Pi, Portable app, and Web HTML in that order.
@@ -14,6 +14,8 @@ The public introduction presents ESP32, Pi, Portable app, and Web HTML in that o
 - Add the charging icon to iPhone Home Screen through Safari.
 
 ## Interface changes
+
+- Render secure HTTPS deployment and download links in the embedded User guide.
 
 - Separate General settings from Account setup on ESP32 and the native portable host.
 - Keep portable credential editing restricted to the native app.

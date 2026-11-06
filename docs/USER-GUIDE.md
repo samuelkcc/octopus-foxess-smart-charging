@@ -41,7 +41,7 @@ Supported hardware is ESP32-S3 N16R8, with 16 MB Flash and 8 MB Octal PSRAM. Oth
 Bluetooth is disabled. Setup uses USB. Dashboards use Wi-Fi.
 
 [Open the USB deployment website](https://samuelkcc.github.io/octopus-foxess-smart-charging/esp32/).
-[Download the Mac app or Windows EXE](https://github.com/samuelkcc/octopus-foxess-smart-charging/releases/tag/esp32-preview-2.3.0).
+[Download the Mac app or Windows EXE](https://github.com/samuelkcc/octopus-foxess-smart-charging/releases/tag/esp32-preview-2.3.1).
 
 The Mac app and Windows EXE contain the same four-step setup interface as the USB website.
 

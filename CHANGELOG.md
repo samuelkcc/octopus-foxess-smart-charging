@@ -1,3 +1,9 @@
+# 2.3.1 Preview — 6 November 2026
+
+- Render clickable HTTPS deployment and download links in the chapter-based User guide.
+- Reject non-HTTPS Markdown link syntax from active link rendering.
+- Rebuild all editions from the same guide source and verify deployed links.
+
 # 2.3.0 Preview — 6 November 2026
 
 - Synchronize the ESP32 USB handshake, CMake project, setup About text, and package version through version:set.

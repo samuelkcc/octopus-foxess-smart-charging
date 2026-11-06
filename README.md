@@ -16,7 +16,7 @@ Octopus Energy and FoxESS do not endorse or support this project.
 [![Licence](https://img.shields.io/badge/licence-GPL--3.0--or--later-blue)](LICENSE)
 [![Open web app](https://img.shields.io/badge/open-web%20app-e11d48)](https://samuelkcc.github.io/octopus-foxess-smart-charging/)
 
-[**Deploy ESP32 over USB**](https://samuelkcc.github.io/octopus-foxess-smart-charging/esp32/) · [**ESP32 setup apps and preview downloads**](https://github.com/samuelkcc/octopus-foxess-smart-charging/releases/tag/esp32-preview-2.3.0) · [**Open Web HTML**](https://samuelkcc.github.io/octopus-foxess-smart-charging/)
+[**Deploy ESP32 over USB**](https://samuelkcc.github.io/octopus-foxess-smart-charging/esp32/) · [**ESP32 setup apps and preview downloads**](https://github.com/samuelkcc/octopus-foxess-smart-charging/releases/tag/esp32-preview-2.3.1) · [**Open Web HTML**](https://samuelkcc.github.io/octopus-foxess-smart-charging/)
 
 ![ESP32 dashboard with demonstration data](docs/screenshots/esp32-dashboard.png)
 
@@ -72,7 +72,7 @@ UK clock-transition handling and advanced Auto-Resume behaviour have documented 
 Windows execution and long-term Flash endurance require further verification.
 See the [ESP32 deployment chapter](docs/USER-GUIDE.md#3-deploy-esp32) and [feature review](docs/FEATURE-PARITY.md).
 
-[Download ESP32 setup apps and all preview editions](https://github.com/samuelkcc/octopus-foxess-smart-charging/releases/tag/esp32-preview-2.3.0).
+[Download ESP32 setup apps and all preview editions](https://github.com/samuelkcc/octopus-foxess-smart-charging/releases/tag/esp32-preview-2.3.1).
 The existing Pi updater continues to use the stable release.
 
 ## What the app does
@@ -151,7 +151,7 @@ Uninstallation does not clear the schedule stored on the inverter.
 
 ### Windows portable
 
-- Open the [download page](https://github.com/samuelkcc/octopus-foxess-smart-charging/releases/tag/esp32-preview-2.3.0).
+- Open the [download page](https://github.com/samuelkcc/octopus-foxess-smart-charging/releases/tag/esp32-preview-2.3.1).
 - Download the Windows x64 EXE from **Assets**.
 - Open the EXE.
 - Read the licence notice.
@@ -193,7 +193,7 @@ The portable binary targets Windows x64 and is currently unsigned.
 - Add your Google Apps Script Web App URL.
 - Select **Connect**.
 
-You can also [download the standalone HTML](https://github.com/samuelkcc/octopus-foxess-smart-charging/releases/download/esp32-preview-2.3.0/Smart_Charging_v2.3.0.html).
+You can also [download the standalone HTML](https://github.com/samuelkcc/octopus-foxess-smart-charging/releases/download/esp32-preview-2.3.1/Smart_Charging_v2.3.1.html).
 On later visits, saved setup gives you a Connect button.
 Select **Modify setup** when you need to change a value.
 Keep this browser open and awake while automation runs.
