@@ -58,7 +58,7 @@ Each guide covers one edition. You do not need to read every installation method
 | Windows Portable | You want a computer-hosted app that stays open | [Portable guide](desktop/README.md) |
 | HTML Dashboard | You want browser-based use without installing an app | [HTML guide](docs/WEB-GUIDE.md) |
 
-[Compare the editions](docs/USER-GUIDE.md#1-choose-an-edition) · [User guide](docs/USER-GUIDE.md) · [Downloads](https://github.com/samuelkcc/octopus-foxess-smart-charging/releases/tag/esp32-2.4.2)
+[Compare the editions](docs/USER-GUIDE.md#1-choose-an-edition) · [User guide](docs/USER-GUIDE.md) · [Downloads](https://github.com/samuelkcc/octopus-foxess-smart-charging/releases/tag/esp32-2.4.3)
 
 ## Support this hobby project
 

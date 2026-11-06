@@ -1,6 +1,6 @@
 # Windows portable app
 
-[Back to project](../README.md) · [Download Windows Portable](https://github.com/samuelkcc/octopus-foxess-smart-charging/releases/tag/esp32-2.4.2)
+[Back to project](../README.md) · [Download Windows Portable](https://github.com/samuelkcc/octopus-foxess-smart-charging/releases/tag/esp32-2.4.3)
 
 [Prepare API keys and optional login](../docs/ACCOUNT-PREPARATION.md).
 
@@ -14,7 +14,7 @@ The EXE is unsigned.
 
 Before configuring this edition, complete the [FoxESS work mode setup](../docs/PREPARE-INVERTER.md).
 
-1. Open the downloaded `SmartCharging-2.4.2-Windows-x64.exe`.
+1. Open the downloaded `SmartCharging-2.4.3-Windows-x64.exe`.
 2. Read the application licence notice.
 3. Select **Accept and Continue**.
 4. Open the account setup from Welcome.
