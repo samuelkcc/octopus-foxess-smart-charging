@@ -7,6 +7,10 @@
 The web edition runs in your browser.
 It needs your own Octopus account, FoxESS account, and Google Apps Script relay.
 
+Welcome opens only the HTML edition. Its setup, restore, and connection actions remain available.
+In each account step, expand **Help** for the relevant credentials and instructions.
+The FoxESS step also explains Mode Scheduler and Remaining Time Mode.
+
 ## Prepare the FoxESS app
 
 - Open your inverter's **Work Mode** page.

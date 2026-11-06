@@ -138,13 +138,6 @@ window.installLaunchScreen = ({ pi, login, parking, byId, make, button, onEnter 
   if(!pi)welcomeActions.append(button('Restore a saved setup',()=>byId('import-file').click(),true));
   const modifySetup=button('Modify setup',()=>openSetup(),true);modifySetup.hidden=true;
   if(!pi)welcomeActions.append(modifySetup);
-  if(!pi){
-    const editions=make('nav','launch-editions');editions.setAttribute('aria-label','Choose an edition');
-    for(const [label,url] of [['ESP32 Deploy','https://samuelkcc.github.io/octopus-foxess-smart-charging/esp32/'],['Raspberry Pi','https://github.com/samuelkcc/octopus-foxess-smart-charging/blob/main/linux/README-RASPBERRY-PI.md'],['Portable app','https://github.com/samuelkcc/octopus-foxess-smart-charging/releases/tag/esp32-2.4.2'],['Web HTML','#web-setup']]){
-      const link=make('a','next-button secondary',label);link.href=url;if(label==='Web HTML')link.addEventListener('click',event=>{event.preventDefault();openSetup();});else{link.target='_blank';link.rel='noopener noreferrer';}editions.append(link);
-    }
-    welcomeActions.before(editions);
-  }
   welcomeTools.append(button(pi?'Access guide':'Setup guide',()=>toggleDrawer('setup-guide-panel'),true),button('About & licences',()=>openLicenseModal(false),true));
   const auth = make('section', 'next-auth-card launch-setup');
   auth.append(make('span', 'launch-eyebrow', pi ? `${hostName === 'computer' ? 'DESKTOP' : 'PI'} DASHBOARD ACCESS` : 'CONNECT YOUR ACCOUNTS'), make('h2', '', pi ? 'Open your dashboard' : 'A few details. Then you’re connected.'));
@@ -167,6 +160,17 @@ window.installLaunchScreen = ({ pi, login, parking, byId, make, button, onEnter 
       const section = make('section', 'launch-step');
       const titleNode = make('h3', '', title); titleNode.tabIndex = -1;
       section.append(titleNode, make('p', 'next-auth-copy', description));
+      const help = make('details', 'launch-setup-help');
+      const helpTitles = ['Find your Octopus account and API key', 'Find your FoxESS token and inverter serial', 'Create your Google relay'];
+      const summary = make('summary', '', 'Help: ' + helpTitles[index]);
+      const helpBody = make('div', 'launch-setup-help-body');
+      const helpText = [
+        '<ol><li>Open <a href="https://octopus.energy/dashboard/new/accounts/personal-details/api-access" target="_blank" rel="noopener noreferrer">Octopus API access</a>.</li><li>Sign in to your energy account.</li><li>Open <strong>Developer settings → API access</strong>.</li><li>Copy your account number into <strong>Account number</strong>.</li><li>Copy your customer API key into <strong>API key</strong>.</li></ol><p>Use the account linked to your Intelligent Octopus Go vehicle or charger. Do not enter your Octopus password.</p>',
+        '<ol><li>Sign in to <a href="https://www.foxesscloud.com/" target="_blank" rel="noopener noreferrer">FoxESS Cloud</a>.</li><li>Open <strong>User profile / Personal centre → API management</strong>.</li><li>Generate an API key if necessary.</li><li>Copy that key into <strong>API token</strong>.</li><li>Open your inverter device details.</li><li>Copy its serial number into <strong>Inverter serial number</strong>.</li></ol><p>Use the inverter serial, not the data logger serial. The API token is separate from your cloud-login password.</p><h4>Before automation</h4><ol><li>In the FoxESS app or website, enable <strong>Mode Scheduler</strong>.</li><li>Set <strong>Remaining Time Mode → Self-Use</strong>.</li><li>Save the FoxESS settings.</li></ol><p>Force Charge protects the home battery during EV charging. Self-Use applies outside scheduled periods.</p>',
+        '<p>The HTML edition uses a relay deployed in your own Google account.</p><ol><li>Select <strong>Create or update the relay</strong> below.</li><li>Copy the supplied relay code.</li><li>Open <a href="https://script.google.com/" target="_blank" rel="noopener noreferrer">Google Apps Script</a>.</li><li>Create a project.</li><li>Replace <code>Code.gs</code> with the copied code.</li><li>Select <strong>Deploy → New deployment → Web app</strong>.</li><li>Set <strong>Execute as → Me</strong>.</li><li>Set <strong>Who has access → Anyone</strong>.</li><li>Deploy the project.</li><li>Complete the Google permission steps.</li><li>Copy the URL ending in <code>/exec</code> into the field below.</li></ol><p>Use your own relay URL. Safari compatibility also sends Octopus credentials and data through your relay.</p>'
+      ];
+      helpBody.innerHTML = helpText[index]; help.append(summary, helpBody); section.append(help);
+
       for (const [id, label] of inputs) {
         const row = make('div', 'next-field'); const caption = make('label', '', label); caption.htmlFor = id;
         const control = make('div', 'launch-input'); control.append(byId(id));

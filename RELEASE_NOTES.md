@@ -1,5 +1,8 @@
 # 2.5.3 — 6 November 2026
 
+HTML Welcome keeps its existing setup, restore, and connection actions without links to other editions.
+Each account step now provides expandable setup instructions.
+
 The ESP32 setup video is available beside Web Deploy in the README.
 The 4-minute-48-second tutorial includes English narration, captions, and chapter navigation.
 

@@ -1,5 +1,9 @@
 # 2.5.3 — 6 November 2026
 
+Keep HTML Welcome focused on its own setup and dashboard access.
+Remove the other-edition shortcuts from that screen.
+Add collapsible account help for Octopus, FoxESS, and the Google relay.
+
 Publish the English ESP32 setup tutorial without the review watermark.
 Add its video entry beside ESP32 Web Deploy in the README.
 The chapter player includes captions, downloads, and a setup-guide link.

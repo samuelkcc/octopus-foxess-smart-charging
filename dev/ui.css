@@ -800,7 +800,22 @@ html.desktop-viewport,html.desktop-viewport body {height:100%;min-height:0;overf
 #dev-shell #settings-general-panel #esp-settings-form>.dev-page-grid{grid-template-columns:repeat(2,minmax(0,1fr));grid-template-rows:none;grid-auto-rows:min-content}
 @media(max-width:760px){#dev-shell .dev-page[data-page=settings] .settings-account-grid,.desktop-account-sections,#dev-shell #settings-general-panel #esp-settings-form>.dev-page-grid{grid-template-columns:minmax(0,1fr)}.settings-tab{padding:10px 12px}}
 
-.launch-editions{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 18px}.launch-editions .next-button{font-size:12px;padding:9px 12px;text-decoration:none}.launch-editions .next-button:first-child{border-color:var(--accent);color:var(--accent)}
+/* Inline account help belongs to the HTML setup step. */
+.launch-setup-help {margin:16px 0 22px;border:1px solid var(--border);border-radius:10px;background:var(--bg);}
+.launch-setup-help summary {display:flex;align-items:center;gap:10px;padding:13px 15px;color:var(--accent);font-size:13px;font-weight:600;cursor:pointer;list-style:none;}
+.launch-setup-help summary::-webkit-details-marker {display:none;}
+.launch-setup-help summary::before {content:"";width:8px;height:8px;flex:none;border-right:2px solid currentColor;border-bottom:2px solid currentColor;transform:rotate(-45deg);transition:transform .18s ease;}
+.launch-setup-help[open] summary::before {transform:rotate(45deg);}
+.launch-setup-help summary:focus-visible {outline:2px solid var(--accent);outline-offset:3px;border-radius:8px;}
+.launch-setup-help-body {padding:0 18px 15px;color:var(--text-muted);font-size:13px;line-height:1.65;}
+.launch-setup-help-body ol {padding-left:21px;margin:0 0 12px;}
+.launch-setup-help-body li + li {margin-top:6px;}
+.launch-setup-help-body p {margin:10px 0 0;}
+.launch-setup-help-body strong,.launch-setup-help-body h4 {color:var(--text-main);}
+.launch-setup-help-body h4 {margin:18px 0 10px;font-size:13px;}
+.launch-setup-help-body a {color:var(--accent);text-decoration:underline;}
+.launch-step[data-active=false] .launch-setup-help {display:none;}
+@media(prefers-reduced-motion:reduce){.launch-setup-help summary::before {transition:none;}}
 
 @media(max-width:760px){#dev-shell .dev-app-actions #esp-connection{font-size:8px;max-width:32px;line-height:1.2;white-space:normal;flex:0 0 32px}}
 

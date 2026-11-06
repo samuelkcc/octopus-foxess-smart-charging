@@ -631,3 +631,13 @@ Installed firmware and UI commit: `bc06b2089b69bf2a7d82cd8c395ab5e55a823fb8`.
 The full local check, native ESP-IDF build, and GitHub Pages checks passed.
 The 24-hour interval and disabled-on-restart policy passed clock-controlled mocks.
 A physical 24-hour soak and interrupted-power OTA recovery remain unverified.
+
+## HTML Welcome and inline account help — 6 November 2026
+
+HTML Welcome retains setup, restore, and connection actions without other-edition shortcuts.
+Each account step provides collapsed help for Octopus, FoxESS, or the Google relay.
+FoxESS help includes Mode Scheduler and Remaining Time Mode requirements.
+The original account controls and engine IDs remain unique.
+Browser review covered Welcome and all three expanded help panels with fictional input.
+Pi access was checked separately. Interface review sent no cloud or inverter commands.
+The complete local project checks and development build passed.
