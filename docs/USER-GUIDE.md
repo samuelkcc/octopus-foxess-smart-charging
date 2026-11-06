@@ -36,6 +36,23 @@ Mode Scheduler applies the programmed periods. Outside those periods, Remaining 
 
 ## 3. Deploy ESP32
 
+### Select the setup task
+
+| Entry | Use this for | Saved settings |
+|---|---|---|
+| New setup | Enter a complete replacement configuration | Replaced only after all checks pass |
+| Edit settings | Read and change the existing configuration | Loaded with sensitive fields masked |
+| Reinstall firmware | Install or repair the program | Retained by the installer |
+
+1. Select the task on the Device page.
+2. For New setup or Edit settings, select **Connect ESP32**.
+3. For Reinstall firmware, follow the separate installation panel.
+
+If no task was selected, connection selects Edit settings for a configured board. It selects New setup for an unconfigured board.
+Changing the task does not write to the board. New setup clears the tool's form.
+The firmware installer does not erase saved settings. After installation, reconnect to review or change them.
+
+
 Supported hardware is ESP32-S3 N16R8, with 16 MB Flash and 8 MB Octal PSRAM. Other ESP32 models are unsupported.
 
 Bluetooth is disabled. Setup uses USB. Dashboards use Wi-Fi.

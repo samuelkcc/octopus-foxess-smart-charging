@@ -8,7 +8,8 @@
 - Failed confirmation does not start a network trial. Entered form values remain available.
 - Native runtime and serial mocks cover these transitions without live schedule commands.
 - Pi and web Welcome entry, Portable Account setup, and guide chapters were reviewed with isolated services.
-- The website has two main entries, native deployment downloads, edition tabs, and chapter navigation.
+- The website has two main entries. Downloads, edition chapters, and the interface gallery use separate pages.
+- USB setup separates New setup, Edit settings, and Reinstall firmware. Native serial mocks cover each entry.
 - All published interface screenshots were recaptured from isolated demonstration services.
 
 Windows execution, continuous WebSocket operation, and long-term Flash endurance remain verification limits.

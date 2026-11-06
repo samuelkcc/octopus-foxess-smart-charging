@@ -14,6 +14,7 @@ The full check and native firmware build passed. USB scanning found 21 nearby ac
 Rules and operator state matched before and after the application update.
 
 The website presents ESP32 Web Deploy and HTML web app as its two main entries.
+Detailed downloads, edition guides, and the interface gallery use separate pages.
 Native deployment downloads and chapter-based edition guides appear below.
 Mobile toolbars omit the duplicate page name. API badges stay left and the operator switch stays right.
 
@@ -103,3 +104,6 @@ New screenshots contain demonstration data only. Native Windows and physical iPh
 The USB network test now requests explicit confirmation before disabling automation.
 It preserves other rules and Pause. The inverter retains its programmed schedule.
 After network setup, enable automation in General settings.
+
+The deployment tool separates New setup, Edit settings, and Reinstall firmware.
+Network test errors appear beside the controls. Next explains any required check.

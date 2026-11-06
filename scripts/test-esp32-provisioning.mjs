@@ -9,7 +9,7 @@ const source = await readFile(new URL('../prototype/esp32-usb-test/client.js',im
 const html = await readFile(new URL('../prototype/esp32-usb-test/index.html',import.meta.url),'utf8');
 const firmware = await readFile(new URL('../esp32/main/main.c',import.meta.url),'utf8');
 
-function harness({ supported=true, rejectSelection=false, rejectSave=false, oldFirmware=false, existing=false, protectedConfig=false, failedJob=false, automation=false, rejectApiTest=false, rejectOptionalSave=false, savedStatic=false, missingJob=false, queuedJob=false, rejectNetworkSetup=false }={}) {
+function harness({ supported=true, rejectSelection=false, rejectSave=false, oldFirmware=false, existing=false, protectedConfig=false, failedJob=false, automation=false, rejectApiTest=false, rejectOptionalSave=false, savedStatic=false, missingJob=false, queuedJob=false, rejectNetworkSetup=false, rejectNetworkTrial=false }={}) {
   const elements=new Map();
   const windowEvents={};
   for (const [,id] of html.matchAll(/\bid="([^"]+)"/g)) elements.set(id,{
@@ -51,7 +51,7 @@ function harness({ supported=true, rejectSelection=false, rejectSave=false, oldF
           case 'service_setup_status':assert.equal(request.job_id,4294967295);if(queuedJob&&jobPoll++<2){result={phase:jobPoll===1?'queued':'running'};break;}if(missingJob){controller.enqueue(new TextEncoder().encode('SCESP1 '+JSON.stringify({protocol:'sc-esp32',version:1,id:request.id,ok:false,error:'Setup test not found'})+'\n'));return;}if(failedJob){ok=false;break;}foxConfigured=!!jobRequest.username||foxConfigured;liveMode=jobRequest.mode||liveMode;result={id:77,phase:'done',result:{saved:jobRequest.action.startsWith('save_')&&!rejectOptionalSave,connected:!rejectApiTest,status:rejectApiTest?'API validation failed':rejectOptionalSave?'Optional settings not saved':'Service test passed'}};break;
           case 'foxess_live_configure':foxConfigured=!!request.config.username||foxConfigured;liveMode=request.config.mode;result={saved:true,status:'Optional telemetry settings saved'};break;
           case 'configure':configured=!rejectSave;result={saved:configured,checks:{wifi_connected:true,ip_valid:true,clock_synced:true,octopus:{connected:true},foxess:{connected:configured}},status:configured?'All checks passed. Saved.':'Validation failed. Not saved.'};break;
-          case 'network_trial':result={connected:true,ip:'192.168.1.42',gateway:'192.168.1.1',netmask:'255.255.255.0',dns:'192.168.1.1',saved:false};break;
+          case 'network_trial':if(rejectNetworkTrial){ok=false;break;}result={connected:true,ip:'192.168.1.42',gateway:'192.168.1.1',netmask:'255.255.255.0',dns:'192.168.1.1',saved:false};break;
           case 'suggest_ip':result={candidate:'192.168.1.188',status:'No response detected',network:{gateway:'192.168.1.1',netmask:'255.255.255.0',dns:'192.168.1.1'}};break;
           case 'test':result={wifi_connected:true,octopus:{connected:true},foxess:{connected:true},automation_enabled:false};break;
           case 'reboot':break;
@@ -71,12 +71,14 @@ function harness({ supported=true, rejectSelection=false, rejectSave=false, oldF
     TextEncoder,TextDecoder,Event,JSON,Number,Object,String,Map,Set,setTimeout,clearTimeout,
     Option:class{constructor(text,value){this.text=text;this.value=value;}}
   });
-  const click=id=>get(id).handlers.click();
+  const click=id=>get(id).handlers.click({preventDefault(){}});
   const flush=()=>new Promise(resolve=>setImmediate(resolve));
   const fill=()=>{for(const id of ['ssid','wifi-password','octopus-account','octopus-key','foxess-serial','foxess-key'])get(id).value='example-'+id;};
   return {get,click,flush,fill,commands,windowEvents,closeCount:()=>closeCount};
 }
 
+const newFlow=harness({existing:true});newFlow.click('mode-new');await newFlow.click('connect');assert(!newFlow.commands.some(r=>r.command==='config_read'),'New setup must not read existing secrets');assert.equal(newFlow.get('ssid').value,'');assert(newFlow.get('firmware-install-panel').hidden);assert(newFlow.get('flow-mode').textContent.startsWith('New setup'));await newFlow.click('mode-edit');assert.equal(newFlow.get('ssid').value,'saved-wifi');newFlow.click('mode-reinstall');assert(!newFlow.get('firmware-install-panel').hidden);assert(newFlow.get('wizard-next').disabled,'Firmware recovery must not advance to configuration');newFlow.click('nav-network');assert(!newFlow.get('device').hidden,'Recovery cannot enter settings through sidebar');assert(!newFlow.commands.some(r=>r.command==='configure'||r.command==='network_trial'));await newFlow.click('disconnect');
+const failedNetwork=harness({rejectNetworkTrial:true});await failedNetwork.click('connect');failedNetwork.fill();await failedNetwork.click('network-test');assert(failedNetwork.get('network-info').textContent.startsWith('Wi-Fi test failed:'));assert(failedNetwork.get('step-feedback').textContent.includes('Invalid configuration'));assert.equal(failedNetwork.get('wifi-password').value,'example-wifi-password');failedNetwork.click('wizard-next');failedNetwork.click('wizard-next');assert(failedNetwork.get('step-feedback').textContent.includes('Network check required'));await failedNetwork.click('disconnect');
 const h=harness();
 assert(h.get('save').disabled);
 assert(!h.get('device').hidden && h.get('network').hidden && h.get('accounts').hidden && h.get('verify').hidden);

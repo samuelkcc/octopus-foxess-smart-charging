@@ -9,6 +9,7 @@
   let nextId = 0, safeSave = false, networkTrial = false, runtimeTrial = false, suggestion = null, lanResetSupported=false, lanAccessEnabled=false, controllerEnabled=false;
   let activeStep=0,furthestStep=0,liveSupported=false,webConfigured=false,scanWhileRunning=false,networkSetupSupported=false;
   let dashboardPort=80,configuredDashboardPort=8787,portSupported=false;
+  let setupMode='auto';
   const pending = new Map();
   let readbackSupported=false,configProtected=false,configUnlocked=false,unlockPassword="",loadedSettings=false,savedConfig=null;
   const secretIds=["ssid","wifi-password","octopus-account","octopus-key","foxess-serial","foxess-key","fox-web-user","fox-web-password","fox-web-hash","config-current-password","config-new-password","config-confirm-password"];
@@ -23,6 +24,7 @@
   }
   function controls() {
     const locked = busy || window.esp32Flashing === true;
+    for(const mode of ['new','edit','reinstall'])$('mode-'+mode).disabled=locked;
     $('dashboard-port').disabled=!ready||locked||!portSupported;
     $('dashboard-port-save').disabled=!ready||locked||!portSupported;
     $('connect').disabled = !supported || !!port || locked;
@@ -46,9 +48,9 @@
     for(const id of ['octopus-test','octopus-save','foxess-test','foxess-save'])$(id).disabled=!ready||!configured||locked;
     for(const id of ['config-password-save','config-password-remove','config-unlock-button','config-skip','review-accounts'])$(id).disabled=!ready||locked||!readbackSupported;
     staticInputs.forEach(input=>{input.disabled=locked || $('network-mode').value!=='static';});
-    steps.forEach((name,index)=>$('nav-'+name).setAttribute('aria-disabled',String(index>furthestStep)));
+    steps.forEach((name,index)=>$('nav-'+name).setAttribute('aria-disabled',String(index>furthestStep||(setupMode==='reinstall'&&index>0))));
     $('wizard-back').disabled=locked;
-    $('wizard-next').disabled=locked || (activeStep===0 && (!ready || !safeSave));
+    $('wizard-next').disabled=locked || (activeStep===0 && (!ready || !safeSave || setupMode==='reinstall'));
     window.dispatchEvent?.(new Event('esp32-controls'));
   }
   function status(state, label, message = '') {
@@ -185,8 +187,9 @@
   async function operation(label, action) {
     if (!ready || busy) return;
     busy = true; status('busy',label);
-    try { await action(); if (port) status('connected','Firmware connected'); }
-    catch (error) { if (port) status('error','Operation failed',error.message); }
+    $('step-feedback').textContent=label;$('step-feedback').dataset.error='false';
+    try { await action(); if (port) status('connected','Firmware connected');$('step-feedback').textContent=''; }
+    catch (error) { $('step-feedback').textContent=error.message;$('step-feedback').dataset.error='true';if (port) status('error','Operation failed',error.message); }
     finally { busy = false; controls(); }
   }
 
@@ -213,7 +216,8 @@
       safeSave = hello.capabilities?.validate_before_save === true && hello.capabilities?.network_trial === true && hello.capabilities?.ip_suggestion === true;
       networkTrial = false; suggestion = null;
       $('handshake').textContent = 'Verified'; renderResult(hello);
-      if(configured&&readbackSupported){
+      if(setupMode==='auto')selectMode(configured?'edit':'new');
+      if(configured&&readbackSupported&&setupMode==='edit'){
         $('config-readback').hidden=false;$('config-unlock').hidden=!configProtected;
         if(!configProtected)await readSavedSettings('');
         else $('config-read-status').textContent='Saved settings are protected. Unlock to read them, or skip and enter replacement values.';
@@ -372,6 +376,7 @@
         }catch(error){$('network-setup-result').textContent=error.message;throw error;}
       }
       invalidateNetwork();
+      $('network-info').textContent='Testing the entered Wi-Fi with DHCP… Keep USB connected.';
       const config={ssid:$('ssid').value,password:$('wifi-password').value,ip_mode:'dhcp'};
       try {
         const result=await send('network_trial',{config},90000);
@@ -379,7 +384,7 @@
         if(networkTrial)runtimeTrial=true;
         $('network-info').textContent=networkTrial ? `Temporary DHCP connection: ${result.ip} · Gateway ${result.gateway} · Mask ${result.netmask} · DNS ${result.dns || 'not provided'}. Nothing saved.` : 'Wi-Fi trial did not connect.';
         renderResult(result);
-      } finally { config.password=''; }
+      } catch(error){$('network-info').textContent='Wi-Fi test failed: '+error.message;throw error;} finally { config.password=''; }
     });
   }
   $('network-test').addEventListener('click',()=>testNetwork());
@@ -480,7 +485,7 @@
     document.documentElement.dataset.theme=document.documentElement.dataset.theme==='dark'?'light':'dark';
   });
   const steps=['device','network','accounts','verify'];
-  const titles=['Connect your ESP32','Set up your network','Connect your accounts','Verify & save'];
+  const titles=['Choose a setup task','Set up your network','Connect your accounts','Verify & save'];
   const descriptions=['Start with a USB connection. Your setup has four steps.','Choose 2.4 GHz Wi-Fi and check the connection before continuing.','Enter the credentials that the ESP32 will test directly.','The ESP32 saves only after every network and service check passes.'];
   const guides=[
     ['Connect the board','Use a USB data cable. Close other serial tools. Select the USB-UART port. Install firmware only if needed.'],
@@ -489,8 +494,9 @@
     ['What happens next','Keep USB connected until confirmation. Saved settings survive restarts. History uses RAM by default. Optional hourly Flash saving is available in Dashboard Settings.']
   ];
   function showStep(index,focus=true){
-    if(busy || window.esp32Flashing || index<0 || index>furthestStep)return;
+    if(busy || window.esp32Flashing || index<0 || index>furthestStep || (setupMode==='reinstall'&&index>0))return;
     activeStep=index;
+    $('step-feedback').textContent='';
     steps.forEach((name,i)=>{
       $(name).hidden=i!==index;
       const link=$('nav-'+name);
@@ -498,7 +504,7 @@
       link.setAttribute('aria-disabled',String(i>furthestStep));
     });
     form.hidden=index===0;
-    $('wizard-title').textContent=titles[index];$('wizard-description').textContent=descriptions[index];
+    $('wizard-title').textContent=index===0?({new:'New ESP32 setup',edit:'Edit saved settings',reinstall:'Reinstall firmware'}[setupMode]||titles[0]):titles[index];$('wizard-description').textContent=descriptions[index];
     $('guide-title').textContent='Help: '+guides[index][0];$('guide-text').textContent=guides[index][1];
     $('wizard-back').hidden=index===0;$('wizard-next').hidden=index===3;
     $('wizard-next').textContent=['Next: Network →','Next: Accounts →','Next: Verify & save →',''][index];
@@ -509,15 +515,34 @@
   for(const [index,step] of steps.entries())$('nav-'+step).addEventListener('click',event=>{event.preventDefault();showStep(index);});
   $('wizard-back').addEventListener('click',()=>showStep(activeStep-1));
   $('wizard-next').addEventListener('click',()=>{
-    if(busy || window.esp32Flashing || activeStep===0&&(!ready||!safeSave))return;
+    if(busy || window.esp32Flashing || activeStep===0&&(!ready||!safeSave||setupMode==='reinstall'))return;
     if(activeStep===1){
-      if(!networkTrial&&!loadedSettings){$('network-info').textContent='Run Test Wi-Fi with DHCP before continuing.';return;}
+      if(!networkTrial&&!loadedSettings){$('network-info').textContent='Wi-Fi is not verified. Select Test Wi-Fi with DHCP before continuing.';$('step-feedback').textContent='Network check required. Test the entered Wi-Fi before opening Accounts.';$('step-feedback').dataset.error='true';$('network-test').scrollIntoView?.({block:'center'});$('network-test').focus?.();return;}
       if(!collectConfig(false))return;
       if($('network-mode').value==='static'&&!unchangedSavedConfiguration()&&!$('ip-review').checked){$('network-info').textContent='Review the fixed IP against your router DHCP pool, then select the acknowledgement.';return;}
     }
     if(activeStep===2&&!collectConfig(true))return;
     furthestStep=Math.max(furthestStep,activeStep+1);showStep(activeStep+1);
   });
+  function selectMode(mode){
+    setupMode=mode;
+    if(activeStep===0)$('wizard-title').textContent={new:'New ESP32 setup',edit:'Edit saved settings',reinstall:'Reinstall firmware'}[mode];
+    for(const name of ['new','edit','reinstall'])$('mode-'+name).setAttribute('aria-pressed',String(mode===name));
+    $('firmware-install-panel').hidden=mode!=='reinstall';
+    $('firmware-install-panel').open=mode==='reinstall';
+    $('flow-mode').textContent={new:'New setup · Existing device settings remain until all checks pass.',edit:'Edit settings · Read saved values, then review your changes.',reinstall:'Reinstall firmware · Keep saved configuration. Reconnect after installation.'}[mode];
+    $('step-feedback').textContent='';
+    controls();
+  }
+  $('mode-new').addEventListener('click',()=>{if(busy)return;clearForm();invalidateNetwork();furthestStep=0;selectMode('new');});
+  $('mode-edit').addEventListener('click',async()=>{
+    if(busy)return;selectMode('edit');
+    if(!ready)return;
+    if(!configured){$('step-feedback').textContent='No saved configuration was found. Select New setup.';return;}
+    $('config-readback').hidden=false;$('config-unlock').hidden=!configProtected;
+    if(!configProtected)await operation('Reading saved settings…',()=>readSavedSettings(''));
+  });
+  $('mode-reinstall').addEventListener('click',()=>{if(busy)return;selectMode('reinstall');});
   window.esp32Setup={disconnect,isConnected:()=>!!port,isBusy:()=>busy,refreshControls:controls};
   modeChanged(); showStep(0,false);status('idle','Not connected');
 })();

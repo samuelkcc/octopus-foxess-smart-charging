@@ -1,5 +1,6 @@
 # 2.4.1 — 6 November 2026
 
+- Separate New setup, Edit settings, and Reinstall firmware. Show failed Wi-Fi tests beside the Network controls.
 - Add a concise website with two main entries, edition tabs, chapter navigation, and interface previews.
 - Remove the redundant mobile page-name row and align badges left with the operator switch right.
 - Replace mobile help text symbols with aligned SVG guide and information icons in all editions.
