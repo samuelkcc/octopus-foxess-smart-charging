@@ -253,12 +253,12 @@
     "ui": "npm run build:dev passed; Pi/web/Portable/ESP32 browser fixtures reviewed",
     "usb_network_setup": "Explicit confirmation; preserve rules/Pause; failed barrier blocks trial; input retention tested with mocks",
     "scan": "Previous 2.4.1 live scan found 21 APs without changing settings",
-    "pending": "Native Windows execution; operator test of final three-entry Mac UI; long-running WS/Flash soak",
+    "pending": "Physical test of final three-entry flow after reconnecting USB; native Windows execution; long-running WS/Flash soak",
     "source_commit": "06b0e38fd0aa68173979c9355cbb084d21921948",
     "pages_run": "42206827239",
     "pages": "Full check, native firmware build and deployment passed",
     "firmware_installed": "89a305c; app-only write hash verified; saved rules and operator state matched before/after",
-    "mac_setup": "Final three-entry Universal app built; ad-hoc signature verified; old app retained until operator closes unsaved form",
+    "mac_setup": "Final three-entry Universal app opened from dist/ESP32/macOS and native UI verified. No USB device was present for a new physical connection test.",
     "distribution": "ESP32 Mac, Windows, Web; Windows Portable; Web HTML; Pi grouped in dist"
   }
 }
