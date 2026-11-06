@@ -15,4 +15,4 @@ The current work mode can change during a scheduled period.
 Check the actual inverter schedule and battery behaviour after enabling automation.
 Use one active automation host for each inverter.
 
-[Choose your setup guide](../README.md#other-options)
+[Choose your setup guide](../README.md#setup-guides)

@@ -260,5 +260,30 @@
     "firmware_installed": "89a305c; app-only write hash verified; saved rules and operator state matched before/after",
     "mac_setup": "Final three-entry Universal app opened from dist/ESP32/macOS and native UI verified. No USB device was present for a new physical connection test.",
     "distribution": "ESP32 Mac, Windows, Web; Windows Portable; Web HTML; Pi grouped in dist"
+  },
+  "release_242": {
+    "source_commit": "98b969a738cc7e27a4f3eb8e6f4778761ee41e6e",
+    "full_check": "passed",
+    "dev_build": "passed",
+    "native_firmware_build": "passed",
+    "mac_universal_signature": "verified ad-hoc",
+    "clean_install": "Mock hardware only. No live erasure.",
+    "public_pages_run": 42213179686,
+    "public_pages_result": "success",
+    "release_assets": 15,
+    "release_hashes": "All sizes and available SHA-256 digests match local staging.",
+    "dist_hashes_verified": 42,
+    "windows_native_execution": false,
+    "live_firmware_updated": false,
+    "live_icon_http": {
+      "path": "/apple-touch-icon.png?v=2.4.1",
+      "status": 200,
+      "content_type": "image/png",
+      "bytes": 5520,
+      "sha256": "0c34b94d222b4742e5a81358d3f0843b488d1fe96838639ebf9691150d99f3fb",
+      "matches_repository_png": true,
+      "physical_home_screen_result": "User reports S. Existing shortcut versus new Add to Home Screen preview not yet known."
+    },
+    "tutorial": "Private 4m18s review. Not published."
   }
 }
