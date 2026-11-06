@@ -2,8 +2,6 @@
 
 **Your EV, charging. Your home, protected.**
 
-[![Buy me a coffee](docs/assets/buy-me-a-coffee.svg)](https://buymeacoffee.com/samuelchen)
-
 A free hobby project by **SCKC**. Use a compact ESP32 to protect your FoxESS home battery during Intelligent Octopus Go charging.
 Your phone or computer provides the dashboard. The ESP32 keeps working when you close it.
 
@@ -60,13 +58,13 @@ Each guide covers one edition. You do not need to read every installation method
 
 [Compare the editions](docs/USER-GUIDE.md#1-choose-an-edition) · [User guide](docs/USER-GUIDE.md) · [Downloads](https://github.com/samuelkcc/octopus-foxess-smart-charging/releases/tag/esp32-2.4.3)
 
-## Support this hobby project
-
-Smart Charging is free to use. If it helps your setup, you can support development with a coffee.
-
-[![Buy me a coffee](docs/assets/buy-me-a-coffee.svg)](https://buymeacoffee.com/samuelchen)
-
 Independent software by **SCKC**, under **GPL-3.0-or-later**.
 Octopus Energy and FoxESS do not endorse or support this project.
 
 [Licence](LICENSE) · [Third-party notices](THIRD_PARTY_NOTICES.md) · [Verification record](docs/FEATURE-PARITY.md) · [Architecture](docs/ARCHITECTURE.md)
+
+## Support this hobby project
+
+Smart Charging is free to use. If it helps your setup, you can support development with a coffee.
+
+<a href="https://buymeacoffee.com/samuelchen"><img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" alt="Buy me a coffee — support Smart Charging" width="217" height="60"></a>
