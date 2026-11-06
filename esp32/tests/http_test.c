@@ -24,11 +24,11 @@ uint32_t esp_random(void){random_state=random_state*1664525u+1013904223u;return 
 void esp_fill_random(void *out,size_t size){for(size_t i=0;i<size;i++)((unsigned char *)out)[i]=esp_random()>>24;}
 esp_netif_t *esp_netif_get_handle_from_ifkey(const char *key){(void)key;static int netif=1;return &netif;}
 esp_err_t esp_netif_get_ip_info(esp_netif_t *netif,esp_netif_ip_info_t *out){(void)netif;out->ip=(esp_ip4_addr_t){{192,168,8,188}};return ESP_OK;}
-typedef struct{const char *host,*origin,*cookie,*csrf,*forwarded,*body;char status[40],set_cookie[192];char *response;size_t received;} request_data_t;
+typedef struct{const char *host,*origin,*cookie,*csrf,*forwarded,*body;bool closes;char status[40],set_cookie[192];char *response;size_t received;} request_data_t;
 static const char *header(httpd_req_t *r,const char *key){request_data_t *d=r->user_ctx;if(!strcmp(key,"Host"))return d->host;if(!strcmp(key,"Origin"))return d->origin;if(!strcmp(key,"Cookie"))return d->cookie;if(!strcmp(key,"X-SC-CSRF"))return d->csrf;if(!strcmp(key,"Content-Type"))return "application/json";if(!strcmp(key,"X-Forwarded-For"))return d->forwarded;return NULL;}
 size_t httpd_req_get_hdr_value_len(httpd_req_t *r,const char *key){const char *v=header(r,key);return v?strlen(v):0;}
 esp_err_t httpd_req_get_hdr_value_str(httpd_req_t *r,const char *key,char *out,size_t size){const char *v=header(r,key);if(!v||strlen(v)>=size)return ESP_FAIL;strcpy(out,v);return ESP_OK;}
-esp_err_t httpd_resp_set_hdr(httpd_req_t *r,const char *key,const char *value){request_data_t *d=r->user_ctx;if(!strcmp(key,"Set-Cookie"))snprintf(d->set_cookie,sizeof(d->set_cookie),"%s",value);return ESP_OK;}
+esp_err_t httpd_resp_set_hdr(httpd_req_t *r,const char *key,const char *value){request_data_t *d=r->user_ctx;if(!strcmp(key,"Connection")){assert(!strcmp(value,"close"));d->closes=true;}if(!strcmp(key,"Set-Cookie"))snprintf(d->set_cookie,sizeof(d->set_cookie),"%s",value);return ESP_OK;}
 esp_err_t httpd_resp_set_type(httpd_req_t *r,const char *type){(void)r;(void)type;return ESP_OK;}
 esp_err_t httpd_resp_set_status(httpd_req_t *r,const char *status){snprintf(((request_data_t *)r->user_ctx)->status,40,"%s",status);return ESP_OK;}
 esp_err_t httpd_resp_sendstr(httpd_req_t *r,const char *text){request_data_t *d=r->user_ctx;free(d->response);d->response=strdup(text);return ESP_OK;}
@@ -44,7 +44,7 @@ bool sc_runtime_request_refresh(const char *service){return !strcmp(service,"oct
 bool sc_runtime_manual(const cJSON *value){return cJSON_IsObject(value);}
 unsigned sc_runtime_revision(void){return 1;}
 bool sc_runtime_update_expected(const cJSON *value,unsigned expected){return cJSON_IsObject(value)&&expected==1;}
-static void call(request_data_t *data,const char *path,int method,const char *body){data->body=body?body:"";data->received=0;data->status[0]=0;httpd_req_t req={.uri=path,.method=method,.content_len=(int)strlen(data->body),.user_ctx=data};api(&req);}
+static void call(request_data_t *data,const char *path,int method,const char *body){data->body=body?body:"";data->received=0;data->status[0]=0;data->closes=false;httpd_req_t req={.uri=path,.method=method,.content_len=(int)strlen(data->body),.user_ctx=data};assert(api(&req)!=ESP_OK&&data->closes);}
 int main(void){sc_runtime_register(NULL);request_data_t d={.host="192.168.8.188",.origin="http://192.168.8.188"};httpd_req_t manifest={.uri="/site.webmanifest",.method=HTTP_GET,.user_ctx=&d};app_asset(&manifest);assert(strstr(d.response,"icon-192.png")&&strstr(d.response,"standalone"));d.host="attacker.example";d.status[0]=0;app_asset(&manifest);assert(!strcmp(d.status,"403 Forbidden"));d.host="192.168.8.188";call(&d,"/api/state",HTTP_GET,NULL);assert(!d.status[0]&&"Fresh deployments are open on LAN");
  cJSON *open_state=cJSON_Parse(d.response);assert(cJSON_IsFalse(cJSON_GetObjectItem(open_state,"lan_access_enabled")));char open_token[65];strcpy(open_token,cJSON_GetObjectItem(open_state,"csrf")->valuestring);cJSON_Delete(open_state);
  call(&d,"/api/rules",HTTP_POST,"{}");assert(strstr(d.status,"401")&&"Open LAN mutations still require CSRF");

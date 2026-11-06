@@ -1,3 +1,10 @@
+# 2.4.0 — Unreleased
+
+- Bound ESP32 dashboard reads and JSON decoding to 12 seconds.
+- Recover suspended mobile reads without replaying configuration or schedule changes.
+- Coalesce state refreshes and reject late replies from abandoned reads.
+- Release HTTP response connections and retain a separate boot recovery screen.
+
 # 2.3.1 Preview — 6 November 2026
 
 - Render clickable HTTPS deployment and download links in the chapter-based User guide.

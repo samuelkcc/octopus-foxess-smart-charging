@@ -5,7 +5,7 @@ import vm from 'node:vm';
 const nodes=new Map(),requests=[];
 const node=id=>{if(!nodes.has(id))nodes.set(id,{value:'14',dataset:{},listeners:{},addEventListener(type,fn){this.listeners[type]=fn;},showModal(){this.open=true;},close(){this.open=false;}});return nodes.get(id);};
 let state={schema:1,csrf:'test-csrf',revision:1,now:123,rules:{paused:true},dispatch_valid:true,octopus_http:200,foxess_http:200};
-const context={document:{getElementById:node,querySelectorAll:()=>[]},window:{addEventListener(){}},setTimeout(){},fetch:async(url,options)=>{requests.push({url,options});return{ok:true,json:async()=>url==='/api/state'?state:{queued:true}};}};
+const context={document:{addEventListener(){},getElementById:node,querySelectorAll:()=>[]},window:{addEventListener(){}},setTimeout(){},clearTimeout(){},AbortController,fetch:async(url,options)=>{requests.push({url,options});return{ok:true,json:async()=>url==='/api/state'?state:{queued:true}};}};
 vm.runInNewContext(await readFile(new URL('../esp32/dashboard/client.js',import.meta.url),'utf8'),context);
 const D=context.window.esp32Dashboard;await D.refresh();
 for(const service of ['octopus','foxess']){

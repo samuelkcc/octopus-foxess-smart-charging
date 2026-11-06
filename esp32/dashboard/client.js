@@ -5,16 +5,38 @@
  let state=null,csrf='',pendingReview=null,dirty=false,filledRevision=0,history=[],busy=false,loggedIn=false,historyVersion='',accountLoading=false;
  const D=window.esp32Dashboard={$,page:'overview',state:()=>state,dirty:()=>dirty,setDirty:value=>{dirty=value;},history:()=>history};
  D.notice=(message,error=false)=>{$('esp-notice').textContent=message;$('esp-notice').dataset.error=String(error);};
+ const reads=new Set();
+ D.cancelReads=()=>{for(const cancel of [...reads])cancel();};
  D.request=async(path,body)=>{
-  const options={cache:'no-store',credentials:'same-origin',redirect:'error',headers:{}};
+  const controller=typeof AbortController==='function'?new AbortController():null;
+  const options={cache:'no-store',credentials:'same-origin',redirect:'error',headers:{},signal:controller?.signal};
   if(body!==undefined){options.method='POST';options.headers={'Content-Type':'application/json','X-SC-CSRF':csrf};options.body=JSON.stringify(body);}
-  const response=await fetch(path,options);const data=await response.json();
-  if(!response.ok){if(response.status===401){loggedIn=false;D.showLogin?.();}const error=new Error(data.error||'The device request failed.');error.status=response.status;throw error;}
-  return data;
+  let timer,cancel;
+  const deadline=new Promise((_,reject)=>{
+   cancel=()=>{const error=new Error('Read cancelled while the dashboard was suspended.');error.code='ESP32_READ_CANCELLED';reject(error);controller?.abort();};
+   timer=setTimeout(()=>{const error=new Error(body===undefined?'ESP32 did not respond within 12 seconds. Check Wi-Fi and retry.':'No confirmation from ESP32. Refresh device state before retrying this change.');error.code='ESP32_REQUEST_TIMEOUT';reject(error);controller?.abort();},12000);
+  });
+  if(body===undefined)reads.add(cancel);
+  try{
+   const {response,data}=await Promise.race([deadline,(async()=>{
+    const response=await fetch(path,options);let data;
+    try{data=await response.json();}catch{throw new Error('ESP32 returned an incomplete response. Retry the connection.');}
+    return {response,data};
+   })()]);
+   if(!response.ok){if(response.status===401){loggedIn=false;D.showLogin?.();}const error=new Error(data.error||'The device request failed.');error.status=response.status;throw error;}
+   return data;
+  }finally{clearTimeout(timer);reads.delete(cancel);}
  };
- D.refresh=async()=>{
-  try{const value=await D.request('/api/state');if(value.schema!==1)throw Error('The ESP32 worker is starting.');state=value;csrf=value.csrf;loggedIn=true;D.showDashboard?.();D.render?.(value);if(!dirty&&filledRevision!==value.revision){D.fillRules?.(value.rules);filledRevision=value.revision;}if(D.page==='connections')void D.loadAccount();if(D.page==='history'&&historyVersion!==[value.telemetry_at,value.history_saved_through,value.history_records].join(':'))void D.loadHistory().catch(error=>D.notice(error.message,true));return value;}
-  catch(error){if(error.status!==401){D.syncPauseSwitch?.({paused:state?.rules?.paused===true,available:false});D.syncPauseBanner?.({paused:state?.rules?.paused===true,available:false});D.notice(error.message,true);$('esp-connection').textContent='Device unavailable';$('esp-connection').dataset.state='error';}throw error;}
+ let refreshing=null,connectionLost=false;
+ D.refresh=()=>{
+  if(refreshing)return refreshing;
+  refreshing=(async()=>{
+   try{const value=await D.request('/api/state');if(value.schema!==1)throw Error('The ESP32 worker is starting.');state=value;csrf=value.csrf;loggedIn=true;D.showDashboard?.();D.render?.(value);$('esp-reconnect').hidden=true;if(connectionLost){D.notice('Connected to ESP32 again.');connectionLost=false;}if(!dirty&&filledRevision!==value.revision){D.fillRules?.(value.rules);filledRevision=value.revision;}if(D.page==='connections')void D.loadAccount();if(D.page==='history'&&historyVersion!==[value.telemetry_at,value.history_saved_through,value.history_records].join(':'))void D.loadHistory().catch(error=>D.notice(error.message,true));return value;}
+   catch(error){if(error.status!==401&&error.code!=='ESP32_READ_CANCELLED'){
+    connectionLost=true;D.syncPauseSwitch?.({paused:state?.rules?.paused===true,available:false});D.syncPauseBanner?.({paused:state?.rules?.paused===true,available:false});D.notice(error.message,true);D.connectionProblem?.();$('esp-connection').textContent='Device unavailable';$('esp-connection').dataset.state='error';$('esp-reconnect').hidden=false;
+   }throw error;}
+  })().finally(()=>{refreshing=null;});
+  return refreshing;
  };
  D.login=async(code)=>{await D.request('/api/login',{access_code:code});filledRevision=0;dirty=false;await D.refresh();};
  D.logout=async()=>{await D.request('/api/logout',{});state=null;csrf='';loggedIn=false;D.showLogin?.();};
@@ -104,6 +126,17 @@
  $('esp-history-range').addEventListener('change',()=>void D.loadHistory().catch(error=>D.notice(error.message,true)));
  window.addEventListener('resize',()=>{if(state)D.render?.(state);if(D.page==='history')D.renderHistory?.(history);});
  window.addEventListener('pagehide',()=>{csrf='';pendingReview=null;D.maskAccount?.();});
- async function poll(){if(loggedIn||!state){try{await D.refresh();}catch{}}setTimeout(poll,document.hidden?20000:5000);}
- setTimeout(poll,0);
+ let pollTimer,pollEpoch=0,forcePoll=false;
+ function schedule(delay){clearTimeout(pollTimer);const epoch=++pollEpoch;pollTimer=setTimeout(()=>poll(epoch),delay);}
+ async function poll(epoch){
+  if(!document.hidden&&(loggedIn||!state||forcePoll)){forcePoll=false;try{await D.refresh();}catch{}}
+  if(epoch===pollEpoch)schedule(document.hidden?20000:5000);
+ }
+ const resume=()=>{if(document.hidden)return;D.cancelReads();forcePoll=true;schedule(0);};
+ $('esp-reconnect').addEventListener('click',resume);
+ document.addEventListener('visibilitychange',()=>{if(document.hidden){D.cancelReads();schedule(20000);}else resume();});
+ window.addEventListener('pageshow',event=>{if(event.persisted)resume();});
+ window.addEventListener('online',resume);
+ window.addEventListener('pagehide',()=>{D.cancelReads();clearTimeout(pollTimer);pollEpoch++;});
+ schedule(0);
 })();

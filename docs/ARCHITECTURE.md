@@ -547,3 +547,12 @@ ESP32 service cards move outside the general-preferences form. API saves remain 
 `dev/desktop.js` adds its account editor only when the native administration bridge exists. Remote clients never receive that bridge.
 ESP32 serves embedded PNG icons and a local web manifest before login. The same local Host and proxy checks protect asset routes.
 Icon responses contain no credentials or application state. Bluetooth remains disabled.
+
+## ESP32 HTTP recovery
+
+Dashboard responses advertise Connection: close and finish before the server closes each session.
+Idle mobile browser pools cannot retain the three HTTP slots. Cloud API transport is separate.
+Local JSON reads have a 12-second deadline, including body decoding. Abort is supplemented by a deadline race.
+State refreshes coalesce. Hidden-page reads are cancelled, while submitted changes are neither cancelled nor automatically replayed.
+Foreground, online, and restored-page events request fresh state. Late abandoned replies cannot change authentication or device state.
+A separate boot guard retains a reload screen if the application bundle cannot initialize.

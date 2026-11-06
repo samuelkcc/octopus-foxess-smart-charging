@@ -120,7 +120,7 @@ static bool start_connection(void) {
 static cJSON *status_json(void) {
     cJSON *object = cJSON_CreateObject();
     cJSON_AddStringToObject(object,"firmware","Smart Charging ESP32 connection test");
-    cJSON_AddStringToObject(object,"version","2.3.1");
+    cJSON_AddStringToObject(object,"version","2.4.0");
     cJSON_AddBoolToObject(object,"automation_enabled",sc_runtime_enabled());
     cJSON_AddBoolToObject(object,"configured",settings_saved);
     cJSON_AddBoolToObject(object,"network_trial_active",network_trial_active);
@@ -373,7 +373,9 @@ extern const char sdk_notices_start[] asm("_binary_SDK_NOTICES_txt_start");
 static esp_err_t legal_page(httpd_req_t *request) {
     httpd_resp_set_type(request,"text/plain; charset=utf-8");
     httpd_resp_set_hdr(request,"Cache-Control","no-store");
-    return httpd_resp_sendstr(request,!strcmp(request->uri,"/licence")?licence_start:!strcmp(request->uri,"/sdk-notices")?sdk_notices_start:notices_start);
+    httpd_resp_set_hdr(request,"Connection","close");
+    esp_err_t sent=httpd_resp_sendstr(request,!strcmp(request->uri,"/licence")?licence_start:!strcmp(request->uri,"/sdk-notices")?sdk_notices_start:notices_start);
+    return sent==ESP_OK?ESP_FAIL:sent;
 }
 
 static void handle_command(char *line) {

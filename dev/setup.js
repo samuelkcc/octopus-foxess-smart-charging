@@ -43,6 +43,7 @@ window.createWelcomeFrame = ({make,brand,version,operation}) => {
       $('dev-page-name').textContent=document.querySelector('.dev-rail nav button[aria-current="page"] span').textContent;
     };
     D.showLogin=()=>{entered=false;D.maskAccount?.();presentation('login');D.syncPauseBanner?.({available:false},false);$('esp-connection').textContent='LAN access protected';};
+    D.connectionProblem=()=>{if(!entered)frame.copy.textContent='No response from your ESP32. Check Wi-Fi, then select Retry connection.';};
     D.showDashboard=()=>{if(skipWelcome)entered=true;open.disabled=false;frame.copy.textContent='Your ESP32 is connected. Open the dashboard to review your home energy.';presentation(entered?'dashboard':'welcome');};
     D.showWelcome=()=>{entered=false;skipWelcome=false;D.maskAccount?.();presentation('welcome');open.disabled=!D.state();};
     D.saveStartPage=enabled=>{try{localStorage.setItem('smartChargingEsp32SkipWelcome',String(enabled));return true;}catch{return false;}};

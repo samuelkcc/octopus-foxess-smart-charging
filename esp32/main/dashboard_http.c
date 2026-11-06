@@ -164,10 +164,14 @@ bool sc_runtime_reset_lan_access(void) {
 }
 static void headers(httpd_req_t *r) {
     httpd_resp_set_hdr(r, "Cache-Control", "no-store");
+    httpd_resp_set_hdr(r, "Connection", "close");
     httpd_resp_set_hdr(r, "X-Content-Type-Options", "nosniff");
     httpd_resp_set_hdr(r, "Referrer-Policy", "no-referrer");
     httpd_resp_set_hdr(r, "X-Frame-Options", "DENY");
 }
+// ESP-IDF closes a session when its URI handler returns an error.
+// Send the complete response first. Idle browser pools must not retain our three sockets.
+static esp_err_t finish_response(esp_err_t result) { return result == ESP_OK ? ESP_FAIL : result; }
 static esp_err_t json_reply(httpd_req_t *r, cJSON *value, const char *status) {
     headers(r);
     httpd_resp_set_type(r, "application/json");
@@ -177,7 +181,7 @@ static esp_err_t json_reply(httpd_req_t *r, cJSON *value, const char *status) {
     esp_err_t result = httpd_resp_sendstr(r, text ? text : "{}");
     free(text);
     cJSON_Delete(value);
-    return result;
+    return finish_response(result);
 }
 static esp_err_t failure(httpd_req_t *r, const char *status, const char *message) {
     cJSON *out = cJSON_CreateObject();
@@ -277,12 +281,12 @@ static esp_err_t app_asset(httpd_req_t *r){
     headers(r);
     if(!strcmp(r->uri,"/site.webmanifest")){
         httpd_resp_set_type(r,"application/manifest+json");
-        return httpd_resp_sendstr(r,"{\"name\":\"Smart Charging ESP32\",\"short_name\":\"Smart Charging\",\"start_url\":\"/\",\"scope\":\"/\",\"display\":\"standalone\",\"background_color\":\"#10002b\",\"theme_color\":\"#10002b\",\"icons\":[{\"src\":\"/icon-192.png\",\"sizes\":\"192x192\",\"type\":\"image/png\"},{\"src\":\"/icon-512.png\",\"sizes\":\"512x512\",\"type\":\"image/png\"}]}");
+        return finish_response(httpd_resp_sendstr(r,"{\"name\":\"Smart Charging ESP32\",\"short_name\":\"Smart Charging\",\"start_url\":\"/\",\"scope\":\"/\",\"display\":\"standalone\",\"background_color\":\"#10002b\",\"theme_color\":\"#10002b\",\"icons\":[{\"src\":\"/icon-192.png\",\"sizes\":\"192x192\",\"type\":\"image/png\"},{\"src\":\"/icon-512.png\",\"sizes\":\"512x512\",\"type\":\"image/png\"}]}"));
     }
     const unsigned char *start=touch_icon_start,*end=touch_icon_end;
     if(!strncmp(r->uri,"/icon-192.png",13)){start=icon192_start;end=icon192_end;}
     if(!strncmp(r->uri,"/icon-512.png",13)){start=icon512_start;end=icon512_end;}
-    httpd_resp_set_type(r,"image/png");return httpd_resp_send(r,(const char *)start,end-start);
+    httpd_resp_set_type(r,"image/png");return finish_response(httpd_resp_send(r,(const char *)start,end-start));
 }
 static esp_err_t page(httpd_req_t *r) {
     if (!local_request(r, false))
@@ -293,7 +297,7 @@ static esp_err_t page(httpd_req_t *r) {
     httpd_resp_set_hdr(r, "Content-Security-Policy",
                        "default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src 'self' data:; manifest-src 'self'; "
                        "connect-src 'self'; form-action 'none'; base-uri 'none'; frame-ancestors 'none'");
-    return httpd_resp_send(r, (const char *)dashboard_start, dashboard_end - dashboard_start);
+    return finish_response(httpd_resp_send(r, (const char *)dashboard_start, dashboard_end - dashboard_start));
 }
 static esp_err_t api(httpd_req_t *r) {
     bool mutation = r->method == HTTP_POST;
