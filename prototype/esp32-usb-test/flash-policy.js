@@ -22,3 +22,29 @@ export async function resetToApplication(transport,pause=ms=>new Promise(resolve
   await pause(100);
   await transport.setRTS(false);
 }
+
+export function installationRequirements(state){
+  const missing=[];
+  if(!state.supported)missing.push('Use desktop Chrome or the Mac or Windows setup app.');
+  if(state.flashing)missing.push('Installation is running. Keep USB connected.');
+  if(state.busy)missing.push('Wait for the current setup operation to finish.');
+  if(state.connected)missing.push('Select Disconnect above to release the setup connection. Keep the USB cable connected.');
+  if(!state.board)missing.push('Confirm that the board is an ESP32-S3 N16R8.');
+  if(!state.consent)missing.push(state.mode==='clean'?'Confirm deletion of all ESP32 settings and History.':'Confirm installation while keeping saved settings.');
+  if(state.mode==='clean'&&state.confirmation!=='ERASE')missing.push('Type ERASE to confirm Clean install.');
+  if(!['keep','clean'].includes(state.mode))missing.push('Select an installation type.');
+  return missing;
+}
+
+export async function installVerifiedParts(loader,manifest,images,{mode='keep',confirmation='',crypto,onPart=()=>{},onProgress=()=>{},onErase=()=>{}}={}){
+  validateManifest(manifest);
+  if(!['keep','clean'].includes(mode)||(mode==='clean'&&confirmation!=='ERASE'))throw Error('Clean install requires the exact confirmation ERASE.');
+  if(images.length!==manifest.parts.length)throw Error('Firmware files are incomplete. Nothing written.');
+  for(let index=0;index<images.length;index++)await verifyPart(manifest.parts[index],images[index],crypto);
+  if(loader.chip?.CHIP_NAME!=='ESP32-S3'||await loader.detectFlashSize()!=='16MB')throw Error('This installer requires an ESP32-S3 with 16 MB flash. Nothing written.');
+  if(mode==='clean'){onErase();await loader.eraseFlash();}
+  for(let index=0;index<images.length;index++){
+    onPart(manifest.parts[index],index,images.length);
+    await loader.writeFlash(flashOptions(manifest.parts[index],images[index],(_file,written,total)=>onProgress(index,written,total)));
+  }
+}

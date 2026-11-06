@@ -1,5 +1,7 @@
 # Web edition guide
 
+[Back to project](../README.md) · [Open HTML web app](https://samuelkcc.github.io/octopus-foxess-smart-charging/app/)
+
 The web edition runs in your browser.
 It needs your own Octopus account, FoxESS account, and Google Apps Script relay.
 
@@ -126,6 +128,8 @@ Existing configurations continue to use direct connection until you change this 
 The app checks relay support before forwarding Octopus credentials.
 An old deployment shows an update instruction instead of attempting unsupported requests.
 Actual API rate limits still apply through the relay.
+
+![Google relay setup in dark appearance](screenshots/web-safari-setup.png)
 
 ## Connect the app
 

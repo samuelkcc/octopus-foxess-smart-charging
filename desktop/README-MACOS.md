@@ -19,7 +19,7 @@ macOS 12 or later is required.
 10. Select **Save configuration**.
 11. Open the dashboard from Welcome.
 
-Complete the [FoxESS work mode setup](../README.md#prepare-foxess-work-modes) before enabling automation.
+Complete the [FoxESS work mode setup](../docs/PREPARE-INVERTER.md) before enabling automation.
 Use only one automation host for each inverter.
 The [desktop account guide](README.md#start) provides the same account requirements.
 

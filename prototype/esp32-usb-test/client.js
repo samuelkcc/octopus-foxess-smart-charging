@@ -530,7 +530,7 @@
     for(const name of ['new','edit','reinstall'])$('mode-'+name).setAttribute('aria-pressed',String(mode===name));
     $('firmware-install-panel').hidden=mode!=='reinstall';
     $('firmware-install-panel').open=mode==='reinstall';
-    $('flow-mode').textContent={new:'New setup · Existing device settings remain until all checks pass.',edit:'Edit settings · Read saved values, then review your changes.',reinstall:'Reinstall firmware · Keep saved configuration. Reconnect after installation.'}[mode];
+    $('flow-mode').textContent={new:'New setup · Existing device settings remain until all checks pass.',edit:'Edit settings · Read saved values, then review your changes.',reinstall:'Reinstall firmware · Keep settings by default, or select Clean install to erase this board.'}[mode];
     $('step-feedback').textContent='';
     controls();
   }
@@ -543,6 +543,6 @@
     if(!configProtected)await operation('Reading saved settings…',()=>readSavedSettings(''));
   });
   $('mode-reinstall').addEventListener('click',()=>{if(busy)return;selectMode('reinstall');});
-  window.esp32Setup={disconnect,isConnected:()=>!!port,isBusy:()=>busy,refreshControls:controls};
+  window.esp32Setup={disconnect,afterInstall(clean){if(clean){clearForm();configured=false;}furthestStep=0;selectMode(clean?'new':'edit');showStep(0);},isConnected:()=>!!port,isBusy:()=>busy,refreshControls:controls};
   modeChanged(); showStep(0,false);status('idle','Not connected');
 })();

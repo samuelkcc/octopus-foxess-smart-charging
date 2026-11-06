@@ -121,7 +121,7 @@ static bool start_connection(void) {
 static cJSON *status_json(void) {
     cJSON *object = cJSON_CreateObject();
     cJSON_AddStringToObject(object,"firmware","Smart Charging ESP32");
-    cJSON_AddStringToObject(object,"version","2.4.1");
+    cJSON_AddStringToObject(object,"version","2.4.2");
     cJSON_AddBoolToObject(object,"automation_enabled",sc_runtime_enabled());
     cJSON_AddBoolToObject(object,"configured",settings_saved);
     cJSON_AddBoolToObject(object,"network_trial_active",network_trial_active);

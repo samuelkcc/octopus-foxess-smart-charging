@@ -140,7 +140,7 @@ window.installLaunchScreen = ({ pi, login, parking, byId, make, button, onEnter 
   if(!pi)welcomeActions.append(modifySetup);
   if(!pi){
     const editions=make('nav','launch-editions');editions.setAttribute('aria-label','Choose an edition');
-    for(const [label,url] of [['ESP32 Deploy','https://samuelkcc.github.io/octopus-foxess-smart-charging/esp32/'],['Raspberry Pi','https://github.com/samuelkcc/octopus-foxess-smart-charging#raspberry-pi'],['Portable app','https://github.com/samuelkcc/octopus-foxess-smart-charging/releases/tag/esp32-2.4.1'],['Web HTML','#web-setup']]){
+    for(const [label,url] of [['ESP32 Deploy','https://samuelkcc.github.io/octopus-foxess-smart-charging/esp32/'],['Raspberry Pi','https://github.com/samuelkcc/octopus-foxess-smart-charging/blob/main/linux/README-RASPBERRY-PI.md'],['Portable app','https://github.com/samuelkcc/octopus-foxess-smart-charging/releases/tag/esp32-2.4.2'],['Web HTML','#web-setup']]){
       const link=make('a','next-button secondary',label);link.href=url;if(label==='Web HTML')link.addEventListener('click',event=>{event.preventDefault();openSetup();});else{link.target='_blank';link.rel='noopener noreferrer';}editions.append(link);
     }
     welcomeActions.before(editions);

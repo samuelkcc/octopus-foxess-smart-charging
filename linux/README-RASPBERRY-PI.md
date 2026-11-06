@@ -1,5 +1,7 @@
 # Pi edition guide
 
+[Back to project](../README.md)
+
 The Pi edition runs the automation as a service.
 A browser on your phone or computer displays the dashboard.
 Closing that dashboard does not stop the worker.
@@ -31,7 +33,7 @@ The default LAN port is `8787`.
 
 ## Configure accounts
 
-Before configuring this edition, complete the [FoxESS work mode setup](../README.md#prepare-foxess-work-modes).
+Before configuring this edition, complete the [FoxESS work mode setup](../docs/PREPARE-INVERTER.md).
 
 1. Select the charger icon in the Pi taskbar.
 2. Select **Configuration…**.

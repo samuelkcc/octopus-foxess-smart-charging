@@ -1,3 +1,18 @@
+# Smart Charging 2.4.2
+
+The README starts with HTML Dashboard and ESP32 Web Deploy. Each edition has a separate setup guide.
+Installation details no longer form one long README.
+All interface screenshots use dark appearance and demonstration data.
+
+The installer lists each unmet condition beside its button.
+Normal reinstall keeps saved settings. Optional Clean install erases the ESP32 settings and History.
+Clean install requires explicit deletion consent and the exact word ERASE.
+All downloads and target hardware are verified before erasure starts.
+The inverter's existing schedule remains unchanged. New firmware starts with automation disabled after Clean install.
+
+Installation flows are verified with mock hardware. No live board was erased during release testing.
+Native Windows execution and long-running Flash endurance remain verification limits.
+
 # Smart Charging 2.4.1
 
 Mobile help buttons use fixed-size SVG icons with accessible labels.

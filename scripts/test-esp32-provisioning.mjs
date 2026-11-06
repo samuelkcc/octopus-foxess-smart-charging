@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import vm from 'node:vm';
 import {webcrypto,createHash} from 'node:crypto';
-import {validateManifest,verifyPart,flashOptions,resetToApplication} from '../prototype/esp32-usb-test/flash-policy.js';
+import {validateManifest,verifyPart,flashOptions,resetToApplication,installationRequirements,installVerifiedParts} from '../prototype/esp32-usb-test/flash-policy.js';
 
 const source = await readFile(new URL('../prototype/esp32-usb-test/client.js',import.meta.url),'utf8');
 const html = await readFile(new URL('../prototype/esp32-usb-test/index.html',import.meta.url),'utf8');
@@ -177,6 +177,20 @@ for(const change of [m=>m.parts[0].offset=0x9000,m=>m.parts[0].file='../secret',
  const damaged=structuredClone(manifest);change(damaged);assert.throws(()=>validateManifest(damaged));
 }
 console.log('Browser installer verifies SHA-256 downloads, requires flash MD5 verification, validates fixed partition bounds and excludes NVS.');
+const readyInstall={supported:true,flashing:false,connected:false,busy:false,board:true,consent:true,mode:'keep',confirmation:''};
+assert.deepEqual(installationRequirements(readyInstall),[]);
+assert(installationRequirements({...readyInstall,connected:true}).some(x=>x.includes('Disconnect')));
+assert(installationRequirements({...readyInstall,consent:false}).some(x=>x.includes('Confirm installation')));
+assert(installationRequirements({...readyInstall,mode:'clean'}).some(x=>x.includes('ERASE')));
+function loaderFixture(chip='ESP32-S3',size='16MB'){const events=[];return {events,chip:{CHIP_NAME:chip},async detectFlashSize(){return size;},async eraseFlash(){events.push('erase');},async writeFlash(options){events.push('write:'+options.fileArray[0].address);assert.equal(options.eraseAll,false);assert(options.calculateMD5Hash());}};}
+const keepLoader=loaderFixture();await installVerifiedParts(keepLoader,manifest,manifest.parts.map(()=>fixture),{mode:'keep',crypto:webcrypto});assert(!keepLoader.events.includes('erase'));assert.equal(keepLoader.events.length,4);
+const cleanLoader=loaderFixture();await installVerifiedParts(cleanLoader,manifest,manifest.parts.map(()=>fixture),{mode:'clean',confirmation:'ERASE',crypto:webcrypto});assert.equal(cleanLoader.events[0],'erase');assert.equal(cleanLoader.events.filter(x=>x==='erase').length,1);assert.equal(cleanLoader.events.length,5);
+for(const confirmation of ['', 'erase','ERASE ']){const loader=loaderFixture();await assert.rejects(()=>installVerifiedParts(loader,manifest,manifest.parts.map(()=>fixture),{mode:'clean',confirmation,crypto:webcrypto}));assert.equal(loader.events.length,0);}
+for(const loader of [loaderFixture('ESP32'),loaderFixture('ESP32-S3','8MB')]){await assert.rejects(()=>installVerifiedParts(loader,manifest,manifest.parts.map(()=>fixture),{mode:'clean',confirmation:'ERASE',crypto:webcrypto}));assert.equal(loader.events.length,0);}
+const corruptLoader=loaderFixture();const corruptImages=manifest.parts.map(()=>fixture.slice());corruptImages[3][0]^=1;await assert.rejects(()=>installVerifiedParts(corruptLoader,manifest,corruptImages,{mode:'clean',confirmation:'ERASE',crypto:webcrypto}));assert.equal(corruptLoader.events.length,0,'Verify every image before any erase or write');
+const interrupted=loaderFixture();interrupted.eraseFlash=async()=>{interrupted.events.push('erase');throw Error('USB disconnected');};await assert.rejects(()=>installVerifiedParts(interrupted,manifest,manifest.parts.map(()=>fixture),{mode:'clean',confirmation:'ERASE',crypto:webcrypto}));assert.deepEqual(interrupted.events,['erase'],'An erase failure must not continue with programming');
+console.log('Install safety: unmet conditions, exact erase confirmation, default preservation, one full erase, chip/Flash checks and verified downloads before erasure passed with mocks.');
+
 
 const signals=[];
 await resetToApplication({async setDTR(value){signals.push(['BOOT',value]);},async setRTS(value){signals.push(['EN',value]);}},async ms=>signals.push(['pause',ms]));

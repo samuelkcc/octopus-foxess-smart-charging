@@ -1,5 +1,7 @@
 # Windows portable app
 
+[Back to project](../README.md) · [Download Windows Portable](https://github.com/samuelkcc/octopus-foxess-smart-charging/releases/tag/esp32-2.4.2)
+
 This edition includes the dashboard, local service, automation worker, and Cloudflare tunnel client.
 The app does not install a Windows service.
 The portable app targets 64-bit Windows.
@@ -8,9 +10,9 @@ The EXE is unsigned.
 
 ## Start
 
-Before configuring this edition, complete the [FoxESS work mode setup](../README.md#prepare-foxess-work-modes).
+Before configuring this edition, complete the [FoxESS work mode setup](../docs/PREPARE-INVERTER.md).
 
-1. Open the downloaded `SmartCharging-2.2.0-Windows-x64.exe`.
+1. Open the downloaded `SmartCharging-2.4.2-Windows-x64.exe`.
 2. Read the application licence notice.
 3. Select **Accept and Continue**.
 4. Open the account setup from Welcome.
@@ -26,6 +28,8 @@ The PC and app must stay on for automation and remote access.
 Minimizing the window continues operation.
 Closing the app stops its worker, local server, and public tunnel.
 A normal exit saves pending history.
+
+![Portable account setup in dark appearance](../docs/screenshots/windows-host.png)
 
 ## Connect another device
 

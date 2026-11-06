@@ -1,3 +1,12 @@
+# 2.4.2 installer and documentation review — 6 November 2026
+
+The repository README introduces ESP32 first. Separate setup pages cover ESP32, Pi, Windows Portable, and HTML.
+Each installer condition is shown beside the disabled button. Disconnect releases setup USB without unplugging the cable.
+Normal reinstall keeps settings. Clean install requires deletion consent and the exact word ERASE.
+All images and hardware checks complete before the erase command. The erase occurs once before partition writes.
+Failed download verification, unsupported hardware, missing confirmation, and erase failure prevent programming in mock tests.
+No live board was erased. Native Windows execution and long-term Flash endurance remain unverified.
+
 # 2.4.1 interface and USB network review — 6 November 2026
 
 - Shared mobile help uses centered SVG icons. The duplicate page-name row is hidden.

@@ -156,7 +156,7 @@ http.createServer(async (request,response) => {
       const fixtureConfig={accessRequired:true,accessKey:'mock-LAN-code',liveWsEnabled:false,credentials:{acc:'A-MOCK',api:'mock-octopus-key',foxSN:'mock-device',foxToken:'mock-fox-token'}};
       window.desktopHost={platform:'windows',configuration:async()=>fixtureConfig,saveConfiguration:async()=>({saved:true}),status:async()=>({lanUrls:['http://192.0.2.1:8787']}),remoteAccess:async()=>fixtureRemote,setRemoteAccess:async value=>(fixtureRemote={...fixtureRemote,...value,state:value.enabled?'running':'disabled',url:value.enabled?'https://mock-url.example.test':null}),copyRemoteKey:async()=>true,copyPublicUrl:async()=>true,copyLanCode:async()=>true};
       </script>`);
-      html = html.replace('<head>',`<head><script>${noticeFixture}</script>`)
+      html = html.replace('<head>',`<head><script>${noticeFixture}${screenshotMode?'localStorage.setItem("smartChargingTheme","dark");localStorage.setItem("theme","dark");':''}</script>`)
         .replace('<body>',screenshotMode?'<body>':'<body><p style="position:fixed;bottom:0;left:0;z-index:10020;padding:4px;margin:0;color:#b91c1c;background:white;font-size:10px;pointer-events:none">LOCAL TEST · MOCK DATA · No real credentials or inverter commands</p>');
       response.writeHead(200,{'Content-Type':'text/html','Cache-Control':'no-store'});return response.end(html);
     }

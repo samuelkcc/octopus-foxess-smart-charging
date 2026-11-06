@@ -1,3 +1,12 @@
+# 2.4.2 — 6 November 2026
+
+- Make the repository README an ESP32-first entry page with separate setup guides for each edition.
+- Use dark appearance for every published interface screenshot.
+- Explain each unmet installation condition beside the button.
+- Add optional Clean install with explicit deletion consent and typed ERASE confirmation.
+- Verify all firmware files and target hardware before erasing Flash.
+- Keep saved settings by default and provide a clear post-install continuation.
+
 # 2.4.1 — 6 November 2026
 
 - Separate New setup, Edit settings, and Reinstall firmware. Show failed Wi-Fi tests beside the Network controls.
