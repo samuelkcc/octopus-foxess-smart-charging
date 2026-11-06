@@ -1,7 +1,7 @@
 {
   "date": "2026-11-06",
   "base_commit": "ebea84d86090b5fc977b62df4d49efb7ebe30247",
-  "source_state": "2.4.1 final source built; physical network-change confirmation tested with mocks only",
+  "source_state": "2.4.1 release source 06b0e38fd0aa68173979c9355cbb084d21921948; physical network-test firmware installed from 89a305c0494b9bb3b7d7c75c741fec6237104e0e",
   "esp_idf": "v5.5.2",
   "firmware_version": "2.4.1",
   "firmware_kind": "Independent LAN worker; optional WebSocket telemetry; USB settings readback and optional Config Password",
@@ -74,7 +74,7 @@
     "note": "Both series loaded on installed a5e3a98 through the serialized worker queue; no manual refresh. Independent readers received the same cache."
   },
   "installed_firmware_sha256": null,
-  "installed_ui_commit": "a5e3a9888cd53518666f35cdc70bdfea9c54f74c",
+  "installed_ui_commit": "89a305c0494b9bb3b7d7c75c741fec6237104e0e",
   "release_230": {
     "source_commit": "1bbc6599e4882bda98c5145b5dc6eb954e26b9a4",
     "full_check": "passed",
@@ -253,6 +253,12 @@
     "ui": "npm run build:dev passed; Pi/web/Portable/ESP32 browser fixtures reviewed",
     "usb_network_setup": "Explicit confirmation; preserve rules/Pause; failed barrier blocks trial; input retention tested with mocks",
     "scan": "Previous 2.4.1 live scan found 21 APs without changing settings",
-    "pending": "Install final firmware after the operator releases USB; replace Mac app; native Windows execution unverified"
+    "pending": "Native Windows execution; operator test of final three-entry Mac UI; long-running WS/Flash soak",
+    "source_commit": "06b0e38fd0aa68173979c9355cbb084d21921948",
+    "pages_run": "42206827239",
+    "pages": "Full check, native firmware build and deployment passed",
+    "firmware_installed": "89a305c; app-only write hash verified; saved rules and operator state matched before/after",
+    "mac_setup": "Final three-entry Universal app built; ad-hoc signature verified; old app retained until operator closes unsaved form",
+    "distribution": "ESP32 Mac, Windows, Web; Windows Portable; Web HTML; Pi grouped in dist"
   }
 }
