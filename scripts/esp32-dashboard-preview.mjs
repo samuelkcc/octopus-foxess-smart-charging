@@ -34,7 +34,6 @@ const server=createServer(async(req,res)=>{
   if(req.method==='POST'){
    if(body.action==='check')ota={...ota,available:true,phase:'ready',status:'DEMO: Current release is available for simulated reinstallation.'};
    else if(body.action==='install'){
-    if(rules.enabled&&!rules.paused){reply({error:'Pause automation before updating.'},400);return;}
     ota={...ota,phase:'restarting',progress:100,status:'DEMO: Verification completed. No firmware or settings were changed.'};
    }
   }

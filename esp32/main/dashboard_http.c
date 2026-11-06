@@ -369,7 +369,7 @@ static esp_err_t api(httpd_req_t *r) {
     if(!strcmp(r->uri,"/api/ota")){
         if(!mutation)return json_reply(r,sc_ota_status(),NULL);
         cJSON *body=body_json(r);bool ok=sc_ota_submit(body);cJSON_Delete(body);
-        if(!ok)return failure(r,"400 Bad Request","Update is busy or unconfirmed. Pause automation, check GitHub, and confirm the selected firmware.");
+        if(!ok)return failure(r,"400 Bad Request","Update is busy or unconfirmed. Check GitHub and confirm the selected firmware.");
         return json_reply(r,sc_ota_status(),NULL);
     }
     if (!strcmp(r->uri,"/api/setup-job") && mutation){

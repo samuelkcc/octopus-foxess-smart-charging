@@ -10,13 +10,13 @@ A free, open-source home energy controller and dashboard.
 When Intelligent Octopus Go allocates low-cost EV charging windows, Smart Charging schedules the home solar-storage battery to charge alongside the EV.
 FoxESS Force Charge prevents the home battery from discharging into the EV during those windows.
 
-**Version 2.5.0 · ESP32, Raspberry Pi, Windows Portable and Web**
+**Version 2.5.1 · ESP32, Raspberry Pi, Windows Portable and Web**
 
 <sub>Independent hobby software by SCKC. Not affiliated with Octopus Energy or FoxESS.</sub>
 
 <p><a href="https://samuelkcc.github.io/octopus-foxess-smart-charging/app/"><img src="docs/assets/open-html-dashboard.svg" alt="Open HTML Dashboard" height="52"></a> <a href="https://samuelkcc.github.io/octopus-foxess-smart-charging/esp32/"><img src="docs/assets/open-esp32-deploy.svg" alt="ESP32 Web Deploy" height="52"></a></p>
 
-[ESP32 guide](docs/editions/ESP32.md) · [Prepare your accounts](docs/ACCOUNT-PREPARATION.md) · [Compare editions](#choose-your-setup-guide) · [Downloads](https://github.com/samuelkcc/octopus-foxess-smart-charging/releases/tag/esp32-2.5.0)
+[ESP32 guide](docs/editions/ESP32.md) · [Prepare your accounts](docs/ACCOUNT-PREPARATION.md) · [Compare editions](#choose-your-setup-guide) · [Downloads](https://github.com/samuelkcc/octopus-foxess-smart-charging/releases/tag/esp32-2.5.1)
 
 </div>
 
@@ -46,7 +46,8 @@ After USB setup, keep the ESP32 powered and disconnect your setup computer.
 Your phone, tablet, or computer displays the same worker data from the board.
 
 - **Works independently:** keep the ESP32 powered after USB setup. Your setup computer can disconnect.
-- **Wi-Fi firmware updates:** install future GitHub releases from local Settings after the initial USB installation.
+- **GitHub OTA updates:** install future firmware from local Settings over Wi-Fi after the first USB installation.
+- **Automatic update handling:** control suspends during OTA and resumes its saved state after verified startup. Manual Pause remains active.
 - **One dashboard across devices:** view power, battery level, schedules, and electricity prices on your local network.
 - **Rules you control:** follow Smart Dispatch, set weekly periods, apply price rules, and pause automation deliberately.
 - **Check the result:** official FoxESS REST readback confirms schedule programming. Measured power shows actual battery behaviour.
@@ -95,11 +96,12 @@ Choose the host that fits your setup. Each column links to its own focused insta
 | Phone dashboard | Same local network | LAN or protected remote connection | LAN or protected remote connection | Current browser session |
 | FoxESS telemetry | REST; optional WebSocket | REST; optional WebSocket | REST; optional WebSocket | REST through your relay |
 | History | RAM; optional hourly Flash saving for 60 days | Compressed power History | Compressed power History | Browser Activity |
+| Firmware updates | GitHub OTA over Wi-Fi; initial USB installation required | Pi updater | Download the updated app | Reopen the hosted page or download HTML |
 | Cloudflare remote access | **Not supported** | Optional protected Quick Tunnel | Optional protected Quick Tunnel | Not a remote host |
 | Account changes | Local Account setup or USB | Native Pi Configuration | Account setup tab | Browser setup |
 | Wi-Fi and IP changes | **USB setup only** | Operating system | Operating system | Operating system |
 
-[Compare the editions](docs/USER-GUIDE.md#1-choose-an-edition) · [User guide](docs/USER-GUIDE.md) · [Downloads](https://github.com/samuelkcc/octopus-foxess-smart-charging/releases/tag/esp32-2.5.0)
+[Compare the editions](docs/USER-GUIDE.md#1-choose-an-edition) · [User guide](docs/USER-GUIDE.md) · [Downloads](https://github.com/samuelkcc/octopus-foxess-smart-charging/releases/tag/esp32-2.5.1)
 
 ## Licence and acknowledgements
 

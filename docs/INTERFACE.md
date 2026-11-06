@@ -32,3 +32,9 @@ Choose a setup guide from the README when you are ready to deploy.
 ![Web relay setup](screenshots/web-safari-setup.png)
 
 These images show the interface. They do not establish physical inverter behaviour or native Windows verification.
+
+## Compact ESP32 settings
+
+Independent columns remove empty card rows. Mobile uses one column.
+
+![Compact ESP32 settings with demonstration data](screenshots/esp32-settings-compact.png)

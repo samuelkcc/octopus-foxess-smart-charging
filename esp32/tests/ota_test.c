@@ -13,6 +13,7 @@ static int image_state;static int64_t ticks=40000000;static boot_intent_t intent
 static unsigned char image[64]={0xe9,1,2,3};static char manifest_text[1024];
 static esp_http_client_config_t options;static const char *payload;static size_t length,position;
 const esp_app_desc_t *esp_app_get_description(void){return &app;}
+void sc_runtime_after_ota(void){}
 bool sc_runtime_enabled(void){return enabled;}bool sc_runtime_paused(void){return paused;}bool sc_schedule_recovery_pending(void){return recovery;}
 int64_t esp_timer_get_time(void){return ticks;}
 void esp_restart(void){restarts++;}
@@ -52,23 +53,28 @@ int main(void){
  request("{\"action\":\"install\"}",false);request("{\"action\":\"check\",\"url\":\"https://attacker.invalid\"}",false);
  request("{\"action\":\"check\"}",true);request("{\"action\":\"check\"}",false);sc_ota_tick(true);assert(manifest.size==64&&!strcmp(manifest.version,"2.5.1"));
  const char *install="{\"action\":\"install\",\"version\":\"2.5.1\",\"confirmation\":\"INSTALL_OTA_UPDATE\"}";
- enabled=true;paused=false;request(install,false);paused=true;recovery=true;request(install,false);recovery=false;
+ enabled=true;paused=false;recovery=true;request(install,false);recovery=false;
  request("{\"action\":\"install\",\"version\":\"2.5.1\",\"confirmation\":\"INSTALL_OTA_UPDATE\",\"erase_settings\":true}",false);
- corrupt=true;request(install,true);sc_ota_tick(true);assert(!selected&&aborts==1&&!erases);corrupt=false;
+ corrupt=true;request(install,true);assert(sc_ota_blocks_control()&&enabled&&!paused);sc_ota_tick(true);assert(!selected&&aborts==1&&!erases&&!sc_ota_blocks_control()&&enabled&&!paused);corrupt=false;paused=true;
  short_read=true;request(install,true);sc_ota_tick(true);assert(!selected&&aborts==2&&!erases);short_read=false;
  wrong_description=true;request(install,true);sc_ota_tick(true);assert(!selected&&!erases);wrong_description=false;
  store_fail=true;request(install,true);sc_ota_tick(true);assert(!selected&&!erases);store_fail=false;
  bad_redirect=true;request(install,true);sc_ota_tick(true);assert(!selected&&!erases);bad_redirect=false;
- request(install,true);sc_ota_tick(true);assert(selected==1&&restarts==1&&!erases);
+ request(install,true);sc_ota_tick(true);assert(selected==1&&restarts==1&&!erases&&sc_ota_blocks_control()&&paused);
+ // A normal boot keeps the existing operator Pause, and holds writes until healthy.
+ running=&slot;strcpy(app.version,"2.5.1");image_state=1;ticks=10000000;sc_ota_init(true);
+ assert(sc_ota_blocks_control());sc_ota_tick(true);assert(sc_ota_blocks_control()&&!marked);
+ ticks=40000000;sc_ota_tick(true);assert(marked==1&&!sc_ota_blocks_control()&&paused&&!erases);
+ running=&factory;strcpy(app.version,"2.5.0");image_state=0;sc_ota_init(true);sc_ota_tick(true);
  // A clean intent does not erase anything until the target image proves healthy.
  request("{\"action\":\"install\",\"version\":\"2.5.1\",\"confirmation\":\"INSTALL_OTA_UPDATE\",\"erase_settings\":true,\"erase_confirmation\":\"ERASE\"}",true);sc_ota_tick(true);assert(selected==2&&!erases);
  boot_checked=false;running=&factory;confirm_boot(true);assert(!erases);
  // Repeat to retain intent for the intended target, then simulate pending verification.
  request("{\"action\":\"install\",\"version\":\"2.5.1\",\"confirmation\":\"INSTALL_OTA_UPDATE\",\"erase_settings\":true,\"erase_confirmation\":\"ERASE\"}",true);sc_ota_tick(true);
- running=&slot;strcpy(app.version,"2.5.1");image_state=1;boot_checked=false;ticks=10000000;confirm_boot(true);assert(!marked&&!erases);
- ticks=40000000;confirm_boot(true);assert(marked==1&&erases==1&&history_erases==1);
+ running=&slot;strcpy(app.version,"2.5.1");image_state=1;boot_checked=false;ticks=10000000;confirm_boot(true);assert(marked==1&&!erases);
+ ticks=40000000;confirm_boot(true);assert(marked==2&&erases==1&&history_erases==1);
  boot_checked=false;image_state=1;ticks=121000000;confirm_boot(false);assert(rollbacks==1);
  assert(!sc_ota_url_allowed("http://github.com/x")&&!sc_ota_url_allowed("https://github.com.attacker.invalid/x")&&!sc_ota_url_allowed("https://github.com@attacker.invalid/x"));
  cJSON *json=cJSON_Parse(manifest_text);sc_ota_manifest_t out;assert(!sc_ota_manifest_parse(json,"3.0.0",&out));cJSON_Delete(json);
- puts("OTA mocks: strict release manifest, HTTPS allowlist, serialized admission, Pause/recovery barrier, corrupt/truncated downloads, descriptor mismatch, storage failure, inactive-slot writes, explicit clean consent, healthy boot confirmation and rollback passed.");
+ puts("OTA mocks: strict release manifest, HTTPS allowlist, serialized admission, automatic control suspension, operator Pause preservation, recovery barrier, corrupt/truncated downloads, descriptor mismatch, storage failure, inactive-slot writes, explicit clean consent, healthy boot confirmation and rollback passed.");
 }

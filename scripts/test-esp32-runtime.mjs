@@ -11,6 +11,7 @@ try{
  if(built.status!==0)throw Error(built.stderr||built.stdout);
  const result=spawnSync(output,[],{encoding:'utf8'});process.stdout.write(result.stdout);if(result.status!==0)throw Error(result.stderr||'Worker mock tests failed');
 
+ for(const mode of ['deployment','ota-hold']){const r=spawnSync(output,[mode],{encoding:'utf8'});process.stdout.write(r.stdout);if(r.status!==0)throw Error(r.stderr||mode+' failed');}
  const resume=spawnSync(output,['resume'],{encoding:'utf8'});process.stdout.write(resume.stdout);if(resume.status!==0)throw Error(resume.stderr||'Completion-memory integration failed');
  const budget=spawnSync(output,['setup-budget'],{encoding:'utf8'});process.stdout.write(budget.stdout);if(budget.status!==0)throw Error(budget.stderr||'Shared setup/worker budget failed');
  const timestamp=spawnSync(output,['timestamp'],{encoding:'utf8'});process.stdout.write(timestamp.stdout);if(timestamp.status!==0)throw Error(timestamp.stderr||'Live timestamp regression failed');

@@ -15,6 +15,8 @@ cJSON *sc_service_setup_health(void){return cJSON_CreateObject();}
 cJSON *sc_live_status(void){return cJSON_Parse("{\"mode\":\"rest\",\"configured\":false,\"source\":\"rest\",\"status\":\"REST selected\"}");}
 bool sc_live_set_mode(const char *mode){return mode&&!strcmp(mode,"rest");}
 #include "history_store.h"
+static bool ota_held;
+bool sc_ota_blocks_control(void){return ota_held;}
 static bool flash_present;
 static unsigned flash_writes, flash_erases;
 static unsigned char flash_memory[0x20000];
@@ -27,6 +29,7 @@ static time_t wall;
 static int64_t ticks;
 static int writes,reads,octopus_reads,telemetry_reads,tariff_reads;
 static double mock_soc=65;
+static bool rule_store_failure;
 static bool invalid_dispatch,limited,intent_failure,bad_readback,revise_on_write,fixed_tariff,mirror_mode;
 static int day_reads,night_reads;static int64_t last_octopus_read=-60000000;
 static bool device_error, expired_token; static int device_reads,auth_reads;
@@ -37,7 +40,7 @@ int64_t esp_timer_get_time(void){return ticks;}
 esp_err_t nvs_open(const char *name,int mode,nvs_handle_t *handle){(void)name;(void)mode;*handle=1;return ESP_OK;}
 static char **slot(const char *key){return !strcmp(key,"rules")?&stored_rules:!strcmp(key,"intent")?&stored_intent:&stored_manual;}
 esp_err_t nvs_get_str(nvs_handle_t h,const char *key,char *out,size_t *size){(void)h;char *value=*slot(key);if(!value)return ESP_ERR_NVS_NOT_FOUND;if(out){if(*size<strlen(value)+1)return ESP_FAIL;strcpy(out,value);}*size=strlen(value)+1;return ESP_OK;}
-esp_err_t nvs_set_str(nvs_handle_t h,const char *key,const char *value){(void)h;if(intent_failure&&!strcmp(key,"intent"))return ESP_FAIL;free(*slot(key));*slot(key)=strdup(value);return ESP_OK;}
+esp_err_t nvs_set_str(nvs_handle_t h,const char *key,const char *value){(void)h;if(rule_store_failure&&!strcmp(key,"rules"))return ESP_FAIL;if(intent_failure&&!strcmp(key,"intent"))return ESP_FAIL;free(*slot(key));*slot(key)=strdup(value);return ESP_OK;}
 esp_err_t nvs_erase_key(nvs_handle_t h,const char *key){(void)h;free(*slot(key));*slot(key)=NULL;return ESP_OK;}
 esp_err_t nvs_commit(nvs_handle_t h){(void)h;return ESP_OK;}
 void nvs_close(nvs_handle_t h){(void)h;}
@@ -65,7 +68,21 @@ int main(int argc,char **argv){fixed_tariff=argc>1&&!strcmp(argv[1],"fixed");set
  bool legacy_mode=argc>1&&!strcmp(argv[1],"legacy");
  if(legacy_mode){cJSON *old=sc_rules_default();cJSON_DeleteItemFromObjectCaseSensitive(old,"charge_soc_enabled");cJSON_DeleteItemFromObjectCaseSensitive(old,"history_flash_enabled");cJSON_DeleteItemFromObjectCaseSensitive(old,"pause_discharge_dispatch");cJSON_DeleteItemFromObjectCaseSensitive(old,"discharge_overrides_charge");cJSON_SetBoolValue(cJSON_GetObjectItem(old,"enabled"),true);cJSON_SetBoolValue(cJSON_GetObjectItem(old,"paused"),true);cJSON_SetNumberValue(cJSON_GetObjectItem(old,"history_days"),90);stored_rules=cJSON_PrintUnformatted(old);cJSON_Delete(old);}
  mirror_mode=argc>1&&!strcmp(argv[1],"mirror");
+ bool deployment_mode=argc>1&&!strcmp(argv[1],"deployment");
+ if(!legacy_mode&&!deployment_mode){cJSON *r=sc_rules_default();stored_rules=cJSON_PrintUnformatted(r);cJSON_Delete(r);}
  sc_runtime_init();assert(!sc_runtime_claim_octopus_setup());
+ if(deployment_mode){
+  sc_config_t c={0};strcpy(c.account,"A-TEST");
+  sc_runtime_tick(&c,false);assert(!sc_runtime_enabled()&&!writes&&!stored_rules);
+  ticks+=5000000;rule_store_failure=true;sc_runtime_tick(&c,true);assert(!sc_runtime_enabled()&&!writes&&!stored_rules);
+  ticks+=60000000;rule_store_failure=false;sc_runtime_tick(&c,true);assert(sc_runtime_enabled()&&stored_rules&&!writes);
+  cJSON *r=rules();cJSON_SetBoolValue(cJSON_GetObjectItem(r,"paused"),true);assert(sc_runtime_update(r));cJSON_Delete(r);
+  sc_runtime_init();assert(sc_runtime_enabled()&&sc_runtime_paused());
+  r=rules();cJSON_SetBoolValue(cJSON_GetObjectItem(r,"enabled"),false);assert(sc_runtime_update(r));cJSON_Delete(r);
+  sc_runtime_init();step(60);assert(!sc_runtime_enabled()&&sc_runtime_paused()&&!writes);
+  puts("First deployment: no activation before network save, persistent activation, storage retry, reboot and existing disabled/Pause preservation passed.");return 0;
+ }
+
  if(argc>1&&!strcmp(argv[1],"resume")){
   wall=sc_timestamp("2026-11-06T02:00:00Z");cJSON_Delete(new_dispatch);new_dispatch=cJSON_CreateArray();
   cJSON *r=rules();cJSON_SetBoolValue(cJSON_GetObjectItem(r,"enabled"),true);cJSON_SetBoolValue(cJSON_GetObjectItem(r,"weekly_charge"),true);cJSON_SetBoolValue(cJSON_GetObjectItem(r,"auto_resume"),true);cJSON_SetBoolValue(cJSON_GetObjectItem(r,"charge_soc_enabled"),true);cJSON_SetNumberValue(cJSON_GetObjectItem(r,"target_soc"),60);assert(sc_runtime_update(r));cJSON_Delete(r);
@@ -102,6 +119,12 @@ int main(int argc,char **argv){fixed_tariff=argc>1&&!strcmp(argv[1],"fixed");set
   assert(cJSON_Compare(cJSON_GetObjectItem(before,"export_rates"),cJSON_GetObjectItem(after,"export_rates"),true));
   cJSON_Delete(before);cJSON_Delete(after);
   puts("Multiple dashboards mirror independent RAM snapshots: 100 state/account/history reads cause zero cloud requests or schedule writes; 429 retains both tariff caches.");return 0;
+ }
+ if(argc>1&&!strcmp(argv[1],"ota-hold")){
+  cJSON *r=rules();cJSON_SetBoolValue(cJSON_GetObjectItem(r,"enabled"),true);assert(sc_runtime_update(r));cJSON_Delete(r);
+  ota_held=true;for(int i=0;i<36;i++)step(5);assert(!writes&&sc_runtime_enabled()&&!sc_runtime_paused());
+  sc_runtime_after_ota();ota_held=false;step(60);assert(writes==1);
+  puts("OTA hold blocks schedule writes without changing persisted operator state; fresh dispatch resumes control.");return 0;
  }
  if(argc>1&&!strcmp(argv[1],"setup-budget")){
   ticks+=60000000;wall+=60;assert(sc_runtime_claim_octopus_setup());assert(!sc_runtime_claim_octopus_setup());

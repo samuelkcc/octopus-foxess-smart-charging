@@ -1,5 +1,6 @@
 // Copyright (C) 2026 SCKC. SPDX-License-Identifier: GPL-3.0-or-later
 #include "runtime.h"
+#include "ota_update.h"
 #include "service_setup.h"
 #include "foxess_live.h"
 #include "automation_policy.h"
@@ -34,6 +35,8 @@ static int64_t octopus_not_before, fox_not_before;
 static _Atomic bool refresh_octopus, refresh_fox, refresh_plan;
 static char dispatch_error[32], dispatch_time_sample[100];
 static bool was_live;
+static _Atomic bool first_deployment_pending;
+static int64_t deployment_retry_at;
 static char token[8192], import_code[96], export_code[96];
 static int tariff_stage,tariff_http;
 static time_t import_rates_at, export_rates_at;
@@ -103,10 +106,19 @@ static bool clear_intent(void) {
     nvs_close(h);
     return ok;
 }
+static bool rules_are_unset(void) {
+    nvs_handle_t h;
+    esp_err_t e=nvs_open("sc_runtime",NVS_READONLY,&h);
+    if(e==ESP_ERR_NVS_NOT_FOUND)return true;
+    if(e!=ESP_OK)return false;
+    size_t size=0;e=nvs_get_str(h,"rules",NULL,&size);nvs_close(h);
+    return e==ESP_ERR_NVS_NOT_FOUND;
+}
 void sc_runtime_init(void) {
     guard = xSemaphoreCreateMutex();
     resume_memory = (sc_resume_state_t){0}; resume_revision = 0; resume_telemetry_at = 0; resume_epoch = 1;
     sc_live_init();
+    first_deployment_pending=rules_are_unset();deployment_retry_at=0;
     preferences = load("rules");
     // Add the opt-in field without resetting existing operator rules on upgrade.
     if (cJSON_IsObject(preferences) && !cJSON_HasObjectItem(preferences, "history_flash_enabled"))
@@ -198,6 +210,7 @@ bool sc_runtime_update_expected(const cJSON *rules, unsigned expected) {
     xSemaphoreTake(guard, portMAX_DELAY);
     bool ok = (!expected || expected == revision) && store("rules", copy);
     if (ok) {
+        first_deployment_pending=false;
         bool resume = (!b(copy, "paused") && b(preferences, "paused")) ||
                       (b(copy, "enabled") && !b(preferences, "enabled"));
         // General refresh/history preferences do not restart a fulfilled charge.
@@ -452,6 +465,10 @@ cJSON *sc_runtime_account(void) {
     xSemaphoreGive(guard);
     return out;
 }
+void sc_runtime_after_ota(void) {
+    dispatch_valid=false;confirmed=false;required_dispatch_revision=revision;
+    refresh_octopus=true;refresh_fox=true;refresh_plan=true;
+}
 bool sc_runtime_request_refresh(const char *service) {
     if (!service || (strcmp(service, "octopus") && strcmp(service, "foxess"))) return false;
     refresh_octopus = true;
@@ -533,7 +550,7 @@ bool sc_runtime_manual(const cJSON *value) {
         expires = mktime(&end_time);
     }
     if (start < 0 || start > 1439 || end < 0 || end > 1439 || start == end || mode < 0 || mode > 2 ||
-        expires <= now || expires > now + 86400 || sc_runtime_paused() || !sc_runtime_enabled())
+        expires <= now || expires > now + 86400 || sc_ota_blocks_control() || sc_runtime_paused() || !sc_runtime_enabled())
         return false;
     cJSON *copy = cJSON_CreateObject();
     if (!copy || !cJSON_AddNumberToObject(copy, "start", start) ||
@@ -929,11 +946,12 @@ static void foxess_poll(const sc_config_t *config, const cJSON *rules) {
 }
 static bool current_revision(unsigned rev) {
     xSemaphoreTake(guard, portMAX_DELAY);
-    bool valid = revision == rev && b(preferences, "enabled") && !b(preferences, "paused");
+    bool valid = !sc_ota_blocks_control() && revision == rev && b(preferences, "enabled") && !b(preferences, "paused");
     xSemaphoreGive(guard);
     return valid;
 }
 static void reconcile(const sc_config_t *config, const cJSON *rules, unsigned rev, time_t now) {
+    if(sc_ota_blocks_control()){strcpy(control_status,"Firmware update in progress; existing inverter schedule retained");return;}
     if (!b(rules, "enabled")) {
         strcpy(control_status, "Automation is not enabled");
         return;
@@ -1083,6 +1101,14 @@ void sc_runtime_tick(const sc_config_t *config, bool network_ready) {
     cJSON *rules = rules_copy(&rev);
     if (!rules)
         return;
+    // Only a never-configured rule store opts in after successful network persistence.
+    // Existing disabled or paused rules are never reset by setup, reboot, or OTA.
+    if(network_ready&&first_deployment_pending&&!sc_ota_blocks_control()&&us>=deployment_retry_at){
+        deployment_retry_at=us+60000000;
+        cJSON_SetBoolValue(cJSON_GetObjectItemCaseSensitive(rules,"enabled"),true);
+        if(!sc_runtime_update_expected(rules,rev))strcpy(control_status,"Settings saved; retrying automatic activation after a storage error");
+        cJSON_Delete(rules);return;
+    }
     if (b(rules, "paused") && n(rules, "pause_until", 0) > 0 && now >= n(rules, "pause_until", 0)) {
         cJSON_SetBoolValue(cJSON_GetObjectItemCaseSensitive(rules, "paused"), false);
         cJSON_SetNumberValue(cJSON_GetObjectItemCaseSensitive(rules, "pause_until"), 0);

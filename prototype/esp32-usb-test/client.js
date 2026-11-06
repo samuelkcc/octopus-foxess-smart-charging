@@ -254,7 +254,7 @@
     readbackSupported=device.capabilities?.usb_config_readback===true;configProtected=device.config_access?.enabled===true;
     $('fox-web-mode').value=device.foxess_telemetry?.mode||'rest';
     $('fox-web-saved').textContent=webConfigured?'Optional login is saved. Leave the password blank to keep it.':liveSupported?'Optional login is not configured. REST remains available.':'Install current firmware to use optional WebSocket telemetry.';
-    $('firmware-note').textContent=device.capabilities?.production_controller===true?(controllerEnabled?'Dashboard & automation firmware · Automation enabled':'Dashboard & automation firmware · Enable automation in General settings'):'Connection-test firmware · Automatic charging control disabled';
+    $('firmware-note').textContent=device.capabilities?.production_controller===true?(controllerEnabled?'Dashboard & automation firmware · Automation enabled':'Dashboard & automation firmware · Automation starts automatically after initial setup'):'Connection-test firmware · Automatic charging control disabled';
   }
   async function readSavedSettings(password){
     const values=await send('config_read',{config_password:password},20000);
@@ -429,7 +429,7 @@
           if(!result?.saved)throw Error(result?.status||'Optional telemetry settings were not saved.');
         }
         networkTrial=false;
-        $('save-status').textContent='Wi-Fi and IP verified. Settings saved. APIs have not been tested. Open Dashboard Settings → Account setup to test all APIs.';
+        $('save-status').textContent='Wi-Fi and IP verified. Settings saved. First deployment starts automation automatically. APIs have not been tested. Open Dashboard Settings → Account setup to test all APIs.';
         $('save-status').textContent+=' Entered values remain masked until you disconnect or clear the form.';
         updateDeviceState(await send('status'));
       } catch(error) {

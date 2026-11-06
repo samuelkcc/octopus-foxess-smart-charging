@@ -123,7 +123,7 @@ static bool start_connection(void) {
 static cJSON *status_json(void) {
     cJSON *object = cJSON_CreateObject();
     cJSON_AddStringToObject(object,"firmware","Smart Charging ESP32");
-    cJSON_AddStringToObject(object,"version","2.5.0");
+    cJSON_AddStringToObject(object,"version","2.5.1");
     cJSON_AddBoolToObject(object,"automation_enabled",sc_runtime_enabled());
     cJSON_AddBoolToObject(object,"configured",settings_saved);
     cJSON_AddBoolToObject(object,"network_trial_active",network_trial_active);
@@ -627,7 +627,7 @@ void app_main(void) {
     bool overflow=false;
     int64_t recovery_after=esp_timer_get_time()+10000000;
     while (line) {
-        if(configured && esp_timer_get_time()>=recovery_after && (xEventGroupGetBits(wifi_events)&CONNECTED) && time(NULL)>=1700000000 && sc_schedule_recovery_pending() && !sc_runtime_paused()){
+        if(configured && esp_timer_get_time()>=recovery_after && (xEventGroupGetBits(wifi_events)&CONNECTED) && time(NULL)>=1700000000 && sc_schedule_recovery_pending() && !sc_runtime_paused() && !sc_ota_blocks_control()){
             xSemaphoreTake(network_io,portMAX_DELAY);
             cJSON *restoration=sc_schedule_recover(&settings);
             xSemaphoreGive(network_io);

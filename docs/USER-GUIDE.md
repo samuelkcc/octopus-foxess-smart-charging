@@ -110,7 +110,7 @@ Before accepting a suggested IP, check the router's DHCP pool and reservations.
 6. Select **Test Wi-Fi with DHCP**.
 7. If automation is enabled, select **Disable automation & test Wi-Fi** after reviewing the confirmation.
 8. Complete **Review & save**.
-9. After setup, enable automation in **General settings**.
+9. After a network change, restore your chosen automation state in **General settings**.
 
 The confirmation disables future app schedule commands. The inverter retains its programmed schedule.
 The test waits for the current cloud request to finish. If the worker is busy, retry the confirmation.
@@ -122,7 +122,7 @@ Automation remains disabled until you enable it. A restart does not enable it au
 New setup and reinstall both use Clean install.
 This permanently erases Wi-Fi, IP, accounts, passwords, automation rules, access protection, and saved History on the ESP32.
 It does not change the schedule already stored on the FoxESS inverter.
-The new firmware starts with automation disabled. Complete setup again before enabling control.
+Automation starts automatically after Wi-Fi and IP settings are saved. Existing operator Pause and disabled states remain unchanged.
 
 1. Select **New setup / Reinstall**.
 2. Keep the USB cable connected.
@@ -475,7 +475,7 @@ USB New setup / Reinstall erases existing settings. Default OTA updates preserve
 
 1. Open **Settings → General settings → ESP32 firmware update**.
 2. Select **Check GitHub for updates**.
-3. Pause automation.
+3. Review the update notice.
 4. Select **Install firmware**.
 5. Confirm the version.
 6. Keep power connected during download and restart.
@@ -490,3 +490,7 @@ USB recovery remains necessary for some hardware or Flash failures.
 Optional Clean update requires the checkbox and exact ERASE input before confirmation.
 It deletes settings and saved History after a healthy boot. Configure the device again through USB afterward.
 The inverter retains its existing schedule. Automatic firmware installation is not enabled.
+
+From 2.5.1, OTA suspends control automatically and restores the saved state after verified startup.
+A manual Pause stays active. Failed installation restores control with fresh data.
+When updating from 2.5.0, pause manually once and resume after the update.

@@ -20,8 +20,8 @@ Your phone or computer displays its dashboard. The setup computer can be disconn
 | Tool | Open or download |
 |---|---|
 | USB website | [ESP32 Web Deploy](https://samuelkcc.github.io/octopus-foxess-smart-charging/esp32/) — use desktop Chrome |
-| Mac app | [Universal Mac ZIP](https://github.com/samuelkcc/octopus-foxess-smart-charging/releases/download/esp32-2.5.0/SmartCharging-ESP32-Setup-2.5.0-macOS-universal.zip) |
-| Windows app | [Windows x64 EXE](https://github.com/samuelkcc/octopus-foxess-smart-charging/releases/download/esp32-2.5.0/SmartCharging-ESP32-Setup-2.5.0-Windows-x64.exe) |
+| Mac app | [Universal Mac ZIP](https://github.com/samuelkcc/octopus-foxess-smart-charging/releases/download/esp32-2.5.1/SmartCharging-ESP32-Setup-2.5.1-macOS-universal.zip) |
+| Windows app | [Windows x64 EXE](https://github.com/samuelkcc/octopus-foxess-smart-charging/releases/download/esp32-2.5.1/SmartCharging-ESP32-Setup-2.5.1-Windows-x64.exe) |
 
 Safari cannot deploy firmware through USB. Safari can display the configured Wi-Fi dashboard.
 The Mac and Windows tools provide the same setup flow. They do not run the automation worker.
@@ -43,7 +43,7 @@ For a configured board, select **Edit settings**, then **Connect ESP32**.
 New setup and reinstall both use Clean install.
 This permanently erases Wi-Fi, IP, accounts, passwords, automation rules, access protection, and saved History on the ESP32.
 It does not change the schedule already stored on the FoxESS inverter.
-The new firmware starts with automation disabled. Complete setup again before enabling control.
+Automation starts automatically after Wi-Fi and IP settings are saved. Existing operator Pause and disabled states remain unchanged.
 
 1. Select **New setup / Reinstall**.
 2. Keep the USB cable connected.
@@ -107,7 +107,7 @@ The first USB installation must include the OTA-capable bootloader. New setup / 
 1. Open the local dashboard.
 2. Open **Settings → General settings → ESP32 firmware update**.
 3. Select **Check GitHub for updates**.
-4. Pause automation.
+4. Review the update notice.
 5. Select **Install firmware**.
 6. Confirm the selected firmware version.
 7. Keep power connected until the ESP32 restarts.
@@ -118,6 +118,11 @@ The download uses verified HTTPS and the published release SHA-256.
 The image is written to an inactive partition. Failed verification keeps the current firmware selected.
 A new OTA image must pass startup and connection checks. The bootloader can return to the previous working image.
 This mechanism does not guarantee recovery from every hardware or Flash failure. USB recovery remains available.
+
+From 2.5.1, installation suspends control automatically without changing your saved automation or Pause state.
+After restart, enabled automation resumes with fresh data. A manual Pause remains active.
+If installation fails, the previous control state returns automatically.
+Firmware 2.5.0 requires manual Pause before its first OTA update. Resume it after that update if required.
 
 Updates keep settings by default. To erase them, open **Optional Clean update** before installing.
 

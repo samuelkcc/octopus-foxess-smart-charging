@@ -568,7 +568,9 @@ A separate boot guard retains a reload screen if the application bundle cannot i
 `ota_update.c` owns download state, inactive-slot writes, boot selection, and startup confirmation.
 `ota_policy.c` validates the fixed project manifest, semantic version, model, size, hash, and permitted HTTPS hosts.
 The LAN API uses existing origin, session, and CSRF checks. It queues explicit check or install actions.
-The worker runs OTA under the shared network lock. Installation requires disabled or paused automation and no pending schedule recovery.
+The worker runs OTA under the shared network lock. Installation sets a volatile control hold and requires no pending schedule recovery.
+The hold blocks reconciliation, manual commands, and diagnostic recovery without rewriting persisted rules or operator Pause.
+A healthy new boot restores the saved state. Failed installation requires fresh dispatch and REST data before control resumes.
 No dashboard client downloads firmware or receives service credentials.
 
 `esp32/ota-release.json` freezes the reviewed release binary digest. Pages copies this record rather than hashing its separately rebuilt USB artifact.

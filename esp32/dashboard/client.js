@@ -137,7 +137,7 @@
   const erase=$('esp-ota-erase').checked;
   if(erase&&$('esp-ota-erase-confirmation').value!=='ERASE'){$('esp-ota-status').textContent='Type ERASE exactly to confirm Clean update.';return;}
   D.review('Install ESP32 firmware '+otaState.version+'?',erase?'Clean update permanently deletes settings and saved History after a successful boot. USB setup is required again.':'The ESP32 restarts after download and verification. Existing settings are kept.',
-   'Pause automation first. Keep power connected. The inverter retains its existing schedule. Failed verification leaves the current firmware selected.',async()=>{
+   'Automation suspends automatically and returns to its saved state after restart. Keep power connected. The inverter retains its existing schedule. Failed verification leaves the current firmware selected.',async()=>{
     renderOta(await D.request('/api/ota',{action:'install',version:otaState.version,confirmation:'INSTALL_OTA_UPDATE',erase_settings:erase,erase_confirmation:erase?'ERASE':''}));
     void pollOta();
    },erase?'Erase settings & update':'Install update');

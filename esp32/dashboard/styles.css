@@ -103,3 +103,9 @@
 #dev-shell #settings-general-panel #esp-settings-form #history-settings{grid-row:auto;grid-column:auto;}
 #dev-shell [data-setting="firmware-update"] progress{display:block;width:100%;margin-top:16px;}
 #dev-shell [data-setting="firmware-update"] progress[hidden]{display:none;}
+
+/* Independent card columns remove empty grid rows without changing card controls. */
+#dev-shell .settings-stacked-grid{grid-template-columns:repeat(2,minmax(0,1fr));align-items:start;gap:18px;overflow:visible!important;flex:none}
+#dev-shell .settings-card-column{display:flex;flex-direction:column;gap:18px;min-width:0;align-self:start}
+#dev-shell .settings-card-column>.next-panel{flex:none;min-height:0;height:auto;overflow:visible;grid-column:auto;grid-row:auto;margin:0}
+@media(max-width:760px){#dev-shell .settings-stacked-grid,#dev-shell #settings-general-panel #esp-settings-form>.settings-stacked-grid{grid-template-columns:minmax(0,1fr)}}

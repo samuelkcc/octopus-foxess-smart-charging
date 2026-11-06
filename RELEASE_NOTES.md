@@ -1,3 +1,14 @@
+# 2.5.1 — 6 November 2026
+
+New ESP32 deployments start automation after verified Wi-Fi and IP settings are saved.
+Existing disabled rules and operator Pause remain unchanged through edits, restarts, and OTA.
+OTA uses a temporary control hold without rewriting saved enablement or Pause.
+Failed updates restore control with fresh dispatch and REST reads. Successful updates resume the saved state after boot verification.
+Clean update still requires setup again. Firmware 2.5.0 requires manual Pause for its first OTA update.
+Settings cards use independent columns to remove empty row gaps. Mobile uses one column.
+Native regression tests cover activation persistence, storage failure, existing Pause, update suspension, failed downloads, and boot verification.
+Physical OTA and native Windows execution remain unverified.
+
 # Smart Charging 2.5.0
 
 ESP32 can update firmware from this project’s GitHub release through local Dashboard General settings.

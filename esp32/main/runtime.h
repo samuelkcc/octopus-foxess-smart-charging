@@ -22,3 +22,5 @@ bool sc_runtime_apply_services(const sc_config_t *candidate,bool (*save)(const s
 
 bool sc_runtime_claim_octopus_setup(void);
 void sc_runtime_octopus_setup_result(int http,int retry_after);
+
+void sc_runtime_after_ota(void);

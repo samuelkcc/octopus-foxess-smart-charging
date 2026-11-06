@@ -45,19 +45,21 @@ Changing protection or resetting access revokes existing sessions.
 Host, Origin, CSRF, and proxy checks remain active when LAN protection is off.
 No service API keys are returned to dashboards.
 
-## Enable actual control
+## Review actual control
 
 1. Stop other automation workers for the same inverter.
 2. Open **Automations**.
 3. Review Smart Dispatch, weekly rules, prices, and SOC limits.
-4. Enable **ESP32 automation**.
+4. Check **ESP32 automation**.
 5. Select **Review & apply**.
 6. Review the complete settings summary.
 7. Select **Apply to ESP32**.
 8. Wait for fresh dispatch data and official REST confirmation.
 
 Applying can replace existing inverter periods.
-New installations start with automation disabled until the operator applies their rules.
+New installations start automation automatically after verified Wi-Fi and IP settings are saved.
+Existing disabled rules and operator Pause are preserved.
+From 2.5.1, OTA temporarily suspends control and restores its saved state after verified startup.
 Saved enablement survives restart.
 Pause also persists and blocks schedule writes while monitoring continues.
 An in-flight command must finish before the dashboard reports pause as complete.

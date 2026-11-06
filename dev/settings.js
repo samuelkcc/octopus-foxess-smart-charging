@@ -20,6 +20,21 @@ window.installSettingsSections=({page,generalContent,accountCards=[]})=>{
     const page=document.querySelector('.dev-page[data-page="settings"]');
     const accountCards=[...page.querySelectorAll('[data-setting]')].filter(node=>['account-actions','device-setup','service-octopus','service-foxess','service-websocket','foxess-live','lan-access'].includes(node.dataset.setting));
     window.settingsSections=window.installSettingsSections({page,generalContent:$('esp-settings-form'),accountCards:accountCards.sort((a,b)=>(a.dataset.setting==='device-setup')-(b.dataset.setting==='device-setup'))});
+    // Each column flows independently: a tall card never leaves a hole in its neighbour.
+    const stackCards=(grid,groups)=>{
+      for(const keys of groups){
+        const column=document.createElement('div');column.className='settings-card-column';
+        for(const key of keys){const card=key==='history'?grid.querySelector('#history-settings'):grid.querySelector('[data-setting="'+key+'"]');if(card)column.append(card);}
+        if(column.children.length)grid.append(column);
+      }
+      grid.classList.add('settings-stacked-grid');
+    };
+    stackCards($('esp-settings-form').querySelector('.dev-page-grid'),[
+      ['automation-host','history','appearance'],['api-refresh-intervals','firmware-update','price-display']
+    ]);
+    stackCards(window.settingsSections.account.querySelector('.settings-account-grid'),[
+      ['service-octopus','service-foxess','lan-access'],['service-websocket','foxess-live','device-setup']
+    ]);
     let accessEditing=false;
     $('esp-skip-welcome').addEventListener('change',()=>{
       const enabled=$('esp-skip-welcome').checked;

@@ -21,15 +21,22 @@
 #include <stdio.h>
 #include <string.h>
 #include <time.h>
+#include <stdatomic.h>
 #define MANIFEST_URL "https://samuelkcc.github.io/octopus-foxess-smart-charging/esp32/firmware/ota.json"
 static SemaphoreHandle_t guard;
 static sc_ota_manifest_t manifest;
 static int pending,progress;
 static bool busy,erase_next,server_ok,boot_checked;
+static _Atomic bool control_hold;
+bool sc_ota_blocks_control(void){return control_hold;}
 static const char *phase="idle",*message="Check GitHub for an ESP32 firmware update.";
 typedef struct{uint32_t schema,address,erase;char version[24];} boot_intent_t;
 static void state(const char *next,const char *text){xSemaphoreTake(guard,portMAX_DELAY);phase=next;message=text;xSemaphoreGive(guard);}
-void sc_ota_init(bool ready){guard=xSemaphoreCreateMutex();server_ok=ready;}
+void sc_ota_init(bool ready){
+ guard=xSemaphoreCreateMutex();server_ok=ready;boot_checked=false;
+ const esp_partition_t *running=esp_ota_get_running_partition();esp_ota_img_states_t image_state;
+ control_hold=running&&esp_ota_get_state_partition(running,&image_state)==ESP_OK&&image_state==ESP_OTA_IMG_PENDING_VERIFY;
+}
 static const char *string(const cJSON *o,const char *key){const cJSON *v=cJSON_GetObjectItemCaseSensitive(o,key);return cJSON_IsString(v)?v->valuestring:"";}
 cJSON *sc_ota_status(void){
  cJSON *out=cJSON_CreateObject();if(!guard)return out;
@@ -51,10 +58,10 @@ bool sc_ota_submit(const cJSON *request){
  const cJSON *erase_field=cJSON_GetObjectItemCaseSensitive(request,"erase_settings");
  if(erase_field&&!cJSON_IsBool(erase_field))return false;
  bool erase=cJSON_IsTrue(erase_field);
- if(install&&((sc_runtime_enabled()&&!sc_runtime_paused())||sc_schedule_recovery_pending()||strcmp(string(request,"confirmation"),"INSTALL_OTA_UPDATE")||(erase&&strcmp(string(request,"erase_confirmation"),"ERASE"))))return false;
+ if(install&&(sc_schedule_recovery_pending()||strcmp(string(request,"confirmation"),"INSTALL_OTA_UPDATE")||(erase&&strcmp(string(request,"erase_confirmation"),"ERASE"))))return false;
  xSemaphoreTake(guard,portMAX_DELAY);
  bool accepted=!busy&&!pending&&(!install||(manifest.size&&!strcmp(string(request,"version"),manifest.version)));
- if(accepted){pending=check?1:2;erase_next=erase;phase="queued";message=check?"GitHub update check queued.":"Firmware update queued. Keep power connected.";progress=0;}
+ if(accepted){if(install)control_hold=true;pending=check?1:2;erase_next=erase;phase="queued";message=check?"GitHub update check queued.":"Firmware update queued. Keep power connected.";progress=0;}
  xSemaphoreGive(guard);return accepted;
 }
 static esp_err_t headers_event(esp_http_client_event_t *event){
@@ -126,9 +133,9 @@ static void confirm_boot(bool online){
   if(esp_ota_mark_app_valid_cancel_rollback()!=ESP_OK)return;
  }
  boot_checked=true;nvs_handle_t h;boot_intent_t intent={0};size_t size=sizeof(intent);
- if(nvs_open("sc_ota",NVS_READWRITE,&h)!=ESP_OK)return;
+ if(nvs_open("sc_ota",NVS_READWRITE,&h)!=ESP_OK){control_hold=false;return;}
  bool clean=nvs_get_blob(h,"intent",&intent,&size)==ESP_OK&&size==sizeof(intent)&&intent.schema==1&&intent.erase==1&&memchr(intent.version,0,sizeof(intent.version))&&running&&intent.address==running->address&&!strcmp(intent.version,esp_app_get_description()->version);
- if(!clean){nvs_erase_key(h,"intent");nvs_commit(h);nvs_close(h);return;}
+ if(!clean){nvs_erase_key(h,"intent");nvs_commit(h);nvs_close(h);if(!busy&&!pending)control_hold=false;return;}
  nvs_close(h);
  // Explicit Clean OTA only. Rollback boots do not match the intended image and never erase settings.
  const esp_partition_t *history=esp_partition_find_first(ESP_PARTITION_TYPE_DATA,0x40,"history");
@@ -142,12 +149,12 @@ void sc_ota_tick(bool online){
  xSemaphoreTake(guard,portMAX_DELAY);int action=pending;bool erase=erase_next;pending=0;if(action)busy=true;xSemaphoreGive(guard);
  if(!action)return;
  if(!online){state("error","Connect Wi-Fi and synchronize the clock before updating.");goto done;}
- if(action==1){state("checking","Checking the project firmware manifest on GitHub…");bool ok=check_release();state(ok?"ready":"error",ok?"Firmware details verified. Pause automation before installing.":"GitHub update check failed. Retry later; current firmware is unchanged.");}
+ if(action==1){state("checking","Checking the project firmware manifest on GitHub…");bool ok=check_release();state(ok?"ready":"error",ok?"Firmware details verified. Automation will suspend automatically during installation.":"GitHub update check failed. Retry later; current firmware is unchanged.");}
  else{
-  if((sc_runtime_enabled()&&!sc_runtime_paused())||sc_schedule_recovery_pending()){state("error","Pause automation and resolve schedule recovery before updating.");goto done;}
+  if(sc_schedule_recovery_pending()){state("error","Resolve schedule recovery before updating.");goto done;}
   state("updating","Downloading and verifying inactive firmware. Keep power connected.");
   if(install_release(erase)){state("restarting",erase?"Verified. Restarting, then clearing settings. USB setup will be required.":"Verified. Restarting with existing settings. Reconnect shortly.");vTaskDelay(pdMS_TO_TICKS(2000));esp_restart();}
   else state("error","Update failed verification or storage. Current firmware remains selected.");
  }
- done:xSemaphoreTake(guard,portMAX_DELAY);busy=false;xSemaphoreGive(guard);
+ done:xSemaphoreTake(guard,portMAX_DELAY);busy=false;if(action==2&&strcmp(phase,"restarting")){sc_runtime_after_ota();control_hold=false;}xSemaphoreGive(guard);
 }
