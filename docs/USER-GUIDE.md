@@ -40,25 +40,22 @@ Mode Scheduler applies the programmed periods. Outside those periods, Remaining 
 
 | Entry | Use this for | Saved settings |
 |---|---|---|
-| New setup | Enter a complete replacement configuration | Replaced only after all checks pass |
-| Edit settings | Read and change the existing configuration | Loaded with sensitive fields masked |
-| Reinstall firmware | Install or repair the program | Keep settings by default, or explicitly erase them |
+| New setup / Reinstall | Install a new board or reset an existing board | Erased after explicit confirmation |
+| Edit settings | Read and change the existing configuration | Retained with sensitive fields masked |
 
-1. Select the task on the Device page.
-2. For New setup or Edit settings, select **Connect ESP32**.
-3. For Reinstall firmware, follow the separate installation panel.
+1. Select **New setup / Reinstall** for a new board.
+2. Complete installation before selecting **Connect ESP32**.
+3. For existing settings, select **Edit settings**, then **Connect ESP32**.
 
-If no task was selected, connection selects Edit settings for a configured board. It selects New setup for an unconfigured board.
-Changing the task does not write to the board. New setup clears the tool's form.
-The default reinstall keeps saved settings. Clean install erases all saved settings and History on the ESP32.
-
+New setup and reinstall use Clean install. Editing does not erase the board.
+Changing the selected task does not write to the board.
 
 Supported hardware is ESP32-S3 N16R8, with 16 MB Flash and 8 MB Octal PSRAM. Other ESP32 models are unsupported.
 
 Bluetooth is disabled. Setup uses USB. Dashboards use Wi-Fi.
 
 [Open the USB deployment website](https://samuelkcc.github.io/octopus-foxess-smart-charging/esp32/).
-[Download the Mac app or Windows EXE](https://github.com/samuelkcc/octopus-foxess-smart-charging/releases/tag/esp32-2.4.3).
+[Download the Mac app or Windows EXE](https://github.com/samuelkcc/octopus-foxess-smart-charging/releases/tag/esp32-2.4.4).
 
 The Mac app and Windows EXE contain the same four-step setup interface as the USB website.
 
@@ -67,9 +64,9 @@ Use desktop Chrome for USB website deployment. Safari does not support the requi
 1. Connect the supported board with a USB data cable.
 2. Open ESP32 Setup for Mac or Windows.
 3. Alternatively, open the USB website in desktop Chrome or Edge.
-4. Select Connect ESP32.
-5. Select the USB serial port.
-6. If firmware is absent, select **Reinstall firmware**.
+4. Select **New setup / Reinstall**.
+5. Complete the Clean install instructions below.
+6. Select **Continue: Connect ESP32**, then complete the setup connection.
 7. Select Next to open Network.
 8. Scan for a 2.4 GHz Wi-Fi network.
 9. Enter the network password.
@@ -119,45 +116,33 @@ The test waits for the current cloud request to finish. If the worker is busy, r
 A failed Wi-Fi trial restores the previous network. Entered form values remain available.
 Automation remains disabled until you enable it. A restart does not enable it automatically.
 
-### Reinstall firmware while keeping settings
+### Install or reinstall ESP32 firmware
 
-1. Select **Reinstall firmware**.
-2. Keep the USB cable connected.
-3. If setup shows **Firmware connected**, select **Disconnect**.
-4. Select **Reinstall firmware · Keep saved settings**.
-5. Confirm the supported board model.
-6. Confirm installation with saved settings retained.
-7. Select **Reinstall · Keep settings**.
-8. Select the USB-UART port again.
-9. Wait for installation and hash verification to finish.
-10. Select **Continue: Edit settings**.
-11. Select **Connect ESP32**.
-
-Disconnect releases the setup connection. It clears unsaved form entries in the tool.
-The cable must remain connected. The installer requests the serial port separately.
-The text above the installation button lists each unmet condition. Complete those conditions before installation.
-
-### Clean install and erase ESP32 settings
-
-Clean install permanently erases the ESP32 Flash, including Wi-Fi, IP, accounts, passwords, rules, access protection, and saved History.
+New setup and reinstall both use Clean install.
+This permanently erases Wi-Fi, IP, accounts, passwords, automation rules, access protection, and saved History on the ESP32.
 It does not change the schedule already stored on the FoxESS inverter.
-The new firmware starts with automation disabled. The board requires full setup again.
+The new firmware starts with automation disabled. Complete setup again before enabling control.
 
-1. Select **Reinstall firmware**.
-2. If setup is connected, select **Disconnect**.
-3. Keep the USB cable connected.
-4. Select **Clean install · Erase all ESP32 settings and History**.
-5. Review the deletion notice.
-6. Confirm the supported board model.
-7. Select the confirmation to delete the ESP32 settings and History.
-8. Enter **ERASE** in the confirmation field.
-9. Select **Erase all & install**.
-10. Select the USB-UART port.
-11. Wait for installation and hash verification to finish.
-12. Select **Continue: New setup**.
-13. Configure Wi-Fi and both APIs again.
+1. Select **New setup / Reinstall**.
+2. Keep the USB cable connected.
+3. If setup is connected, select **Disconnect**.
+4. Review the deletion notice.
+5. Confirm the supported board model.
+6. Confirm deletion of settings and History.
+7. Enter **ERASE** in the confirmation field.
+8. Select **Erase all & install**.
+9. Select the USB-UART port.
+10. Wait for installation and hash verification to finish.
+11. Select **Continue: Connect ESP32**.
+12. Select **Connect ESP32**.
+13. Select the USB serial port again.
+14. Select **Next: Network**.
+15. Configure Wi-Fi and both APIs.
+16. Complete **Test all & save**.
 
+The installer selects its own USB port. A new board does not need a setup connection before installation.
 If installation fails after erasure starts, data may already be deleted. Keep USB connected and retry installation.
+To retain existing settings, use **Edit settings**. Editing does not reinstall firmware.
 
 ### Supported and unsupported functions
 

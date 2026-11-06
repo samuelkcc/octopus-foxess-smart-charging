@@ -1,6 +1,6 @@
 {
   "name": "smart-charging-esp32-setup",
-  "version": "2.4.3",
+  "version": "2.4.4",
   "description": "USB firmware installation and setup for Smart Charging ESP32",
   "author": "SCKC",
   "license": "GPL-3.0-or-later",

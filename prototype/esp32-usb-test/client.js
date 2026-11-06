@@ -9,7 +9,8 @@
   let nextId = 0, safeSave = false, networkTrial = false, runtimeTrial = false, suggestion = null, lanResetSupported=false, lanAccessEnabled=false, controllerEnabled=false;
   let activeStep=0,furthestStep=0,liveSupported=false,webConfigured=false,scanWhileRunning=false,networkSetupSupported=false;
   let dashboardPort=80,configuredDashboardPort=8787,portSupported=false;
-  let setupMode='auto';
+  let setupMode='auto',installationReady=false;
+  const needsInstallation=()=>setupMode==='new'&&!installationReady;
   const pending = new Map();
   let readbackSupported=false,configProtected=false,configUnlocked=false,unlockPassword="",loadedSettings=false,savedConfig=null;
   const secretIds=["ssid","wifi-password","octopus-account","octopus-key","foxess-serial","foxess-key","fox-web-user","fox-web-password","fox-web-hash","config-current-password","config-new-password","config-confirm-password"];
@@ -24,10 +25,19 @@
   }
   function controls() {
     const locked = busy || window.esp32Flashing === true;
-    for(const mode of ['new','edit','reinstall'])$('mode-'+mode).disabled=locked;
+    for(const mode of ['new','edit'])$('mode-'+mode).disabled=locked;
     $('dashboard-port').disabled=!ready||locked||!portSupported;
     $('dashboard-port-save').disabled=!ready||locked||!portSupported;
-    $('connect').disabled = !supported || !!port || locked;
+    $('connect').disabled = !supported || !!port || locked || setupMode==='auto' || needsInstallation();
+    $('connect').hidden=setupMode==='auto'||needsInstallation();
+    $('firmware-note').hidden=!ready;
+    $('flow-mode').hidden=activeStep!==0;
+    $('setup-connection').hidden=setupMode==='auto'||(needsInstallation()&&!port);
+    $('firmware-install-panel').hidden=setupMode!=='new'||installationReady;
+    $('firmware-install-panel').open=setupMode==='new'&&!installationReady;
+    $('usb-title').textContent=setupMode==='new'?'Install firmware, then configure':setupMode==='edit'?'Connect to edit saved settings':'Choose how to set up this board';
+    $('connection-title').textContent=setupMode==='new'?'2. Connect and configure':'Connect to edit settings';
+    $('connection-instructions').textContent=needsInstallation()?'Disconnect the setup connection before installation. Keep the cable attached.':setupMode==='new'?'Firmware installed and verified. Select Connect ESP32, then choose the USB serial port again.':'Use existing Smart Charging firmware to read and modify saved settings. This does not erase the board.';
     $('disconnect').disabled = !port || busy;
     ['scan-wifi','device-status','restart'].forEach(id => $(id).disabled = !ready || locked || (id==='scan-wifi'&&controllerEnabled&&!scanWhileRunning));
     $('scan-wifi').title=controllerEnabled&&!scanWhileRunning?'Update firmware to scan while automation runs.':'Find nearby 2.4 GHz networks without changing saved settings.';
@@ -48,9 +58,11 @@
     for(const id of ['octopus-test','octopus-save','foxess-test','foxess-save'])$(id).disabled=!ready||!configured||locked;
     for(const id of ['config-password-save','config-password-remove','config-unlock-button','config-skip','review-accounts'])$(id).disabled=!ready||locked||!readbackSupported;
     staticInputs.forEach(input=>{input.disabled=locked || $('network-mode').value!=='static';});
-    steps.forEach((name,index)=>$('nav-'+name).setAttribute('aria-disabled',String(index>furthestStep||(setupMode==='reinstall'&&index>0))));
+    steps.forEach((name,index)=>$('nav-'+name).setAttribute('aria-disabled',String(index>furthestStep||(needsInstallation()&&index>0))));
     $('wizard-back').disabled=locked;
-    $('wizard-next').disabled=locked || (activeStep===0 && (!ready || !safeSave || setupMode==='reinstall'));
+    $('wizard-next').hidden=activeStep===3||needsInstallation()||setupMode==='auto';
+    $('wizard-progress').textContent=needsInstallation()?'Step 1 of 4 · Install firmware first':`Step ${activeStep+1} of 4 · ${['Device','Network','Accounts','Verify & save'][activeStep]}`;
+    $('wizard-next').disabled=locked || (activeStep===0 && (!ready || !safeSave || needsInstallation()));
     window.dispatchEvent?.(new Event('esp32-controls'));
   }
   function status(state, label, message = '') {
@@ -194,10 +206,10 @@
   }
 
   $('compatibility').textContent = supported
-    ? 'Web Serial is available. Click Connect ESP32, then select the USB serial device.'
+    ? 'Web Serial is available. Choose New setup / Reinstall or Edit settings.'
     : 'Open this page in desktop Chrome or Edge to configure USB. Use the ESP32 local-IP dashboard on iPhone.';
   $('connect').addEventListener('click', async () => {
-    if (!supported || busy || port) return;
+    if (!supported || busy || port || window.esp32Flashing || setupMode==='auto' || needsInstallation()) return;
     busy = true; status('busy','Select your device…');
     let candidate;
     try {
@@ -226,7 +238,7 @@
     } catch (error) {
       await disconnect();
       if (candidate && candidate !== port) await candidate.close().catch(() => {});
-      status(error?.name === 'NotFoundError' ? 'idle' : 'error','Not connected',error?.name === 'NotFoundError' ? 'No device selected.' : 'Could not verify firmware. Check the USB connection and close other serial tools.');
+      status(error?.name === 'NotFoundError' ? 'idle' : 'error','Not connected',error?.name === 'NotFoundError' ? 'No device selected.' : 'Smart Charging firmware was not detected. For a new board, select New setup / Reinstall and install firmware first.');
     } finally { busy = false; controls(); }
   });
   function updateDeviceState(device){
@@ -486,15 +498,15 @@
   });
   const steps=['device','network','accounts','verify'];
   const titles=['Choose a setup task','Set up your network','Connect your accounts','Verify & save'];
-  const descriptions=['Start with a USB connection. Your setup has four steps.','Choose 2.4 GHz Wi-Fi and check the connection before continuing.','Enter the credentials that the ESP32 will test directly.','The ESP32 saves only after every network and service check passes.'];
+  const descriptions=['Choose installation or editing. New boards need firmware before the setup connection.','Choose 2.4 GHz Wi-Fi and check the connection before continuing.','Enter the credentials that the ESP32 will test directly.','The ESP32 saves only after every network and service check passes.'];
   const guides=[
-    ['Connect the board','Use a USB data cable. Close other serial tools. Select the USB-UART port. Install firmware only if needed.'],
+    ['Choose installation or editing','New setup / Reinstall erases the board and installs firmware first. Edit settings connects without erasing.'],
     ['Check your network','Run the temporary DHCP test. For a stable IP, prefer a router reservation. Review the DHCP pool before using a suggested address.'],
     ['Keep your credentials private','Credentials travel through USB. The browser does not upload or retain them. The final step tests both accounts before saving.'],
     ['What happens next','Keep USB connected until confirmation. Saved settings survive restarts. History uses RAM by default. Optional hourly Flash saving is available in Dashboard Settings.']
   ];
   function showStep(index,focus=true){
-    if(busy || window.esp32Flashing || index<0 || index>furthestStep || (setupMode==='reinstall'&&index>0))return;
+    if(busy || window.esp32Flashing || index<0 || index>furthestStep || (needsInstallation()&&index>0))return;
     activeStep=index;
     $('step-feedback').textContent='';
     steps.forEach((name,i)=>{
@@ -504,7 +516,7 @@
       link.setAttribute('aria-disabled',String(i>furthestStep));
     });
     form.hidden=index===0;
-    $('wizard-title').textContent=index===0?({new:'New ESP32 setup',edit:'Edit saved settings',reinstall:'Reinstall firmware'}[setupMode]||titles[0]):titles[index];$('wizard-description').textContent=descriptions[index];
+    $('wizard-title').textContent=index===0?({new:'New setup / Reinstall',edit:'Edit saved settings'}[setupMode]||titles[0]):titles[index];$('wizard-description').textContent=descriptions[index];
     $('guide-title').textContent='Help: '+guides[index][0];$('guide-text').textContent=guides[index][1];
     $('wizard-back').hidden=index===0;$('wizard-next').hidden=index===3;
     $('wizard-next').textContent=['Next: Network →','Next: Accounts →','Next: Verify & save →',''][index];
@@ -515,7 +527,7 @@
   for(const [index,step] of steps.entries())$('nav-'+step).addEventListener('click',event=>{event.preventDefault();showStep(index);});
   $('wizard-back').addEventListener('click',()=>showStep(activeStep-1));
   $('wizard-next').addEventListener('click',()=>{
-    if(busy || window.esp32Flashing || activeStep===0&&(!ready||!safeSave||setupMode==='reinstall'))return;
+    if(busy || window.esp32Flashing || activeStep===0&&(!ready||!safeSave||needsInstallation()))return;
     if(activeStep===1){
       if(!networkTrial&&!loadedSettings){$('network-info').textContent='Wi-Fi is not verified. Select Test Wi-Fi with DHCP before continuing.';$('step-feedback').textContent='Network check required. Test the entered Wi-Fi before opening Accounts.';$('step-feedback').dataset.error='true';$('network-test').scrollIntoView?.({block:'center'});$('network-test').focus?.();return;}
       if(!collectConfig(false))return;
@@ -526,23 +538,20 @@
   });
   function selectMode(mode){
     setupMode=mode;
-    if(activeStep===0)$('wizard-title').textContent={new:'New ESP32 setup',edit:'Edit saved settings',reinstall:'Reinstall firmware'}[mode];
-    for(const name of ['new','edit','reinstall'])$('mode-'+name).setAttribute('aria-pressed',String(mode===name));
-    $('firmware-install-panel').hidden=mode!=='reinstall';
-    $('firmware-install-panel').open=mode==='reinstall';
-    $('flow-mode').textContent={new:'New setup · Existing device settings remain until all checks pass.',edit:'Edit settings · Read saved values, then review your changes.',reinstall:'Reinstall firmware · Keep settings by default, or select Clean install to erase this board.'}[mode];
+    if(activeStep===0)$('wizard-title').textContent={new:'New setup / Reinstall',edit:'Edit saved settings'}[mode];
+    for(const name of ['new','edit'])$('mode-'+name).setAttribute('aria-pressed',String(mode===name));
+    $('flow-mode').textContent={new:installationReady?'Firmware verified · Connect ESP32, then complete network and account setup.':'New setup / Reinstall · Erase the board and install firmware first. Then connect to configure it.',edit:'Edit settings · Read saved values, then review your changes. No firmware installation or erasure.'}[mode];
     $('step-feedback').textContent='';
     controls();
   }
-  $('mode-new').addEventListener('click',()=>{if(busy)return;clearForm();invalidateNetwork();furthestStep=0;selectMode('new');});
+  $('mode-new').addEventListener('click',()=>{if(busy||window.esp32Flashing)return;installationReady=false;clearForm();invalidateNetwork();furthestStep=0;$('flash-consent').checked=false;$('flash-board').checked=false;$('flash-erase-confirmation').value='';$('flash-continue').hidden=true;$('flash-progress').hidden=true;$('flash-progress').value=0;$('flash-status').textContent='Clean install erases this board. Keep USB connected until verification finishes.';$('config-readback').hidden=true;selectMode('new');});
   $('mode-edit').addEventListener('click',async()=>{
-    if(busy)return;selectMode('edit');
+    if(busy||window.esp32Flashing)return;selectMode('edit');
     if(!ready)return;
     if(!configured){$('step-feedback').textContent='No saved configuration was found. Select New setup.';return;}
     $('config-readback').hidden=false;$('config-unlock').hidden=!configProtected;
     if(!configProtected)await operation('Reading saved settings…',()=>readSavedSettings(''));
   });
-  $('mode-reinstall').addEventListener('click',()=>{if(busy)return;selectMode('reinstall');});
-  window.esp32Setup={disconnect,afterInstall(clean){if(clean){clearForm();configured=false;}furthestStep=0;selectMode(clean?'new':'edit');showStep(0);},isConnected:()=>!!port,isBusy:()=>busy,refreshControls:controls};
+  window.esp32Setup={disconnect,afterInstall(){clearForm();configured=false;$('config-readback').hidden=true;installationReady=true;furthestStep=0;selectMode('new');showStep(0);},isConnected:()=>!!port,isBusy:()=>busy,refreshControls:controls};
   modeChanged(); showStep(0,false);status('idle','Not connected');
 })();

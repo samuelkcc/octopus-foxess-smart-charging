@@ -1,3 +1,16 @@
+# Smart Charging 2.4.4
+
+The deployment tool now has two entries: New setup / Reinstall and Edit settings.
+New boards install firmware before the setup connection becomes available.
+Verified installation continues directly to connection and configuration.
+
+New setup and reinstall erase all board settings and History after explicit consent and exact ERASE confirmation.
+They do not change the schedule stored on the inverter. New firmware starts with automation disabled.
+Use Edit settings to read and modify the existing configuration without erasing the board.
+
+Verification uses mock serial devices and bootloaders. No real board is erased for release testing.
+The tutorial remains withheld until its instructions match this flow.
+
 # Smart Charging 2.4.3
 
 ESP32 Account setup uses SVG eye buttons with separate space beside each input.

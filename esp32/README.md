@@ -1,6 +1,6 @@
 # ESP32 dashboard and automation firmware
 
-This prototype targets an ESP32-S3 with 16 MB flash and 8 MB octal PSRAM.
+This firmware targets an ESP32-S3 with 16 MB flash and 8 MB octal PSRAM.
 It uses ESP-IDF v5.5.2.
 The interface defaults to English.
 
@@ -12,7 +12,7 @@ Cloudflare is omitted. Bluetooth is disabled at build time. OTA updates are not 
 Local Settings supports service accounts and optional LAN protection.
 The USB setup tool is available as a website, macOS app, and Windows portable app.
 See `desktop/README.md` for supported boards and packaging.
-This build is for operator testing and does not establish complete Pi feature parity.
+See the feature review for verified scheduler cases and remaining hardware test limits.
 
 ## Open the dashboard
 
@@ -140,8 +140,12 @@ OTA installation is not implemented.
 
 ## USB setup
 
+New setup / Reinstall first erases settings and History, then installs firmware after explicit deletion confirmation.
+Connect ESP32 becomes available after verified installation.
+Use Edit settings to retain the existing configuration without reinstalling.
+
 The board's CH340 interface connects UART0 through GPIO43 and GPIO44 at 115200 baud.
-The native USB connector is not the setup transport in this prototype.
+The native USB connector is not the setup transport in this firmware.
 The setup page is `prototype/esp32-usb-test/index.html`.
 Its local server accepts no configuration requests.
 

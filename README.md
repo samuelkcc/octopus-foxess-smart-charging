@@ -9,13 +9,13 @@
 A free, open-source home energy controller and dashboard.
 Follow Intelligent Octopus Go charging windows and keep your FoxESS battery available for your home.
 
-**Version 2.4.3 · ESP32, Raspberry Pi, Windows Portable and Web**
+**Version 2.4.4 · ESP32, Raspberry Pi, Windows Portable and Web**
 
 <sub>Independent hobby software by SCKC. Not affiliated with Octopus Energy or FoxESS.</sub>
 
 <p><a href="https://samuelkcc.github.io/octopus-foxess-smart-charging/app/"><img src="docs/assets/open-html-dashboard.svg" alt="Open HTML Dashboard" height="52"></a> <a href="https://samuelkcc.github.io/octopus-foxess-smart-charging/esp32/"><img src="docs/assets/open-esp32-deploy.svg" alt="ESP32 Web Deploy" height="52"></a></p>
 
-[ESP32 guide](docs/editions/ESP32.md) · [Prepare your accounts](docs/ACCOUNT-PREPARATION.md) · [Compare editions](#choose-your-setup-guide) · [Downloads](https://github.com/samuelkcc/octopus-foxess-smart-charging/releases/tag/esp32-2.4.3)
+[ESP32 guide](docs/editions/ESP32.md) · [Prepare your accounts](docs/ACCOUNT-PREPARATION.md) · [Compare editions](#choose-your-setup-guide) · [Downloads](https://github.com/samuelkcc/octopus-foxess-smart-charging/releases/tag/esp32-2.4.4)
 
 </div>
 
@@ -54,6 +54,7 @@ Screenshots use demonstration data. [Open the interface gallery](docs/INTERFACE.
 
 **Supported board: ESP32-S3 N16R8 — 16 MB Flash and 8 MB Octal PSRAM.** Other ESP32 models are unsupported.
 Use a USB data cable and 2.4 GHz Wi-Fi.
+New setup and reinstall erase board settings and History. Use Edit settings to retain your configuration.
 ESP32 is local-network only. **Cloudflare remote access and Bluetooth setup are not supported.**
 
 [**ESP32 setup guide →**](docs/editions/ESP32.md) · [Mac and Windows deployment apps](docs/editions/ESP32.md#choose-a-deployment-tool) · [View more screenshots](docs/INTERFACE.md)
@@ -89,7 +90,7 @@ Choose the host that fits your setup. Each column links to its own focused insta
 | Account changes | Local Account setup or USB | Native Pi Configuration | Account setup tab | Browser setup |
 | Wi-Fi and IP changes | **USB setup only** | Operating system | Operating system | Operating system |
 
-[Compare the editions](docs/USER-GUIDE.md#1-choose-an-edition) · [User guide](docs/USER-GUIDE.md) · [Downloads](https://github.com/samuelkcc/octopus-foxess-smart-charging/releases/tag/esp32-2.4.3)
+[Compare the editions](docs/USER-GUIDE.md#1-choose-an-edition) · [User guide](docs/USER-GUIDE.md) · [Downloads](https://github.com/samuelkcc/octopus-foxess-smart-charging/releases/tag/esp32-2.4.4)
 
 ## Licence and acknowledgements
 

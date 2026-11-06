@@ -1,3 +1,14 @@
+# 2.4.4 installation entry review — 6 November 2026
+
+The public deployment tool has two task entries. New setup / Reinstall includes firmware installation before configuration.
+The setup serial connection cannot run before installation on this path.
+A verified install opens Connect ESP32, followed by Network, Accounts, and Verify & save.
+Every public installation uses Clean install with model confirmation, deletion consent, and exact ERASE input.
+The installer validates every image and supported hardware before erasing once.
+Edit settings retains the existing configuration and does not invoke installation.
+Tests use mock serial devices and bootloaders. No live board erasure is part of verification.
+The tutorial is withheld while its instructions and captures are updated.
+
 # 2.4.3 credential controls and preparation guide — 6 November 2026
 
 ESP32 credential fields reserve a separate 44-pixel touch target for each SVG eye button.

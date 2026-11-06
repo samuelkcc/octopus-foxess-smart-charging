@@ -28,7 +28,7 @@ export function installationRequirements(state){
   if(!state.supported)missing.push('Use desktop Chrome or the Mac or Windows setup app.');
   if(state.flashing)missing.push('Installation is running. Keep USB connected.');
   if(state.busy)missing.push('Wait for the current setup operation to finish.');
-  if(state.connected)missing.push('Select Disconnect above to release the setup connection. Keep the USB cable connected.');
+  if(state.connected)missing.push('Select Disconnect to release the setup connection. Keep the USB cable connected.');
   if(!state.board)missing.push('Confirm that the board is an ESP32-S3 N16R8.');
   if(!state.consent)missing.push(state.mode==='clean'?'Confirm deletion of all ESP32 settings and History.':'Confirm installation while keeping saved settings.');
   if(state.mode==='clean'&&state.confirmation!=='ERASE')missing.push('Type ERASE to confirm Clean install.');

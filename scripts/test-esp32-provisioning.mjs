@@ -9,7 +9,7 @@ const source = await readFile(new URL('../prototype/esp32-usb-test/client.js',im
 const html = await readFile(new URL('../prototype/esp32-usb-test/index.html',import.meta.url),'utf8');
 const firmware = await readFile(new URL('../esp32/main/main.c',import.meta.url),'utf8');
 
-function harness({ supported=true, rejectSelection=false, rejectSave=false, oldFirmware=false, existing=false, protectedConfig=false, failedJob=false, automation=false, rejectApiTest=false, rejectOptionalSave=false, savedStatic=false, missingJob=false, queuedJob=false, rejectNetworkSetup=false, rejectNetworkTrial=false }={}) {
+function harness({ chooseTask=true, supported=true, rejectSelection=false, rejectSave=false, oldFirmware=false, existing=false, protectedConfig=false, failedJob=false, automation=false, rejectApiTest=false, rejectOptionalSave=false, savedStatic=false, missingJob=false, queuedJob=false, rejectNetworkSetup=false, rejectNetworkTrial=false }={}) {
   const elements=new Map();
   const windowEvents={};
   for (const [,id] of html.matchAll(/\bid="([^"]+)"/g)) elements.set(id,{
@@ -65,19 +65,40 @@ function harness({ supported=true, rejectSelection=false, rejectSave=false, oldF
     async close(){closeCount++;try{controller.close();}catch{}}
   };
   const serial={async requestPort(){if(rejectSelection)throw {name:'NotFoundError'};return device;},addEventListener(){}};
+  const testWindow={isSecureContext:true,addEventListener(type,fn){windowEvents[type]=fn;}};
   vm.runInNewContext(source,{
     document:{getElementById:get,createElement:()=>({}),documentElement:{dataset:{theme:'dark'}}},navigator:supported?{serial}:{},
-    window:{isSecureContext:true,addEventListener(type,fn){windowEvents[type]=fn;}},
+    window:testWindow,
     TextEncoder,TextDecoder,Event,JSON,Number,Object,String,Map,Set,setTimeout,clearTimeout,
     Option:class{constructor(text,value){this.text=text;this.value=value;}}
   });
   const click=id=>get(id).handlers.click({preventDefault(){}});
   const flush=()=>new Promise(resolve=>setImmediate(resolve));
   const fill=()=>{for(const id of ['ssid','wifi-password','octopus-account','octopus-key','foxess-serial','foxess-key'])get(id).value='example-'+id;};
-  return {get,click,flush,fill,commands,windowEvents,closeCount:()=>closeCount};
+  if(chooseTask)click('mode-edit');
+  return {get,click,flush,fill,commands,windowEvents,bridge:testWindow.esp32Setup,closeCount:()=>closeCount};
 }
 
-const newFlow=harness({existing:true});newFlow.click('mode-new');await newFlow.click('connect');assert(!newFlow.commands.some(r=>r.command==='config_read'),'New setup must not read existing secrets');assert.equal(newFlow.get('ssid').value,'');assert(newFlow.get('firmware-install-panel').hidden);assert(newFlow.get('flow-mode').textContent.startsWith('New setup'));await newFlow.click('mode-edit');assert.equal(newFlow.get('ssid').value,'saved-wifi');newFlow.click('mode-reinstall');assert(!newFlow.get('firmware-install-panel').hidden);assert(newFlow.get('wizard-next').disabled,'Firmware recovery must not advance to configuration');newFlow.click('nav-network');assert(!newFlow.get('device').hidden,'Recovery cannot enter settings through sidebar');assert(!newFlow.commands.some(r=>r.command==='configure'||r.command==='network_trial'));await newFlow.click('disconnect');
+const newFlow=harness({chooseTask:false});
+assert(newFlow.get('connect').disabled&&newFlow.get('setup-connection').hidden,'Choose a task before any setup serial connection');
+newFlow.click('mode-new');assert(!newFlow.get('firmware-install-panel').hidden,'New setup includes the installer');
+assert(newFlow.get('connect').disabled&&newFlow.get('connect').hidden,'A blank board must install before Connect ESP32');
+await newFlow.click('connect');assert.equal(newFlow.commands.length,0,'No serial handshake before installation');
+newFlow.click('nav-network');assert(!newFlow.get('device').hidden,'Installation cannot skip directly to network settings');
+newFlow.bridge.afterInstall();assert(newFlow.get('firmware-install-panel').hidden);assert(!newFlow.get('setup-connection').hidden);assert(!newFlow.get('connect').disabled);
+assert(newFlow.get('connection-instructions').textContent.includes('Firmware installed and verified'));
+await newFlow.click('connect');assert.equal(newFlow.get('handshake').textContent,'Verified');assert.equal(newFlow.get('ssid').value,'');
+assert(!newFlow.commands.some(r=>r.command==='config_read'||r.command==='configure'),'Fresh installation does not restore old secrets or save before tests');
+newFlow.click('wizard-next');assert(!newFlow.get('network').hidden);await newFlow.click('disconnect');
+const editFlow=harness({existing:true});await editFlow.click('connect');assert.equal(editFlow.get('ssid').value,'saved-wifi');assert(editFlow.get('firmware-install-panel').hidden);
+editFlow.click('mode-new');assert(!editFlow.get('firmware-install-panel').hidden);assert(!editFlow.get('disconnect').disabled,'Connected users can release USB before erasure');
+assert(editFlow.get('wizard-next').disabled);assert.equal(editFlow.get('ssid').value,'');await editFlow.click('disconnect');
+assert(!html.includes('id="mode-reinstall"'),'Two task entries replace the separate recovery route');
+const flashSource=await readFile(new URL('../prototype/esp32-usb-test/flasher.js',import.meta.url),'utf8');
+assert(flashSource.includes("const mode='clean',confirmation="),'The public installer always selects clean installation');
+assert(!html.includes('value="keep"'),'No preservation choice in the new public installation workflow');
+console.log('Two-task setup: installation-first, blocked premature serial access, verified-install continuation, blank setup and non-erasing Edit settings passed.');
+
 const failedNetwork=harness({rejectNetworkTrial:true});await failedNetwork.click('connect');failedNetwork.fill();await failedNetwork.click('network-test');assert(failedNetwork.get('network-info').textContent.startsWith('Wi-Fi test failed:'));assert(failedNetwork.get('step-feedback').textContent.includes('Invalid configuration'));assert.equal(failedNetwork.get('wifi-password').value,'example-wifi-password');failedNetwork.click('wizard-next');failedNetwork.click('wizard-next');assert(failedNetwork.get('step-feedback').textContent.includes('Network check required'));await failedNetwork.click('disconnect');
 const h=harness();
 assert(h.get('save').disabled);

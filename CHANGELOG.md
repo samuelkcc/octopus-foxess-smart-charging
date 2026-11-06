@@ -1,3 +1,12 @@
+# 2.4.4 — 6 November 2026
+
+- Combine first installation and reinstall under New setup / Reinstall.
+- Install firmware before exposing the setup serial connection on this path.
+- Use Clean install for both installations, with explicit deletion consent and exact ERASE confirmation.
+- Keep Edit settings separate and non-erasing.
+- Continue from verified installation directly to connection and network configuration.
+- Update deployment instructions across the website and native tools.
+
 # 2.4.3 — 6 November 2026
 
 - Replace ESP32 credential visibility dots with SVG eye controls.
