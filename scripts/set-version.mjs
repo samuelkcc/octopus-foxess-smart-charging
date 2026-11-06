@@ -25,6 +25,14 @@ const markup = await readFile('src/index.html', 'utf8');
 await writeFile('src/index.html', markup.replace(/\?v=\d+(?:\.\d+){2,3}/g, `?v=${version}`)
   .replace(/Build v\d+(?:\.\d+){2,3}/g, `Build ${tag}`)
   .replace(/(data-app-version>)\d+(?:\.\d+){2,3}/, `$1${version}`));
+for (const [file, pattern, replacement] of [
+  ['prototype/esp32-usb-test/index.html', /Smart Charging \d+\.\d+\.\d+/g, `Smart Charging ${version}`],
+  ['esp32/CMakeLists.txt', /(project\(smart_charging_esp32 VERSION )\d+\.\d+\.\d+/, `$1${version}`],
+  ['esp32/main/main.c', /(cJSON_AddStringToObject\(object,"version",")\d+\.\d+\.\d+/, `$1${version}`]
+]) {
+  try { await writeFile(file, (await readFile(file, 'utf8')).replace(pattern, replacement)); }
+  catch (error) { if (error.code !== 'ENOENT') throw error; }
+}
 const workflow = await readFile('.github/workflows/release.yml', 'utf8');
 await writeFile('.github/workflows/release.yml', workflow.replace(/default: v\d+(?:\.\d+){2,3}/, `default: ${tag}`));
 console.log(`Version ${version}; release tag ${tag}. Update CHANGELOG.md and RELEASE_NOTES.md, then run npm run check.`);

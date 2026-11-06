@@ -1,5 +1,7 @@
 # 2.3.0 Preview — 6 November 2026
 
+- Synchronize the ESP32 USB handshake, CMake project, setup About text, and package version through version:set.
+
 - Add General settings and Account setup tabs for ESP32 and the native portable host.
 - Serve embedded iPhone Home Screen icons and an ESP32 web manifest.
 - Introduce ESP32 first in version comparisons, with deployment screenshots and a dedicated guide chapter.
