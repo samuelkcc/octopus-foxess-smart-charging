@@ -1,5 +1,6 @@
 // Copyright (C) 2026 SCKC. GPL-3.0-or-later.
 #include <assert.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <string.h>
 #include "config_access.h"
@@ -18,7 +19,8 @@ int main(void){
  assert(!sc_config_access_change("","short"));assert(sc_config_access_change("","example-password"));assert(sc_config_access_enabled());
  assert(!memmem(stored,length,"example-password",16));sc_config_access_init();assert(sc_config_access_enabled());assert(!sc_config_access_check("wrong-password"));assert(sc_config_access_check("example-password"));
  assert(!sc_config_access_change("wrong-password","replacement-password"));assert(sc_config_access_check("example-password"));
- for(int i=0;i<5;i++)assert(!sc_config_access_check("wrong-password"));assert(!sc_config_access_check("example-password"));now+=60000001;assert(sc_config_access_check("example-password"));
+ for(int i=0;i<5;i++){assert(!sc_config_access_check("wrong-password"));}
+ assert(!sc_config_access_check("example-password"));now+=60000001;assert(sc_config_access_check("example-password"));
  unsigned char before[128];memcpy(before,stored,length);fail=true;assert(!sc_config_access_change("example-password","replacement-password"));assert(!memcmp(before,stored,length));assert(sc_config_access_check("example-password"));fail=false;
  assert(sc_config_access_change("example-password","replacement-password"));assert(!sc_config_access_check("example-password"));assert(sc_config_access_check("replacement-password"));
  stored[0]^=1;sc_config_access_init();assert(sc_config_access_enabled());assert(!sc_config_access_check("replacement-password"));assert(!sc_config_access_change("",""));
