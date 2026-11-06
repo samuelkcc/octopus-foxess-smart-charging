@@ -51,6 +51,16 @@
     "usb_network_control": true,
     "mock_usb_browser_test": "passed; active port, independent save and restart guidance",
     "native_windows_execution": "not verified",
-    "packaging": "pending"
+    "packaging": "Mac Universal and Windows x64 complete",
+    "source_commit": "e3ae1e619f6a903af6dc9115be03f1f3caff2c39",
+    "firmware_sha256": "a6c39cd7b30b2db47eb6d8a1825bf6280cd7fb19363dbf0b37747b94ae8aecb4",
+    "web_mac_windows_payloads_identical": true,
+    "mac_signature": "ad-hoc codesign --verify --deep --strict passed",
+    "mac_architectures": [
+      "x86_64",
+      "arm64"
+    ],
+    "mac_launch": "passed; opened final dist app",
+    "published": false
   }
 }

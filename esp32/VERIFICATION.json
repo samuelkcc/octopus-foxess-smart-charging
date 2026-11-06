@@ -173,9 +173,9 @@
     "rules_preserved": true,
     "concurrent_http_reads": "Complete HTML, JSON, icon and manifest; Connection close",
     "physical_iphone": "Web Inspector enabled and attached. Device Hub shows Safari network connection lost. A temporary Mac LAN page loaded; ESP32 manifest and dashboard navigation failed. Cause unresolved.",
-    "latest_diagnostics_build": "3c0752dac8707ee79b28201d6c9a33d421c6e391",
-    "latest_diagnostics_installed": false,
-    "reason_not_reflashed": "Retain current RAM caches and physical iPhone failure evidence",
+    "latest_diagnostics_build": "e3ae1e619f6a903af6dc9115be03f1f3caff2c39",
+    "latest_diagnostics_installed": true,
+    "reason_not_reflashed": "Superseded by scheduler_port_checkpoint; iPhone diagnosis deferred at user request.",
     "usb_log_read": "Opening the USB serial port unexpectedly reset the board despite disabled DTR/RTS. Saved settings survived; RAM tariffs reloaded through the serialized worker queue.",
     "latest_cache_read": {
       "import_slots": 64,
@@ -218,7 +218,7 @@
   },
   "scheduler_port_checkpoint": {
     "version": "2.4.0",
-    "state": "source checks passed; release artifacts pending",
+    "state": "built, packaged and installed locally",
     "default_http_port": 8787,
     "port_storage": "Separate sc_http NVS record; applied on restart; encrypted credential layout unchanged",
     "scheduler_checks": [
@@ -234,7 +234,18 @@
     "ui_fixture_screenshot": "/tmp/esp32-deploy-port-8787.png",
     "full_check": "passed; .build/check-240-parity-port.log",
     "differential_cases": 75,
-    "live_installation": "not yet installed",
-    "installed_ui_commit": "pending"
+    "live_installation": "HTTP 200 on port 8787: dashboard, RAM snapshot and manifest",
+    "installed_ui_commit": "e3ae1e619f6a903af6dc9115be03f1f3caff2c39",
+    "source_commit": "e3ae1e619f6a903af6dc9115be03f1f3caff2c39",
+    "firmware_sha256": "a6c39cd7b30b2db47eb6d8a1825bf6280cd7fb19363dbf0b37747b94ae8aecb4",
+    "dev_build": "passed; .build/build-dev-240-parity-port.log",
+    "idf_build": "passed; .build/esp32-sdk/build-240-parity-port.log",
+    "flash": "app partition only; transfer hash verified; .build/esp32-sdk/flash-240-parity-port.log",
+    "rules_preserved": true,
+    "automation_enabled_preserved": true,
+    "pause_preserved": true,
+    "deliverable_checksums_verified": 42,
+    "output": "dist/ESP32, dist/Windows Portable, dist/Web HTML, dist/Pi",
+    "published": false
   }
 }

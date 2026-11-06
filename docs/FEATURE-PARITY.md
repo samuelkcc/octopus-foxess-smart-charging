@@ -20,6 +20,11 @@ Differential tests run the actual Pi evaluation function against the native ESP3
 The original known clock guard and non-latching Auto-Resume differences are superseded by this section.
 Earlier sections retain the historical verification record.
 
+The final firmware was installed from source commit `e3ae1e619f6a903af6dc9115be03f1f3caff2c39`.
+Port 8787 returned HTTP 200 for the dashboard, cached state, and manifest.
+Existing rules, automation enablement, and Pause state survived the app-only update.
+All 42 deliverable checksums passed. Web, Mac, and Windows setup contain identical UI and firmware payloads.
+The Mac Universal signature check and native launch passed.
 Physical iPhone access remains unresolved. Port 8787 does not yet establish a network fix.
 Cloudflare remains excluded. Native Windows execution and long-term hardware operation remain unverified.
 
