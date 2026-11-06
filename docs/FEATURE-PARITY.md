@@ -1,3 +1,134 @@
+# 2.3.0 Preview release review — 6 November 2026
+
+This section supersedes earlier development reviews below.
+
+ESP32 appears first in the introduction and edition comparison, followed by Pi, Portable, and Web HTML.
+The shared Welcome links include the ESP32 USB deployment website.
+The User guide contains a dedicated ESP32 deployment chapter and an explicit capability comparison.
+
+ESP32 and native Portable Settings separate General settings from Account setup.
+The Portable account editor requires the native desktop bridge. LAN clients do not receive that bridge.
+ESP32 account cards use existing local API tests and save endpoints. Wi-Fi and IP changes require physical USB setup.
+Switching tabs retains the existing controls and unsaved values. Tab navigation supports arrow keys, Home, and End.
+
+ESP32 serves embedded PNG icons and a standalone manifest before optional LAN login.
+The asset routes retain the local Host and proxy checks. No credential appears in these responses.
+Existing iPhone shortcuts can retain their old icon until removed and added again.
+
+ESP32 Cloudflare, remote relay, Bluetooth setup, and OTA are not supported.
+The LAN account editor and optional FoxESS WebSocket telemetry are implemented.
+WebSocket is read-only. Schedule writes and confirmation require official REST.
+
+Shared presentation does not establish complete scheduler parity.
+The ESP32 clock-transition guard and advanced Auto-Resume differences remain documented release limits.
+Only mocked scheduler commands are used for this release verification.
+The full check, DEV build, Python AST check, and shell syntax check passed.
+Native ESP32 runtime, transport, access, live-signature, and schedule suites passed.
+Browser checks covered separate Web and Pi Welcome entry and native Portable account editing.
+ESP32 and Portable tab switching retained unsaved demonstration input. Arrow-key tab navigation passed.
+All public interface screenshots were recaptured with isolated demonstration services.
+Native Windows execution and physical iPhone Home Screen installation require separate device checks.
+
+# Historical development reviews
+
+The following sections describe earlier build states. They are retained as development evidence.
+
+# Shared dashboard design review
+
+Page headings, About navigation, Pause switch, paused banner, Overview, and Connections use shared presentation code.
+About opens from the lower-left menu into its existing right-side drawer.
+The circular control shows green when running and red when paused. Pending or unavailable states are neutral.
+Resume still requires confirmation. The interface does not change scheduler policy.
+ESP32-specific host configuration appears in Settings.
+Removed ESP32 grid overrides caused the previous wide, separated Connections cards.
+Web and Pi mock browser checks cover separate login paths and the Pause dialogs.
+ESP32 mock browser checks cover Pause, resume confirmation, About, and paired Connections cards.
+The operator confirmed direct iPhone Safari access and normal data before this design update.
+The revised physical iPhone layout and native Windows execution remain unverified.
+Browser Activity still differs from host power History. This change does not establish complete functional parity.
+At that review, Cloudflare relay support remained pending. It was later removed from the ESP32 scope.
+
+# ESP32 dashboard control review
+
+The LAN root now serves the shared Overview component instead of the connection-test status page.
+The dashboard uses the existing desktop viewport, Chart.js version, tariff styles, and directional power labels.
+About uses a centred SVG close button. Settings fields have explicit spacing.
+Overview, Schedules, Automations, History, Connections, and Settings use the existing view owners.
+The firmware contains an independent background controller with real FoxESS command support.
+Smart Dispatch, price rules, weekly schedules, SOC limits, temporary modes, and persistent Pause have native policy tests.
+Tests cover fresh REST readback, durable intent failure, queued revisions, failed readback backoff, and 429 cooldowns.
+Allocation fault tests prevent incomplete Smart Dispatch plans from becoming valid empty schedules.
+Fixed IOG day/night loading continues without starving dispatch refreshes.
+Monitoring and tariff work continue while automation is disabled or paused.
+
+LAN access protection defaults to off, matching the desktop edition.
+Settings can enable a persistent LAN access code.
+There is no pairing code. Physical USB can reset optional LAN protection.
+Random browser-cookie hashes persist for 30 days.
+Authentication tests cover default-open access, persistent opt-in protection, code login, failure handling, restart recovery, revocation, CSRF, Origin, Host, forwarded requests, and login limits.
+No service credentials are returned through dashboard state.
+Network and credential changes still use USB setup in this build.
+The LAN account editor, Cloudflare transport, Bluetooth, and OTA remain unimplemented.
+
+History uses a reserved RAM buffer for up to 60 days of 15-minute observations.
+Optional Flash storage retains one hourly average for 60 days. It defaults to off.
+Long-running retention and physical battery behaviour are not established by mock tests.
+A UK clock transition in the next 24 hours retains the existing schedule and blocks new programming.
+This guard is a verification limit, not complete DST parity.
+Live GraphQL and FoxESS REST checks returned HTTP 200.
+Enabled controller revision 2 passed fresh official REST confirmation.
+The active rules preserve the existing daily 23:30–05:30 charge baseline and follow Smart Dispatch.
+Software restart retained the static IP, configuration, controller rules, and browser sessions.
+Separate Pi and standalone web login browser checks passed.
+The exact installed image and live results are recorded in `esp32/VERIFICATION.json`.
+
+# Previous ESP32 connection-test review
+
+This section records the earlier connection-test image.
+
+The ESP32 connection-test prototype is separate from the released web, Pi, and desktop editions.
+It verifies a firmware handshake before allowing USB configuration or tests.
+Configuration previews hide passwords, API keys, account numbers, and inverter serial numbers.
+The English Deploy page uses the existing visual style with one visible step and fixed Back/Next controls.
+Contextual guidance follows the active step without a separate scrolling column.
+About and complete licence content use a top-bar button and a right-side drawer.
+The lower-left development message is removed.
+Desktop and mobile browser checks verified the layout, drawer opening, Escape dismissal, and focus return.
+The browser installer checks image hashes and preserves the NVS configuration sectors.
+Its physical browser-flashing verification is recorded separately in `esp32/VERIFICATION.json`.
+All network and API checks must pass before configuration is saved.
+A temporary DHCP trial and optional ARP/ping IP suggestion do not save settings.
+Static IP selection requires review against the router DHCP pool.
+Native tests cover validation failures, storage failures, restoration, and subnet-safe candidate selection.
+The full dashboard must retain the other editions' navigation, cards, controls, and mobile behaviour.
+Network settings require the USB website. Service credentials may use the future authenticated LAN dashboard.
+Cloudflare URL and Remote Access Key management require LAN authentication.
+The future remote dashboard must not expose network, account, credential, or administration settings.
+Device configuration uses an allowlisted USB protocol. Routine cloud connection tests are read-only.
+The additional USB future-period diagnostic requires explicit readiness and test-and-restore confirmation.
+Development AES-GCM storage cannot protect credentials against physical flash extraction.
+All firmware settings must persist across restarts. Only History remains in RAM.
+History can exceed 14 days if the reserved memory budget permits it.
+Actual retention requires runtime memory testing with networking and dashboard clients.
+Command-line identification confirmed ESP32-S3, 16 MB flash, and reported 8 MB PSRAM.
+A live Chrome connection opened the USB serial port and displayed its interface IDs.
+The prototype defaults to English. Firmware implements a 2.4 GHz Wi-Fi scan command.
+The installed firmware passed its 8 MB PSRAM boot test, USB handshake, and live 2.4 GHz Wi-Fi scan.
+Chrome completed the firmware handshake and displayed actual scan results.
+Invalid configuration and unsupported inverter-control commands were rejected on the device.
+The installed firmware and interface hashes are recorded in `esp32/VERIFICATION.json`.
+The operator saved real configuration through Chrome USB setup.
+Wi-Fi and time synchronization succeeded. Octopus account REST and FoxESS telemetry REST both returned HTTP 200.
+FoxESS returned API code 0. Automation remained disabled.
+After software restart, configuration was recovered and Wi-Fi reconnected without entering settings again.
+An operator-reported physical power cycle retained configuration, reconnected Wi-Fi, and passed both REST connection tests.
+Native tests cover future-only planning, capacity, control preservation, allocation failures, ambiguous writes, rollback, and concurrent revisions.
+The live diagnostic used two authorised schedule writes: a future Force Charge period and restoration.
+Fresh official REST reads confirmed the test period and independently confirmed the restored original schedule.
+No recovery journal remained after the test. No measured charging-power test was performed.
+No unattended scheduler is implemented. Smart Dispatch access and scheduler parity remain unverified.
+A physical power cycle of the final diagnostic firmware image was not performed.
+
 # Version 2.0.1 release verification
 
 The user approved publication after testing the Windows and web editions.
@@ -210,3 +341,109 @@ Native Windows execution remains a user check.
 - No GAS change or live inverter test command is included.
 - The full automated suite and both interface builds passed before publication.
 - The [standard QA checklist](QA.md) distinguishes mock tests, package checks, and native review.
+
+## Circular control and About review
+
+The circular power control opens a confirmation dialog. Cancelling does not change the stored Pause state.
+The device and monitoring continue while automation is paused.
+History selection and export controls use equal heights and bottom alignment.
+About lists component purpose, version, licence, source, and bundled notice access.
+The curated inventory identifies key runtime components. Complete SDK notices remain available separately.
+Optional Flash saving requires manual enablement in Settings. It is off by default.
+Live display updates and RAM collection do not cause Flash writes.
+The worker saves one hourly average in a batch, at most once each hour.
+A dedicated 128 KiB journal rotates 64-byte records and erases one sector for each 64 records.
+Checksums and commit markers reject interrupted records. Failed History I/O does not block automation.
+Mock tests cover every interrupted write position, interrupted sector recycling, restart recovery, and multiple complete journal rotations.
+The last 60 days remain readable after rotation. Missing observations remain gaps.
+Runtime tests cover zero writes by default, opt-in, hourly pacing, disabling, mixed-resolution reads, and legacy-rule migration.
+Flash saving remains disabled on the live device. Enabled hardware saving and a 60-day soak remain unverified.
+
+## ESP32 local-access scope and presentation alignment
+
+The operator removed Cloudflare remote access from this ESP32 edition.
+Users open the dashboard on the same local network. No Cloudflare account is needed.
+Charge-limit grouping and weekday order follow the shared dashboard.
+Breadcrumb labels follow navigation labels after refresh.
+History uses the shared grid, metadata row, and observation note.
+Settings and supported storage choices remain specific to the host.
+Firmware scheduler inputs and stored rule values are unchanged.
+
+## ESP32 and Pi function mapping: local review
+
+| Function | ESP32 implementation | Verification |
+|---|---|---|
+| Welcome | Shared composition; optional browser-local Dashboard entry | Live desktop entry and reload |
+| Overview | Shared power, schedule and price composition | Live data and canonical timestamps |
+| Schedules | Official REST schedule and reviewed temporary control | Read-only live review; mocked writes |
+| Automations | Dispatch, weekly periods, price rules, SOC limits and discharge safeguards | Native policy mocks |
+| API header refresh | Coalesced worker reads for both services and official schedule | Runtime and HTTP mocks |
+| Authentication recovery | Expiry-aware RAM token; GraphQL expiry recovery | Mocked expiry; live sign-in |
+| Account and device | Allowlisted cached account, EV, charger, tariff and target fields | Mocked cache and failure isolation |
+| Pause | Shared circular control and confirmation; monitoring continues | Pi fixture cancellation; runtime mocks |
+| History | Shared chart presentation; RAM and optional hourly Flash | Journal and runtime mocks |
+| About | Shared drawer and tab navigation; complete bundled texts | Live tabs and GPL text |
+| Setup | USB website or desktop app | Separate setup host tests |
+| Cloudflare | Omitted from ESP32 | No tunnel deployed |
+
+Full Pi worker equivalence is not established by this table.
+The ESP32 clock-transition guard remains a scheduler difference.
+Auto-Resume suppression across subsequent falling SOC readings requires further comparison.
+The Pi supports richer schedule editing and persistent diagnostic records.
+Those controls must not be described as implemented on ESP32 without matching adapters and tests.
+Physical battery behaviour and long-running retention remain operator hardware checks.
+
+## USB settings and optional WebSocket review
+
+Saved settings load automatically when Config Password is absent.
+Masked fields have individual eye controls.
+Native Mac USB readback and the independent Octopus test passed against the connected board.
+The user also confirmed a successful FoxESS REST test.
+
+Optional Config Password uses a separate salted PBKDF2 record.
+Mock tests cover legacy defaults, protected reads, failed attempts, rotation, removal, corruption, and save failures.
+Reading can be skipped without removing existing protection.
+
+Service tests and credential saves share a strict LAN/USB job actor.
+Tests do not save credentials or program schedules.
+Password input remains after tests and failed saves.
+A successful save, disconnect, or page exit clears the relevant secret input.
+Progress and errors appear beside the service controls.
+
+The first live WebSocket test did not complete normally in the setup UI.
+Its error was hidden on the Device step, while Accounts retained a Testing label.
+The next build exposes individual connection stages and safe numeric errors.
+A successful live WebSocket frame is still required before declaring that transport verified.
+
+The User guide is bundled in all dashboard and USB setup editions.
+Its first chapter compares versions and host responsibilities.
+Web and Pi Welcome entry and guide open/close passed separate browser fixture checks.
+
+## Verify & save and User guide entrance
+
+The operator confirmed a live WebSocket test succeeded on the ESP32.
+The previous final button was disabled whenever automation was enabled.
+It now verifies unchanged saved Wi-Fi, IP, and API settings without reconnecting or rewriting them.
+Both API tests must pass before the optional telemetry save starts.
+Changed main settings still require disabled automation for full USB deployment.
+The requirement appears beside the final button.
+
+Mock tests cover running automation, unchanged fixed IP without new consent, changed-value blocking, failed API tests, and failed optional saves.
+The native WebSocket test covers saving an identical recent test without another portal login.
+A cached test cannot report live measurements as fresh.
+
+The User guide uses a 240 ms slide from the right and a fading backdrop.
+Reduced-motion preferences disable the animation.
+These styles are shared by all dashboard and setup builds.
+
+### Shared interface follow-up — 6 November 2026
+
+Weekday selectors use full-tile checkbox targets across all editions. Connections no longer repeats the Settings or Schedules entry.
+User guide opens with a right-side animation and respects reduced-motion preferences. USB tests and saves retain masked form values.
+These interface changes do not change scheduler policy. Complete ESP32 scheduler equivalence remains unverified.
+
+### Automation spacing — 6 November 2026
+
+Shared rule labels have 16-pixel padding above and below separators. Paired charge-limit controls have no partial separator.
+The ESP32 charging panel no longer removes top padding from every toggle. Scheduler controls and element IDs remain unchanged.
+Web and ESP32 fixture checks verified the separator spacing.

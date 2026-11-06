@@ -1,0 +1,73 @@
+name: Build ESP32 setup tools
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  firmware:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run check
+      - run: npm run build:dev
+      - name: Build pinned ESP32-S3 N16R8 firmware
+        run: sh scripts/build-esp32-firmware-ci.sh
+      - run: npm run build:esp32-deploy
+      - uses: actions/upload-artifact@v4
+        with:
+          name: esp32-firmware-build
+          path: |
+            .build/esp32-firmware/smart_charging_esp32.bin
+            .build/esp32-firmware/bootloader/bootloader.bin
+            .build/esp32-firmware/partition_table/partition-table.bin
+            .build/esp32-firmware/ota_data_initial.bin
+          include-hidden-files: true
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ESP32-Deploy-Web
+          path: dist/esp32-deploy
+          include-hidden-files: true
+
+  desktop:
+    needs: firmware
+    strategy:
+      matrix:
+        include:
+          - os: macos-15
+            target: mac
+          - os: windows-latest
+            target: win
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm ci --prefix desktop
+        env:
+          ELECTRON_SKIP_BINARY_DOWNLOAD: 1
+      - uses: actions/download-artifact@v4
+        with:
+          name: esp32-firmware-build
+          path: .build/esp32-firmware
+      - run: npm run check
+      - run: npm run build:dev
+      - run: node scripts/build-esp32-setup.mjs --${{ matrix.target }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ESP32-Setup-${{ matrix.target }}
+          path: |
+            .build/esp32-setup-v*/*.zip
+            .build/esp32-setup-v*/*.exe
+            .build/esp32-setup-v*/SHA256SUMS.txt
+          include-hidden-files: true

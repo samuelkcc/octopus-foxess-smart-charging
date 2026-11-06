@@ -12,7 +12,7 @@ lock.version = version;
 lock.packages[''].version = version;
 await writeFile('package-lock.json', JSON.stringify(lock, null, 2) + '\n');
 // Desktop metadata follows the same version when that optional package exists.
-for (const file of ['desktop/package.json', 'desktop/package-lock.json']) {
+for (const file of ['desktop/package.json', 'desktop/package-lock.json', 'esp32/desktop/package.json']) {
   try {
     const desktop = JSON.parse(await readFile(file, 'utf8'));
     desktop.version = version;

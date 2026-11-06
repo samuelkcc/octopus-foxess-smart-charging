@@ -49,7 +49,7 @@ Browser clients do not receive the service API keys or FoxCloud passwords.
 | Amber | The service is waiting or using a fallback. |
 | Red | A connection or configuration needs attention. |
 
-![Pi Configuration with example data](../docs/screenshots/pi-configuration.png)
+![Pi dashboard General settings with demonstration data](../docs/screenshots/pi-settings.png)
 
 ## Open the LAN dashboard
 

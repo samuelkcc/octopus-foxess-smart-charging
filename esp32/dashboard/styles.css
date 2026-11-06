@@ -1,0 +1,87 @@
+/* Copyright (C) 2026 SCKC. GPL-3.0-or-later. ESP32 transport view additions. */
+[hidden]{display:none!important}#dev-shell{min-height:100dvh}#dev-shell .app-wrapper{display:block}.esp-primary{background:var(--button-fill)!important;color:white!important;border-color:var(--button-fill)!important}.dev-app-actions .esp-about{width:auto;padding:0 12px;font-size:12px}.esp-login{max-width:480px;margin:5vh auto}.next-field input,.next-field select{font:inherit;color:var(--text-main);background:var(--bg);padding:10px 12px;border:1px solid var(--border);border-radius:8px;min-height:42px;width:100%}.esp-login p{margin:18px 0}.next-toggle input{width:19px;height:19px;accent-color:var(--accent)}.esp-form-footer{display:flex;justify-content:space-between;gap:16px;align-items:center;margin-top:20px;padding:18px;background:var(--card-bg);border:1px solid var(--border);border-radius:12px;position:sticky;bottom:12px;z-index:2;font-size:12px;color:var(--text-muted)}.esp-periods{display:grid;gap:10px;max-height:300px;overflow:auto}.esp-period{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px;background:var(--bg);border-radius:8px;font-size:12px}.esp-period strong{font-weight:600}.esp-period small{color:var(--text-muted)}.esp-facts{font-size:12px;display:grid;gap:10px}.esp-facts div{display:flex;justify-content:space-between;gap:16px}.esp-facts dt{color:var(--text-muted)}.esp-facts dd{margin:0;text-align:right}.esp-service-grid{display:grid;grid-template-columns:1fr 1fr;gap:24px}.esp-service-grid small{font-size:11px;color:var(--text-muted)}.esp-notice{color:var(--text-muted);font-size:12px;max-width:1100px;margin:20px auto}.esp-notice[data-error=true]{color:var(--peak)}canvas{display:block;width:100%;max-width:100%;height:180px}#esp-review-details{white-space:pre-wrap;font-size:12px;max-height:45vh;overflow:auto;color:var(--text-muted)}.badge[data-state=good]{color:var(--off-peak);border-color:var(--off-peak)}.badge[data-state=error]{color:var(--peak);border-color:var(--peak)}.badge[data-state=waiting]{color:var(--text-muted)}.about-drawer{inset:0 0 0 auto;margin:0;width:min(620px,100vw);max-width:100vw;height:100dvh;max-height:100dvh;border:0;border-left:1px solid var(--border);padding:0;background:var(--card-bg);color:var(--text-main);box-shadow:-20px 0 80px #0004}.about-drawer[open]{display:flex;flex-direction:column;animation:drawer-enter .24s ease-out}.about-drawer::backdrop{background:#0008;backdrop-filter:blur(3px)}.about-header{display:flex;justify-content:space-between;align-items:center;gap:20px;padding:24px;border-bottom:1px solid var(--border);flex-shrink:0}.about-header h2{font-size:22px;margin:5px 0 0}.about-header button{font-size:24px;width:40px;height:40px;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text-main)}.about-body{overflow:auto;padding:24px;font-size:13px;line-height:1.8}.about-body details{padding:16px 0;border-top:1px solid var(--border)}.about-body pre{white-space:pre-wrap;overflow-wrap:anywhere;font:11px/1.7 ui-monospace,monospace;padding:16px;background:var(--bg)}@keyframes drawer-enter{from{transform:translateX(100%)}to{transform:translateX(0)}}@media(prefers-reduced-motion:reduce){.about-drawer[open]{animation:none}}@media(max-width:760px){.dev-appbar{gap:8px;flex-wrap:wrap}.dev-app-actions{gap:6px}.esp-service-grid{grid-template-columns:1fr}.esp-form-footer{align-items:flex-start;flex-direction:column}.esp-form-footer button{width:100%}.esp-facts div{flex-wrap:wrap}.next-power{grid-template-columns:1fr 1fr}.dev-page-heading h1{font-size:26px}}
+
+/* Isolate the icon button from shared form padding and native glyph baselines. */
+.about-header #close-about{box-sizing:border-box;display:flex;align-items:center;justify-content:center;flex:0 0 44px;width:44px;min-width:44px;max-width:44px;height:44px;min-height:44px;max-height:44px;padding:0;margin:0;line-height:1;appearance:none;-webkit-appearance:none;border:1px solid var(--border);border-radius:10px;background:var(--bg);color:var(--text-main)}
+.about-header #close-about svg{display:block;flex:none;width:20px;height:20px;pointer-events:none}
+.about-header #close-about:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
+.about-header #about-title:focus{outline:none}
+.esp-pair-help{margin:18px 0;color:var(--text-muted);font-size:13px}.esp-pair-help summary{cursor:pointer;color:var(--text-main);font-weight:600}.esp-pair-help ol{padding-left:22px;display:grid;gap:8px}.esp-pair-help strong{color:var(--text-main)}
+/* ESP32 uses the shared desktop viewport; only device-specific panels differ. */
+#dev-shell .next-panel>.next-field+.next-field{margin-top:18px}
+#dev-shell .next-panel>.next-field+p,#dev-shell .next-panel>p:first-of-type{margin-top:14px}
+#dev-shell .next-panel>p{margin-bottom:14px}
+#dev-shell .next-panel>.next-field{margin-bottom:16px}
+#dev-shell .next-panel>.next-field-grid .next-field{margin:0}
+#dev-shell #esp-lan-code-fields .next-field{margin:16px 0}
+#dev-shell #esp-connection{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
+
+#dev-shell .overview-update-card{flex-shrink:0}
+#dev-shell .next-panel .tariff-chart-frame{position:relative;min-width:0;overflow:hidden}
+#dev-shell .tariff-chart-frame canvas,#dev-shell .dev-history-chart canvas{width:100%!important;height:100%!important}
+#dev-shell .esp-periods{gap:0;max-height:none}
+#dev-shell .overview-schedule-row{flex-shrink:0}
+#dev-shell .overview-schedule-row>span:first-child{display:flex;flex-direction:column;gap:4px}
+#dev-shell .overview-schedule-row strong{font-size:inherit;font-weight:550}
+#dev-shell .overview-schedule-row small{font-size:var(--workspace-small,11px);color:var(--text-muted)}
+#dev-shell #esp-confirmed-at{font-size:11px;line-height:1.5;margin:10px 0 0;flex:none}
+#dev-shell .next-schedule-summary>div{min-height:0}
+
+
+.desktop-viewport #dev-shell #esp-login{height:auto;max-height:100%;overflow:auto;margin:0 auto}
+.desktop-viewport #dev-shell .dev-page[data-page=overview] .dev-page-heading{padding-right:0}
+.desktop-viewport #dev-shell #esp-rules-form,.desktop-viewport #dev-shell #esp-settings-form{display:flex;flex-direction:column;flex:1;min-height:0;gap:12px}
+
+.desktop-viewport #dev-shell #esp-rules-form .next-panel{overflow:auto}
+.desktop-viewport #dev-shell #esp-rules-form .next-panel:first-child .next-actions{margin:10px 0 0;justify-content:flex-start}
+.desktop-viewport #dev-shell #esp-rules-form .next-panel:first-child p{margin:8px 0}
+.desktop-viewport #dev-shell .esp-form-footer{position:static;margin:0;flex:none;padding:12px 16px}
+.desktop-viewport #dev-shell #esp-settings-form>.dev-page-grid{grid-template-columns:1fr 1fr 1fr;grid-template-rows:none;grid-auto-rows:minmax(min-content,auto);align-content:start;overflow:auto}
+
+
+
+
+
+
+
+@media(max-width:1100px) and (min-width:761px){.desktop-viewport #dev-shell #esp-settings-form>.dev-page-grid{grid-template-columns:1fr 1fr;grid-template-rows:repeat(3,minmax(240px,auto))}.desktop-viewport #dev-shell #esp-settings-form [data-setting],.desktop-viewport #dev-shell #history-settings{grid-column:auto;grid-row:auto}}
+@media(max-width:760px){#dev-shell #esp-login{margin:16px auto}#dev-shell .dev-app-actions{flex-wrap:wrap}.history-chart-grid{grid-template-columns:minmax(0,1fr)}#dev-shell .next-panel>.next-field{margin:16px 0}#dev-shell .esp-form-footer{position:static;margin:20px 0 0}}
+/* Keep tariff plots readable when a desktop window has limited height. */
+.desktop-viewport #dev-shell .dev-page-heading>span{display:none}
+
+
+#dev-shell #tariff-data-status{margin:0!important;font-size:12px;line-height:1.5}
+#dev-shell .esp-notice:empty{display:none}
+#dev-shell.esp-fixture #esp-connection{position:static;clip-path:none;width:auto;height:auto;flex:none}
+#dev-shell.esp-fixture #esp-notice{display:none}
+#dev-shell .overview-schedule-row small{display:block}
+
+/* Device settings can grow; dashboard pages keep the shared viewport geometry. */
+.desktop-viewport #dev-shell #esp-rules-form>.dev-page-grid{grid-template-rows:minmax(0,1fr);overflow:hidden}
+#dev-shell .esp-facts{font-size:var(--workspace-small,12px);margin:14px 0}
+#dev-shell .esp-service-grid{display:contents}
+#dev-shell #esp-pause-dialog .next-field{margin:20px 0}
+#dev-shell .next-connections-grid .next-panel{min-width:0}
+
+/* Welcome uses the same two-panel frame as the Pi and browser editions. */
+#dev-shell.dev-auth-mode .overview-updates,#dev-shell.dev-auth-mode #esp-connection,#dev-shell.dev-auth-mode .next-pause-banner{display:none!important}
+#dev-shell #esp-welcome[hidden]{display:none!important}
+#dev-shell #esp-welcome:not([hidden]){display:grid}
+#dev-shell #esp-welcome #esp-login{max-width:none;margin:0}
+#dev-shell .esp-access-guide[open]{display:flex}
+.desktop-viewport #dev-shell #esp-welcome{height:100%}
+
+#dev-shell .next-account-tariff{font-size:.8rem;font-family:ui-monospace,monospace;overflow-wrap:anywhere}
+.desktop-viewport #dev-shell [data-page=connections] .dev-page-grid{grid-template-rows:minmax(0,1fr) auto}
+#dev-shell .next-connections-grid>.wide{display:block}
+#dev-shell .next-connections-grid>.wide>p{margin:0 0 12px}
+#dev-shell #section-device-settings .data-list{margin:8px 0}
+
+.about-drawer{width:min(600px,100vw)}
+.about-header,.about-body{padding:26px}
+.about-body .dev-notice-tabs{margin:0}
+
+.esp-secret-field{display:flex;position:relative;min-width:0}.esp-secret-field input{padding-right:44px}.esp-secret-field button{position:absolute;inset:3px 3px 3px auto;width:38px;min-height:0;padding:0;border:0;background:transparent;color:var(--text-muted);border-radius:6px}
+
+/* The shared empty-state class is display:none until its adapter explicitly shows it. */
+#dev-shell .tariff-chart-empty:not([hidden]){display:grid}

@@ -1,0 +1,22 @@
+/* Copyright (C) 2026 SCKC. GPL-3.0-or-later. */
+.sc-guide-drawer{inset:0 0 0 auto;margin:0;padding:0;width:min(840px,100vw);max-width:100vw;height:100dvh;max-height:100dvh;border:0;border-left:1px solid var(--border);background:var(--card-bg);color:var(--text-main);box-shadow:-20px 0 80px #0005}.sc-guide-drawer[open]{display:flex;flex-direction:column}.sc-guide-drawer::backdrop{background:#0009;backdrop-filter:blur(3px)}.sc-guide-drawer>header{display:flex;align-items:center;justify-content:space-between;padding:20px 26px;border-bottom:1px solid var(--border);gap:16px}.sc-guide-drawer>header h2{margin:0;font-size:22px}.sc-guide-drawer>header button{display:grid;place-items:center;width:44px;height:44px;min-height:44px;padding:0;font-size:28px;line-height:1;background:var(--bg);border:1px solid var(--border);border-radius:10px;color:var(--text-main);cursor:pointer}.sc-guide-body{padding:24px 28px;overflow:auto;overscroll-behavior:contain;font-size:14px;line-height:1.7}.sc-guide-body>nav{display:grid;gap:6px;padding-bottom:20px;border-bottom:1px solid var(--border)}.sc-guide-body a{color:var(--accent)}.sc-guide-body h3{font-size:20px;margin:32px 0 14px;scroll-margin-top:16px}.sc-guide-body h4{font-size:16px;margin:24px 0 10px}.sc-guide-body p{margin:12px 0;color:var(--text-muted)}.sc-guide-body li{margin:7px 0}.sc-guide-table{overflow:auto}.sc-guide-table table{width:100%;border-collapse:collapse;min-width:650px;font-size:12px}.sc-guide-table td,.sc-guide-table th{padding:10px;text-align:left;vertical-align:top;border:1px solid var(--border)}.dev-rail-bottom #open-user-guide{display:flex;width:100%;align-items:center;padding:14px 16px;border:0;background:transparent;color:var(--text-muted);font:inherit;text-align:left;cursor:pointer}.dev-rail-bottom #open-user-guide:hover{color:var(--text-main);background:var(--bg)}@media(max-width:600px){.sc-guide-body{padding:18px}.sc-guide-drawer>header{padding:16px}}
+/* Match the About drawer entrance in every edition. */
+.sc-guide-drawer[open]{animation:sc-guide-enter .24s ease-out}
+.sc-guide-drawer[open]::backdrop{animation:sc-guide-backdrop .24s ease-out}
+@keyframes sc-guide-enter{from{transform:translateX(100%);opacity:.85}to{transform:translateX(0);opacity:1}}
+@keyframes sc-guide-backdrop{from{background-color:transparent;backdrop-filter:blur(0)}to{background-color:#0009;backdrop-filter:blur(3px)}}
+@media(prefers-reduced-motion:reduce){.sc-guide-drawer[open],.sc-guide-drawer[open]::backdrop{animation:none}}
+
+/* Chapter navigation stays separate from the selected article. */
+.sc-guide-drawer{width:min(1100px,100vw)}
+.sc-guide-body{display:grid;grid-template-columns:240px minmax(0,1fr);padding:0;overflow:hidden;min-height:0;flex:1}
+.sc-guide-body>nav{display:flex;flex-direction:column;gap:5px;padding:18px 12px;overflow:auto;border:0;border-right:1px solid var(--border);background:var(--bg)}
+.sc-guide-body>nav button{flex-shrink:0;width:100%;padding:12px;text-align:left;white-space:normal;line-height:1.45;font:inherit;font-weight:600;border:1px solid transparent;border-radius:9px;background:transparent;color:var(--text-muted);cursor:pointer}
+.sc-guide-body>nav button:hover{color:var(--text-main);border-color:var(--border)}
+.sc-guide-body>nav button[aria-current=page]{color:#fff;background:var(--button-fill);border-color:var(--button-fill)}
+.sc-guide-body>nav button:focus-visible,.sc-guide-chooser select:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.sc-guide-content{overflow:auto;min-width:0;padding:24px 30px;overscroll-behavior:contain}
+.sc-guide-content>section[hidden]{display:none}
+.sc-guide-content>section>h3:first-child{margin-top:0}
+.sc-guide-chooser{display:none}
+@media(max-width:650px){.sc-guide-body{display:flex;flex-direction:column}.sc-guide-body>nav{display:none}.sc-guide-chooser{display:grid;gap:6px;padding:12px 18px;border-bottom:1px solid var(--border);font-weight:600}.sc-guide-chooser select{min-height:44px;width:100%;border:1px solid var(--border);border-radius:8px;padding:8px;background:var(--bg);color:var(--text-main);font:inherit}.sc-guide-content{padding:18px;flex:1;min-height:0}}

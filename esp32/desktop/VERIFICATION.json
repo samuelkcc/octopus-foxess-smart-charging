@@ -1,0 +1,46 @@
+{
+  "date": "2026-11-06",
+  "version": "2.2.0",
+  "base_commit": "ebea84d86090b5fc977b62df4d49efb7ebe30247",
+  "source_state": "Uncommitted local development; no publication",
+  "supported_board": {
+    "model": "ESP32-S3 N16R8",
+    "flash_bytes": 16777216,
+    "octal_psram_bytes": 8388608
+  },
+  "macos": {
+    "architectures": [
+      "arm64",
+      "x86_64"
+    ],
+    "native_test_architecture": "arm64",
+    "ad_hoc_signature_verified": true,
+    "apple_notarized": false,
+    "native_usb_readback_verified": true,
+    "sensitive_fields_masked": true,
+    "config_password_default": "Not set; saved settings load automatically",
+    "latest_fix": "Retain masked form values after tests/saves; queued/running card states; backgroundThrottling=false",
+    "live_websocket_retest": "Fresh frame passed on device; writable subscription payload prevents cache-error panic",
+    "native_final_save": "Four required checks passed; original rules and Pause retained"
+  },
+  "windows": {
+    "built": true,
+    "native_execution_verified": false
+  },
+  "web": {
+    "artifact": "dist/ESP32/Web",
+    "published": false
+  },
+  "embedded_firmware_sha256": "886e9ff2ba2926668bb5867aefbc15e370a152f7cdf4f765caaff84d22820572",
+  "download_sha256": {
+    "dist/ESP32/macOS/SmartCharging-ESP32-Setup-2.2.0-macOS-universal.zip": "8cdfd953062f302d39cfb989ff82b201576bcaf0d6e5ac08600c5129d2151921",
+    "dist/ESP32/Windows/SmartCharging-ESP32-Setup-2.2.0-Windows-x64.exe": "0470037ed2122c441882cb1a6d32c3a863d56dd7ed658034ef0d9e746b4b7dda"
+  },
+  "pending": [
+    "Native Windows and Intel Mac execution",
+    "Latest physical iPhone regression",
+    "Public deployment",
+    "Continuous WebSocket mode soak; saved mode remains REST"
+  ],
+  "remote_access": "Omitted from ESP32 by user decision"
+}

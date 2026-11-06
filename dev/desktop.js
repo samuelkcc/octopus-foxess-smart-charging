@@ -15,10 +15,10 @@
   const toggle=label=>{const row=make('label','next-toggle');const input=make('input');input.type='checkbox';row.append(make('span','',label),input);return {row,input};};
   const configuration=()=>{
     const form=make('form','desktop-configuration');
-    const credentials=make('div','next-field-grid');
+    const credentials=make('div','desktop-account-sections');const octopus=make('fieldset','desktop-account-group'),foxess=make('fieldset','desktop-account-group');octopus.append(make('legend','','Octopus Energy'));foxess.append(make('legend','','FoxESS REST'));credentials.append(octopus,foxess);
     const fields={};
     for(const [name,label,type] of [['acc','Octopus account number','text'],['api','Octopus API key','password'],['foxSN','FoxESS serial number','text'],['foxToken','FoxESS API token','password']]){
-      fields[name]=field(label,type);credentials.append(fields[name].row);
+      fields[name]=field(label,type);(name==='acc'||name==='api'?octopus:foxess).append(fields[name].row);
     }
     const access=toggle('Require a LAN access code');const code=field('LAN access code','password');
     code.input.minLength=8;code.input.maxLength=64;
@@ -34,12 +34,12 @@
     const lan=make('div','desktop-code-actions');lan.append(code.row,button('Copy LAN code',()=>host.copyLanCode()));
     const live=toggle('Enable FoxESS Live WS telemetry');
     fields.foxWebUsername=field('FoxCloud web-login account');fields.foxWebPassword=field('FoxCloud web-login password','password');
-    const advanced=make('details','desktop-advanced');
+    const advanced=make('fieldset','desktop-advanced desktop-account-group');
     const liveCredentials=make('div','next-field-grid');liveCredentials.append(fields.foxWebUsername.row,fields.foxWebPassword.row);
-    advanced.append(make('summary','','Optional live telemetry'),live.row,liveCredentials);
+    advanced.append(make('legend','','Optional FoxESS WebSocket'),live.row,liveCredentials);
     const status=make('p','next-muted');status.setAttribute('role','status');
     const save=make('button','next-button','Save configuration');save.type='submit';
-    form.append(credentials,access.row,lan,advanced,status,save);
+    const protection=make('fieldset','desktop-account-group');protection.append(make('legend','','Local dashboard access'),access.row,lan);form.append(credentials,advanced,protection,status,save);
     const load=async()=>{
       const state=await host.configuration();
       for(const [name,control] of Object.entries(fields))control.input.value=state.credentials?.[name]||'';
@@ -63,7 +63,7 @@
   };
   const settings=document.querySelector('.dev-page[data-page="settings"] .dev-page-grid');
   const account=panel('Service configuration','Manage this computer’s energy accounts and local dashboard protection.');
-  account.dataset.setting='desktop-service';const accountDetails=make('details');accountDetails.append(make('summary','','Accounts, LAN access and live telemetry'),configuration());account.append(accountDetails);settings.prepend(account);
+  account.dataset.setting='desktop-service';account.append(configuration());window.settingsSections.addAccountCard(account);
   const login=document.getElementById('login-layout');
   const setup=login.querySelector('.launch-setup');
   const parking=document.getElementById('dev-engine-elements');

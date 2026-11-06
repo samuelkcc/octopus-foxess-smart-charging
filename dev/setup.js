@@ -1,5 +1,62 @@
 /* Copyright (C) 2026 SCKC. GPL-3.0-or-later. Edition-specific setup view. */
+// One welcome composition for browser, Pi, desktop and ESP32 clients.
+window.createWelcomeFrame = ({make,brand,version,operation}) => {
+  const welcome=make('section','launch-welcome');brand.width=58;brand.height=58;brand.alt='';
+  welcome.append(brand,make('span','launch-eyebrow','SMART CHARGING · VERSION '+version));
+  const heading=make('h1','','Your EV, charging.');heading.append(make('br'),make('span','','Your home, protected.'));
+  welcome.append(heading,make('p','launch-intro','Connect Octopus charging windows to your FoxESS battery. Keep your energy controls in one place.'));
+  const illustration=make('div','launch-art-orbit');illustration.innerHTML="<svg viewBox=\"0 0 320 230\" fill=\"none\" aria-hidden=\"true\"><path class=\"launch-wire\" d=\"M65 80h190v95H65z\"/><rect x=\"20\" y=\"48\" width=\"90\" height=\"65\" rx=\"14\"/><path d=\"m38 87 14-22h27l14 22M39 87h53M45 100h7m28 0h7\"/><circle cx=\"47\" cy=\"86\" r=\"2\"/><circle cx=\"84\" cy=\"86\" r=\"2\"/><path d=\"m215 160 40-35 40 35v42h-80zM245 202v-30h20v30\"/><rect x=\"137\" y=\"102\" width=\"46\" height=\"62\" rx=\"12\"/><path class=\"launch-bolt\" d=\"m164 115-12 20h16l-12 20\"/></svg><span class=\"launch-art-pill\">Charging windows → Battery protection</span>";
+  const flow=make('div','launch-flow');flow.setAttribute('aria-label','How Smart Charging works');
+  for(const [index,title,text] of [[1,'Octopus Energy','Find your EV charging windows'],[2,'Smart Charging','Check your rules and safeguards'],[3,'FoxESS','Set and confirm the battery schedule']]){
+    const row=make('div','launch-flow-item'),copy=make('div');copy.append(make('strong','',title),make('small','',text));row.append(make('span','launch-flow-number',String(index)),copy);flow.append(row);
+  }
+  welcome.append(illustration,flow,make('p','launch-operation',operation));
+  const introArt=make('section','launch-art');introArt.setAttribute('aria-label','EV and home battery protection');
+  const actions=make('div','launch-actions'),tools=make('div','launch-links'),copy=make('p','','Connect your accounts, review charging windows, and keep your home battery protected.');
+  introArt.append(make('span','launch-eyebrow','YOUR HOME ENERGY WORKSPACE'),make('h2','','Open your home energy workspace'),copy,actions,tools);
+  return {welcome,introArt,actions,tools,copy};
+};
+
 (() => {
+  if(document.documentElement.dataset.devEdition==='esp32-dashboard'){
+    const D=window.esp32Dashboard,$=D.$;
+    const make=(tag,className='',text='')=>{const n=document.createElement(tag);n.className=className;n.textContent=text;return n;};
+    const action=(label,handler,secondary=false)=>{const n=make('button','next-button'+(secondary?' secondary':''),label);n.type='button';n.addEventListener('click',handler);return n;};
+    const shell=$('dev-shell'),launch=$('esp-welcome'),login=$('esp-login');
+    let entered=false,skipWelcome=false;
+    try{skipWelcome=localStorage.getItem('smartChargingEsp32SkipWelcome')==='true';}catch{}
+    const frame=window.createWelcomeFrame({make,brand:document.querySelector('.dev-brand img').cloneNode(true),version:document.querySelector('meta[name="smart-charging-version"]').content,operation:'Your ESP32 runs the automation. You can close this dashboard.'});
+    const open=action('Open dashboard',()=>{if(D.state()){entered=true;D.showDashboard();D.navigate('overview');}});open.id='esp-open-dashboard';open.disabled=true;
+    frame.actions.append(open);frame.tools.append(action('Access guide',()=>{guide.showModal();},true),action('About & licences',()=>$('open-about').click(),true));
+    login.className='next-auth-card launch-setup';launch.append(frame.welcome,frame.introArt,login);
+    const guide=make('dialog','dev-about-drawer esp-access-guide');guide.setAttribute('aria-labelledby','esp-guide-title');
+    const header=make('header','dev-drawer-header'),title=make('h2','','ESP32 dashboard access');title.id='esp-guide-title';
+    header.append(title,action('Close',()=>guide.close(),true));const copy=make('div','dev-drawer-body');
+    copy.innerHTML='<h3>Local network</h3><ol><li>Connect your phone or computer to the same network as the ESP32.</li><li>Open the ESP32 address shown by USB setup.</li><li>If LAN protection is enabled, enter your LAN access code.</li></ol><h3>Account setup</h3><p>Use USB setup to change Wi-Fi or IP addresses. Use Settings → Account setup for service credentials.</p><h3>Start page</h3><p>Settings → General settings → Appearance can open this browser directly in Dashboard. LAN protection still applies.</p><h3>Independent operation</h3><p>The ESP32 runs the automation. Closing this browser does not stop the worker.</p>';
+    guide.append(header,copy);document.body.append(guide);
+    const presentation=(view)=>{
+      const dashboard=view==='dashboard';shell.classList.toggle('dev-auth-mode',!dashboard);
+      $('esp-startup').hidden=true;launch.hidden=dashboard;$('dashboard').hidden=!dashboard;
+      login.hidden=view!=='login';launch.dataset.mode=view==='login'?'setup':'welcome';
+      $('esp-header-pause').hidden=!dashboard;$('dev-theme').hidden=dashboard;
+      $('esp-logout').hidden=!dashboard||!D.state()?.lan_access_enabled;
+      $('dev-page-name').textContent=document.querySelector('.dev-rail nav button[aria-current="page"] span').textContent;
+    };
+    D.showLogin=()=>{entered=false;D.maskAccount?.();presentation('login');D.syncPauseBanner?.({available:false},false);$('esp-connection').textContent='LAN access protected';};
+    D.showDashboard=()=>{if(skipWelcome)entered=true;open.disabled=false;frame.copy.textContent='Your ESP32 is connected. Open the dashboard to review your home energy.';presentation(entered?'dashboard':'welcome');};
+    D.showWelcome=()=>{entered=false;skipWelcome=false;D.maskAccount?.();presentation('welcome');open.disabled=!D.state();};
+    D.saveStartPage=enabled=>{try{localStorage.setItem('smartChargingEsp32SkipWelcome',String(enabled));return true;}catch{return false;}};
+    $('esp-skip-welcome').checked=skipWelcome;
+    presentation('welcome');frame.copy.textContent='Connecting to your ESP32…';
+    $('esp-login-form').addEventListener('submit',async event=>{
+      event.preventDefault();$('esp-login-status').textContent='Connecting…';
+      try{await D.login($('esp-pair-code').value);$('esp-pair-code').value='';$('esp-login-status').textContent='';}
+      catch(error){$('esp-login-status').textContent=error.message;}
+    });
+    $('esp-logout').addEventListener('click',()=>void D.logout().catch(error=>D.notice(error.message,true)));
+    return;
+  }
+
   const pi = document.documentElement.dataset.devEdition !== 'web';
   const desktop = document.documentElement.dataset.devEdition === 'desktop';
   const guide = document.getElementById('setup-guide-panel');
@@ -68,45 +125,26 @@ window.installLaunchScreen = ({ pi, login, parking, byId, make, button, onEnter 
   login.className = 'next-login launch-screen';
   login.dataset.mode = 'welcome';
   const hostName = document.documentElement.dataset.devEdition === 'desktop' ? 'computer' : 'Pi';
-  const welcome = make('section', 'launch-welcome');
-  const brand = document.querySelector('.dev-brand img').cloneNode(true);
-  brand.width = 58; brand.height = 58; brand.alt = '';
-  welcome.append(brand, make('span', 'launch-eyebrow', 'SMART CHARGING · VERSION ' + document.querySelector('meta[name="smart-charging-version"]').content));
-  const heading = make('h1', '', 'Your EV, charging.');
-  heading.append(make('br'), make('span', '', 'Your home, protected.'));
-  welcome.append(heading, make('p', 'launch-intro', 'Connect Octopus charging windows to your FoxESS battery. Keep your energy controls in one place.'));
-  const welcomeActions = make('div', 'launch-actions');
-  const start = button(pi ? 'Open dashboard' : 'Set up Smart Charging', () => {
-    if(login.dataset.ready==='true') onEnter();
-    else if (!pi && window.savedWebSetupAvailable) connect.click();
-    else openSetup();
+  const {welcome,introArt,actions:welcomeActions,tools:welcomeTools}=window.createWelcomeFrame({make,
+    brand:document.querySelector('.dev-brand img').cloneNode(true),
+    version:document.querySelector('meta[name="smart-charging-version"]').content,
+    operation:pi?`Your ${hostName} runs the automation. You can close this dashboard.`:'Automation runs in this browser. Keep it open and awake.'});
+  const start=button(pi?'Open dashboard':'Set up Smart Charging',()=>{
+    if(login.dataset.ready==='true')onEnter();
+    else if(!pi&&window.savedWebSetupAvailable)connect.click();else openSetup();
   });
-  start.className = 'next-button'; welcomeActions.append(start);
-  if (!pi) welcomeActions.append(button('Restore a saved setup', () => byId('import-file').click(), true));
-  const modifySetup = button('Modify setup', () => openSetup(), true);
-  modifySetup.hidden = true;
-  if (!pi) welcomeActions.append(modifySetup);
-  welcome.append(welcomeActions);
-  const flow = make('div', 'launch-flow'); flow.setAttribute('aria-label', 'How Smart Charging works');
-  for (const [index, title, text] of [[1, 'Octopus Energy', 'Find your EV charging windows'], [2, 'Smart Charging', 'Check your rules and safeguards'], [3, 'FoxESS', 'Set and confirm the battery schedule']]) {
-    const node = make('div', 'launch-flow-item');
-    node.append(make('span', 'launch-flow-number', String(index)));
-    const copy = make('div'); copy.append(make('strong', '', title), make('small', '', text)); node.append(copy); flow.append(node);
+  start.className='next-button';welcomeActions.append(start);
+  if(!pi)welcomeActions.append(button('Restore a saved setup',()=>byId('import-file').click(),true));
+  const modifySetup=button('Modify setup',()=>openSetup(),true);modifySetup.hidden=true;
+  if(!pi)welcomeActions.append(modifySetup);
+  if(!pi){
+    const editions=make('nav','launch-editions');editions.setAttribute('aria-label','Choose an edition');
+    for(const [label,url] of [['ESP32 Deploy','https://samuelkcc.github.io/octopus-foxess-smart-charging/esp32/'],['Raspberry Pi','https://github.com/samuelkcc/octopus-foxess-smart-charging#raspberry-pi'],['Portable app','https://github.com/samuelkcc/octopus-foxess-smart-charging/releases/tag/esp32-preview-2.3.0'],['Web HTML','#web-setup']]){
+      const link=make('a','next-button secondary',label);link.href=url;if(label==='Web HTML')link.addEventListener('click',event=>{event.preventDefault();openSetup();});else{link.target='_blank';link.rel='noopener noreferrer';}editions.append(link);
+    }
+    welcomeActions.before(editions);
   }
-  welcome.append(flow);
-  const operation = make('p', 'launch-operation', pi ? `Your ${hostName} runs the automation. You can close this dashboard.` : 'Automation runs in this browser. Keep it open and awake.');
-  welcome.append(operation);
-  const welcomeTools = make('div', 'launch-links');
-  welcomeTools.append(button(pi ? 'Access guide' : 'Setup guide', () => toggleDrawer('setup-guide-panel'), true), button('About & licences', () => openLicenseModal(false), true));
-  welcome.append(welcomeTools);
-
-  const introArt = make('section', 'launch-art'); introArt.setAttribute('aria-label', 'EV and home battery protection');
-  introArt.innerHTML = '<span class="launch-eyebrow">YOUR HOME ENERGY, CONNECTED</span><div class="launch-art-orbit"><svg viewBox="0 0 320 230" fill="none" aria-hidden="true"><path class="launch-wire" d="M65 80h190v95H65z"/><rect x="20" y="48" width="90" height="65" rx="14"/><path d="m38 87 14-22h27l14 22M39 87h53M45 100h7m28 0h7"/><circle cx="47" cy="86" r="2"/><circle cx="84" cy="86" r="2"/><path d="m215 160 40-35 40 35v42h-80zM245 202v-30h20v30"/><rect x="137" y="102" width="46" height="62" rx="12"/><path class="launch-bolt" d="m164 115-12 20h16l-12 20"/></svg><span class="launch-art-pill">Charging windows → Battery protection</span></div><div class="launch-art-note"><strong>One clear view of your energy.</strong><p>Review schedules, follow Smart Dispatch, and pause app control when you need a temporary setting.</p></div>';
-
-  // The welcome and sign-in pages share one full-height, two-panel frame.
-  const illustration = introArt.querySelector('.launch-art-orbit');
-  welcome.insertBefore(illustration, flow);
-  introArt.replaceChildren(make('span', 'launch-eyebrow', 'YOUR HOME ENERGY WORKSPACE'), make('h2', '', 'Open your home energy workspace'), make('p', '', 'Connect your accounts, review charging windows, and keep your home battery protected.'), welcomeActions, welcomeTools);
+  welcomeTools.append(button(pi?'Access guide':'Setup guide',()=>toggleDrawer('setup-guide-panel'),true),button('About & licences',()=>openLicenseModal(false),true));
   const auth = make('section', 'next-auth-card launch-setup');
   auth.append(make('span', 'launch-eyebrow', pi ? `${hostName === 'computer' ? 'DESKTOP' : 'PI'} DASHBOARD ACCESS` : 'CONNECT YOUR ACCOUNTS'), make('h2', '', pi ? 'Open your dashboard' : 'A few details. Then you’re connected.'));
   auth.append(make('p', 'next-auth-copy', pi ? 'Use your LAN access code or the separate Remote Access Key.' : 'Your Octopus account, FoxESS device, and Google relay work together here.'));

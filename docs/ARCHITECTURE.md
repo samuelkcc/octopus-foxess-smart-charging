@@ -440,3 +440,110 @@ The Universal app and bundled cloudflared include arm64 and x86_64 machine code.
 Build inputs use pinned Cloudflare archive hashes.
 The macOS build has an ad-hoc signature and no Apple notarisation.
 Both platforms stop their service and tunnel when the app closes.
+
+## ESP32 dashboard boundary
+
+The ESP32 uses the shared Overview component in `dev/views.js`.
+The web, Pi, and desktop editions use that component with their existing engine IDs.
+The shared CSS and `dev/viewport.js` control sizing and desktop layout.
+The ESP32 adapter maps a worker snapshot to those elements.
+It does not load or run the browser scheduler.
+
+The existing Chart.js version is embedded in the firmware dashboard bundle.
+Tariff series keep the shared green import and blue export styles.
+Stable series and schedule rows do not rebuild during unchanged snapshot polls.
+Interface changes do not add cloud API requests.
+
+The firmware keeps transport, automation policy, persistent settings, and RAM History in separate modules.
+The background worker owns unattended inverter writes.
+Dashboard clients read snapshots and submit reviewed operator changes.
+A complete scheduler rewrite is not required for these interface changes.
+
+LAN protection is optional and disabled on a new deployment.
+When enabled, its salted PBKDF2 access-code hash is separate from service credentials and browser-session hashes.
+Physical USB can reset optional LAN protection without a pairing code.
+Host, Origin, proxy rejection, and mutation CSRF checks also apply without LAN protection.
+The operator deferred ESP32 remote access to keep shared-user installation simple.
+This edition provides local-network access only. No relay service is deployed.
+A future remote transport must have a separate authentication boundary.
+
+## ESP32 setup hosts
+
+The web, macOS, and Windows setup tools share `prototype/esp32-usb-test/`.
+Native hosts embed the generated website and firmware manifest.
+They do not run the desktop charging service or start a tunnel.
+The desktop host serves an explicit asset allowlist on an ephemeral loopback port.
+Its sandboxed renderer receives no Node.js or general IPC access.
+Serial permission is restricted to the setup window and its exact origin.
+A native dialog requires explicit USB selection and excludes Bluetooth virtual ports.
+The supported firmware target is ESP32-S3 N16R8 with 16 MB Flash and 8 MB Octal PSRAM.
+
+## Shared dashboard presentation
+
+`dev/ui.js` owns common page headings, About navigation, and the Pause switch and banner.
+`dev/views.js` composes Overview and Connections through shared functions.
+Edition adapters supply existing data nodes and retain their original IDs.
+Host-specific configuration stays in Settings.
+ESP32 Settings includes its persistent enablement, USB network guidance, and RAM information.
+Pause switches display confirmed state. Opening or cancelling a dialog does not change that state.
+The existing control adapters perform mutations. They retain fresh-data requirements before resuming schedule reconciliation.
+
+The circular automation control uses confirmed state. Green means running. Red means paused.
+The control opens a confirmation dialog and does not shut down its host.
+About uses one renderer for edition details and a searchable runtime-component inventory.
+Firmware licence texts load from the local bundled SDK endpoint when an entry opens.
+
+## ESP32 optional Flash History
+
+`history_store.c` owns a dedicated, versioned 64-byte hourly journal.
+`history_flash.c` restricts I/O to the appended 128 KiB History partition.
+Existing configuration and firmware partition offsets stay unchanged.
+The module scans storage without formatting or writing.
+Checksums, commit markers, and readback separate committed observations from interrupted writes.
+Sector rotation keeps a complete 60-day window, with additional sector headroom.
+The API excludes expired observations. This is retention filtering, not a secure-erasure guarantee.
+
+RAM still collects live 15-minute averages through existing telemetry requests.
+The separate `history_flash_enabled` preference defaults to false.
+Legacy settings receive that default without resetting automation, Pause, or existing rules.
+When enabled, the worker saves a count-weighted hourly average after the hour completes.
+The monotonic timer limits attempts to one batch per hour, including failures and preference toggles.
+A reboot recovers committed observations. It cannot recover unsaved RAM readings.
+History reads combine cached hourly records with recent RAM records without duplicate hourly points.
+HTTP reads do not access Flash or request more upstream data.
+The bounded local commit shares the settings lock, so disabling saving cannot acknowledge before an in-flight commit finishes.
+History failures are reported separately from schedule-control persistence failures.
+
+## ESP32 local presentation and read commands
+
+The ESP32 dashboard uses the shared Welcome, Overview, Connections, Pause, and About composition helpers.
+Its worker exposes cached account metadata separately from credential-free dashboard state.
+The account response uses an explicit field allowlist.
+Header refresh commands enqueue reads. HTTP handlers do not perform cloud calls or program schedules.
+The worker coalesces repeated commands and respects service cooldowns.
+Octopus timestamp normalization precedes dispatch comparison and publication.
+A space separator never changes the explicit UTC offset.
+Optional account queries cannot invalidate valid dispatch state.
+
+## ESP32 USB configuration readback
+
+Config Password is independent from LAN authentication.
+The `config_access` module owns its salted PBKDF2 record and attempt delay.
+A missing record preserves the legacy unprotected default.
+Corruption blocks reads rather than disabling protection.
+Only UART command handling calls credential readback.
+HTTP state, account metadata, and service-job status never return service secrets.
+Skipping unlock never resets an existing password.
+The setup page populates masked inputs directly and never renders secret responses as diagnostics.
+
+`docs/USER-GUIDE.md` is the canonical offline guide.
+`dev/guide.js` renders safe text and creates the left-menu drawer.
+Build scripts embed the guide in dashboard and setup artifacts.
+
+## Settings categories and ESP32 home-screen assets
+
+`dev/settings.js` owns the shared General settings and Account setup tabs. Existing controls retain their IDs and listeners.
+ESP32 service cards move outside the general-preferences form. API saves remain separate from automation-rule submission.
+`dev/desktop.js` adds its account editor only when the native administration bridge exists. Remote clients never receive that bridge.
+ESP32 serves embedded PNG icons and a local web manifest before login. The same local Host and proxy checks protect asset routes.
+Icon responses contain no credentials or application state. Bluetooth remains disabled.

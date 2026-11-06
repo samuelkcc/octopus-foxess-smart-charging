@@ -2,7 +2,168 @@
  * Visible views for the shared engine. Original control nodes keep their IDs,
  * values and handlers. Old presentation nodes are retained in one hidden host.
  */
+// One Overview component for web, desktop, Pi and ESP32. Data adapters retain their existing engine IDs.
+window.installSharedOverview = ({overview,byId,adoptId,make,panel}) => {
+  const ids=['protection-state','protection-message','overview-solar-power','overview-home-load','overview-grid-power','overview-battery-power','overview-battery-soc','overview-dynamic-schedules','overview-fox-schedules','tariff-data-status','importPriceChart','exportPriceChart','import-chart-empty','export-chart-empty'];
+  const nodes=new Map(ids.map(id=>[id,byId(id)]));
+  const get=id=>nodes.get(id);
+  overview.replaceChildren();
+  const status=make('section','next-protection wide'); status.append(get('protection-state'),get('protection-message'));overview.append(status);
+  const power=make('section','next-power wide');
+  for(const [label,id,detail] of [['Solar','overview-solar-power','Generating'],['Home','overview-home-load','Current demand'],['Grid','overview-grid-power','Import / export'],['Battery','overview-battery-power','overview-battery-soc']]) {
+    const cell=make('div','next-power-item');cell.append(make('span','next-kicker',label),get(id));
+    const caption=make('small');if(detail.startsWith('overview-'))caption.append(make('span','','Charge level '),get(detail));else caption.textContent=detail;
+    cell.append(caption);power.append(cell);
+  }
+  overview.append(power);
+  const octopusSchedule=panel('Octopus charging windows');octopusSchedule.classList.add('next-schedule-summary');octopusSchedule.append(get('overview-dynamic-schedules'));
+  const foxSchedule=panel('FoxESS programmed schedule');foxSchedule.classList.add('next-schedule-summary');foxSchedule.append(get('overview-fox-schedules'));
+  overview.append(octopusSchedule,foxSchedule);
+  const prices=adoptId('section-intelligent-octopus',panel('Electricity prices',true));
+  const priceRow=make('div','next-price-row');
+  for(const [label,id] of [['Import now','next-import-price'],['Export now','next-export-price']]) {const item=make('div');item.append(make('span','next-kicker',label),make('strong','', '—'));item.lastChild.id=id;const unit=make('small','','p/kWh');unit.dataset.priceUnit='';item.append(unit);priceRow.append(item);}
+  prices.append(priceRow);
+  prices.append(get('tariff-data-status'));
+  const charts=make('div','next-chart-grid');
+  for(const [title,canvas,empty] of [['Import tariff','importPriceChart','import-chart-empty'],['SEG export tariff','exportPriceChart','export-chart-empty']]) {
+    const figure=make('section','next-tariff');figure.append(make('h3','',title));
+    const frame=make('div','tariff-chart-frame');frame.append(get(canvas),get(empty));figure.append(frame);charts.append(figure);
+  }
+  prices.append(charts);overview.append(prices);
+  return {prices,foxSchedule,priceRow};
+};
+window.installSharedConnections = ({grid,account,service,worker,extras=[]}) => {
+  grid.replaceChildren(account,service,...extras);
+  grid.classList.add('next-connections-grid');
+  account.classList.add('next-account-panel');service.classList.add('next-service-panel');
+  if(worker){worker.classList.add('dev-inspector');service.append(worker);}
+};
 (() => {
+  if(document.documentElement.dataset.devEdition==='esp32-dashboard'){
+    const D=window.esp32Dashboard,$=D.$;
+    const make=(tag,className='',text='')=>{const node=document.createElement(tag);node.className=className;node.textContent=text;return node;};
+    const panel=(title,wide=false)=>{const node=make('section','next-panel'+(wide?' wide':''));node.append(make('h2','next-panel-title',title));return node;};
+    // Reuse the ordinary dashboard's paired charge-limit presentation. The
+    // existing inputs retain their bindings, values and review handlers.
+    const limitToggle=document.querySelector('[data-rule="dispatch_soc_enabled"]').closest('label');
+    const limitField=document.querySelector('[data-rule="dispatch_soc"]').closest('label');
+    const limitGroup=make('div','next-field-grid');limitToggle.before(limitGroup);limitGroup.append(limitToggle,limitField);
+    const ordinaryToggle=document.querySelector('[data-rule="charge_soc_enabled"]').closest('label'),ordinaryField=document.querySelector('[data-rule="target_soc"]').closest('label'),ordinaryGroup=make('div','next-field-grid');ordinaryToggle.before(ordinaryGroup);ordinaryGroup.append(ordinaryToggle,ordinaryField);
+    const historyPanel=document.querySelector('[data-page="history"]>.dev-history');
+    const historyGrid=make('div','dev-page-grid');historyPanel.before(historyGrid);historyGrid.append(historyPanel);
+    const metadata=make('div','history-metadata');$('esp-history-status').before(metadata);metadata.append($('esp-history-status'));
+    const historyNote=make('p','dev-muted history-data-note','Observed averages, not billing-grade energy totals. Missing readings stay as gaps.');historyPanel.append(historyNote);
+    const confirmedAt=$('esp-confirmed-at');
+    const shared=window.installSharedOverview({overview:document.querySelector('[data-page="overview"] .dev-page-grid'),byId:$,make,panel,adoptId:(id,node)=>{node.id=id;return node;}});
+    shared.foxSchedule.append(confirmedAt);
+    const connections=document.querySelector('[data-page="connections"] .dev-page-grid');
+    const account=panel('Account and device');account.id='section-device-settings';
+    const status=make('span','badge neutral','Waiting for device details');status.id='ui-device-status';
+    const details=make('ul','data-list'),prefs=make('ul','data-list');details.id='ui-account-details';prefs.id='ui-device-prefs';
+    const values={};
+    const row=(parent,label,key)=>{const li=make('li'),value=make('span','val','Not received');li.append(make('span','label',label),value);parent.append(li);values[key]=value;return li;};
+    const accountRow=row(details,'Account Number','account');accountRow.className='account-number-row';
+    const secret=make('span','account-secret-control'),show=make('button','inline-visibility-button','Show');show.type='button';show.id='dashboard-account-toggle';values.account.id='dashboard-account-number';values.account.textContent='••••••••';
+    secret.append(values.account,show);accountRow.append(secret);
+    row(details,'Linked Device','linked');values.linked.style.color='var(--accent)';
+    row(details,'Import Tariff Code','import');values.import.id='dashboard-import-tariff';values.import.classList.add('next-account-tariff');
+    row(details,'Export Tariff Code','export');values.export.id='dashboard-export-tariff';values.export.classList.add('next-account-tariff');
+    for(const [label,key] of [['EV Info','vehicle'],['Charge Point','charger'],['Target Time','target'],['Charge Limit','limit']])row(prefs,label,key);
+    account.append(status,details,prefs);
+    let revealed=false,accountValue='';
+    const mask=()=>{values.account.textContent=revealed&&accountValue?accountValue:'••••••••';show.textContent=revealed?'Hide':'Show';show.setAttribute('aria-pressed',String(revealed));};
+    D.maskAccount=()=>{revealed=false;mask();};show.addEventListener('click',()=>{revealed=!revealed;mask();});
+    D.renderAccount=data=>{
+      accountValue=data.account_number||'';mask();show.disabled=!accountValue;
+      const available=data.updated_at>0,missing=available?'Not reported':'Waiting for account data';
+      status.textContent=data.status||(!available?'Waiting for device details':data.device_reported?'Device details available':'Not reported');
+      status.className='badge '+(data.status==='LIVE'?'live':'neutral');
+      values.linked.textContent=(data.provider||data.chargePointMake||data.vehicleMake||missing).toUpperCase();
+      values.import.textContent=data.import_tariff||'Not reported';values.export.textContent=data.export_tariff||'Not reported';
+      values.vehicle.textContent=[data.vehicleMake,data.vehicleModel].filter(Boolean).join(' ')||missing;
+      values.charger.textContent=[data.chargePointMake,data.chargePointModel].filter(Boolean).join(' ')||missing;
+      values.target.textContent=data.target_time||missing;values.limit.textContent=Number.isFinite(data.charge_limit)?data.charge_limit+'%':missing;
+      accountStatus.textContent=data.update_error?'Account details could not be refreshed. Last received values remain visible.':available?'Account details updated from Octopus.':'Waiting for the first account-details update.';
+    };
+    const service=panel('Service connections');
+    for(const [label,name] of [['Octopus API','octopus'],['FoxESS REST / telemetry','foxess']]){
+      const row=make('div','next-service-row');row.append(make('strong','',label),$('esp-'+name+'-status'));service.append(row);
+      service.append($('esp-'+name+'-next'));
+    }
+    service.append($('esp-updated'));
+    const worker=make('section');worker.append(make('h3','','Worker & safety'),$('esp-worker-facts'),make('p','','Smart Dispatch takes priority. The worker retains the last valid dispatch when an upstream check fails.'),make('p','','REST readback confirms schedule programming. Power readings show actual measured behaviour.'));
+    document.querySelector('[data-setting="device-setup"]').append($('esp-refresh'));
+    const accountStatus=make('p','next-muted');accountStatus.id='esp-account-status';accountStatus.setAttribute('role','status');account.append(accountStatus);
+    window.installSharedConnections({grid:connections,account,service,worker});
+    const number=value=>Number.isFinite(value)?value.toFixed(2):'—';
+    const time=value=>value?new Intl.DateTimeFormat('en-GB',{timeZone:'Europe/London',day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'}).format(new Date(value*1000)):'Not received';
+    const clock=(h,m)=>String(h).padStart(2,'0')+':'+String(m).padStart(2,'0');
+    const periodKeys=new Map();
+    function periods(id,rows,dispatch,known){
+      const key=JSON.stringify([rows,known,D.state()?.confirmed,Math.floor(Date.now()/60000)]);
+      if(periodKeys.get(id)===key)return;periodKeys.set(id,key);
+      const parent=$(id);parent.replaceChildren();
+      if(!rows?.length){const p=document.createElement('p');p.textContent=known?(dispatch?'No upcoming charging windows.':'No active programmed periods.'):'Waiting for the first official update.';parent.append(p);return;}
+      for(const row of rows){
+        const from=dispatch?Date.parse(row.startDt)/1000:0,to=dispatch?Date.parse(row.endDt)/1000:0;if(dispatch&&to<=Date.now()/1000)continue;
+        const div=document.createElement('div');div.className='overview-schedule-row';const text=document.createElement('span'),title=document.createElement('strong'),detail=document.createElement('small'),tag=document.createElement('span');tag.className='overview-schedule-tag';
+        title.textContent=dispatch?'Smart Dispatch':({ForceCharge:'Force Charge',ForceDischarge:'Force Discharge',SelfUse:'Self-Use'}[row.workMode]||row.workMode);
+        detail.textContent=dispatch?time(from)+' – '+time(to):clock(row.startHour,row.startMinute)+'–'+clock(row.endHour,row.endMinute);
+        const minute=Number(new Intl.DateTimeFormat('en-GB',{timeZone:'Europe/London',hour:'2-digit',hourCycle:'h23'}).format(new Date()))*60+Number(new Intl.DateTimeFormat('en-GB',{timeZone:'Europe/London',minute:'2-digit'}).format(new Date()));
+        const now=Date.now()/1000,start=row.startHour*60+row.startMinute,end=row.endHour*60+row.endMinute;const active=dispatch?from<=now&&now<to:(start<=end?minute>=start&&minute<=end:minute>=start||minute<=end);
+        if(active)div.classList.add('active');tag.textContent=dispatch?(D.state()?.confirmed?'CONFIRMED':'WAITING'):(active?'NOW':'SET');
+        text.append(title,detail);div.append(text,tag);parent.append(div);
+      }
+      if(!parent.childNodes.length){const p=document.createElement('p');p.textContent='No upcoming charging windows.';parent.append(p);}
+    }
+    D.renderHistory=rows=>{D.drawHistory(rows);const saved=rows.filter(row=>row.storage==='flash').length;$('esp-history-status').textContent=rows.length?rows.length+(rows.length===1?' record · ':' records · ')+(saved?saved+' hourly Flash records · ':'')+'live RAM averages'+(D.state()?.rules?.history_flash_enabled?' · hourly saving enabled':' · Flash saving off'):'No retained observations yet. The ESP32 collects readings through its normal telemetry requests.';};
+    let liveModeSeen;
+    D.render=state=>{
+      document.getElementById('dev-shell').classList.toggle('esp-fixture',state.fixture===true);
+      if(state.fixture)D.notice('Demonstration data · No inverter connected.');
+      $('esp-connection').textContent=state.fixture?'DEMO DATA':'ESP32 connected';$('esp-connection').dataset.state=state.fixture?'waiting':'good';
+      D.syncAccess?.(state);
+      const pauseState={paused:state.rules?.paused===true,pending:state.rules?.paused===true&&state.write_inflight===true,available:true,enabled:state.rules?.enabled!==false,until:state.rules?.pause_until?state.rules.pause_until*1000:null};
+      D.syncPauseSwitch(pauseState);D.syncPauseBanner(pauseState);
+      for(const name of ['octopus','foxess']){const interval=state.rules?.[name==='octopus'?'octopus_seconds':'foxess_seconds']||60,remaining=Math.max(0,(state[name+'_next']||state.now)-state.now);const pending=state[name+'_refresh_pending']===true,error=Boolean(D.serviceError(name)),button=$('esp-service-'+name);$('esp-ring-'+name).dataset.state=error?'error':pending?'updating':state[name+'_http']===200?'ok':'waiting';button.classList.toggle('has-warning',error);button.disabled=pending&&!error;button.setAttribute('aria-busy',String(pending));button.setAttribute('aria-label',(name==='octopus'?'Octopus Energy':'FoxESS')+': '+(error?'Review update problem':pending?'Reading API':'Reload API data'));button.title=error?state[name+'_status']:pending?'API refresh queued. Waiting for the service cooldown.':'Reload API data';$('esp-progress-'+name).style.strokeDashoffset=String(Math.min(100,remaining/interval*100));}
+      const paused=state.rules?.paused,enabled=state.rules?.enabled;
+      $('protection-state').textContent=paused?(state.write_inflight?'Pausing…':'Paused'):!enabled?'Automation disabled':state.confirmed?'REST confirmed':state.partial?'Partial schedule':'Confirmation pending';
+      $('protection-state').dataset.state=paused||!enabled?'waiting':state.confirmed?'good':state.partial?'error':'waiting';
+      $('protection-message').textContent=state.control_status||'Waiting for the background worker';
+      $('esp-control-summary').textContent=state.control_status||'';
+      let storageStatus='Hourly saving is off. No new History records are written to Flash.';
+      if(state.history_flash_error)storageStatus='History storage error. RAM monitoring continues.';
+      else if(state.rules?.history_flash_enabled){
+        storageStatus=state.history_flash_available?'Hourly saving is on. '+(state.history_saved_through?'Saved through '+time(state.history_saved_through)+'.':'The next hourly batch will save completed observations.'):'Saved storage is unavailable. Install the current firmware through USB setup.';
+      }
+      $('esp-history-storage-status').textContent=storageStatus;
+      const readings=state.telemetry||{};for(const [name,id] of [['solar','overview-solar-power'],['home','overview-home-load'],['grid','overview-grid-power'],['battery','overview-battery-power']])$(id).textContent=number(Number.isFinite(readings[name])?Math.abs(readings[name]):null)+(Number.isFinite(readings[name])?' kW'+(name==='grid'?(readings[name]>0?' import':readings[name]<0?' export':' balanced'):name==='battery'?(readings[name]>0?' charge':readings[name]<0?' discharge':' idle'):''):'');
+      $('overview-battery-soc').textContent=Number.isFinite(readings.soc)?readings.soc.toFixed(0)+'%':'—';
+      const active=(state.groups||[]).filter(row=>![false,0,'0'].includes(row.enable)&&!(row.workMode==='SelfUse'&&row.startHour===0&&row.startMinute===0&&row.endHour===0&&row.endMinute===0));
+      periods('overview-dynamic-schedules',state.dispatches,true,state.dispatch_valid);periods('overview-fox-schedules',active,false,state.schedule_at>0);periods('esp-full-schedule',active,false,state.schedule_at>0);
+      $('esp-confirmed-at').textContent='Official REST read: '+time(state.schedule_at)+(state.confirmed_at?' · Last confirmed: '+time(state.confirmed_at):'');
+      const now=state.now||Date.now()/1000;
+      for(const name of ['import','export']){const rows=state[name+'_rates']||[],rate=rows.find(row=>row.start<=now&&now<row.end);$('next-'+name+'-price').textContent=rate?window.priceDisplay.number(rate.value):'—';}
+      document.querySelectorAll('[data-price-unit]').forEach(node=>node.textContent=window.priceDisplay.unit());D.drawTariffs(state);
+      $('tariff-data-status').textContent=state.import_rates?.length?'Official unit rates. Missing or expired prices remain unavailable.':(state.tariff_status||'Tariff requests are queued after charging-window reconciliation.')+(state.tariff_http>=400?' · Last tariff HTTP '+state.tariff_http:'')+' · Next Octopus slot in '+Math.max(0,Math.ceil((state.octopus_next||state.now)-state.now))+' s. New requests remain at least 60 seconds apart.';
+      const live=state.foxess_telemetry||{mode:'rest',configured:false,status:'REST telemetry'};
+      if(liveModeSeen!==live.mode){$('esp-telemetry-mode').value=live.mode;liveModeSeen=live.mode;}
+      $('esp-telemetry-mode').querySelector('[value="live-ws"]').disabled=live.configured!==true;
+      $('esp-telemetry-status').textContent=live.status+(live.configured?' · Optional login saved.':' · Configure optional login through USB to enable WebSocket.');
+      $('esp-octopus-status').textContent=state.octopus_status||'Waiting';$('esp-foxess-status').textContent=(state.foxess_status||'Waiting')+(live.mode==='live-ws'&&live.source!=='live-ws'?' · '+live.status:'');
+      for(const name of ['octopus','foxess'])$( 'esp-'+name+'-next').textContent='Next worker request in '+Math.max(0,Math.round((state[name+'_next']||now)-now))+' s';
+      const stale=state.telemetry_at&&now-state.telemetry_at>(state.rules?.foxess_seconds||600)*2;
+      $('esp-updated').textContent=state.telemetry_at?(stale?'Last-known telemetry: ':'Telemetry updated: ')+time(state.telemetry_at):'Waiting for the first telemetry reading.';
+      const facts=[['Dispatch fetched',time(state.dispatch_at)],['FoxESS confirmed',time(state.confirmed_at)],['Schedule periods',active.length],['Telemetry updated',time(state.telemetry_at)]];
+      $('esp-device-facts').textContent='Rules revision '+state.revision+' · Confirmed revision '+(state.confirmed_revision||'Pending')+' · RAM records '+(state.history_records||0)+' · Free PSRAM '+Math.round((state.free_psram_bytes||0)/1024)+' KiB · Europe/London';
+      $('esp-worker-facts').replaceChildren();for(const [label,value] of facts){const row=document.createElement('div'),dt=document.createElement('dt'),dd=document.createElement('dd');dt.textContent=label;dd.textContent=String(value);row.append(dt,dd);$('esp-worker-facts').append(row);}
+      $('esp-pause').disabled=paused===true;$('esp-resume').disabled=paused!==true;
+    };
+    const required=['protection-state','protection-message','overview-solar-power','overview-home-load','overview-grid-power','overview-battery-power','overview-battery-soc','overview-dynamic-schedules','overview-fox-schedules','importPriceChart','exportPriceChart','v3-start','v3-end'];
+    for(const id of required)if(document.querySelectorAll('[id="'+id+'"]').length!==1)throw Error('ESP32 view element is missing or duplicated: '+id);
+    return;
+  }
+
   const hostName = document.documentElement.dataset.devEdition === 'desktop' ? 'computer' : 'Pi';
   const pi = document.documentElement.dataset.devEdition !== 'web';
   const shell = document.getElementById('dev-shell');
@@ -27,7 +188,7 @@
   };
   const group = (...nodes) => { const row=make('div','next-field-grid');row.append(...nodes);return row; };
   const days = name => {
-    const row=make('div','next-days');
+    const row=make('div','next-days');row.setAttribute('role','group');row.setAttribute('aria-label',name==='weekly-force-day'?'Charge weekdays':'Discharge weekdays');
     const names=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
     document.querySelectorAll(`input[name="${name}"]`).forEach(input=>{const label=make('label');label.append(input,make('span','',names[Number(input.value)]));row.append(label);});
     return row;
@@ -43,28 +204,7 @@
   }
   // Overview contains one protection summary, one power view and one schedule per source.
   const overview=grid('overview');
-  const status=make('section','next-protection wide'); status.append(byId('protection-state'),byId('protection-message'));overview.append(status);
-  const power=make('section','next-power wide');
-  for(const [label,id,detail] of [['Solar','overview-solar-power','Generating'],['Home','overview-home-load','Current demand'],['Grid','overview-grid-power','Import / export'],['Battery','overview-battery-power','overview-battery-soc']]) {
-    const cell=make('div','next-power-item');cell.append(make('span','next-kicker',label),byId(id));
-    const caption=make('small');if(detail.startsWith('overview-'))caption.append(make('span','','Charge level '),byId(detail));else caption.textContent=detail;
-    cell.append(caption);power.append(cell);
-  }
-  overview.append(power);
-  const octopusSchedule=panel('Octopus charging windows');octopusSchedule.classList.add('next-schedule-summary');octopusSchedule.append(byId('overview-dynamic-schedules'));
-  const foxSchedule=panel('FoxESS programmed schedule');foxSchedule.classList.add('next-schedule-summary');foxSchedule.append(byId('overview-fox-schedules'));
-  overview.append(octopusSchedule,foxSchedule);
-  const prices=adoptId('section-intelligent-octopus',panel('Electricity prices',true));
-  const priceRow=make('div','next-price-row');
-  for(const [label,id] of [['Import now','next-import-price'],['Export now','next-export-price']]) {const item=make('div');item.append(make('span','next-kicker',label),make('strong','', '—'));item.lastChild.id=id;item.append(make('small','','p/kWh'));priceRow.append(item);}
-  prices.append(priceRow);
-  prices.append(byId('tariff-data-status'));
-  const charts=make('div','next-chart-grid');
-  for(const [title,canvas,empty] of [['Import tariff','importPriceChart','import-chart-empty'],['SEG export tariff','exportPriceChart','export-chart-empty']]) {
-    const figure=make('section','next-tariff');figure.append(make('h3','',title));
-    const frame=make('div','tariff-chart-frame');frame.append(byId(canvas),byId(empty));figure.append(frame);charts.append(figure);
-  }
-  prices.append(charts);overview.append(prices);
+  const {priceRow}=window.installSharedOverview({overview,byId,adoptId,make,panel});
   shell.querySelector('.dev-page[data-page="overview"] h1').textContent='Home energy';
   shell.querySelector('.dev-page[data-page="overview"] header p').textContent='Current power, charging windows and inverter confirmation.';
 
@@ -109,14 +249,18 @@
 
   const connections=grid('connections');
   const account=adoptId('section-device-settings',panel('Account and device'));
-  account.append(byId('ui-device-status'),byId('ui-account-details'),byId('ui-device-prefs'));connections.append(account);
-  const service=panel(pi?'Service connections':'Browser connections');
+  account.append(byId('ui-device-status'),byId('ui-account-details'),byId('ui-device-prefs'));
+  const service=panel('Service connections');
   for(const [label,badge] of [['Octopus API','octo-api-badge'],['FoxESS REST / telemetry','fox-api-badge']]) {const row=make('div','next-service-row');row.append(make('strong','',label),byId(badge));service.append(row);}
   const tracking=make('p','next-muted');tracking.append(make('span','','FoxESS API calls today: '),byId('fox-api-counter'));service.append(tracking);
   // The existing worker state fields remain live. They appear once, in Connections.
-  const inspector=parking.querySelector('.dev-inspector');if(inspector)service.append(inspector);
-  connections.append(service);
-  parking.querySelectorAll('.dev-integrations').forEach(node=>{node.className='next-panel wide';node.querySelector('h2')?.classList.add('next-panel-title');connections.append(node);});
+  const inspector=parking.querySelector('.dev-inspector');
+  const scheduleShortcut=byId('dev-inspect-schedules');
+  if(scheduleShortcut)parking.append(scheduleShortcut);
+  for(const node of parking.querySelectorAll('.dev-integrations')){
+    node.className='next-panel wide';node.querySelector('h2')?.classList.add('next-panel-title');grid('settings').append(node);
+  }
+  window.installSharedConnections({grid:connections,account,service,worker:inspector});
 
   // Edition-specific launch presentation preserves the shared engine controls.
   let entered=false;

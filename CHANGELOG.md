@@ -1,3 +1,160 @@
+# 2.3.0 Preview — 6 November 2026
+
+- Add General settings and Account setup tabs for ESP32 and the native portable host.
+- Serve embedded iPhone Home Screen icons and an ESP32 web manifest.
+- Introduce ESP32 first in version comparisons, with deployment screenshots and a dedicated guide chapter.
+- Refresh public screenshots with demonstration data and publish the USB deployment website.
+
+- Align automation headings, switches, and separator spacing across dashboard editions.
+- Remove the ESP32 rule that suppressed top padding on every charging toggle.
+
+
+### ESP32 Verify & save correction
+
+- Explicitly disable Bluetooth in ESP32 defaults. Reject firmware builds that enable it.
+
+- Apply the startup Octopus request guard to USB and LAN setup tests.
+- Verify shared setup reservations, Retry-After handling, and 60-second spacing with native mocks.
+
+- Show Waiting and Testing for queued API checks. Disable Mac renderer background throttling during USB setup.
+- Show tariff-discovery stages and the next request slot while cold-start data loads.
+- Fix hidden tariff empty-state messages. Keep the existing request budget and dispatch priority.
+
+- Fix an ESP32 panic when WebSocket masks a read-only subscription message. Use a writable payload buffer.
+- Simulate in-place WebSocket masking in transport tests.
+- Present User guide with chapter navigation and one selected article.
+
+- Retain masked USB form values after tests and saves until explicit clear, disconnect, or page close.
+- Make each weekday tile a full click target across all dashboard editions.
+- Remove duplicate Connections shortcuts. Keep Settings and Schedules in the left menu.
+
+- Enable final verification while automation runs when saved network and API fields remain unchanged.
+- Test both saved APIs before saving optional telemetry. Keep network, API settings, rules, and Pause intact.
+- Explain the disable-control requirement beside the button when main setup values changed.
+- Animate User guide from the right with a fading backdrop. Respect reduced-motion preferences.
+- Reuse an identical successful WebSocket test for up to five minutes when explicitly saving.
+- Cover unchanged-running setup, changed-value blocking, API failure, optional-save failure, and cached telemetry saves with mocks.
+- A live saved-login WebSocket test received a fresh frame without restart after the payload repair.
+
+### ESP32 setup and shared guide
+
+- Load saved USB settings automatically when Config Password is not configured.
+- Mask sensitive fields with individual eye controls. Clear the form on disconnect.
+- Add optional USB-only Config Password with salted PBKDF2, attempt limits, and authenticated changes.
+- Keep existing protection when reading is skipped. Preserve normal LAN access behaviour.
+- Add separate service tests and saves in USB setup and ESP32 LAN Settings.
+- Add optional read-only FoxESS WebSocket transport with REST fallback and native request signing.
+- Add a shared offline User guide, including edition differences, to the left menu.
+- Move setup About to the lower-left menu. Request tariff data from local midnight.
+- Verification: shared checks, native policy tests and firmware build passed locally.
+- Limits: Windows execution, continuous WebSocket operation, and long-term Flash endurance remain unverified.
+
+- Restore the shared Welcome composition on ESP32. Add a per-browser option to open Dashboard directly.
+- Populate Account and device from cached, allowlisted Octopus metadata. Keep credentials out of dashboard snapshots.
+- Make ESP32 header API controls request worker refreshes. Preserve Pause and upstream cooldowns.
+- Accept Octopus timestamps with a space separator. Publish canonical ISO timestamps for browser compatibility.
+- Recover expired GraphQL sessions and bound token caching to ten minutes.
+- Add ordinary SOC enablement and both discharge safeguards. Match the Pi default charge/discharge conflict resolver.
+- Retain existing operator settings when migrating added preferences.
+- Group downloads by ESP32 setup, Windows Portable, Web HTML, and Pi. Archive build intermediates before replacing distribution folders.
+
+- Align ESP32 charge-limit grouping, weekday order, schedule text size, breadcrumbs, and History structure with shared dashboard presentation.
+- Keep ESP32 access local in this edition. Omit Cloudflare remote access from ESP32.
+
+- Replace the text Pause switch with a circular power control shared by dashboard editions.
+- Show green while automation is running and red while paused. Require confirmation before pausing or resuming.
+- Keep pending or unavailable control states neutral. Pausing keeps monitoring and the device running.
+- Align History selection and export controls, including native Safari select rendering.
+- Expand About with edition details, component purposes, pinned versions, licence identifiers, searchable entries, and bundled texts.
+- Retain full GPL, third-party notices, source links, attribution, and independent-software disclaimers.
+- Add optional hourly Flash History, off by default and enabled manually in Settings.
+- Keep display and RAM updates independent of Flash writes. Save one hourly average per batch and retain 60 days.
+- Use a dedicated 128 KiB rotating journal with checksums, commit markers, readback, and bounded erase operations.
+- Preserve existing automation and Pause settings when adding the opt-in preference.
+- Test interrupted writes, interrupted sector recycling, restart recovery, hourly throttling, missing values, and 60-day retention.
+- Physical Flash saving remains off during installation. Enabled saving and long-running retention require operator hardware testing.
+
+
+- Share page headings, Connections composition, About navigation, Pause switch, and paused banner across dashboard editions.
+- Put About and licence in the lower-left menu. Keep its right-side drawer.
+- The earlier text Pause switch is replaced by the circular control described above.
+- Remove ESP32 grid overrides that stretched cards and created blank rows.
+- Put host enablement, network guidance, and device memory details in ESP32 Settings.
+- The operator confirmed direct iPhone Safari access, live readings, and the previous layout.
+- Windows native execution and the revised iPhone layout still require verification.
+
+
+- Add shared-source USB setup tools for GitHub Pages, macOS Universal, and portable Windows x64.
+- Display the supported ESP32-S3 N16R8 specification before device connection and firmware installation.
+- Exclude Bluetooth virtual serial ports from desktop USB selection.
+- Remove pairing codes. Physical USB can reset optional LAN protection without changing service settings.
+
+- Share the actual Overview component and desktop viewport with web, Pi, and desktop builds.
+- Replace simplified charts with the existing bundled Chart.js version and matching import/export styles.
+- Correct field spacing and directional power labels. Add browser appearance and currency preferences.
+- Default to open LAN access. Settings can enable a persistent, salted-hash access code.
+- Keep USB recovery for access recovery. Preserve Host, Origin, CSRF, proxy rejection, and login limits.
+- Reuse unchanged chart instances and schedule rows without adding cloud API requests.
+
+- Centre the About close icon in an isolated 44-pixel button and retain keyboard focus indication.
+- Open the About drawer at its heading and return focus to its trigger after closing.
+- Add physical USB recovery instructions for optional LAN access protection.
+
+- Replace the LAN status page with the existing app-style dashboard and responsive phone navigation.
+- Add real background Smart Dispatch, weekly, price-based charging/discharging, SOC limits, and temporary controls.
+- Persist enablement, rules, preferences, and Pause on the ESP32.
+- Require fresh dispatch and official REST reads before resume or reconciliation.
+- Confirm commands through fresh REST readback, with durable intent, revision queuing, capacity handling, and retry backoff.
+- Add persistent hashed browser sessions, CSRF checks, login limits, and strict LAN request handling.
+- Add RAM History, four charts, CSV export, and retention settings above 14 days.
+- Add fixed IOG day/night tariff fallback and shared cloud request budgets.
+- Mock tests cover policy, allocation failures, controller transactions, retained data, authentication, and browser-session restart recovery.
+- Browser fixture checks cover login, navigation, rule review, Pause, History, About, and phone layouts.
+- Live Octopus GraphQL and FoxESS REST checks passed with HTTP 200.
+- The operator authorised enabled control after stopping all other workers.
+- Smart Dispatch and the existing daily 23:30–05:30 charge baseline are enabled.
+- Controller revision 2 passed fresh official REST schedule confirmation.
+- Software restart retained configuration, static IP, rules, and browser sessions.
+- Physical battery behaviour and a power cycle of this image remain unverified.
+- Separate Pi and standalone web login browser checks passed.
+- Live results and installed hashes are recorded separately in `esp32/VERIFICATION.json`.
+- LAN account editing, Bluetooth, OTA, full DST parity, and long-running hardware verification remain incomplete. ESP32 Cloudflare is omitted.
+
+# Previous ESP32 connection-test verification
+
+This section records the earlier connection-test image.
+
+The ESP32 Deploy page uses a four-step wizard with Back/Next controls, English guidance, and responsive layouts.
+About and licence content opens in a right-side drawer from the top bar.
+The setup screen excludes long footer notices and the lower-left development message.
+The static deployment artifact includes a pinned browser installer, firmware hashes, and full licence files.
+Browser installation excludes NVS configuration sectors and requires downloaded-image and written-flash verification.
+Configuration is tested in RAM and saved only after Wi-Fi, IP, time, Octopus, and FoxESS checks pass.
+A temporary DHCP trial supports an optional ARP/ping fixed-IP suggestion with required router-pool review.
+Native tests cover save gating, failed validation, storage failure, runtime restoration, and subnet-safe candidates.
+Live validation passed both APIs before saving unchanged settings. Restart preserved configuration and the original IP.
+The full dashboard, authenticated LAN account editor, and Cloudflare transport remain future work.
+Dashboard parity and separate USB, LAN, and remote configuration permissions are recorded as requirements.
+
+- Add ESP32-S3 firmware for USB setup, Wi-Fi scanning, persistent configuration, and explicit read-only API tests.
+- Add an English local setup page with a verified firmware handshake and redacted previews.
+- Octopus tests read account REST data. FoxESS tests read SoC telemetry without changing schedules.
+- Development AES-GCM storage does not protect against physical flash extraction. Security eFuses are not programmed.
+- Firmware planning retains all settings across restarts. History remains in RAM with a configurable memory budget.
+- USB hardware identification confirmed an ESP32-S3 with 16 MB flash and reported 8 MB PSRAM.
+- Live firmware checks passed the 8 MB PSRAM boot test, USB handshake, Wi-Fi scan, and invalid-command rejection.
+- Chrome completed the firmware handshake and displayed actual scan results.
+- The ESP-IDF build, mock provisioning tests, and full project checks passed.
+- Operator setup succeeded. Wi-Fi, time synchronization, Octopus account REST, and FoxESS telemetry REST tests passed.
+- Both services returned HTTP 200. FoxESS returned API code 0.
+- Software restart retained configuration and reconnected Wi-Fi without entering settings again.
+- After an operator-reported physical power cycle, configuration, Wi-Fi, time synchronization, and both REST connections passed.
+- Add an explicitly authorised USB diagnostic with a future-only period, durable backup, conflict checks, fresh readback, and restoration.
+- Native tests cover backup failure, ambiguous writes, readback failures, concurrent revisions, restoration failures, and memory allocation failures.
+- One live future Force Charge period was REST-confirmed, immediately removed, and independently checked against the original schedule.
+- The live diagnostic used two schedule writes: the test and restoration. No charging-power test was performed.
+- Smart Dispatch GraphQL access, full scheduler parity, and a physical power cycle of the final diagnostic image remain unverified.
+
 # v2.2.0 — 2026-10-28
 
 This release adds a macOS Universal desktop host and browser Activity backups.

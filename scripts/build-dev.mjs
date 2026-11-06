@@ -1,7 +1,9 @@
+import {guideBundle} from './guide-bundle.mjs';
 // Build the new Pi and standalone views. The existing root engine serves the worker.
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 const root = process.cwd();
+const guide=await guideBundle(root);
 const [baseText, css, js, about, setup, views, packageText, icon, defaultRoute, settings, touchIcon, controls, monitor, historyView, viewport, lightIcon, desktopUI, lanRemote, activityView] = await Promise.all([
   readFile(path.join(root, 'dist/Octopus_IGO_Smart_Charging_Detector.html'), 'utf8'),
   readFile(path.join(root, 'dev/ui.css'), 'utf8'),
@@ -43,8 +45,8 @@ let output = base.replace('<head>', `<head>\n${pi ? '<base href="/">' : ''}\n<me
   .replace(/href="\.\/site\.webmanifest[^\"]*"/, 'href="/app/site.webmanifest"')
   .replace(/<link rel="icon"[^>]*>/, `<link rel="icon" href="${darkIconUrl}" ${themeIconAttributes} type="image/svg+xml">`)
   .replace(/<link rel="apple-touch-icon"[^>]*>/, `<link rel="apple-touch-icon" sizes="180x180" href="data:image/png;base64,${touchIcon.toString('base64')}">`)
-  .replace('</head>', `<style>${css}</style></head>`)
-  .replace('</body>', `<script>${historyView}\n${activityView}\n${js}\n${about}\n${setup}\n${views}\n${settings}\n${controls}\n${monitor}\n${viewport}\n${desktopUI}\n${lanRemote}</script></body>`)
+  .replace('</head>', `<style>${css}\n${guide.css}</style></head>`)
+  .replace('</body>', `<script>${historyView}\n${activityView}\n${js}\n${about}\n${setup}\n${views}\n${settings}\n${controls}\n${monitor}\n${viewport}\n${desktopUI}\n${lanRemote}\n${guide.script}</script></body>`)
   .replaceAll('src="/octopus-foxess.svg"', `src="${darkIconUrl}" ${themeIconAttributes}`);
 if (!pi) output = output.replace('href="/app/site.webmanifest"', 'href="./site.webmanifest"')
   .replace('src="/octopus-foxess.svg"', `src="${darkIconUrl}" ${themeIconAttributes}`);

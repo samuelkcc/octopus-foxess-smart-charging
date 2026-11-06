@@ -16,28 +16,64 @@ Octopus Energy and FoxESS do not endorse or support this project.
 [![Licence](https://img.shields.io/badge/licence-GPL--3.0--or--later-blue)](LICENSE)
 [![Open web app](https://img.shields.io/badge/open-web%20app-e11d48)](https://samuelkcc.github.io/octopus-foxess-smart-charging/)
 
-[**Open the web app**](https://samuelkcc.github.io/octopus-foxess-smart-charging/) · [**Downloads and release notes**](https://github.com/samuelkcc/octopus-foxess-smart-charging/releases/latest)
+[**Deploy ESP32 over USB**](https://samuelkcc.github.io/octopus-foxess-smart-charging/esp32/) · [**ESP32 setup apps and preview downloads**](https://github.com/samuelkcc/octopus-foxess-smart-charging/releases/tag/esp32-preview-2.3.0) · [**Open Web HTML**](https://samuelkcc.github.io/octopus-foxess-smart-charging/)
 
-![Smart Charging dashboard with example data](docs/screenshots/web-dashboard.png)
+![ESP32 dashboard with demonstration data](docs/screenshots/esp32-dashboard.png)
+
+[User guide](docs/USER-GUIDE.md) is available in each dashboard and ESP32 setup tool.
+It includes a dedicated [ESP32 deployment chapter](docs/USER-GUIDE.md#3-deploy-esp32).
 
 ## Choose how to run it
 
-| | Raspberry Pi | Windows / macOS | Standalone web |
-|---|---|---|---|
-| Runs automation | Always-on background worker | Embedded worker while the app stays open | This browser while it stays open and awake |
-| Main interface | Desktop, phone, or tablet browser | Built-in desktop dashboard | Hosted website or downloaded HTML |
-| FoxESS connection | Built-in local relay | Built-in local relay | Your Google Apps Script relay |
-| Account setup | Native Pi Configuration | Welcome or Settings in the desktop app | Guided browser setup |
-| Remote phone access | LAN or protected Cloudflare URL | LAN or protected Cloudflare URL | Separate browser setup |
-| Records | Compressed power History | Compressed power History | Browser Activity with JSON export/import |
+| | ESP32 | Raspberry Pi | Portable app | Web HTML |
+|---|---|---|---|---|
+| Automation host | Powered ESP32-S3 N16R8 | Always-on Pi worker | Windows or macOS app while open | Browser while open and awake |
+| Dashboard | Phone or computer on the same LAN | Phone or computer | Built-in dashboard and LAN clients | This browser |
+| Initial setup | USB website, Mac app, or Windows EXE | Native Pi Configuration | Welcome or Account setup tab | Guided browser setup |
+| Account changes | Local Settings → Account setup or USB | Native Pi Configuration | App Settings → Account setup | Browser setup |
+| General preferences | General settings tab | General settings tab | General settings tab | General settings tab |
+| FoxESS connection | Built-in REST, optional WebSocket | Built-in REST, optional WebSocket | Built-in REST, optional WebSocket | Your Google Apps Script relay |
+| Cloudflare remote access | **Not supported** | Optional protected Quick Tunnel | Optional protected Quick Tunnel | Not a remote host |
+| Records | RAM, optional hourly Flash for 60 days | Compressed power History | Compressed power History | Browser Activity |
+| Bluetooth | Disabled | Not required | Not required | Not required |
+| Firmware updates | Physical USB | Pi updater | Replace the app | Refresh or replace HTML |
+| Status | ESP32 Preview, with documented limits | Stable edition | Stable host with updated preview UI | Updated preview UI |
 
-The phone interface is a client of your Pi, Windows, or macOS host.
-It uses the host's settings and data.
-It does not need another Octopus API key or another automation worker.
+A phone dashboard uses the host's settings and cached data.
+It does not start another automation worker.
+Use only one active automation host for each inverter.
+Before changing hosts, disable the previous worker.
 
-Use one active automation host for each inverter.
-Before testing another edition, select **Disable Pi Service** in native Pi Configuration.
-**Pause automation** stops schedule control but keeps monitoring active.
+## ESP32: start here
+
+The ESP32 runs independently after USB setup. Your Mac or PC can then be disconnected.
+Supported hardware is **ESP32-S3 N16R8**, with **16 MB Flash and 8 MB Octal PSRAM**.
+Other ESP32 models are unsupported.
+
+1. Connect the board with a USB data cable.
+2. Open the [USB deployment website](https://samuelkcc.github.io/octopus-foxess-smart-charging/esp32/), or the Mac or Windows setup app.
+3. Complete Device, Network, Accounts, and Verify & save.
+4. Wait for all required checks to pass.
+5. Open the displayed local IP on your phone or computer.
+
+Desktop Chrome or Edge is required for USB setup in a browser.
+The native Mac and Windows setup tools provide the same four-step flow.
+The iPhone dashboard uses Wi-Fi after setup.
+
+| USB deployment website and apps | Local account setup |
+|---|---|
+| ![ESP32 four-step USB deployment tool](docs/screenshots/esp32-deploy.png) | ![ESP32 Account setup tab](docs/screenshots/esp32-account-setup.png) |
+
+**Limits:** Cloudflare remote access, Bluetooth setup, and OTA updates are not supported.
+Wi-Fi and IP changes require USB setup. Service credentials can be changed in the local Account setup tab.
+
+This Preview does not establish complete Pi scheduler equivalence.
+UK clock-transition handling and advanced Auto-Resume behaviour have documented differences.
+Windows execution and long-term Flash endurance require further verification.
+See the [ESP32 deployment chapter](docs/USER-GUIDE.md#3-deploy-esp32) and [feature review](docs/FEATURE-PARITY.md).
+
+[Download ESP32 setup apps and all preview editions](https://github.com/samuelkcc/octopus-foxess-smart-charging/releases/tag/esp32-preview-2.3.0).
+The existing Pi updater continues to use the stable release.
 
 ## What the app does
 
@@ -45,7 +81,7 @@ Before testing another edition, select **Disable Pi Service** in native Pi Confi
 - **Compare schedules and measured power.** Check Octopus charging windows beside the programmed FoxESS schedule and current readings.
 - **Control charging and discharging.** Use price rules, weekly schedules, and battery limits.
 - **Pause app control.** Pause for 6, 12, or 24 hours, or until resumed. Monitoring continues.
-- **Connect remotely.** Open a Pi, Windows, or macOS dashboard through a protected Cloudflare URL.
+- **Connect remotely on supported hosts.** Open a Pi, Windows, or macOS dashboard through a protected Cloudflare URL.
 - **Review power history.** Compare four charts, expand a chart, or export a month on Pi, Windows, and macOS.
 - **Limit storage writes.** Buffer readings in memory, compress monthly files, and remove older history when space is low.
 - **Check API health.** Header badges show connection status and refresh progress. A red border opens retained problem details.
@@ -94,7 +130,7 @@ Updates retain the existing configuration and history directory.
 
 [Read the Pi installation and update guide](linux/README-RASPBERRY-PI.md).
 
-![Native Pi Configuration with demonstration account details](docs/screenshots/pi-configuration.png)
+![Pi dashboard with demonstration data](docs/screenshots/pi-dashboard.png)
 
 #### Uninstall from Raspberry Pi
 
@@ -115,13 +151,14 @@ Uninstallation does not clear the schedule stored on the inverter.
 
 ### Windows portable
 
-- Open the [download page](https://github.com/samuelkcc/octopus-foxess-smart-charging/releases/latest).
+- Open the [download page](https://github.com/samuelkcc/octopus-foxess-smart-charging/releases/tag/esp32-preview-2.3.0).
 - Download the Windows x64 EXE from **Assets**.
 - Open the EXE.
 - Read the licence notice.
 - Select **Accept and Continue**.
 - Select **Configure this PC** from Welcome.
 - Use **Account setup guide** to find your account details.
+- Use **Settings → Account setup** for later account changes.
 - Save the configuration and open the dashboard.
 
 No Google Apps Script relay is needed.
@@ -253,7 +290,7 @@ The app does not send email notifications or include keys in emailed links.
 
 ![Windows Remote Access with demonstration values](docs/screenshots/windows-remote-access.png)
 
-![Mobile Remote Access: Welcome, sign-in, Overview, and History](docs/screenshots/mobile-interface.png)
+![ESP32 Welcome in a mobile browser preview](docs/screenshots/mobile-interface.png)
 
 ## History without frequent SD-card writes
 
@@ -312,7 +349,7 @@ Backups exclude accounts, credentials, access keys, and power measurements.
 Import does not restore pause state or send inverter commands.
 Pi, Windows, and macOS retain their existing History page.
 
-![Browser Activity with demonstration pause data](docs/screenshots/web-activity.jpg)
+![Browser Activity with demonstration pause data](docs/screenshots/web-activity.png)
 
 ## Automation and API safeguards
 
@@ -387,15 +424,14 @@ Company names belong to their owners. This independent software has no warranty.
 - Run `npm ci --prefix desktop`.
 - Run `npm run build:release`.
 
-The final `dist` folder contains one HTML file and one Windows EXE.
-Pi packages, checksums, and intermediate build files remain in `.build`.
+The final `dist` folder separates ESP32, Windows Portable, Web HTML, and Pi packages.
+ESP32 contains macOS, Windows, and Web deployment tools. Build intermediates remain in `.build`.
 
 [Architecture](docs/ARCHITECTURE.md) · [Feature verification](docs/FEATURE-PARITY.md) · [Writing guide](docs/WRITING.md)
 
 Interface screenshots use dark appearance and contain no account credentials or device identifiers.
-The mobile montage was supplied by the project owner.
-Other dashboard screenshots use demonstration data.
-The Pi Configuration screenshot uses the native Pi interface with demonstration values.
+All published screenshots use isolated mock services and demonstration data.
+The mobile image is a browser preview. It does not establish physical iPhone installation or native Windows verification.
 
 ## Support the project ☕
 

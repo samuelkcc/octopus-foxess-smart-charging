@@ -1,28 +1,53 @@
-# Smart Charging v2.2.0
+# Smart Charging 2.3.0 Preview
 
-This release adds a macOS Universal desktop host and browser Activity backups.
-It also repairs Pi desktop launching and preserves last-known price displays after host restarts.
+ESP32 now runs an independent local worker with a shared dashboard and USB deployment tools.
+The public introduction presents ESP32, Pi, Portable app, and Web HTML in that order.
 
-- macOS includes one app for Apple Silicon and Intel, with the local host, dashboard, worker, and Cloudflare client.
-- macOS uses Keychain through Electron safeStorage. The app is ad-hoc signed and is not Apple notarised.
-- The standalone web edition replaces History with Activity.
-- Activity records pause, resume, and pause-expiry events in browser storage.
-- Activity export/import uses validated JSON, merges duplicates, and keeps up to 2,000 records for 12 months.
-- Activity import does not restore accounts, change pause state, or send inverter commands.
-- Pi and Windows keep their existing power History.
-- The Pi desktop launcher selects Wayland or X11 and avoids inaccessible installer working directories.
-- Hosts save the last complete price display with private permissions and account isolation.
-- Restart recovery clearly labels last-known prices and waits for worker confirmation.
-- Display recovery expires after 24 hours and never supplies scheduler price inputs.
-- The first successful update must complete before its display recovery file exists.
-- Dashboard reads do not add upstream tariff requests. Pi request spacing remains unchanged.
-- No GAS update is required.
+## ESP32 setup
 
-Live Pi diagnostics confirmed complete import/export data after the startup queue finished, with recent HTTP 200 responses and no observed 429.
-The native Pi desktop launcher was repaired and successfully opened Welcome without restarting the worker or tunnel.
-This finding does not establish the cause of every earlier missing-price report.
+- Supported board: ESP32-S3 N16R8, with 16 MB Flash and 8 MB Octal PSRAM.
+- Deploy through the HTTPS USB website, Mac app, or Windows EXE.
+- Complete Wi-Fi, IP, clock, and API validation before saving initial setup.
+- Read saved USB configuration, with optional Config Password protection.
+- Use local Settings → Account setup for Octopus, FoxESS REST, and optional WebSocket credentials.
+- Use USB setup for Wi-Fi or IP changes.
+- Add the charging icon to iPhone Home Screen through Safari.
 
-Automated checks cover restart recovery, stale-display isolation, Activity backups, desktop access restrictions, API budgets, authentication, and scheduler safety.
-Package checks verify both macOS architectures and the bundled tunnel client.
-Native macOS Keychain, Intel execution, and current Windows execution require operator verification.
-No live inverter command is used as a test.
+## Interface changes
+
+- Separate General settings from Account setup on ESP32 and the native portable host.
+- Keep portable credential editing restricted to the native app.
+- Add chapter navigation to the shared User guide.
+- Use shared weekday tiles, Pause controls, and consistent rule separators.
+- Refresh documentation screenshots with demonstration data.
+
+## Data and request handling
+
+- Octopus requests use one queue with a minimum 60-second interval.
+- Startup tariff discovery can take several minutes.
+- Read-only WebSocket tests require a fresh frame.
+- Schedule commands and confirmation always use official FoxESS REST.
+- History uses RAM by default on ESP32.
+- Optional hourly Flash History retains up to 60 days.
+
+## Supported differences and limits
+
+- ESP32 does not support Cloudflare, Bluetooth setup, or OTA updates.
+- Bluetooth is disabled at build time.
+- ESP32 requires the same LAN for dashboard access.
+- Complete Pi scheduler equivalence is not established.
+- ESP32 retains the schedule during its UK clock-transition guard and blocks new programming.
+- Advanced Auto-Resume handling has documented differences.
+- Native Windows and Intel Mac execution require further verification for this build.
+- The Mac setup app is ad-hoc signed and not notarized.
+- Long-term Flash endurance and continuous WebSocket operation remain unverified.
+- REST confirmation proves schedule programming, not measured battery behaviour.
+
+The ESP32 Preview does not replace the stable Pi updater release.
+See USER-GUIDE.md and FEATURE-PARITY.md for procedures and verification limits.
+
+Copyright (C) 2026 SCKC. GPL-3.0-or-later.
+Independent software. Octopus Energy and FoxESS do not endorse or support this project.
+
+Verification includes the full check, DEV build, native ESP32 suites, and isolated browser layout checks.
+New screenshots contain demonstration data only. Native Windows and physical iPhone installation remain unverified.

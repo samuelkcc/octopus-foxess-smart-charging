@@ -1,0 +1,20 @@
+import {guideBundle} from './guide-bundle.mjs';
+// Copyright (C) 2026 SCKC. SPDX-License-Identifier: GPL-3.0-or-later
+import {readFile,writeFile,mkdir} from 'node:fs/promises';
+import {gzipSync} from 'node:zlib';
+import path from 'node:path';
+const root=path.resolve(import.meta.dirname,'..');
+const read=file=>readFile(path.join(root,file),'utf8');
+const escape=value=>value.replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;');
+let html=await read('esp32/dashboard/index.html');
+const ui=await read('dev/ui.js');const iconObject=ui.match(/const navIcons = (\{[\s\S]*?\n  \});/)[1];
+const {runInNewContext}=await import('node:vm');const icons=runInNewContext('('+iconObject+')');
+const nav=Object.entries({overview:'Overview',schedules:'Schedules',rules:'Automations',history:'History',connections:'Connections',settings:'Settings'}).map(([page,label])=>`<button type="button" data-page="${page}" ${page==='overview'?'aria-current="page"':''}><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${icons[page]}</svg><span>${label}</span></button>`).join('');
+const days=prefix=>[1,2,3,4,5,6,0].map(i=>`<label><input type="checkbox" data-days="${prefix}" value="${i}"><span>${['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][i]}</span></label>`).join('');
+const guide=await guideBundle(root);
+const css=guide.css+"\n"+(await Promise.all(['src/styles.css','dev/ui.css','esp32/dashboard/styles.css'].map(read))).join('\n');
+const scripts=guide.script+"\n"+(await Promise.all(['esp32/dashboard/vendor/chart.umd.min.js','src/price-display.js','esp32/dashboard/client.js','esp32/dashboard/charts.js','dev/ui.js','dev/views.js','dev/about.js','dev/setup.js','dev/settings.js','dev/viewport.js'].map(read))).join('\n');
+const brand='data:image/svg+xml;base64,'+Buffer.from(await read('linux/octopus-foxess.svg')).toString('base64');
+const tokens={STYLE:css,SCRIPT:scripts,BRAND:brand,NAV:nav,POWER:'',CHARGE_DAYS:days('charge_days'),DISCHARGE_DAYS:days('discharge_days'),HISTORY_CHARTS:[['home','Solar and home demand'],['grid','Grid import and export'],['battery','Battery charge and discharge'],['soc','Battery level']].map(([name,title])=>`<section class="history-chart-card"><div class="history-chart-header"><h2>${title}</h2><button type="button" class="next-button secondary" data-expand-history="${name}">Expand</button></div><div class="dev-history-chart"><canvas id="esp-history-${name}" role="img" aria-label="${title} history"></canvas></div></section>`).join(''),VERSION:JSON.parse(await read('package.json')).version,LICENSE:escape(await read('LICENSE')),NOTICES:escape((await read('THIRD_PARTY_NOTICES.md'))+'\n\n## Chart.js 4.4.9 licence\n\n'+await read('esp32/dashboard/vendor/Chart-LICENSE.md'))};
+html=html.replace(/\/\*([A-Z_]+)\*\//g,(all,key)=>tokens[key]??all);
+const out=path.join(root,'.build/esp32-ui');await mkdir(out,{recursive:true});await writeFile(path.join(out,'dashboard.html'),html);await writeFile(path.join(out,'dashboard.html.gz'),gzipSync(html,{level:9}));console.log('Built ESP32 dashboard bundle.');

@@ -1,5 +1,89 @@
 /* Copyright (C) 2026 SCKC. GPL-3.0-or-later. Pi DEV layout. */
+// Shared presentation; edition adapters own data and mutations.
+window.installPauseSwitch = button => {
+  button.type='button';button.className='next-pause-switch';button.setAttribute('role','switch');
+  button.setAttribute('aria-label','Automation control');
+  button.innerHTML='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M12 3v9"/><path d="M7 5.5a8 8 0 1 0 10 0"/></svg>';
+  const sync=({paused=false,pending=false,available=true,enabled=true}={})=>{
+    const running=available && enabled && !paused;
+    button.setAttribute('aria-checked',String(running));
+    button.dataset.state=pending?'pending':!available?'unavailable':running?'running':'stopped';
+    button.disabled=pending || !available || !enabled;
+    button.title=pending?'Updating automation…':!available?'Device status unavailable':!enabled?'Enable automation in Settings':paused?'Automation paused. Select to resume.':'Automation running. Select to pause.';
+  };
+  sync({available:false});return sync;
+};
+window.installReviewHeader = node => {
+  if(node.querySelector('.next-dialog-header'))return;
+  const heading=node.querySelector('h2');if(!heading)return;
+  const header=document.createElement('header');header.className='next-dialog-header';heading.before(header);header.append(heading);
+  const close=document.createElement('button');close.type='button';close.textContent='×';close.setAttribute('aria-label','Close dialog');close.addEventListener('click',()=>node.close());header.append(close);
+  heading.id ||= `dialog-title-${document.querySelectorAll('[id^="dialog-title"]').length}`;
+  node.setAttribute('aria-labelledby',heading.id);
+};
+window.installPauseBanner = (shell,onResume) => {
+  const banner=document.createElement('section');banner.className='next-pause-banner';banner.hidden=true;banner.setAttribute('role','status');
+  const copy=document.createElement('div'),resume=document.createElement('button');resume.type='button';resume.textContent='Resume automation';resume.addEventListener('click',onResume);
+  banner.append(copy,resume);shell.querySelector('.dev-appbar').after(banner);
+  return (state,connected=true)=>{
+    banner.hidden=!connected || (!state.paused && !state.pending && state.available);
+    banner.dataset.unavailable=String(!state.available && !state.paused);
+    const title=document.createElement('strong'),message=document.createElement('p');
+    title.textContent=state.paused?'Automation paused':state.pending?'Updating automation control…':'Schedule control unavailable';
+    message.textContent=state.paused
+      ? `${state.until?`Paused until ${new Date(state.until).toLocaleString()}.`:'Paused until you resume.'} App schedule commands are blocked. Monitoring continues. Use the FoxESS app for temporary settings.`
+      : 'The app will not send schedule commands until the control state is confirmed.';
+    copy.replaceChildren(title,message);
+    if(state.auditWarning){const warning=document.createElement('p');warning.textContent='The pause state is saved, but History could not record this change. Check host storage.';copy.append(warning);}
+    resume.hidden=!state.paused;resume.disabled=state.pending || !state.available;
+  };
+};
+window.installDashboardAbout = (shell,button) => {
+  let footer=shell.querySelector('.dev-rail-bottom');
+  if(!footer){footer=document.createElement('div');footer.className='dev-rail-bottom';shell.querySelector('.dev-rail').append(footer);}
+  button.type='button';button.setAttribute('aria-haspopup','dialog');
+  button.innerHTML='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v6m0-10v1"/></svg><span>About &amp; licence</span>';
+  footer.append(button);
+};
+window.dashboardPageCopy = {
+  overview:['Home energy','Current power, charging windows and inverter confirmation.'],
+  schedules:['Schedules','The current inverter schedule and manual controls. Actions here affect real hardware.'],
+  rules:['Automations','Review charging and discharging preferences before applying them.'],
+  history:['History','Browse recorded power averages and automation activity. Manage retention in Settings.'],
+  connections:['Connections','Account, device and service connection status.']
+};
+window.installDashboardHeadings = shell => {
+  for(const [page,[title,description]] of Object.entries(window.dashboardPageCopy)){
+    const heading=shell.querySelector(`[data-page="${page}"] .dev-page-heading`);
+    heading.querySelector('h1').textContent=title;heading.querySelector('p').textContent=description;
+    heading.querySelector(':scope>span')?.remove();
+  }
+};
 (() => {
+  if(document.documentElement.dataset.devEdition==='esp32-dashboard'){
+    const D=window.esp32Dashboard;
+    document.querySelectorAll('.dev-review-dialog:not(.history-expanded)').forEach(window.installReviewHeader);
+    window.installDashboardAbout(document.getElementById('dev-shell'),document.getElementById('open-about'));
+    window.installDashboardHeadings(document.getElementById('dev-shell'));
+    D.syncPauseSwitch=window.installPauseSwitch(document.getElementById('esp-header-pause'));
+    D.syncPauseBanner=window.installPauseBanner(document.getElementById('dev-shell'),()=>document.getElementById('esp-resume').click());
+    document.querySelector('.esp-manual-details').open=matchMedia('(min-width:761px) and (hover:hover)').matches;
+    document.querySelectorAll('.dev-rail nav button').forEach(button=>button.addEventListener('click',()=>D.navigate(button.dataset.page)));
+    const theme=value=>{
+      document.documentElement.dataset.theme=value;
+      try{localStorage.setItem('smartChargingTheme',value);}catch{}
+      document.querySelectorAll('[data-esp-theme]').forEach(button=>button.setAttribute('aria-pressed',String(button.dataset.espTheme===value)));
+      if(D.state())D.render(D.state());
+      if(D.page==='history')D.renderHistory(D.history());
+    };
+    try{theme(localStorage.getItem('smartChargingTheme')==='light'?'light':'dark');}catch{theme('dark');}
+    document.getElementById('dev-theme').addEventListener('click',()=>theme(document.documentElement.dataset.theme==='dark'?'light':'dark'));
+    document.querySelectorAll('[data-esp-theme]').forEach(button=>button.addEventListener('click',()=>theme(button.dataset.espTheme)));
+    document.getElementById('esp-fullscreen').addEventListener('click',async()=>{try{if(document.fullscreenElement)await document.exitFullscreen();else await document.documentElement.requestFullscreen();}catch{D.notice('Full screen is unavailable in this browser.');}});
+    document.getElementById('esp-refresh').addEventListener('click',()=>void D.refresh().catch(error=>D.notice(error.message,true)));
+    return;
+  }
+
   'use strict';
   const hostName = document.documentElement.dataset.devEdition === 'desktop' ? 'PC' : 'Pi';
   const piEdition = document.documentElement.dataset.devEdition !== 'web';
@@ -38,6 +122,7 @@
   new MutationObserver(syncBrandTheme).observe(document.documentElement, {attributes:true,attributeFilter:['data-theme']});
   wrapper.before(shell);
   syncBrandTheme();
+  window.installDashboardAbout(shell,document.getElementById('dev-about'));
   shell.querySelector('#dev-content').append(wrapper);
   // Credits, licence terms, and build details remain in About.
   wrapper.querySelector('.app-footer')?.remove();
@@ -72,6 +157,7 @@
     sections.overview.querySelector('header p').textContent = 'Current power flow, Octopus dispatches and FoxESS schedules in this browser.';
     sections.rules.querySelector('header p').textContent = 'Review charging and discharging preferences before sending changes through your Google relay.';
   }
+  window.installDashboardHeadings(shell);
   const move = (element, page) => { if (element) sections[page].querySelector('.dev-page-grid').append(element); };
   move(overview, 'overview');
   move(document.getElementById('section-intelligent-octopus'), 'overview');

@@ -1,0 +1,66 @@
+{
+  "name": "smart-charging-esp32-setup",
+  "version": "2.3.0",
+  "description": "USB firmware installation and setup for Smart Charging ESP32",
+  "author": "SCKC",
+  "license": "GPL-3.0-or-later",
+  "private": true,
+  "main": "main.cjs",
+  "build": {
+    "appId": "com.sckc.smartcharging.esp32setup",
+    "productName": "Smart Charging ESP32 Setup",
+    "electronVersion": "45.0.0",
+    "asar": true,
+    "npmRebuild": false,
+    "directories": {
+      "output": "../../dist/esp32-setup"
+    },
+    "files": [
+      "main.cjs",
+      "policy.cjs",
+      "server.cjs",
+      "package.json"
+    ],
+    "extraResources": [
+      {
+        "from": "../../dist/esp32-deploy",
+        "to": "setup"
+      },
+      {
+        "from": "../../LICENSE",
+        "to": "LICENSE.txt"
+      },
+      {
+        "from": "../../THIRD_PARTY_NOTICES.md",
+        "to": "THIRD_PARTY_NOTICES.md"
+      }
+    ],
+    "mac": {
+      "target": [
+        {
+          "target": "zip",
+          "arch": [
+            "universal"
+          ]
+        }
+      ],
+      "artifactName": "SmartCharging-ESP32-Setup-${version}-macOS-universal.zip",
+      "icon": "../../src/icons/icon-512.png",
+      "category": "public.app-category.utilities",
+      "identity": "-",
+      "hardenedRuntime": true,
+      "notarize": false,
+      "gatekeeperAssess": false,
+      "minimumSystemVersion": "12.0"
+    },
+    "win": {
+      "target": "portable",
+      "icon": "../../src/icons/icon-512.png",
+      "signExecutable": false
+    },
+    "portable": {
+      "artifactName": "SmartCharging-ESP32-Setup-${version}-Windows-x64.exe",
+      "requestExecutionLevel": "user"
+    }
+  }
+}

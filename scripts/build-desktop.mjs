@@ -50,7 +50,17 @@ await rm('dist/desktop-service',{recursive:true,force:true});
 await cp('dist/linux-package/octopus-foxess','dist/desktop-service',{recursive:true});
 await copyFile('dist/Smart_Charging_Desktop.html','dist/desktop-service/web/app/index.html');
 const builder=path.join(root,'desktop/node_modules/electron-builder/cli.js');
-const child=spawn(process.execPath,[builder,...(mac?['--mac','zip','--universal','--config.directories.output=../dist/macos']:['--win','portable','--x64']),'--publish','never'],{cwd:path.join(root,'desktop'),stdio:'inherit',env:{...process.env,CSC_IDENTITY_AUTO_DISCOVERY:'false'}});
+const args=[builder,...(mac?['--mac','zip','--universal','--config.directories.output=../dist/macos']:['--win','portable','--x64']),'--publish','never'];
+if(process.env.SC_ELECTRON_DIST){
+  const cache=path.resolve(process.env.SC_ELECTRON_DIST);
+  const checksums=JSON.parse(await readFile('desktop/node_modules/electron/checksums.json','utf8'));
+  for(const arch of (mac?['darwin-x64','darwin-arm64']:['win32-x64'])){
+    const file=`electron-v${pkg.devDependencies.electron}-${arch}.zip`;
+    if(digest(await readFile(path.join(cache,file)))!==checksums[file])throw Error('Cached Electron checksum mismatch: '+file);
+  }
+  args.push('--config.electronDist='+cache);
+}
+const child=spawn(process.execPath,args,{cwd:path.join(root,'desktop'),stdio:'inherit',env:{...process.env,CSC_IDENTITY_AUTO_DISCOVERY:'false'}});
 const exit=await new Promise((resolve,reject)=>{child.once('error',reject);child.once('exit',resolve);});
 if(exit!==0)throw new Error(`Desktop packaging exited ${exit}`);
 await import(mac?'./test-mac-package.mjs':'./test-desktop-package.mjs');

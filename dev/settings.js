@@ -1,7 +1,115 @@
 /* Copyright (C) 2026 SCKC. GPL-3.0-or-later.
  * One Settings view. Engine-owned controls keep their IDs and event handlers.
  */
+/* Shared settings navigation. Account editors remain owned by each host. */
+window.installSettingsSections=({page,generalContent,accountCards=[]})=>{
+  const make=(tag,className='')=>{const node=document.createElement(tag);node.className=className;return node;};
+  const tabs=make('div','settings-tabs');tabs.setAttribute('role','tablist');tabs.setAttribute('aria-label','Settings sections');
+  const panels=make('div','settings-panels'),general=make('section','settings-pane'),account=make('section','settings-pane');
+  const accountGrid=make('div','dev-page-grid settings-account-grid');account.append(accountGrid);
+  const buttons=[];
+  [general,account].forEach((pane,index)=>{const key=index?'account':'general',button=make('button','settings-tab');button.type='button';button.id='settings-tab-'+key;button.textContent=index?'Account setup':'General settings';button.setAttribute('role','tab');button.setAttribute('aria-controls','settings-'+key+'-panel');pane.id='settings-'+key+'-panel';pane.setAttribute('role','tabpanel');pane.setAttribute('aria-labelledby',button.id);buttons.push(button);tabs.append(button);button.addEventListener('click',()=>select(index));button.addEventListener('keydown',event=>{let next;if(event.key==='ArrowRight'||event.key==='ArrowLeft')next=index===0?1:0;else if(event.key==='Home')next=0;else if(event.key==='End')next=buttons[1].hidden?0:1;else return;if(buttons[next].hidden)next=0;event.preventDefault();select(next);buttons[next].focus();});});
+  function select(index){[general,account].forEach((pane,i)=>{pane.hidden=i!==index;buttons[i].setAttribute('aria-selected',String(i===index));buttons[i].tabIndex=i===index?0:-1;});}
+  general.append(generalContent);panels.append(general,account);page.append(tabs,panels);page.classList.add('settings-with-tabs');buttons[1].hidden=true;select(0);
+  const addAccountCard=node=>{accountGrid.append(node);buttons[1].hidden=false;};accountCards.forEach(addAccountCard);
+  return {addAccountCard,select,general,account};
+};
 (() => {
+  if(document.documentElement.dataset.devEdition==='esp32-dashboard'){
+    const D=window.esp32Dashboard,$=D.$;
+    const page=document.querySelector('.dev-page[data-page="settings"]');
+    const accountCards=[...page.querySelectorAll('[data-setting]')].filter(node=>['device-setup','service-octopus','service-foxess','service-websocket','foxess-live','lan-access'].includes(node.dataset.setting));
+    window.settingsSections=window.installSettingsSections({page,generalContent:$('esp-settings-form'),accountCards:accountCards.sort((a,b)=>(a.dataset.setting==='device-setup')-(b.dataset.setting==='device-setup'))});
+    let accessEditing=false;
+    $('esp-skip-welcome').addEventListener('change',()=>{
+      const enabled=$('esp-skip-welcome').checked;
+      if(D.saveStartPage(enabled))$('esp-start-page-status').textContent=enabled?'This browser will open Dashboard directly.':'This browser will show Welcome.';
+      else{$('esp-skip-welcome').checked=!enabled;$('esp-start-page-status').textContent='Browser storage is unavailable. The start-page choice was not saved.';}
+    });
+    $('esp-show-welcome').addEventListener('click',()=>D.showWelcome());
+    const accessFields=()=>{$('esp-lan-code-fields').hidden=!$('esp-lan-enabled').checked;};
+    D.syncAccess=state=>{
+      if(!accessEditing){$('esp-lan-enabled').checked=state.lan_access_enabled===true;accessFields();}
+      $('esp-logout').hidden=state.lan_access_enabled!==true;
+    };
+    for(const id of ['esp-lan-enabled','esp-lan-new-code','esp-lan-confirm-code'])$(id).addEventListener('input',()=>{accessEditing=true;accessFields();});
+    $('esp-lan-save').addEventListener('click',()=>{
+      const enabled=$('esp-lan-enabled').checked,code=$('esp-lan-new-code').value;
+      if(enabled&&(code.length<6||code.length>128||code!==$('esp-lan-confirm-code').value)){$('esp-lan-status').textContent='Enter matching access codes with 6 to 128 characters.';return;}
+      D.review(enabled?'Enable LAN access protection?':'Disable LAN access protection?',enabled?'Other browsers will need this access code. Physical USB setup can reset LAN protection.':'Devices on your trusted local network can open and control this dashboard without an access code.',enabled?'The access code stays private and is stored as a salted hash. Existing browser sessions will be revoked.':'LAN access code: Off',async()=>{
+        await D.request('/api/lan-access',{enabled,access_code:enabled?code:''});
+        $('esp-lan-new-code').value='';$('esp-lan-confirm-code').value='';accessEditing=false;
+        await D.refresh();$('esp-lan-status').textContent=enabled?'LAN access protection is on.':'LAN access protection is off.';
+      });
+    });
+    const display=window.priceDisplay.read();for(const key of ['enabled','code','symbol','fx']){const input=$('price-display-'+key);if(key==='enabled')input.checked=display[key];else input.value=display[key];}
+    $('esp-save-price-display').addEventListener('click',()=>{
+      try{window.priceDisplay.save({enabled:$('price-display-enabled').checked,code:$('price-display-code').value.trim().toUpperCase(),symbol:$('price-display-symbol').value.trim(),fx:Number($('price-display-fx').value)});$('esp-price-status').textContent='Saved on this browser. Exchange rates are not updated automatically.';}
+      catch(error){$('esp-price-status').textContent=error.message;}
+    });
+    window.addEventListener('pagehide',()=>{$('esp-lan-new-code').value='';$('esp-lan-confirm-code').value='';});
+    const clock=value=>String(Math.floor(value/60)).padStart(2,'0')+':'+String(value%60).padStart(2,'0');
+    D.fillRules=rules=>{
+      document.querySelectorAll('[data-rule]').forEach(input=>{if(input.type==='checkbox')input.checked=rules[input.dataset.rule]===true;else input.value=rules[input.dataset.rule];});
+      document.querySelectorAll('[data-rule-time]').forEach(input=>input.value=clock(rules[input.dataset.ruleTime]));
+      document.querySelectorAll('[data-days]').forEach(input=>input.checked=!!(rules[input.dataset.days]&(1<<Number(input.value))));
+    };
+    const collect=()=>{
+      const rules=structuredClone(D.state().rules);
+      document.querySelectorAll('[data-rule]').forEach(input=>rules[input.dataset.rule]=input.type==='checkbox'?input.checked:Number(input.value));
+      document.querySelectorAll('[data-rule-time]').forEach(input=>{const [h,m]=input.value.split(':').map(Number);rules[input.dataset.ruleTime]=h*60+m;});
+      for(const key of ['charge_days','discharge_days']){rules[key]=0;document.querySelectorAll('[data-days="'+key+'"]').forEach(input=>{if(input.checked)rules[key]|=1<<Number(input.value);});}
+      return rules;
+    };
+    document.querySelectorAll('[data-rule],[data-rule-time],[data-days]').forEach(input=>input.addEventListener('input',()=>D.setDirty(true)));
+    const ruleSummary=rules=>{
+      const dayNames=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+      const days=mask=>mask===127?'Every day':dayNames.filter((_,i)=>mask&(1<<i)).join(', ');
+      const schedule=prefix=>clock(rules[prefix+'_start'])+'–'+clock(rules[prefix+'_end'])+' · '+days(rules[prefix+'_days'])+(rules[prefix+'_end']<rules[prefix+'_start']?' · overnight':'');
+      return [
+        'Automation: '+(rules.enabled?'Enabled':'Disabled'),
+        'Pause: '+(rules.paused?(rules.pause_until?'Until '+new Date(rules.pause_until*1000).toLocaleString('en-GB',{timeZone:'Europe/London'}):'Until resumed'):'Off'),
+        'Follow Smart Dispatch: '+(rules.follow_dispatch?'On':'Off'),
+        'Dispatch charge target: '+(rules.dispatch_soc_enabled?rules.dispatch_soc+'%':'100%'),
+        'Charge at import price: '+(rules.charge_price_enabled?'At or below '+rules.charge_price_p+' p/kWh':'Off'),
+        'Weekly charge: '+(rules.weekly_charge?schedule('charge'):'Off'),
+        'Ordinary charge target: '+(rules.charge_soc_enabled?rules.target_soc+'%':'100%'),
+        'Auto-Resume Self-Use: '+(rules.auto_resume?'On':'Off'),
+        'Pause discharging during Smart Dispatch: '+(rules.pause_discharge_dispatch?'On':'Off'),
+        'Discharging overrides ordinary charging: '+(rules.discharge_overrides_charge?'On':'Off'),
+        'Discharge at export price: '+(rules.discharge_price_enabled?'At or above '+rules.discharge_price_p+' p/kWh':'Off'),
+        'Weekly discharge: '+(rules.weekly_discharge?schedule('discharge'):'Off'),
+        'Minimum battery SOC: '+rules.min_soc+'%',
+        'Discharge power: '+rules.power_w+' W',
+        'Octopus interval: '+rules.octopus_seconds+' seconds',
+        'FoxESS interval: '+rules.foxess_seconds+' seconds',
+        'RAM History retention: '+rules.history_days+' days',
+        'Hourly Flash History: '+(rules.history_flash_enabled?'On · one hourly record · 60 days':'Off · RAM only'),
+        'All schedule times: Europe/London'
+      ].join('\n');
+    };
+    for(const id of ['esp-rules-form','esp-settings-form'])$(id).addEventListener('submit',event=>{
+      event.preventDefault();const rules=collect();
+      const details=ruleSummary(rules);
+      D.review('Apply ESP32 settings?',rules.enabled?'These rules can replace the real inverter schedule. Keep other automation workers stopped. Confirmation requires fresh FoxESS REST readback.':'Save these settings on the ESP32. Automation will remain disabled.',details,()=>D.applyRules(rules));
+    });
+    $('esp-pause').addEventListener('click',async()=>{
+      if(!D.state())return;const rules=structuredClone(D.state().rules),hours=Number($('esp-pause-hours').value);rules.paused=true;rules.pause_until=hours?Math.floor(Date.now()/1000)+hours*3600:0;
+      $('esp-pause').disabled=true;
+      try{await D.applyRules(rules);$('esp-pause-dialog').close();D.notice('Pause saved. Any command already sent must finish before pause is complete.');}
+      catch(error){$('esp-pause-status').textContent=error.message;D.notice(error.message,true);}
+      finally{$('esp-pause').disabled=false;}
+    });
+    $('esp-resume').addEventListener('click',()=>{if(!D.state())return;const rules=structuredClone(D.state().rules);rules.paused=false;rules.pause_until=0;D.review('Resume automation?','The ESP32 will read fresh dispatches and the current FoxESS schedule before reconciling.','Other automation workers must remain stopped.',()=>D.applyRules(rules));});
+    $('esp-manual-form').addEventListener('submit',event=>{
+      event.preventDefault();const minute=id=>{const [h,m]=$(id).value.split(':').map(Number);return h*60+m;};
+      const start=minute('v3-start'),end=minute('v3-end'),date=new Date();date.setHours(Math.floor(end/60),end%60,0,0);if(date.getTime()<=Date.now())date.setDate(date.getDate()+1);
+      const period={start,end,mode:Number($('esp-manual-mode').value),expires:Math.floor(date.getTime()/1000)};
+      D.review('Apply temporary inverter mode?','This writes a real schedule. Smart Dispatch keeps priority. Pause blocks this command.',$('esp-manual-mode').selectedOptions[0].textContent+' · '+$('v3-start').value+'–'+$('v3-end').value,async()=>{await D.request('/api/manual',{period,acknowledge_control:true});D.notice('Temporary period saved. Await official REST confirmation.');await D.refresh();});
+    });
+    return;
+  }
+
   const hostName = document.documentElement.dataset.devEdition === 'desktop' ? 'computer' : 'Pi';
   const pi = document.documentElement.dataset.devEdition !== 'web';
   const shell = document.getElementById('dev-shell');
@@ -19,6 +127,7 @@
     node.append(make('h2', 'next-panel-title', title), make('p', 'next-muted', description));
     grid.append(node); return node;
   };
+  window.settingsSections=window.installSettingsSections({page:shell.querySelector('.dev-page[data-page="settings"]'),generalContent:grid});
   const previous = [...grid.children];
   grid.replaceChildren();
 

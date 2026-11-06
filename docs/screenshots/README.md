@@ -1,19 +1,17 @@
 # Interface screenshots
 
-Updated on 27 October 2026.
+Updated on 6 November 2026 for the 2.3.0 Preview.
 
-- Interface screenshots use dark appearance.
-- Published images omit viewport diagnostics and local test overlays.
-- The project owner supplied the four-phone mobile Remote Access montage.
-- That montage shows Welcome, remote sign-in, Overview, and History.
-- Other dashboard views use local mock services and demonstration values.
-- Windows images show its host configuration, dashboard, and Remote Access interface.
-- The Pi image uses the actual GTK Configuration class in an isolated dark-theme preview.
-- The preview cannot call the service or save account settings.
-- No live account configuration or desktop theme was changed for these images.
-- Desktop previews use 1920 × 1080 or 1280 × 720 layouts.
-- The History image shows signed power directions from version 2.0.3 with demonstration readings.
-- The overview image includes automatic tariff updates and the last-check message from version 2.0.4.
-- Screenshots contain no real account numbers, serial numbers, API keys, or remote keys.
+All published interface images use dark appearance and isolated demonstration services.
+No screenshot contains a real account, device identifier, API key, password, or remote key.
 
+- ESP32 images show Welcome, Overview, History, Account setup, and the four-step USB deployment tool.
+- Portable images show the native bridge interface with mocked host configuration and a stopped tunnel.
+- Pi images show the shared dashboard and General settings with mocked service responses.
+- Web images show Welcome, Google relay setup, Overview, and empty browser Activity.
+- The mobile image shows ESP32 Welcome in a 390-pixel browser frame.
+- Desktop captures use the default 1280 by 720 browser viewport.
+- Missing demonstration data remains unavailable. Images do not fabricate API confirmation.
+
+Native Windows execution and physical iPhone installation are not established by these browser captures.
 A screenshot demonstrates the interface, not verified inverter behaviour.

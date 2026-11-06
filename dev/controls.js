@@ -18,21 +18,14 @@
     const footer = make('div', '', 'dev-dialog-actions');
     footer.append(button(cancelLabel, () => node.close()), button(confirmLabel, confirm)); node.append(footer); return footer.lastChild;
   };
-  document.querySelectorAll('.dev-review-dialog').forEach(node => {
-    if (node.querySelector('.next-dialog-header')) return;
-    const heading = node.querySelector('h2'); if (!heading) return;
-    const header = make('header', '', 'next-dialog-header');
-    heading.before(header); header.append(heading);
-    const close = button('×', () => node.close()); close.setAttribute('aria-label', 'Close dialog'); header.append(close);
-    heading.id ||= `dialog-title-${document.querySelectorAll('[id^=dialog-title]').length}`; node.setAttribute('aria-labelledby', heading.id);
+  document.querySelectorAll('.dev-review-dialog').forEach(window.installReviewHeader);
+  const pauseButton = button('Pause automation', () => {
+    if(window.automationControl.snapshot().paused){resumeStatus.textContent='';resumeDialog.showModal();}
+    else {duration.value='forever';message.textContent='';pauseDialog.showModal();}
   });
-  const banner = make('section', '', 'next-pause-banner'); banner.hidden = true; banner.setAttribute('role', 'status');
-  const bannerCopy = make('div'); banner.append(bannerCopy);
-  shell.querySelector('.dev-appbar').after(banner);
-  const pauseButton = button('Pause automation', () => { duration.value = '6'; message.textContent = ''; pauseDialog.showModal(); });
-  pauseButton.className = 'next-button secondary next-header-pause'; shell.querySelector('.dev-app-actions').append(pauseButton);
-  const pauseDialog = dialog('Pause automation', 'Pause all app schedule control. Monitoring continues. The current FoxESS schedule stays in place.');
-  pauseDialog.append(make('p', 'After pausing, use the FoxESS app to set temporary charging. When automation resumes, saved app rules can replace those settings.'));
+  const syncPauseSwitch=window.installPauseSwitch(pauseButton);
+  shell.querySelector('.dev-app-actions').append(pauseButton);
+  const pauseDialog = dialog('Turn off automation?', 'Pause schedule control? Monitoring continues. The device stays on. The current inverter schedule stays in place.');
   const label = make('label', 'Pause for', 'next-field');
   const duration = make('select'); duration.id = 'pause-duration'; label.htmlFor = duration.id;
   for (const [value, text] of [['6', '6 hours'], ['12', '12 hours'], ['24', '24 hours'], ['forever', 'Forever — until you resume']]) {
@@ -40,7 +33,7 @@
   }
   label.append(duration); pauseDialog.append(label);
   const message = make('p'); message.setAttribute('role', 'status'); pauseDialog.append(message);
-  const confirmPause = actions(pauseDialog, 'Cancel', 'Pause automation', async () => {
+  const confirmPause = actions(pauseDialog, 'Cancel', 'Confirm pause', async () => {
     confirmPause.disabled = true; message.textContent = 'Waiting for any current command to finish…';
     try { await window.automationControl.update('pause', duration.value === 'forever' ? null : Number(duration.value)); pauseDialog.close(); }
     catch (error) { message.textContent = error.message; }
@@ -54,20 +47,11 @@
     catch (error) { resumeStatus.textContent = error.message; }
     finally { confirmResume.disabled = false; }
   });
-  const resume = button('Resume automation', () => { resumeStatus.textContent = ''; resumeDialog.showModal(); }); banner.append(resume);
+  const syncPauseBanner=window.installPauseBanner(shell,()=>{resumeStatus.textContent='';resumeDialog.showModal();});
   const syncPause = () => {
-    const state = window.automationControl.snapshot();
-    const connected = document.getElementById('dashboard').classList.contains('visible');
-    banner.hidden = !connected || (!state.paused && !state.pending && state.available);
-    banner.dataset.unavailable = String(!state.available && !state.paused);
-    bannerCopy.replaceChildren(make('strong', state.paused ? 'Automation paused' : state.pending ? 'Updating automation control…' : 'Schedule control unavailable'));
-    bannerCopy.append(make('p', state.paused
-      ? `${state.until ? `Paused until ${new Date(state.until).toLocaleString()}.` : 'Paused until you resume.'} App schedule commands are blocked. Monitoring continues. Use the FoxESS app for temporary settings.`
-      : 'The app will not send schedule commands until the control state is confirmed.'));
-    if (state.auditWarning) bannerCopy.append(make('p', 'The pause state is saved, but History could not record this change. Check Pi storage.'));
-    resume.hidden = !state.paused; resume.disabled = state.pending || !state.available;
-    pauseButton.textContent = state.paused ? 'Change pause duration' : 'Pause automation';
-    pauseButton.disabled = !state.available || state.pending;
+    const state=window.automationControl.snapshot();
+    syncPauseBanner(state,document.getElementById('dashboard').classList.contains('visible'));
+    syncPauseSwitch(state);
     if (typeof renderProtectionOverview === 'function') renderProtectionOverview();
   };
   window.addEventListener('automation-control-change', syncPause);

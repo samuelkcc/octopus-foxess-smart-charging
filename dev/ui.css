@@ -334,7 +334,7 @@ body>#proxy-modal>div {max-width:850px!important;}
 .launch-screen {overflow-anchor:none;}
 /* Equal API badges: no countdown text and no layout change when an alert appears. */
 .overview-updates,.overview-update-grid {display:flex;align-items:center;justify-content:flex-end;gap:8px;margin:0;}
-.dev-auth-mode .overview-updates,.dev-auth-mode .next-header-pause {display:none!important;}
+.dev-auth-mode .overview-updates,.dev-auth-mode .next-header-pause,.dev-auth-mode .next-pause-switch {display:none!important;}
 #dev-shell .next-header-pause {width:148px;height:40px;min-height:40px;flex:0 0 148px;padding:7px 10px;margin:0;font-size:12px;line-height:1.2;order:1;}
 .dev-appbar {flex-wrap:wrap;}
 .overview-update-card {position:relative;width:148px;flex:0 0 148px;height:40px;}
@@ -700,3 +700,96 @@ html.desktop-viewport,html.desktop-viewport body {height:100%;min-height:0;overf
 .next-service-disabled[hidden] {display:none!important;}
 
 #dev-shell .overview-service-refresh.has-warning {border:2px solid #ef4444;box-shadow:0 0 0 1px #ef444426;}
+
+/* One operator switch and About location in every dashboard edition. */
+#dev-shell .next-pause-switch {display:inline-grid;place-items:center;flex:0 0 40px;width:40px;min-width:40px;height:40px;min-height:40px;margin:0;padding:0;border:1px solid #15803d;border-radius:50%;background:#15803d;color:white;order:1;}
+#dev-shell .next-pause-switch svg {width:21px;height:21px;display:block;pointer-events:none;}
+#dev-shell .next-pause-switch[data-state=running] {background:#15803d;border-color:#15803d;box-shadow:0 0 0 3px #22c55e18;}
+#dev-shell .next-pause-switch[data-state=stopped] {background:#b91c1c;border-color:#b91c1c;}
+#dev-shell .next-pause-switch[data-state=pending],#dev-shell .next-pause-switch[data-state=unavailable] {background:var(--card-bg);border-color:var(--text-muted);color:var(--text-muted);}
+#dev-shell .next-pause-switch:hover:not(:disabled) {filter:brightness(1.15);color:white;}
+.dev-rail-bottom button svg {width:19px;height:19px;flex-shrink:0;}
+.next-connections-grid .next-account-panel>button {align-self:flex-start;}
+.next-connections-grid .next-service-panel>small {font-size:12px;color:var(--text-muted);margin:6px 0 12px;}
+.next-connections-grid .dev-inspector {margin-top:16px;min-height:0;}
+.next-connections-grid .dev-inspector h3 {margin-top:0;}
+.next-connections-grid .dev-inspector>button {align-self:flex-start;flex:none;}
+@media(max-width:760px) {
+  .dev-rail-bottom {display:block;border:0;padding:0;margin-top:10px;}
+  .dev-rail-bottom button {width:auto;min-height:36px;padding:6px;}
+  #dev-shell .next-pause-switch {padding:0;}
+}
+
+
+.next-service-row p {margin:0!important;}
+.next-connections-grid .dev-inspector {justify-content:flex-start;}
+.next-connections-grid .dev-inspector dl {flex:none;}
+.next-connections-grid .dev-inspector dl>div {padding:8px 0;}
+
+.dev-app-actions #dev-theme {order:2;}
+.dev-app-actions #esp-logout {order:3;}
+.next-rule-body>.next-field {margin-bottom:16px;}
+.next-rule-body>.next-field+.next-toggle {margin-top:8px;}
+
+/* Align History selection and export with the same 44-pixel controls. */
+.dev-history-controls {align-items:flex-end;}
+.dev-history-controls label {display:flex;flex-direction:column;gap:8px;}
+#dev-shell .dev-history-controls select {height:44px;min-height:44px;margin:0;}
+#dev-shell .dev-history-controls>button {height:44px;min-height:44px;flex:none;}
+
+#dev-shell .next-pause-switch[data-state=running]:hover:not(:disabled){background:#15803d;border-color:#15803d;}
+#dev-shell .next-pause-switch[data-state=stopped]:hover:not(:disabled){background:#b91c1c;border-color:#b91c1c;}
+
+#dev-shell .dev-history-controls select{appearance:none;-webkit-appearance:none;line-height:22px;padding-right:38px!important;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E")!important;background-repeat:no-repeat!important;background-size:16px!important;background-position:right 12px center!important;}
+.desktop-viewport #dev-shell .dev-history-controls>button {height:44px;min-height:44px;}
+@media(max-width:760px){#dev-shell .dev-history-controls>button{width:100%;}}
+
+/* Weekday choices keep the native checkbox and make the whole tile interactive. */
+#dev-shell .next-days{gap:6px}
+#dev-shell .next-days label{position:relative;isolation:isolate;display:grid;place-items:center;min-height:44px;padding:0;border:1px solid var(--border);border-radius:10px;background:var(--bg);color:var(--text-muted);font-weight:600;cursor:pointer;user-select:none;transition:background-color .15s,border-color .15s,color .15s}
+#dev-shell .next-days label>input[type=checkbox]{position:absolute;inset:0;z-index:1;display:block;appearance:none;-webkit-appearance:none;width:100%;height:100%;max-width:none;margin:0;padding:0;opacity:0;cursor:pointer}
+#dev-shell .next-days label>span{display:block;padding:10px 3px;pointer-events:none;line-height:1.2}
+#dev-shell .next-days label:has(input:checked){background:var(--button-fill);border-color:var(--button-fill);color:#fff;box-shadow:inset 0 -2px 0 #0002}
+#dev-shell .next-days label:hover:not(:has(input:disabled)){border-color:var(--accent);color:var(--text-main)}
+#dev-shell .next-days label:has(input:checked):hover:not(:has(input:disabled)){background:var(--button-hover);border-color:var(--button-hover);color:#fff}
+#dev-shell .next-days label:has(input:focus-visible){outline:3px solid var(--accent);outline-offset:3px}
+#dev-shell .next-days label:has(input:disabled){opacity:.45;cursor:not-allowed}
+#dev-shell .next-days input:disabled{cursor:not-allowed}
+@media(prefers-reduced-motion:reduce){#dev-shell .next-days label{transition:none}}
+
+/* Keep rule headings clear of separators in every dashboard edition. */
+#dev-shell .dev-page[data-page=rules] .next-toggle{padding:16px 0;align-items:center;gap:16px}
+#dev-shell .dev-page[data-page=rules] .next-toggle>span{line-height:1.5}
+#dev-shell .dev-page[data-page=rules] .next-toggle small{margin-top:6px;line-height:1.55}
+#dev-shell .dev-page[data-page=rules] .next-rule-body{justify-content:flex-start}
+#dev-shell .dev-page[data-page=rules] .next-rule-body>.next-toggle:first-child,
+#dev-shell .dev-page[data-page=rules] .next-panel-title+.next-toggle{border-top:0;padding-top:0}
+#dev-shell .dev-page[data-page=rules] .next-field-grid:has(>.next-toggle){align-items:center;margin:12px 0 16px}
+#dev-shell .dev-page[data-page=rules] .next-field-grid>.next-toggle{border:0;padding:0;min-height:44px}
+#dev-shell .dev-page[data-page=rules] .next-field-grid>.next-field{margin:0}
+#dev-shell .dev-page[data-page=rules] .next-days{margin-bottom:16px}
+
+/* Settings separate everyday preferences from host-owned account editors. */
+.settings-tabs{display:flex;gap:8px;padding:0 0 16px;flex:none;border-bottom:1px solid var(--border);margin-bottom:18px}
+.settings-tab{font:inherit;font-weight:600;min-height:44px;padding:10px 18px;border:1px solid var(--border);border-radius:10px;background:var(--card-bg);color:var(--text-muted);cursor:pointer}
+.settings-tab[aria-selected=true]{background:var(--button-fill);border-color:var(--button-fill);color:white}
+.settings-tab:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
+.settings-panels,.settings-pane{min-width:0}.settings-pane[hidden],.settings-tab[hidden]{display:none!important}
+#dev-shell .dev-page[data-page=settings] .settings-account-grid{grid-template-columns:repeat(2,minmax(0,1fr));grid-template-rows:none;grid-auto-rows:min-content;align-content:start;align-items:start;overflow:visible}
+#dev-shell .settings-account-grid>[data-setting=device-setup]{grid-column:1/-1}
+#dev-shell .settings-account-grid>.next-panel{grid-row:auto;grid-column:auto}
+#dev-shell .settings-account-grid>[data-setting=device-setup],#dev-shell .settings-account-grid>[data-setting=desktop-service]{grid-column:1/-1}
+#dev-shell .settings-tabs .settings-tab{width:auto;flex:0 1 auto}
+.settings-account-grid>.next-panel{overflow:visible;min-width:0}
+.desktop-account-sections{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+.desktop-account-group{border:1px solid var(--border);border-radius:12px;padding:16px;margin:0 0 18px;min-width:0}
+.desktop-account-group legend{padding:0 7px;font-weight:600;color:var(--text-main)}
+.desktop-account-group .next-field+.next-field{margin-top:16px}
+.settings-account-grid [data-setting=desktop-service]{grid-column:1/-1}
+.desktop-viewport .settings-with-tabs .settings-panels{display:flex;flex-direction:column;flex:1;min-height:0;overflow:hidden}
+.desktop-viewport .settings-with-tabs .settings-pane{flex:1;min-height:0;overflow:auto;padding-right:6px}
+.desktop-viewport .settings-with-tabs .settings-pane>.dev-page-grid{grid-template-rows:none;grid-auto-rows:min-content;align-content:start}
+#dev-shell #settings-general-panel #esp-settings-form>.dev-page-grid{grid-template-columns:repeat(2,minmax(0,1fr));grid-template-rows:none;grid-auto-rows:min-content}
+@media(max-width:760px){#dev-shell .dev-page[data-page=settings] .settings-account-grid,.desktop-account-sections,#dev-shell #settings-general-panel #esp-settings-form>.dev-page-grid{grid-template-columns:minmax(0,1fr)}.settings-tab{padding:10px 12px}}
+
+.launch-editions{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 18px}.launch-editions .next-button{font-size:12px;padding:9px 12px;text-decoration:none}.launch-editions .next-button:first-child{border-color:var(--accent);color:var(--accent)}
