@@ -7,6 +7,8 @@ await mkdir(out,{recursive:true});
 for(const file of ['index.html','guide.html','gallery.html','site.css','site.js','guide.js']){const text=(await readFile('website/'+file,'utf8')).replaceAll('/*VERSION*/',version).replaceAll('/*DOWNLOAD*/',download);await writeFile(path.join(out,file),text);}
 await cp('linux/octopus-foxess.svg',path.join(out,'octopus-foxess.svg'));
 await cp('docs/screenshots',path.join(out,'screenshots'),{recursive:true});
+await cp('docs/tutorial',path.join(out,'tutorial'),{recursive:true});
+await cp('website/tutorial.html',path.join(out,'tutorial/index.html'));
 await mkdir(path.join(out,'app'),{recursive:true});await cp('dist/Smart_Charging.html',path.join(out,'app/index.html'));
 for(const dir of [out,path.join(out,'app')]){await cp('src/site.webmanifest',path.join(dir,'site.webmanifest'));await cp('src/icons',path.join(dir,'icons'),{recursive:true});}
 await cp('dist/esp32-deploy',path.join(out,'esp32'),{recursive:true});await writeFile(path.join(out,'.nojekyll'),'');

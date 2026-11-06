@@ -4,6 +4,9 @@
 
 [Prepare API keys and optional login](../ACCOUNT-PREPARATION.md).
 
+[Watch the setup video](https://samuelkcc.github.io/octopus-foxess-smart-charging/tutorial/) — 4 minutes 48 seconds, with English narration and captions.
+The video covers USB installation, Wi-Fi verification, account setup, dashboard access, and OTA updates.
+
 ESP32 is the recommended compact local controller. The board runs independently while powered.
 Your phone or computer displays its dashboard. The setup computer can be disconnected after configuration.
 

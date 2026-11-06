@@ -1,0 +1,44 @@
+Charge your EV and home battery together
+Welcome to Smart Charging, a hobby project by S C K C. When Intelligent Octopus Go supplies a low cost E V charging window, the app schedules your Fox E S S home battery to charge too. This also prevents the battery from supplying the car.
+
+Check the board and FoxESS first
+Use an E S P thirty two S three, N sixteen R eight, with sixteen megabytes of flash and eight megabytes of octal memory. Prepare a USB data cable and two point four gigahertz Wi Fi. In Fox E S S, enable Mode Scheduler. Set Remaining Time Mode to Self Use.
+
+Open the deployment tool
+Open E S P thirty two Web Deploy from the project readme. Use desktop Chrome for USB setup. Safari cannot perform deployment. Mac and Windows setup apps provide the same flow. Close other serial tools before connecting the board.
+
+Install firmware before connecting to setup
+Choose New setup or Reinstall. This clean installation erases board settings and saved history. Confirm the supported model and deletion. Type ERASE. Select Erase all and install, then choose the USB serial port. After verification, select Continue and Connect E S P thirty two. Choose the port again.
+
+Keep existing settings when editing
+For a configured board, choose Edit settings instead. This reads saved settings without reinstalling firmware. If you previously enabled a Config Password, unlock the saved values. Otherwise, the tool loads them automatically. Sensitive fields stay masked. Use an eye button to reveal one field.
+
+Scan and test your Wi-Fi
+Go to Network. Scan for Wi Fi and select your network. Enter its password, then run Test Wi Fi with D H C P. This checks the connection and obtains your network addresses. A trial does not save the settings. Wi Fi and I P verification remain required.
+
+Keep a predictable local address
+Keep dashboard port eight seven eight seven. Prefer a D H C P reservation on your router for a stable address. A fixed I P is also available. If you use the suggestion, review the router address pool before accepting it. A silent device can still own an address.
+
+Enter your Octopus and FoxESS details
+Continue to Accounts. Enter your Octopus account number and A P I key. Enter your Fox E S S inverter serial number and A P I token. The preparation help explains where to find them. Keep real credentials masked, especially when sharing screenshots.
+
+Review, save, then open Dashboard
+The optional Fox E S S cloud login enables live WebSocket readings. Leave it blank to use REST. Continue to Review and save. Saving verifies Wi Fi and I P, but does not wait for service A P I tests. Keep USB connected until saving completes.
+
+Use your phone or computer
+Open the local dashboard address shown by setup, including port eight seven eight seven. Your phone and computer must reach the same local network. Every dashboard displays data cached by the E S P thirty two. Opening another dashboard does not send new Octopus or Fox E S S requests.
+
+Check accounts in one place
+In Settings, open Account setup. Use Save accounts to store corrections. Select Test all A P I s to check the configured services in sequence. A red service badge means attention is needed. Open it to review the problem. Wi Fi and I P changes still require USB setup.
+
+Set your charging rules
+First deployment enables automation after network settings are saved. Keep other automation workers stopped. Follow Smart Dispatch protects Octopus charging windows. Our example also enables weekly charging from eleven thirty at night to five thirty in the morning. Select Review and apply. Check the official REST confirmation in Overview.
+
+Choose how the dashboard starts
+General settings can open Dashboard directly on this browser. History uses RAM by default and clears after restart. Optional hourly flash saving retains hourly records for up to sixty days. Enable it only if you want saved history. Display updates do not write each reading to flash.
+
+Update over Wi-Fi when you choose
+The E S P thirty two checks GitHub after startup, then every twenty four hours. Settings can disable these checks. A header badge identifies a newer version. Installation is manual. During an update, automation suspends temporarily and returns to its saved state after verification. Keep power connected.
+
+Keep the ESP32 powered
+The green power button means automation is running. Select it and confirm to pause schedule changes. Monitoring continues. Keep the E S P thirty two powered and connected to Wi Fi. You can close the browser and disconnect the computer. This edition provides local access without Cloudflare. Your setup is ready.

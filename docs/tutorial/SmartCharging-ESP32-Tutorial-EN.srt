@@ -1,0 +1,279 @@
+1
+00:00:00,450 --> 00:00:07,070
+Welcome to Smart Charging, a hobby project by SCKC. When Intelligent Octopus Go supplies a low-cost
+
+2
+00:00:07,090 --> 00:00:12,650
+EV charging window, the app schedules your FoxESS home battery to charge too.
+
+3
+00:00:13,250 --> 00:00:15,850
+This also prevents the battery from supplying the car.
+
+4
+00:00:17,658 --> 00:00:24,918
+Use an ESP32-S3 N16R8 with 16 MB of flash and 8 MB of octal memory.
+
+5
+00:00:25,318 --> 00:00:29,138
+Prepare a USB data cable and 2.4 GHz Wi-Fi.
+
+6
+00:00:29,598 --> 00:00:32,318
+In FoxESS enable Mode Scheduler.
+
+7
+00:00:32,598 --> 00:00:34,658
+Set Remaining Time Mode to Self-Use.
+
+8
+00:00:36,492 --> 00:00:40,092
+Open ESP32 Web Deploy from the project Readme.
+
+9
+00:00:40,532 --> 00:00:42,732
+Use desktop Chrome for USB setup.
+
+10
+00:00:43,192 --> 00:00:45,052
+Safari cannot perform deployment.
+
+11
+00:00:45,612 --> 00:00:48,172
+Mac and Windows setup apps provide the same flow.
+
+12
+00:00:48,672 --> 00:00:51,292
+Close other serial tools before connecting the board.
+
+13
+00:00:53,117 --> 00:00:54,997
+Choose New Setup or Reinstall.
+
+14
+00:00:55,577 --> 00:00:58,997
+This clean installation erases board settings and saved history.
+
+15
+00:00:59,377 --> 00:01:01,597
+Confirm the supported model and deletion.
+
+16
+00:01:01,937 --> 00:01:07,157
+Type Erase. Select Erase All and Install, then choose the USB serial port.
+
+17
+00:01:07,697 --> 00:01:11,657
+After verification, select Continue and connect ESP32.
+
+18
+00:01:12,137 --> 00:01:13,297
+Choose the port again.
+
+19
+00:01:15,117 --> 00:01:17,977
+For a configured board, choose Edit Settings instead.
+
+20
+00:01:18,617 --> 00:01:21,397
+This reads saved settings without reinstalling firmware.
+
+21
+00:01:21,957 --> 00:01:25,757
+If you previously enabled a Config Password, unlock the saved values.
+
+22
+00:01:26,297 --> 00:01:28,377
+Otherwise, the tool loads them automatically.
+
+23
+00:01:29,037 --> 00:01:30,797
+Sensitive fields stay masked.
+
+24
+00:01:31,177 --> 00:01:33,077
+Use an eye button to reveal one field.
+
+25
+00:01:34,867 --> 00:01:41,307
+Go to network, scan for Wi-Fi and select your network, enter its password then run test Wi-Fi with
+
+26
+00:01:41,327 --> 00:01:45,407
+DHCP this checks the connection and obtains your network addresses.
+
+27
+00:01:45,967 --> 00:01:47,727
+A trial does not save the settings.
+
+28
+00:01:48,187 --> 00:01:51,047
+Wi-Fi and IP verification remain required.
+
+29
+00:01:52,908 --> 00:01:59,548
+Keep Dashboard Port 8787, prefer a DHCP reservation on your router for a stable address.
+
+30
+00:02:00,088 --> 00:02:01,828
+A fixed IP is also available.
+
+31
+00:02:02,368 --> 00:02:06,328
+If you use the suggestion, review the router address pool before accepting it.
+
+32
+00:02:06,768 --> 00:02:08,748
+A silent device can still own an address.
+
+33
+00:02:10,658 --> 00:02:15,038
+Continue to accounts. Enter your Octopus account number and API key.
+
+34
+00:02:15,458 --> 00:02:19,478
+Enter your FoxESS inverter serial number and API token.
+
+35
+00:02:19,998 --> 00:02:22,318
+The preparation help explains where to find them.
+
+36
+00:02:22,758 --> 00:02:26,378
+Keep real credentials masked, especially when sharing screenshots.
+
+37
+00:02:28,408 --> 00:02:34,828
+The optional FoxESS Cloud login enables live WebSocket readings, leave it blank to use REST,
+
+38
+00:02:35,208 --> 00:02:41,568
+continue to review and save, saving verifies Wi-Fi and IP but does not wait for service API tests,
+
+39
+00:02:42,108 --> 00:02:44,588
+keep USB connected until saving completes.
+
+40
+00:02:46,492 --> 00:02:51,272
+Open the local dashboard address shown by setup, including port 8787.
+
+41
+00:02:51,992 --> 00:02:54,852
+Your phone and computer must reach the same local network.
+
+42
+00:02:55,332 --> 00:02:58,932
+Every dashboard displays data cached by the ESP32.
+
+43
+00:02:59,512 --> 00:03:03,892
+Opening another dashboard does not send New Octopus or FoxESS requests.
+
+44
+00:03:05,908 --> 00:03:08,008
+In settings, open Account setup.
+
+45
+00:03:08,568 --> 00:03:10,328
+Use save accounts to store corrections.
+
+46
+00:03:10,828 --> 00:03:14,568
+Select test all APIs to check the configured services in sequence.
+
+47
+00:03:15,168 --> 00:03:17,608
+A red service badge means attention is needed.
+
+48
+00:03:18,028 --> 00:03:19,428
+Open it to review the problem.
+
+49
+00:03:19,888 --> 00:03:23,168
+Wi-Fi and IP changes still require USB setup.
+
+50
+00:03:25,033 --> 00:03:28,893
+First deployment enables automation after network settings are saved.
+
+51
+00:03:29,333 --> 00:03:31,153
+Keep other automation workers stopped.
+
+52
+00:03:31,593 --> 00:03:34,593
+Follow Smart Dispatch protects octopus charging windows.
+
+53
+00:03:35,233 --> 00:03:40,213
+Our example also enables weekly charging from 11.30 at night to 5.30 in the morning.
+
+54
+00:03:40,733 --> 00:03:45,153
+Select Review and Apply. Check the official REST confirmation in Overview.
+
+55
+00:03:46,908 --> 00:03:50,268
+General settings can open dashboard directly on this browser.
+
+56
+00:03:50,768 --> 00:03:53,788
+History uses RAM by default and clears after restart.
+
+57
+00:03:54,368 --> 00:03:58,588
+Optional hourly flash saving retains hourly records for up to 60 days.
+
+58
+00:03:59,008 --> 00:04:01,248
+Enable it only if you want saved history.
+
+59
+00:04:01,708 --> 00:04:04,248
+Display updates do not write each reading to flash.
+
+60
+00:04:06,117 --> 00:04:10,917
+The ESP32 checks GitHub after startup, then every 24 hours.
+
+61
+00:04:11,537 --> 00:04:13,397
+Settings can disable these checks.
+
+62
+00:04:13,877 --> 00:04:16,137
+A header badge identifies a newer version.
+
+63
+00:04:16,597 --> 00:04:22,317
+Installation is manual. During an update, automation suspends temporarily and returns to its saved
+
+64
+00:04:22,337 --> 00:04:25,477
+state after verification. Keep power connected.
+
+65
+00:04:27,325 --> 00:04:30,105
+The green power button means automation is running.
+
+66
+00:04:30,605 --> 00:04:33,205
+Select it and confirm to pause schedule changes.
+
+67
+00:04:33,585 --> 00:04:38,805
+Monitoring continues. Keep the ESP32 powered and connected to Wi-Fi.
+
+68
+00:04:39,285 --> 00:04:41,725
+You can close the browser and disconnect the computer.
+
+69
+00:04:42,305 --> 00:04:45,265
+This edition provides local access without Cloudflare.
+
+70
+00:04:45,765 --> 00:04:46,865
+Your setup is ready.

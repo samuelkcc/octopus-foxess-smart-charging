@@ -14,7 +14,11 @@ FoxESS Force Charge prevents the home battery from discharging into the EV durin
 
 <sub>Independent hobby software by SCKC. Not affiliated with Octopus Energy or FoxESS.</sub>
 
-<p><a href="https://samuelkcc.github.io/octopus-foxess-smart-charging/app/"><img src="docs/assets/open-html-dashboard.svg" alt="Open HTML Dashboard" height="52"></a> <a href="https://samuelkcc.github.io/octopus-foxess-smart-charging/esp32/"><img src="docs/assets/open-esp32-deploy.svg" alt="ESP32 Web Deploy" height="52"></a></p>
+<p>
+<a href="https://samuelkcc.github.io/octopus-foxess-smart-charging/app/"><img src="docs/assets/open-html-dashboard.svg" alt="Open HTML Dashboard" height="52"></a>
+<a href="https://samuelkcc.github.io/octopus-foxess-smart-charging/esp32/"><img src="docs/assets/open-esp32-deploy.svg" alt="ESP32 Web Deploy" height="52"></a>
+<a href="https://samuelkcc.github.io/octopus-foxess-smart-charging/tutorial/"><img src="docs/assets/watch-esp32-tutorial.svg" alt="Watch ESP32 tutorial" height="52"></a>
+</p>
 
 [ESP32 guide](docs/editions/ESP32.md) · [Prepare your accounts](docs/ACCOUNT-PREPARATION.md) · [Compare editions](#choose-your-setup-guide) · [Downloads](https://github.com/samuelkcc/octopus-foxess-smart-charging/releases/tag/esp32-2.5.3)
 

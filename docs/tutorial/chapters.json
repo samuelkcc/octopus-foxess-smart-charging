@@ -1,0 +1,77 @@
+[
+  {
+    "seconds": 0,
+    "time": "00:00",
+    "title": "Charge your EV and home battery together"
+  },
+  {
+    "seconds": 17.208333333333332,
+    "time": "00:17",
+    "title": "Check the board and FoxESS first"
+  },
+  {
+    "seconds": 36.041666666666664,
+    "time": "00:36",
+    "title": "Open the deployment tool"
+  },
+  {
+    "seconds": 52.666666666666664,
+    "time": "00:52",
+    "title": "Install firmware before connecting to setup"
+  },
+  {
+    "seconds": 74.66666666666666,
+    "time": "01:14",
+    "title": "Keep existing settings when editing"
+  },
+  {
+    "seconds": 94.41666666666666,
+    "time": "01:34",
+    "title": "Scan and test your Wi-Fi"
+  },
+  {
+    "seconds": 112.45833333333333,
+    "time": "01:52",
+    "title": "Keep a predictable local address"
+  },
+  {
+    "seconds": 130.20833333333331,
+    "time": "02:10",
+    "title": "Enter your Octopus and FoxESS details"
+  },
+  {
+    "seconds": 147.95833333333331,
+    "time": "02:27",
+    "title": "Review, save, then open Dashboard"
+  },
+  {
+    "seconds": 166.04166666666666,
+    "time": "02:46",
+    "title": "Use your phone or computer"
+  },
+  {
+    "seconds": 185.45833333333331,
+    "time": "03:05",
+    "title": "Check accounts in one place"
+  },
+  {
+    "seconds": 204.58333333333331,
+    "time": "03:24",
+    "title": "Set your charging rules"
+  },
+  {
+    "seconds": 226.45833333333331,
+    "time": "03:46",
+    "title": "Choose how the dashboard starts"
+  },
+  {
+    "seconds": 245.66666666666666,
+    "time": "04:05",
+    "title": "Update over Wi-Fi when you choose"
+  },
+  {
+    "seconds": 266.875,
+    "time": "04:26",
+    "title": "Keep the ESP32 powered"
+  }
+]

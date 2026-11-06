@@ -625,7 +625,7 @@ Native regressions cover both socket representations and startup monitoring befo
 Physical Wi-Fi OTA from 2.5.2 to 2.5.3 preserved every saved rule and restored official REST confirmation.
 The schedule appeared before the first Octopus request. The startup GitHub check completed once.
 Authenticated diagnostics returned safe RAM data. Anonymous access was denied. The temporary key was revoked.
-Native Windows execution remains unverified. The tutorial remains private pending approval.
+Native Windows execution remains unverified. The user approved publication of the setup tutorial.
 
 Installed firmware and UI commit: `bc06b2089b69bf2a7d82cd8c395ab5e55a823fb8`.
 The full local check, native ESP-IDF build, and GitHub Pages checks passed.
