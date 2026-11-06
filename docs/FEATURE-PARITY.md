@@ -1,3 +1,18 @@
+# 2.4.0 mobile help review — Unreleased
+
+Mobile dashboards and USB setup use compact User guide (?) and About (!) buttons beside the brand heading.
+The existing buttons move between the mobile header and desktop sidebar.
+Their IDs, dialog handlers, and focus targets remain unchanged.
+Desktop layouts retain full text labels in the lower sidebar.
+
+Browser checks covered ESP32 and Pi dashboards, plus USB setup at 390 pixels.
+The ESP32 header also fit at 320 pixels without horizontal overflow.
+Both drawers opened and closed, with focus returning to their trigger.
+Resizing restored one copy of each desktop sidebar button.
+The full check, DEV build, and Python AST check passed.
+These checks used local fixtures, not the physical iPhone.
+The change has not been installed on the ESP32 or published.
+
 # 2.3.1 Preview release review — 6 November 2026
 
 This section supersedes earlier development reviews below.

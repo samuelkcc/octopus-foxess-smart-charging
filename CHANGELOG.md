@@ -1,5 +1,7 @@
 # 2.4.0 — Unreleased
 
+- Place compact User guide (?) and About (!) controls at the right of the mobile header.
+- Retain desktop sidebar controls and the existing help drawers in every edition and USB deployment tool.
 - Bound ESP32 dashboard reads and JSON decoding to 12 seconds.
 - Recover suspended mobile reads without replaying configuration or schedule changes.
 - Coalesce state refreshes and reject late replies from abandoned reads.

@@ -6,11 +6,17 @@ Dashboard reads only copy the worker's RAM snapshot.
 They do not start cloud requests or clear tariff caches.
 State diagnostics include uptime and successful tariff-read timestamps.
 
+Mobile headers show compact User guide (?) and About (!) buttons.
+Desktop layouts retain the sidebar entries.
+The same controls open the existing drawers in dashboards and USB deployment tools.
+
 The full check passed with a multiple-dashboard cache regression.
 The native regression verifies cache retention after rate limiting.
 Live reads confirmed matching import caches from independent clients.
 Physical iPhone loading remains under investigation.
-Safari Web Inspector must be enabled on the connected iPhone before inspection can continue.
+Safari Web Inspector is enabled on the connected iPhone.
+The iPhone loaded a temporary Mac LAN page while ESP32 requests failed.
+The connection failure has no confirmed cause yet.
 Scheduler parity work and stable publication remain incomplete.
 
 # Smart Charging 2.3.1 Preview

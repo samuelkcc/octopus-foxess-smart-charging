@@ -6,6 +6,21 @@
   const rail=document.querySelector('.dev-rail-bottom')||document.querySelector('.rail-footer');
   if(!rail||document.getElementById('open-user-guide'))return;
   const trigger=document.createElement('button');trigger.id='open-user-guide';trigger.type='button';trigger.textContent='User guide';trigger.setAttribute('aria-haspopup','dialog');rail.prepend(trigger);
+  // Move the existing controls so their dialog handlers and focus targets stay intact.
+  const about=rail.querySelector('#open-about, #dev-about');
+  const brand=document.querySelector('.dev-brand')||document.querySelector('.brand');
+  if(about&&brand){
+   const shortcuts=document.createElement('div');shortcuts.className='sc-mobile-help';shortcuts.setAttribute('role','group');shortcuts.setAttribute('aria-label','Help and information');brand.append(shortcuts);
+   const controls=[[trigger,'?','User guide'],[about,'!','About & licence']].map(([button,symbol,label])=>{
+    const home=document.createComment(label+' location');button.before(home);button.dataset.mobileSymbol=symbol;button.setAttribute('aria-label',label);button.title=label;return{button,home};
+   });
+   const mobile=matchMedia(document.querySelector('.dev-rail')?'(max-width:760px)':'(max-width:700px)');
+   const placeControls=()=>{
+    controls.forEach(({button,home})=>{if(mobile.matches)shortcuts.append(button);else home.after(button);});
+    shortcuts.hidden=!mobile.matches;rail.classList.toggle('sc-help-in-header',mobile.matches);
+   };
+   mobile.addEventListener('change',placeControls);placeControls();
+  }
   const dialog=document.createElement('dialog');dialog.className='sc-guide-drawer';dialog.setAttribute('aria-labelledby','sc-guide-title');
   const header=document.createElement('header'),title=document.createElement('h2'),close=document.createElement('button');title.id='sc-guide-title';title.textContent='User guide';title.tabIndex=-1;close.type='button';close.textContent='×';close.setAttribute('aria-label','Close User guide');header.append(title,close);
   const body=document.createElement('div');body.className='sc-guide-body';const toc=document.createElement('nav');toc.setAttribute('aria-label','Guide chapters');const content=document.createElement('article');content.className='sc-guide-content';const chooser=document.createElement('label');chooser.className='sc-guide-chooser';chooser.textContent='Chapter';const select=document.createElement('select');select.setAttribute('aria-label','Guide chapter');chooser.append(select);body.append(toc,chooser,content);
