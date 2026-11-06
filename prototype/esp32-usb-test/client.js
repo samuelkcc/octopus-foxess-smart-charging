@@ -7,7 +7,7 @@
   const staticInputs = [...$('static-fields').querySelectorAll('input')];
   let port = null, reader = null, readerTask = null, ready = false, busy = false, configured = false;
   let nextId = 0, safeSave = false, networkTrial = false, runtimeTrial = false, suggestion = null, lanResetSupported=false, lanAccessEnabled=false, controllerEnabled=false;
-  let activeStep=0,furthestStep=0,liveSupported=false,webConfigured=false;
+  let activeStep=0,furthestStep=0,liveSupported=false,webConfigured=false,scanWhileRunning=false,networkSetupSupported=false;
   let dashboardPort=80,configuredDashboardPort=8787,portSupported=false;
   const pending = new Map();
   let readbackSupported=false,configProtected=false,configUnlocked=false,unlockPassword="",loadedSettings=false,savedConfig=null;
@@ -27,13 +27,16 @@
     $('dashboard-port-save').disabled=!ready||locked||!portSupported;
     $('connect').disabled = !supported || !!port || locked;
     $('disconnect').disabled = !port || busy;
-    ['scan-wifi','device-status','restart'].forEach(id => $(id).disabled = !ready || locked || (id==='scan-wifi'&&controllerEnabled));
+    ['scan-wifi','device-status','restart'].forEach(id => $(id).disabled = !ready || locked || (id==='scan-wifi'&&controllerEnabled&&!scanWhileRunning));
+    $('scan-wifi').title=controllerEnabled&&!scanWhileRunning?'Update firmware to scan while automation runs.':'Find nearby 2.4 GHz networks without changing saved settings.';
     $('lan-recovery').hidden=!ready||!lanResetSupported||!lanAccessEnabled;
     $('reset-lan-access').disabled=!ready||locked||!lanResetSupported||!$('reset-lan-consent').checked;
     const savedOnly=unchangedSavedConfiguration();
     $('save').disabled = !ready || locked || !safeSave || controllerEnabled&&!savedOnly;
     $('save-requirements').textContent=!ready?'Connect ESP32 before verifying and saving.':!safeSave?'Update firmware to enable verified saving.':controllerEnabled&&!savedOnly?'Automation is running. Disable control before replacing Wi-Fi, IP or API settings. Account-only Save controls remain available after Pause.':savedOnly?'Saved Wi-Fi, IP and API settings are unchanged. Verify both APIs and save optional telemetry without stopping automation.':'Full setup tests the network and both APIs before saving. Automation must remain disabled during this operation.';
-    $('network-test').disabled = !ready || locked || !safeSave || controllerEnabled;
+    $('network-test').disabled = !ready || locked || !safeSave;
+    $('network-setup-accept').disabled=!ready||locked||!networkSetupSupported;
+    $('network-setup-cancel').disabled=locked;
     $('suggest-ip').disabled = !ready || locked || !networkTrial;
     $('use-suggestion').disabled = !ready || locked || !suggestion;
     $('test').disabled = !ready || locked || !configured || runtimeTrial || controllerEnabled;
@@ -224,6 +227,8 @@
   });
   function updateDeviceState(device){
     configured=device.configured===true;controllerEnabled=device.automation_enabled===true;
+    networkSetupSupported=device.capabilities?.usb_network_setup===true;
+    scanWhileRunning=device.capabilities?.wifi_scan_while_running===true;
     portSupported=device.capabilities?.dashboard_port_configuration===true;
     dashboardPort=Number.isInteger(device.dashboard_port)?device.dashboard_port:80;
     const saved=Number.isInteger(device.configured_dashboard_port)?device.configured_dashboard_port:dashboardPort;
@@ -235,7 +240,7 @@
     readbackSupported=device.capabilities?.usb_config_readback===true;configProtected=device.config_access?.enabled===true;
     $('fox-web-mode').value=device.foxess_telemetry?.mode||'rest';
     $('fox-web-saved').textContent=webConfigured?'Optional login is saved. Leave the password blank to keep it.':liveSupported?'Optional login is not configured. REST remains available.':'Install current firmware to use optional WebSocket telemetry.';
-    $('firmware-note').textContent=device.capabilities?.production_controller===true?(controllerEnabled?'Dashboard & automation firmware · Automation enabled':'Dashboard & automation firmware · Enable control in Automations'):'Connection-test firmware · Automatic charging control disabled';
+    $('firmware-note').textContent=device.capabilities?.production_controller===true?(controllerEnabled?'Dashboard & automation firmware · Automation enabled':'Dashboard & automation firmware · Enable automation in General settings'):'Connection-test firmware · Automatic charging control disabled';
   }
   async function readSavedSettings(password){
     const values=await send('config_read',{config_password:password},20000);
@@ -307,6 +312,8 @@
   $('disconnect').addEventListener('click',disconnect);
   if (supported) navigator.serial.addEventListener('disconnect',event => { if (event.target===port) void disconnect(); });
   $('scan-wifi').addEventListener('click',() => operation('Scanning Wi-Fi…',async () => {
+    $('scan-result').textContent='Scanning nearby 2.4 GHz networks…';
+    try {
     const networks = await send('scan',{},20000);
     if (!Array.isArray(networks)) throw new Error('Unexpected scan response.');
     $('wifi-networks').replaceChildren(new Option('Choose a network, or type the SSID manually',''));
@@ -316,7 +323,8 @@
       seen.add(network.ssid);
       $('wifi-networks').append(new Option(`${network.ssid} (${network.rssi} dBm, ${network.security})`,network.ssid));
     }
-    $('device-result').textContent = `Found ${seen.size} networks. Select one or enter the SSID manually.`;
+    $('scan-result').textContent = seen.size?`Found ${seen.size} networks. Select one below, or enter the SSID manually.`:'No networks found. Move the board closer to your router, or enter the SSID manually.';
+    } catch(error) { $('scan-result').textContent=error.message;throw error; }
   }));
   $('wifi-networks').addEventListener('change',() => { if ($('wifi-networks').value) $('ssid').value=$('wifi-networks').value; clearPreview(); invalidateNetwork(); });
   $('network-mode').addEventListener('change',modeChanged);
@@ -345,11 +353,24 @@
     if (fixed) for (const input of staticInputs) config[input.id]=input.value.trim();
     return config;
   }
-  $('network-test').addEventListener('click',() => {
+  async function testNetwork(disableControl=false) {
     if (!$('ssid').value || new TextEncoder().encode($('ssid').value).length > 32) {
       $('ssid').setCustomValidity('Enter a Wi-Fi name of 1–32 bytes.'); form.reportValidity(); return;
     }
-    void operation('Testing Wi-Fi with DHCP…',async () => {
+    await operation('Testing Wi-Fi with DHCP…',async () => {
+      if(controllerEnabled){
+        if(!disableControl){
+          $('network-setup-confirm').hidden=false;
+          $('network-setup-result').textContent=networkSetupSupported?'':'Update firmware to disable automation through USB, or disable it in dashboard General settings.';
+          return;
+        }
+        try {
+          const device=await send('network_setup',{confirmation:'DISABLE_AUTOMATION_FOR_NETWORK_SETUP'},20000);
+          updateDeviceState(device);
+          if(controllerEnabled)throw new Error('Automation is still enabled. Network settings were not changed.');
+          $('network-setup-confirm').hidden=true;
+        }catch(error){$('network-setup-result').textContent=error.message;throw error;}
+      }
       invalidateNetwork();
       const config={ssid:$('ssid').value,password:$('wifi-password').value,ip_mode:'dhcp'};
       try {
@@ -360,7 +381,10 @@
         renderResult(result);
       } finally { config.password=''; }
     });
-  });
+  }
+  $('network-test').addEventListener('click',()=>testNetwork());
+  $('network-setup-accept').addEventListener('click',()=>testNetwork(true));
+  $('network-setup-cancel').addEventListener('click',()=>{$('network-setup-confirm').hidden=true;});
   $('suggest-ip').addEventListener('click',() => operation('Checking fixed-IP candidates…',async () => {
     suggestion=null;
     const result=await send('suggest_ip',{},30000);

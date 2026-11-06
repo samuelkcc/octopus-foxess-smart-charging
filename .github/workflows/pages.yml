@@ -32,13 +32,7 @@ jobs:
         run: |
           sh scripts/build-esp32-firmware-ci.sh
           npm run build:esp32-deploy
-      - run: |
-          mkdir _site
-          cp dist/Smart_Charging.html _site/index.html
-          cp linux/octopus-foxess.svg _site/octopus-foxess.svg
-          cp src/site.webmanifest _site/site.webmanifest
-          cp -R src/icons _site/icons
-          cp -R dist/esp32-deploy _site/esp32
+      - run: npm run build:pages
       - uses: actions/upload-pages-artifact@v3
         with:
           path: _site

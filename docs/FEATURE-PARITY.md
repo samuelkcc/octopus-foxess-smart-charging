@@ -1,3 +1,19 @@
+# 2.4.1 interface and USB network review — 6 November 2026
+
+- Shared mobile help uses centered SVG icons. The duplicate page-name row is hidden.
+- API badges remain left of the operator switch in the shared toolbar.
+- Current ESP32 firmware permits serialized read-only Wi-Fi scanning while control runs.
+- Wi-Fi testing requests explicit confirmation before disabling automation through USB.
+- The disable operation waits for the worker network lock and preserves other rules and Pause.
+- Failed confirmation does not start a network trial. Entered form values remain available.
+- Native runtime and serial mocks cover these transitions without live schedule commands.
+- Pi and web Welcome entry, Portable Account setup, and guide chapters were reviewed with isolated services.
+- The website has two main entries, native deployment downloads, edition tabs, and chapter navigation.
+- All published interface screenshots were recaptured from isolated demonstration services.
+
+Windows execution, continuous WebSocket operation, and long-term Flash endurance remain verification limits.
+The new USB network transition was tested with mocks. Changing the user's live SSID is not part of release verification.
+
 # 2.4.0 scheduler and deployment review — Unreleased
 
 ESP32 defaults to HTTP port 8787. Physical USB can save another port for the next restart.

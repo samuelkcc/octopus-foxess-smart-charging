@@ -230,6 +230,16 @@ static cJSON *rules_copy(unsigned *rev) {
     xSemaphoreGive(guard);
     return copy;
 }
+// The USB caller holds network_io, so any current cloud command has finished.
+bool sc_runtime_disable_for_setup(void) {
+    unsigned expected;
+    cJSON *copy = rules_copy(&expected);
+    if (!copy) return false;
+    cJSON_SetBoolValue(cJSON_GetObjectItemCaseSensitive(copy, "enabled"), false);
+    bool ok = sc_runtime_update_expected(copy, expected);
+    cJSON_Delete(copy);
+    return ok;
+}
 static void add_number(cJSON *o, const char *key, double value) {
     if (isfinite(value))
         cJSON_AddNumberToObject(o, key, value);

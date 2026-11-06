@@ -1,3 +1,13 @@
+# 2.4.1 — 6 November 2026
+
+- Add a concise website with two main entries, edition tabs, chapter navigation, and interface previews.
+- Remove the redundant mobile page-name row and align badges left with the operator switch right.
+- Replace mobile help text symbols with aligned SVG guide and information icons in all editions.
+- Permit read-only USB Wi-Fi scanning while ESP32 automation runs.
+- Show scan progress, empty results, and errors beside the scan button.
+- Make Wi-Fi testing clickable during automation, with an explicit USB confirmation before disabling control and reconnecting.
+- Preserve entered network values when a test fails.
+
 # 2.4.0 — Unreleased
 
 - Default ESP32 HTTP to port 8787 and add persistent USB port configuration to all deployment tools.

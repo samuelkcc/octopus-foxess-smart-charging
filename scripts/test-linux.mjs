@@ -164,8 +164,10 @@ assert.doesNotMatch(traySource, /Integration Settings/);
 assert.match(dashboardLauncherSource, /\?client=1/);
 assert.match(dashboardLauncherSource, /octopus-foxess-dashboard/);
 assert.match(pagesWorkflow, /npm ci[\s\S]*npm run check/);
-assert.match(pagesWorkflow, /src\/site\.webmanifest/);
-assert.match(pagesWorkflow, /src\/icons/);
+assert.match(pagesWorkflow, /npm run build:pages/);
+const pagesBuilder=await readFile(path.join(root,'scripts/build-pages.mjs'),'utf8');
+assert.match(pagesBuilder, /src\/site\.webmanifest/);
+assert.match(pagesBuilder, /src\/icons/);
 assert.match(releaseWorkflow, /npm ci[\s\S]*npm run check/);
 
 await mkdir(stateRoot);

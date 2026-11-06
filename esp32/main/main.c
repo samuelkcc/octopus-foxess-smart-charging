@@ -121,12 +121,14 @@ static bool start_connection(void) {
 static cJSON *status_json(void) {
     cJSON *object = cJSON_CreateObject();
     cJSON_AddStringToObject(object,"firmware","Smart Charging ESP32");
-    cJSON_AddStringToObject(object,"version","2.4.0");
+    cJSON_AddStringToObject(object,"version","2.4.1");
     cJSON_AddBoolToObject(object,"automation_enabled",sc_runtime_enabled());
     cJSON_AddBoolToObject(object,"configured",settings_saved);
     cJSON_AddBoolToObject(object,"network_trial_active",network_trial_active);
     cJSON *capabilities=cJSON_AddObjectToObject(object,"capabilities");
     cJSON_AddBoolToObject(capabilities,"production_controller",true);
+    cJSON_AddBoolToObject(capabilities,"wifi_scan_while_running",true);
+    cJSON_AddBoolToObject(capabilities,"usb_network_setup",true);
     cJSON_AddBoolToObject(capabilities,"dashboard_port_configuration",true);
     cJSON_AddNumberToObject(object,"dashboard_port",sc_dashboard_port_active());
     cJSON_AddNumberToObject(object,"configured_dashboard_port",sc_dashboard_port_saved());
@@ -397,7 +399,9 @@ static void handle_command(char *line) {
     bool usb_access=!strcmp(command->valuestring,"config_read")||!strcmp(command->valuestring,"config_access_set");
     bool fast=!strcmp(command->valuestring,"dashboard_port")||!strcmp(command->valuestring,"hello")||!strcmp(command->valuestring,"status")||!strcmp(command->valuestring,"reset_lan_access")||!strcmp(command->valuestring,"runtime_state")||!strcmp(command->valuestring,"service_setup")||!strcmp(command->valuestring,"service_setup_status");
     bool live_operation=!strcmp(command->valuestring,"foxess_live_configure");
-    if(!fast&&!live_operation&&!usb_access&&sc_runtime_enabled()&&strcmp(command->valuestring,"reboot")){
+    bool scan_operation=!strcmp(command->valuestring,"scan");
+    bool network_setup=!strcmp(command->valuestring,"network_setup");
+    if(!fast&&!live_operation&&!usb_access&&!scan_operation&&!network_setup&&sc_runtime_enabled()&&strcmp(command->valuestring,"reboot")){
         reply(request_id,false,NULL,"Disable ESP32 automation in the dashboard before USB network or diagnostic operations");
         wipe_json(root);cJSON_Delete(root);return;
     }
@@ -415,6 +419,11 @@ static void handle_command(char *line) {
         const cJSON *confirmation=cJSON_GetObjectItemCaseSensitive(root,"confirmation");
         bool ok=cJSON_IsString(confirmation)&&!strcmp(confirmation->valuestring,"RESET_LAN_ACCESS")&&sc_runtime_reset_lan_access();
         reply(request_id,ok,ok?status_json():NULL,ok?NULL:"Confirm the physical-USB LAN access reset");
+    }
+    else if(network_setup) {
+        const cJSON *confirmation=cJSON_GetObjectItemCaseSensitive(root,"confirmation");
+        bool ok=cJSON_IsString(confirmation)&&!strcmp(confirmation->valuestring,"DISABLE_AUTOMATION_FOR_NETWORK_SETUP")&&sc_runtime_disable_for_setup();
+        reply(request_id,ok,ok?status_json():NULL,ok?NULL:"Confirm disabling automation before network setup, or retry if settings changed");
     }
     else if(usb_access){
         cJSON *password=cJSON_GetObjectItemCaseSensitive(root,"config_password");

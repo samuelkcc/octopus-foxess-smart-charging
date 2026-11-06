@@ -11,8 +11,9 @@
   const brand=document.querySelector('.dev-brand')||document.querySelector('.brand');
   if(about&&brand){
    const shortcuts=document.createElement('div');shortcuts.className='sc-mobile-help';shortcuts.setAttribute('role','group');shortcuts.setAttribute('aria-label','Help and information');brand.append(shortcuts);
-   const controls=[[trigger,'?','User guide'],[about,'!','About & licence']].map(([button,symbol,label])=>{
-    const home=document.createComment(label+' location');button.before(home);button.dataset.mobileSymbol=symbol;button.setAttribute('aria-label',label);button.title=label;return{button,home};
+   const controls=[[trigger,'<path d="M9 18h6M10 21h4M8.2 14.6A6 6 0 1 1 15.8 14.6C14.7 15.5 15 16 15 16H9s.3-.5-.8-1.4Z"/>','User guide'],[about,'<circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7h.01"/>','About & licence']].map(([button,paths,label])=>{
+    const home=document.createComment(label+' location');button.before(home);button.setAttribute('aria-label',label);button.title=label;
+    const icon=document.createElementNS('http://www.w3.org/2000/svg','svg');icon.classList.add('sc-help-icon');icon.setAttribute('viewBox','0 0 24 24');icon.setAttribute('fill','none');icon.setAttribute('stroke','currentColor');icon.setAttribute('stroke-width','1.8');icon.setAttribute('stroke-linecap','round');icon.setAttribute('stroke-linejoin','round');icon.setAttribute('aria-hidden','true');icon.setAttribute('focusable','false');icon.innerHTML=paths;button.append(icon);return{button,home};
    });
    const mobile=matchMedia(document.querySelector('.dev-rail')?'(max-width:760px)':'(max-width:700px)');
    const placeControls=()=>{

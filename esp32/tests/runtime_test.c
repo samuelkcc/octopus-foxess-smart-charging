@@ -108,6 +108,14 @@ int main(int argc,char **argv){fixed_tariff=argc>1&&!strcmp(argv[1],"fixed");set
   puts("Octopus setup and worker share restart spacing, one reservation and Retry-After cooldown; all mocked Octopus sends remain at least 60 seconds apart.");return 0;
  }
 
+ if(argc>1&&!strcmp(argv[1],"network-setup")){
+  cJSON *r=rules();cJSON_SetBoolValue(cJSON_GetObjectItem(r,"enabled"),true);cJSON_SetBoolValue(cJSON_GetObjectItem(r,"paused"),true);assert(sc_runtime_update(r));
+  cJSON_SetBoolValue(cJSON_GetObjectItem(r,"enabled"),false);
+  int previous_writes=writes;assert(sc_runtime_disable_for_setup());assert(!sc_runtime_enabled());assert(sc_runtime_paused());
+  cJSON *after=rules();assert(cJSON_Compare(r,after,true));cJSON_Delete(after);cJSON_Delete(r);
+  step(120);assert(writes==previous_writes);assert(stored_rules);cJSON *saved=cJSON_Parse(stored_rules);assert(cJSON_IsFalse(cJSON_GetObjectItem(saved,"enabled")));cJSON_Delete(saved);
+  puts("USB network setup disables only enablement, preserves Pause/rules, persists and blocks schedule writes.");return 0;
+ }
  if(legacy_mode){cJSON *r=rules();assert(cJSON_IsTrue(cJSON_GetObjectItem(r,"enabled")));assert(cJSON_IsTrue(cJSON_GetObjectItem(r,"paused")));assert(cJSON_IsFalse(cJSON_GetObjectItem(r,"history_flash_enabled")));assert(cJSON_GetObjectItem(r,"history_days")->valueint==60);cJSON_Delete(r);assert(!flash_writes&&!flash_erases);puts("Legacy rules migrated without resetting automation or Pause; new History saving remains off.");return 0;}
  if(argc>1&&!strcmp(argv[1],"timestamp")){
   cJSON_Delete(new_dispatch);new_dispatch=cJSON_Parse("[{\"startDt\":\"2026-11-06 03:30:00+00:00\",\"endDt\":\"2026-11-06 04:00:00+00:00\"},{\"startDt\":\"2026-11-06 05:00:00+00:00\",\"endDt\":\"2026-11-06 05:26:00+00:00\"}]");

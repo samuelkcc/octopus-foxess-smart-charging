@@ -1,3 +1,24 @@
+# Smart Charging 2.4.1
+
+Mobile help buttons use fixed-size SVG icons with accessible labels.
+The User guide uses a lightbulb icon. About uses an information icon.
+Desktop sidebar entries retain their labels.
+
+USB Wi-Fi scanning is available while automation runs on current firmware.
+Scanning does not save settings or switch networks.
+Scan progress and results appear beside the scan button.
+Network tests and network replacement still require disabled automation.
+Older firmware retains the scan restriction and shows an update hint.
+
+The full check and native firmware build passed. USB scanning found 21 nearby access points without configuration writes.
+Rules and operator state matched before and after the application update.
+
+The website presents ESP32 Web Deploy and HTML web app as its two main entries.
+Native deployment downloads and chapter-based edition guides appear below.
+Mobile toolbars omit the duplicate page name. API badges stay left and the operator switch stays right.
+
+Windows runtime execution remains unverified. Physical inverter behaviour is not established by mock tests.
+
 # Smart Charging 2.4.0 — Unreleased
 
 ESP32 dashboard reads have deadlines and foreground recovery.
@@ -78,3 +99,7 @@ Independent software. Octopus Energy and FoxESS do not endorse or support this p
 
 Verification includes the full check, DEV build, native ESP32 suites, and isolated browser layout checks.
 New screenshots contain demonstration data only. Native Windows and physical iPhone installation remain unverified.
+
+The USB network test now requests explicit confirmation before disabling automation.
+It preserves other rules and Pause. The inverter retains its programmed schedule.
+After network setup, enable automation in General settings.

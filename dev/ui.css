@@ -728,6 +728,14 @@ html.desktop-viewport,html.desktop-viewport body {height:100%;min-height:0;overf
 
 .dev-app-actions #dev-theme {order:2;}
 .dev-app-actions #esp-logout {order:3;}
+/* Mobile page headings already identify the view; keep the service toolbar on one line. */
+@media(max-width:760px) {
+  #dev-shell:not(.dev-auth-mode) .dev-appbar {flex-wrap:nowrap;gap:0;}
+  #dev-shell:not(.dev-auth-mode) .dev-appbar>div:first-child {display:none;}
+  #dev-shell:not(.dev-auth-mode) .dev-appbar>.dev-app-actions {width:100%;flex:1 1 100%;flex-wrap:nowrap;justify-content:flex-start;margin-left:0;gap:10px;}
+  #dev-shell:not(.dev-auth-mode) .dev-app-actions .overview-updates {margin-right:auto;justify-content:flex-start;}
+  #dev-shell:not(.dev-auth-mode) .dev-app-actions .next-pause-switch {margin-left:auto;}
+}
 .next-rule-body>.next-field {margin-bottom:16px;}
 .next-rule-body>.next-field+.next-toggle {margin-top:8px;}
 
@@ -793,3 +801,8 @@ html.desktop-viewport,html.desktop-viewport body {height:100%;min-height:0;overf
 @media(max-width:760px){#dev-shell .dev-page[data-page=settings] .settings-account-grid,.desktop-account-sections,#dev-shell #settings-general-panel #esp-settings-form>.dev-page-grid{grid-template-columns:minmax(0,1fr)}.settings-tab{padding:10px 12px}}
 
 .launch-editions{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 18px}.launch-editions .next-button{font-size:12px;padding:9px 12px;text-decoration:none}.launch-editions .next-button:first-child{border-color:var(--accent);color:var(--accent)}
+
+@media(max-width:760px){#dev-shell .dev-app-actions #esp-connection{font-size:8px;max-width:32px;line-height:1.2;white-space:normal;flex:0 0 32px}}
+
+#dev-shell .dev-app-actions .overview-updates{order:1}
+#dev-shell .dev-app-actions .next-pause-switch{order:2}

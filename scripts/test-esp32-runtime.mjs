@@ -19,6 +19,7 @@ try{
  const mirror=spawnSync(output,['mirror'],{encoding:'utf8'});process.stdout.write(mirror.stdout);if(mirror.status!==0)throw Error(mirror.stderr||'Dashboard RAM mirror test failed');
  const fixed=spawnSync(output,['fixed'],{encoding:'utf8'});process.stdout.write(fixed.stdout);if(fixed.status!==0)throw Error(fixed.stderr||'Fixed IOG fallback failed');
  const hourly=spawnSync(output,['history'],{encoding:'utf8'});process.stdout.write(hourly.stdout);if(hourly.status!==0)throw Error(hourly.stderr||'Hourly History opt-in test failed');
+ const setupBarrier=spawnSync(output,['network-setup'],{encoding:'utf8'});process.stdout.write(setupBarrier.stdout);if(setupBarrier.status!==0)throw Error(setupBarrier.stderr||'USB network setup barrier failed');
  const legacy=spawnSync(output,['legacy'],{encoding:'utf8'});process.stdout.write(legacy.stdout);if(legacy.status!==0)throw Error(legacy.stderr||'Legacy-rule migration failed');
  const portTest=path.join(temp,'port-test');
  const portBuilt=spawnSync('cc',[...flags,path.join(root,'esp32/tests/port_test.c'),'-o',portTest],{encoding:'utf8'});

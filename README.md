@@ -16,7 +16,14 @@ Octopus Energy and FoxESS do not endorse or support this project.
 [![Licence](https://img.shields.io/badge/licence-GPL--3.0--or--later-blue)](LICENSE)
 [![Open web app](https://img.shields.io/badge/open-web%20app-e11d48)](https://samuelkcc.github.io/octopus-foxess-smart-charging/)
 
-[**Deploy ESP32 over USB**](https://samuelkcc.github.io/octopus-foxess-smart-charging/esp32/) · [**ESP32 setup apps and preview downloads**](https://github.com/samuelkcc/octopus-foxess-smart-charging/releases/tag/esp32-preview-2.3.1) · [**Open Web HTML**](https://samuelkcc.github.io/octopus-foxess-smart-charging/)
+[**ESP32 Web Deploy — use desktop Chrome**](https://samuelkcc.github.io/octopus-foxess-smart-charging/esp32/) · [**HTML web app**](https://samuelkcc.github.io/octopus-foxess-smart-charging/app/)
+
+Safari cannot use the USB deployment interface. Use desktop Chrome, or the native Mac or Windows setup tool.
+
+[Open the website and edition guides](https://samuelkcc.github.io/octopus-foxess-smart-charging/).
+
+Mac and Windows ESP32 setup tools are available in [Downloads](https://github.com/samuelkcc/octopus-foxess-smart-charging/releases/tag/esp32-2.4.1).
+These tools provide the same USB setup flow. They do not run the automation worker.
 
 ![ESP32 dashboard with demonstration data](docs/screenshots/esp32-dashboard.png)
 
@@ -37,7 +44,7 @@ It includes a dedicated [ESP32 deployment chapter](docs/USER-GUIDE.md#3-deploy-e
 | Records | RAM, optional hourly Flash for 60 days | Compressed power History | Compressed power History | Browser Activity |
 | Bluetooth | Disabled | Not required | Not required | Not required |
 | Firmware updates | Physical USB | Pi updater | Replace the app | Refresh or replace HTML |
-| Status | ESP32 Preview, with documented limits | Stable edition | Stable host with updated preview UI | Updated preview UI |
+| Status | Local controller | Stable edition | Stable host with updated preview UI | Updated preview UI |
 
 A phone dashboard uses the host's settings and cached data.
 It does not start another automation worker.
@@ -67,12 +74,12 @@ The iPhone dashboard uses Wi-Fi after setup.
 **Limits:** Cloudflare remote access, Bluetooth setup, and OTA updates are not supported.
 Wi-Fi and IP changes require USB setup. Service credentials can be changed in the local Account setup tab.
 
-This Preview does not establish complete Pi scheduler equivalence.
+The feature review records the verified scheduler cases and remaining platform limits.
 Version 2.4.0 adds UK clock-transition scheduling and source-specific Auto-Resume memory, verified against Pi scheduler fixtures.
 Windows execution and long-term Flash endurance require further verification.
 See the [ESP32 deployment chapter](docs/USER-GUIDE.md#3-deploy-esp32) and [feature review](docs/FEATURE-PARITY.md).
 
-[Download ESP32 setup apps and all preview editions](https://github.com/samuelkcc/octopus-foxess-smart-charging/releases/tag/esp32-preview-2.3.1).
+[Download ESP32 setup apps and all editions](https://github.com/samuelkcc/octopus-foxess-smart-charging/releases/tag/esp32-2.4.1).
 The existing Pi updater continues to use the stable release.
 
 ## What the app does
@@ -151,7 +158,7 @@ Uninstallation does not clear the schedule stored on the inverter.
 
 ### Windows portable
 
-- Open the [download page](https://github.com/samuelkcc/octopus-foxess-smart-charging/releases/tag/esp32-preview-2.3.1).
+- Open the [download page](https://github.com/samuelkcc/octopus-foxess-smart-charging/releases/tag/esp32-2.4.1).
 - Download the Windows x64 EXE from **Assets**.
 - Open the EXE.
 - Read the licence notice.
@@ -193,7 +200,7 @@ The portable binary targets Windows x64 and is currently unsigned.
 - Add your Google Apps Script Web App URL.
 - Select **Connect**.
 
-You can also [download the standalone HTML](https://github.com/samuelkcc/octopus-foxess-smart-charging/releases/download/esp32-preview-2.3.1/Smart_Charging_v2.3.1.html).
+You can also [download the standalone HTML](https://github.com/samuelkcc/octopus-foxess-smart-charging/releases/download/esp32-2.4.1/Smart_Charging_v2.4.1.html).
 On later visits, saved setup gives you a Connect button.
 Select **Modify setup** when you need to change a value.
 Keep this browser open and awake while automation runs.

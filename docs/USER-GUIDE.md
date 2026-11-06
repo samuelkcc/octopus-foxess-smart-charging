@@ -41,9 +41,11 @@ Supported hardware is ESP32-S3 N16R8, with 16 MB Flash and 8 MB Octal PSRAM. Oth
 Bluetooth is disabled. Setup uses USB. Dashboards use Wi-Fi.
 
 [Open the USB deployment website](https://samuelkcc.github.io/octopus-foxess-smart-charging/esp32/).
-[Download the Mac app or Windows EXE](https://github.com/samuelkcc/octopus-foxess-smart-charging/releases/tag/esp32-preview-2.3.1).
+[Download the Mac app or Windows EXE](https://github.com/samuelkcc/octopus-foxess-smart-charging/releases/tag/esp32-2.4.1).
 
 The Mac app and Windows EXE contain the same four-step setup interface as the USB website.
+
+Use desktop Chrome for USB website deployment. Safari does not support the required Web Serial interface.
 
 1. Connect the supported board with a USB data cable.
 2. Open ESP32 Setup for Mac or Windows.
@@ -62,6 +64,10 @@ The Mac app and Windows EXE contain the same four-step setup interface as the US
 15. Wait for all required checks to pass.
 16. Open the displayed local dashboard address.
 
+Wi-Fi scanning is read-only. Current firmware permits scanning while automation runs.
+
+Scan progress, results, and errors appear below Scan Wi-Fi. Scanning does not save settings or switch networks.
+
 For an existing board, unchanged Wi-Fi, IP, and API settings can be verified while automation runs.
 Test all & save checks both APIs before saving optional telemetry settings.
 It keeps the saved network, API credentials, rules, and Pause state.
@@ -78,6 +84,23 @@ A router DHCP reservation is the preferred stable-address method. The optional f
 ARP and ping checks cannot prove that an address is unused. A sleeping device or future DHCP allocation can still conflict.
 
 Before accepting a suggested IP, check the router's DHCP pool and reservations.
+
+### Change an existing Wi-Fi network
+
+1. Connect the board through USB.
+2. Select **Network**.
+3. Select **Scan Wi-Fi**.
+4. Select the new network.
+5. Enter its password.
+6. Select **Test Wi-Fi with DHCP**.
+7. If automation is enabled, select **Disable automation & test Wi-Fi** after reviewing the confirmation.
+8. Complete **Verify & save**.
+9. After setup, enable automation in **General settings**.
+
+The confirmation disables future app schedule commands. The inverter retains its programmed schedule.
+The test waits for the current cloud request to finish. If the worker is busy, retry the confirmation.
+A failed Wi-Fi trial restores the previous network. Entered form values remain available.
+Automation remains disabled until you enable it. A restart does not enable it automatically.
 
 ### Supported and unsupported functions
 
@@ -144,14 +167,27 @@ Credentials stay masked. Service tests remain separate from saving.
 
 The web edition runs automation in that browser. Its saved setup belongs to that browser profile.
 
-### Pi and desktop hosts
+### Raspberry Pi
 
-1. Install the package for your host.
-2. On Pi, open Configuration from the taskbar menu.
-3. On desktop, open Settings → Account setup.
-4. Enter the service credentials.
-5. Save the configuration.
-6. Open the dashboard address on your phone or computer.
+1. Install the Raspberry Pi package.
+2. Open Configuration from the taskbar menu.
+3. Enter the service credentials.
+4. Save the configuration.
+5. Open the dashboard address on your phone or computer.
+
+[Read the Pi installation guide](https://github.com/samuelkcc/octopus-foxess-smart-charging/blob/main/linux/README-RASPBERRY-PI.md).
+
+### Portable app
+
+1. Download the package for your computer.
+2. Open the app.
+3. Complete the Welcome setup.
+4. To change accounts later, open Settings → Account setup.
+5. Enter the service credentials.
+6. Save the configuration.
+7. Keep the host app open.
+
+The ESP32 deployment app only configures a board. The Portable app runs automation on the computer.
 
 Pi credentials remain in native Configuration. The dashboard uses the worker's cached readings.
 

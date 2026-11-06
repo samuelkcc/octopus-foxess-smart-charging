@@ -12,6 +12,7 @@ cJSON *sc_runtime_history(int days);
 bool sc_runtime_lan_access_enabled(void);
 bool sc_runtime_reset_lan_access(void);
 bool sc_runtime_enabled(void);
+bool sc_runtime_disable_for_setup(void);
 bool sc_runtime_paused(void);
 bool sc_runtime_update(const cJSON *rules);
 

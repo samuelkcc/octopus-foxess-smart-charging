@@ -1,9 +1,9 @@
 {
   "date": "2026-11-06",
   "base_commit": "ebea84d86090b5fc977b62df4d49efb7ebe30247",
-  "source_state": "Installed network recovery checkpoint a5e3a9888cd53518666f35cdc70bdfea9c54f74c; mobile help checkpoint 3c0752dac8707ee79b28201d6c9a33d421c6e391 built but not installed",
+  "source_state": "2.4.1 final source built; physical network-change confirmation tested with mocks only",
   "esp_idf": "v5.5.2",
-  "firmware_version": "2.4.0",
+  "firmware_version": "2.4.1",
   "firmware_kind": "Independent LAN worker; optional WebSocket telemetry; USB settings readback and optional Config Password",
   "verified": [
     "npm run check and build:dev",
@@ -247,5 +247,12 @@
     "deliverable_checksums_verified": 42,
     "output": "dist/ESP32, dist/Windows Portable, dist/Web HTML, dist/Pi",
     "published": false
+  },
+  "release_241": {
+    "check": "npm run check passed",
+    "ui": "npm run build:dev passed; Pi/web/Portable/ESP32 browser fixtures reviewed",
+    "usb_network_setup": "Explicit confirmation; preserve rules/Pause; failed barrier blocks trial; input retention tested with mocks",
+    "scan": "Previous 2.4.1 live scan found 21 APs without changing settings",
+    "pending": "Install final firmware after the operator releases USB; replace Mac app; native Windows execution unverified"
   }
 }
