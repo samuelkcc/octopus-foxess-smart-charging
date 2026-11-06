@@ -1,8 +1,8 @@
 {
   "date": "2026-11-06",
-  "version": "2.3.0",
+  "version": "2.3.1",
   "base_commit": "ebea84d86090b5fc977b62df4d49efb7ebe30247",
-  "source_state": "2.3.0 Preview source commit 1bbc6599e4882bda98c5145b5dc6eb954e26b9a4",
+  "source_state": "2.3.1 Preview source commit 0700d112a5711d299e7ff957a947a65fc31f52ba",
   "supported_board": {
     "model": "ESP32-S3 N16R8",
     "flash_bytes": 16777216,
@@ -22,7 +22,7 @@
     "latest_fix": "Retain masked form values after tests/saves; queued/running card states; backgroundThrottling=false",
     "live_websocket_retest": "Fresh frame passed on device; writable subscription payload prevents cache-error panic",
     "native_final_save": "Four required checks passed; original rules and Pause retained",
-    "latest_version_check": "Native About confirmed 2.3.0"
+    "latest_version_check": "Native About confirmed 2.3.1"
   },
   "windows": {
     "built": true,

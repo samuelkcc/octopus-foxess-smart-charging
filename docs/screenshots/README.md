@@ -1,6 +1,6 @@
 # Interface screenshots
 
-Updated on 6 November 2026 for the 2.3.0 Preview.
+Updated on 6 November 2026 for the 2.3.1 Preview.
 
 All published interface images use dark appearance and isolated demonstration services.
 No screenshot contains a real account, device identifier, API key, password, or remote key.
