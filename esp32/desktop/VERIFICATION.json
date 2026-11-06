@@ -1,8 +1,8 @@
 {
   "date": "2026-11-06",
-  "version": "2.2.0",
+  "version": "2.3.0",
   "base_commit": "ebea84d86090b5fc977b62df4d49efb7ebe30247",
-  "source_state": "Uncommitted local development; no publication",
+  "source_state": "2.3.0 Preview source commit 1bbc6599e4882bda98c5145b5dc6eb954e26b9a4",
   "supported_board": {
     "model": "ESP32-S3 N16R8",
     "flash_bytes": 16777216,
@@ -21,7 +21,8 @@
     "config_password_default": "Not set; saved settings load automatically",
     "latest_fix": "Retain masked form values after tests/saves; queued/running card states; backgroundThrottling=false",
     "live_websocket_retest": "Fresh frame passed on device; writable subscription payload prevents cache-error panic",
-    "native_final_save": "Four required checks passed; original rules and Pause retained"
+    "native_final_save": "Four required checks passed; original rules and Pause retained",
+    "latest_version_check": "Native About confirmed 2.3.0"
   },
   "windows": {
     "built": true,
@@ -42,5 +43,6 @@
     "Public deployment",
     "Continuous WebSocket mode soak; saved mode remains REST"
   ],
-  "remote_access": "Omitted from ESP32 by user decision"
+  "remote_access": "Omitted from ESP32 by user decision",
+  "account_tabs": "ESP32 and Portable browser fixtures passed; input retained across tabs"
 }

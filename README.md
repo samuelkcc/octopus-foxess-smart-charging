@@ -156,7 +156,7 @@ Uninstallation does not clear the schedule stored on the inverter.
 - Open the EXE.
 - Read the licence notice.
 - Select **Accept and Continue**.
-- Select **Configure this PC** from Welcome.
+- Select **Configure this computer** from Welcome.
 - Use **Account setup guide** to find your account details.
 - Use **Settings → Account setup** for later account changes.
 - Save the configuration and open the dashboard.
@@ -193,7 +193,7 @@ The portable binary targets Windows x64 and is currently unsigned.
 - Add your Google Apps Script Web App URL.
 - Select **Connect**.
 
-You can also [download the standalone HTML](https://github.com/samuelkcc/octopus-foxess-smart-charging/releases/latest/download/Octopus_IGO_Smart_Charging_Detector.html).
+You can also [download the standalone HTML](https://github.com/samuelkcc/octopus-foxess-smart-charging/releases/download/esp32-preview-2.3.0/Smart_Charging_v2.3.0.html).
 On later visits, saved setup gives you a Connect button.
 Select **Modify setup** when you need to change a value.
 Keep this browser open and awake while automation runs.
