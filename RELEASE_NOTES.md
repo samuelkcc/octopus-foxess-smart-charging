@@ -8,8 +8,9 @@ Read the existing FoxESS schedule after startup, independently of the first Octo
 Monitoring does not wait for tariff discovery or enable schedule writes without fresh dispatch data.
 Native regressions cover both socket representations and startup monitoring before any Octopus call.
 
-Physical Wi-Fi OTA to 2.5.2 preserved every saved rule and restored official REST confirmation.
-The diagnostic IPv6 correction still requires verification on the updated physical board.
+Physical Wi-Fi OTA from 2.5.2 to 2.5.3 preserved every saved rule and restored official REST confirmation.
+The schedule appeared before the first Octopus request. The startup GitHub check completed once.
+Authenticated diagnostics returned safe RAM data. Anonymous access was denied. The temporary key was revoked.
 Native Windows execution remains unverified. The tutorial remains private pending approval.
 
 # 2.5.2 — 6 November 2026
