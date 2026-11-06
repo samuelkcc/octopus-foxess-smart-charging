@@ -23,6 +23,13 @@ await cp('src/gas-relay.gs', path.join(destination, 'Smart_Charging_Google_Relay
 await run('tar', ['-czf', path.join(destination, 'Octopus_FoxESS_Raspberry_Pi.tar.gz'), '-C', 'dist/linux-package', 'octopus-foxess']);
 for (const name of ['install.sh', 'uninstall.sh']) await cp(path.join('linux', name), path.join(destination, name));
 await cp(path.join('dist/windows', exe), path.join(destination, exe));
+if(process.argv.includes('--esp32')){
+ const record=JSON.parse(await readFile('esp32/ota-release.json','utf8'));
+ const binary=await readFile('.build/esp32-firmware/smart_charging_esp32.bin');
+ if(record.version!==version||record.size!==binary.length||record.sha256!==createHash('sha256').update(binary).digest('hex'))throw Error('Release firmware differs from the frozen OTA record');
+ await writeFile(path.join(destination,`SmartCharging-ESP32-Firmware-${version}.bin`),binary);
+ await cp('esp32/ota-release.json',path.join(destination,'ota.json'));
+}
 const hashes = [];
 for (const name of (await readdir(destination)).filter(name => name !== 'SHA256SUMS.txt').sort()) {
   const bytes = await readFile(path.join(destination, name));

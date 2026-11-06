@@ -1,3 +1,15 @@
+# 2.5.0 — 6 November 2026
+
+- Add GitHub OTA with verified HTTPS, SHA-256, inactive-slot programming, and healthy-boot rollback.
+- Keep settings by default. Require exact ERASE confirmation for an optional Clean OTA update.
+- Keep Wi-Fi and IP verification mandatory before deployment saving.
+- Save API and optional telemetry credentials without upstream validation.
+- Replace separate ESP32 account tests with one sequential Test all APIs action.
+- Add independent Save accounts and retain entered masked credentials.
+- Publish semantic API failures and recent test faults to dashboard badges.
+- Direct failed-service badges to Settings → Account setup.
+- Explain API preparation, Mode Scheduler, Force Charge, and Remaining Time Mode → Self-Use.
+
 # 2.4.4 — 6 November 2026
 
 - Combine first installation and reinstall under New setup / Reinstall.

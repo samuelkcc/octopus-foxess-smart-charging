@@ -47,6 +47,8 @@ bool sc_runtime_manual(const cJSON *value){return cJSON_IsObject(value);}
 unsigned sc_runtime_revision(void){return 1;}
 bool sc_runtime_update_expected(const cJSON *value,unsigned expected){return cJSON_IsObject(value)&&expected==1;}
 static void call(request_data_t *data,const char *path,int method,const char *body){data->body=body?body:"";data->received=0;data->status[0]=0;data->closes=false;httpd_req_t req={.uri=path,.method=method,.content_len=(int)strlen(data->body),.user_ctx=data};assert(api(&req)!=ESP_OK&&data->closes);}
+cJSON *sc_ota_status(void){return cJSON_Parse("{\"phase\":\"idle\"}");}
+bool sc_ota_submit(const cJSON *request){(void)request;return false;}
 int main(void){sc_runtime_register(NULL);request_data_t d={.host="192.168.8.188:8787",.origin="http://192.168.8.188:8787"};d.host="192.168.8.188";call(&d,"/api/state",HTTP_GET,NULL);assert(strstr(d.status,"403"));
  d.host="192.168.8.188:80";call(&d,"/api/state",HTTP_GET,NULL);assert(strstr(d.status,"403"));
  d.host="192.168.8.188:8787";d.origin="http://192.168.8.188";call(&d,"/api/rules",HTTP_POST,"{}");assert(strstr(d.status,"403"));d.origin="http://192.168.8.188:8787";

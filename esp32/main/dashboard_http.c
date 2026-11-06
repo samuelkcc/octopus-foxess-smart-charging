@@ -12,6 +12,7 @@
 #include "dashboard_port.h"
 #include "foxess_live.h"
 #include "service_setup.h"
+#include "ota_update.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -365,6 +366,12 @@ static esp_err_t api(httpd_req_t *r) {
     }
     if (!strcmp(r->uri, "/api/account") && !mutation)
         return json_reply(r, sc_runtime_account(), NULL);
+    if(!strcmp(r->uri,"/api/ota")){
+        if(!mutation)return json_reply(r,sc_ota_status(),NULL);
+        cJSON *body=body_json(r);bool ok=sc_ota_submit(body);cJSON_Delete(body);
+        if(!ok)return failure(r,"400 Bad Request","Update is busy or unconfirmed. Pause automation, check GitHub, and confirm the selected firmware.");
+        return json_reply(r,sc_ota_status(),NULL);
+    }
     if (!strcmp(r->uri,"/api/setup-job") && mutation){
         cJSON *body=body_json(r);unsigned id=0;bool ok=sc_service_setup_submit(body,&id);
         const cJSON *v;cJSON_ArrayForEach(v,body)if(cJSON_IsString(v))mbedtls_platform_zeroize(v->valuestring,strlen(v->valuestring));cJSON_Delete(body);
@@ -381,7 +388,7 @@ static esp_err_t api(httpd_req_t *r) {
         const cJSON *mode = cJSON_GetObjectItemCaseSensitive(body, "mode");
         bool ok = cJSON_IsObject(body) && cJSON_GetArraySize(body) == 1 && cJSON_IsString(mode) && sc_live_set_mode(mode->valuestring);
         cJSON_Delete(body);
-        if (!ok) return failure(r, "400 Bad Request", "Configure optional FoxESS login through USB before selecting WebSocket");
+        if (!ok) return failure(r, "400 Bad Request", "Save optional FoxESS login in Account setup before selecting WebSocket");
         return json_reply(r, sc_live_status(), NULL);
     }
     if (!strcmp(r->uri, "/api/refresh") && mutation) {

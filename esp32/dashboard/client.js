@@ -84,11 +84,24 @@
   try{await D.request('/api/refresh',{service:name});D.notice('API refresh queued on the ESP32. Requests respect service cooldowns.');await D.refresh();}
   catch(error){D.notice(error.message,true);}
  };
- D.serviceError=name=>name==='octopus'?(state?.octopus_http&&state.octopus_http!==200||state?.dispatch_error_code):state?.foxess_http&&state.foxess_http!==200;
+ D.serviceError=name=>{
+  const check=state?.setup_checks?.[name],observed=state?.[name==='octopus'?'dispatch_at':'telemetry_at']||0;
+  const testedFailure=check?.connected===false&&check.at>=observed;
+  const live=state?.foxess_telemetry,ws=state?.setup_checks?.websocket;
+  const liveFailure=name==='foxess'&&live?.configured&&live.mode==='live-ws'&&(ws?.connected===false&&ws.at>=(live.updated_at||0)||/failed|disconnected|stale/i.test(live.status||''));
+  return testedFailure||liveFailure||state?.[name+'_fault']===true||(name==='octopus'?(state?.octopus_http&&state.octopus_http!==200||state?.dispatch_error_code):state?.foxess_http&&state.foxess_http!==200);
+ };
+ D.serviceMessage=name=>{
+  const checks=state?.setup_checks,observed=state?.[name==='octopus'?'dispatch_at':'telemetry_at']||0;
+  if(checks?.[name]?.connected===false&&checks[name].at>=observed)return 'The most recent '+(name==='octopus'?'Octopus':'FoxESS REST')+' test failed. Correct the account details in Settings.';
+  if(name==='foxess'&&state?.foxess_telemetry?.mode==='live-ws'&&(checks?.websocket?.connected===false||/failed|disconnected|stale/i.test(state.foxess_telemetry.status||'')))return 'Optional FoxESS WebSocket needs attention. REST remains available. Check the cloud login in Account setup.';
+  return state?.[name+'_status']||'The API update failed.';
+ };
+ D.openAccountSetup=()=>{D.navigate('settings');window.settingsSections?.select(1);};
  for(const name of ['octopus','foxess'])$('esp-service-'+name).addEventListener('click',()=>{
   if(D.serviceError(name)){
-   D.review((name==='octopus'?'Octopus Energy':'FoxESS')+' update problem',state?.[name+'_status']||'The API update failed.',
-    (name==='octopus'&&state?.dispatch_error_code?'Error code: '+state.dispatch_error_code+'\n':'')+'The worker retains valid data. Automatic checks continue. Refresh requests respect service cooldowns.',()=>D.requestApiRefresh(name),'Refresh now');
+   D.review((name==='octopus'?'Octopus Energy':'FoxESS')+' update problem',D.serviceMessage(name),
+    (name==='octopus'&&state?.dispatch_error_code?'Error code: '+state.dispatch_error_code+'\n':'')+'Open Settings → Account setup to correct credentials. Select Test all APIs to check every service. Valid cached data is retained.',async()=>D.openAccountSetup(),'Open Account setup');
   }else void D.requestApiRefresh(name);
  });
  $('esp-telemetry-save').addEventListener('click',async()=>{
@@ -97,6 +110,38 @@
   catch(error){D.notice(error.message,true);}finally{button.disabled=false;}
  });
 
+ let otaState=null,otaPolling=false;
+ function renderOta(value){
+  otaState=value;$('esp-ota-status').textContent=(value.current?'Installed '+value.current+'. ':'')+(value.version?'GitHub '+value.version+'. ':'')+(value.status||'');
+  $('esp-ota-check').disabled=value.busy===true;
+  $('esp-ota-install').disabled=value.busy===true||value.available!==true;
+  $('esp-ota-install').textContent=value.newer?'Install firmware':'Reinstall this version';
+  $('esp-ota-progress').hidden=value.phase!=='updating';$('esp-ota-progress').value=value.progress||0;
+ }
+ async function pollOta(){
+  if(otaPolling)return;otaPolling=true;
+  try{for(let i=0;i<300;i++){
+   const value=await D.request('/api/ota');renderOta(value);
+   if(value.phase==='restarting'){D.notice(value.status);break;}
+   if(!value.busy)break;
+   await new Promise(resolve=>setTimeout(resolve,1000));
+  }}catch(error){$('esp-ota-status').textContent='Connection interrupted. Reopen the dashboard to check the installed version. '+error.message;}
+  finally{otaPolling=false;$('esp-ota-check').disabled=false;}
+ }
+ $('esp-ota-check').addEventListener('click',async()=>{
+  $('esp-ota-check').disabled=true;
+  try{renderOta(await D.request('/api/ota',{action:'check'}));await pollOta();}catch(error){$('esp-ota-status').textContent=error.message;$('esp-ota-check').disabled=false;}
+ });
+ $('esp-ota-install').addEventListener('click',()=>{
+  if(!otaState?.available||otaState.busy)return;
+  const erase=$('esp-ota-erase').checked;
+  if(erase&&$('esp-ota-erase-confirmation').value!=='ERASE'){$('esp-ota-status').textContent='Type ERASE exactly to confirm Clean update.';return;}
+  D.review('Install ESP32 firmware '+otaState.version+'?',erase?'Clean update permanently deletes settings and saved History after a successful boot. USB setup is required again.':'The ESP32 restarts after download and verification. Existing settings are kept.',
+   'Pause automation first. Keep power connected. The inverter retains its existing schedule. Failed verification leaves the current firmware selected.',async()=>{
+    renderOta(await D.request('/api/ota',{action:'install',version:otaState.version,confirmation:'INSTALL_OTA_UPDATE',erase_settings:erase,erase_confirmation:erase?'ERASE':''}));
+    void pollOta();
+   },erase?'Erase settings & update':'Install update');
+ });
  let setupBusy=false;
  const setupInputs=['octopus-account','octopus-key','foxess-serial','foxess-key','websocket-username','websocket-password'];
  const setupEyes=[...document.querySelectorAll('[data-esp-eye]')];
@@ -107,27 +152,43 @@
   button.setAttribute('aria-label',(show?'Hide ':'Show ')+label);
  };
  setupEyes.forEach(button=>button.addEventListener('click',()=>setSetupVisibility(button,$(button.dataset.espEye).type==='password')));
- document.querySelectorAll('[data-service-setup]').forEach(button=>button.addEventListener('click',async()=>{
-  if(setupBusy)return;setupBusy=true;
-  const action=button.dataset.serviceSetup,service=action.replace(/^(test|save)_/,''),target=$('esp-setup-'+service+'-status');
-  const config={action};let savedSetup=false;
-  for(const field of service==='octopus'?['account','key']:service==='foxess'?['serial','key']:['username','password'])config[field]=$('esp-setup-'+service+'-'+field).value;
-  if(service==='websocket')config.mode=$('esp-telemetry-mode').value;
-  document.querySelectorAll('[data-service-setup]').forEach(item=>item.disabled=true);
+ const accountActions=['esp-test-all-apis','esp-save-accounts'];
+ async function runSetupJob(config,target){
+  const job=await D.request('/api/setup-job',config),started=Date.now();
+  for(let i=0;i<240&&Date.now()-started<240000;i++){
+   const current=await D.request('/api/setup-job?id='+job.id);
+   if(current.phase==='done'){target.textContent=current.result?.status||'Check completed.';return current.result;}
+   target.textContent=current.phase==='queued'?'Waiting for the service cooldown…':current.progress||'Checking service on ESP32…';
+   await new Promise(resolve=>setTimeout(resolve,1000));
+  }
+  throw Error('Check still pending. Wait before retrying.');
+ }
+ async function accountAction(save){
+  if(setupBusy)return;setupBusy=true;accountActions.forEach(id=>$(id).disabled=true);
+  const summary=$('esp-setup-all-status'),configs=[];let failed=false;
   try{
-   const job=await D.request('/api/setup-job',config);
-   let completed=false;const setupStarted=Date.now();
-   for(let i=0;i<180&&Date.now()-setupStarted<180000;i++){
-    const current=await D.request('/api/setup-job?id='+job.id);
-    if(current.phase==='done'){target.textContent=current.result?.status||'Test completed.';savedSetup=current.result?.saved===true;completed=true;break;}
-    target.textContent=current.phase==='queued'?'Waiting for a service request slot…':current.progress||'Testing on the ESP32…';
-    await new Promise(resolve=>setTimeout(resolve,1000));
+   summary.textContent=save?'Saving accounts without API tests…':'Checking services one at a time. Keep this page open.';
+   for(const service of ['octopus','foxess','websocket']){
+    const config={action:(save?'store_':'test_')+service};configs.push(config);
+    for(const field of service==='octopus'?['account','key']:service==='foxess'?['serial','key']:['username','password'])config[field]=$('esp-setup-'+service+'-'+field).value;
+    const target=$('esp-setup-'+service+'-status');
+    if(save&&service!=='websocket'&&!Object.entries(config).some(([key,value])=>key!=='action'&&value.trim())){target.textContent='Unchanged. Saved account details kept.';continue;}
+    if(service==='websocket'){
+     config.mode=$('esp-telemetry-mode').value;
+     if(!config.username&&!config.password&&!state?.foxess_telemetry?.configured){target.textContent='Optional login not configured. REST remains available.';continue;}
+    }
+    try{
+     const result=await runSetupJob(config,target);
+     if(save?!result?.saved:!result?.connected)failed=true;
+    }catch(error){target.textContent=error.message;failed=true;}
    }
-   if(!completed)throw Error('Test still pending. Check device status before retrying.');
+   summary.textContent=save?(failed?'Some account settings were not saved. Check each result above.':'Accounts saved. Use Test all APIs to check the connections.'):(failed?'Some checks failed. Correct the account details, save, then test again.':'All configured services passed. No settings or inverter schedules were changed.');
    await D.refresh();
-  }catch(error){target.textContent=error.message.includes('not found')?'The ESP32 restarted or the test expired. Nothing was confirmed saved. Retry after the device reconnects.':error.message;}
-  finally{for(const key of Object.keys(config))config[key]='';if(savedSetup)setupInputs.filter(id=>id.startsWith(service+'-')).forEach(id=>{$('esp-setup-'+id).value='';const eye=setupEyes.find(button=>button.dataset.espEye==='esp-setup-'+id);if(eye)setSetupVisibility(eye,false);});setupBusy=false;document.querySelectorAll('[data-service-setup]').forEach(item=>item.disabled=false);}
- }));
+  }catch(error){summary.textContent=error.message;}
+  finally{configs.forEach(config=>Object.keys(config).forEach(key=>config[key]=''));setupBusy=false;accountActions.forEach(id=>$(id).disabled=false);}
+ }
+ $('esp-test-all-apis').addEventListener('click',()=>accountAction(false));
+ $('esp-save-accounts').addEventListener('click',()=>accountAction(true));
  window.addEventListener('pagehide',()=>{setupInputs.forEach(id=>{$('esp-setup-'+id).value='';});setupEyes.forEach(button=>setSetupVisibility(button,false));});
  window.addEventListener('price-display-change',()=>{if(state)D.render?.(state);});
  $('esp-history-range').addEventListener('change',()=>void D.loadHistory().catch(error=>D.notice(error.message,true)));

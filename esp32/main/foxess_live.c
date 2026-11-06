@@ -188,7 +188,7 @@ void sc_live_poll(const sc_config_t *device,bool online){
  }
 done:mbedtls_platform_zeroize(&config,sizeof(config));
 }
-static cJSON *configure(const cJSON *request,const sc_config_t *device,bool commit){
+static cJSON *configure(const cJSON *request,const sc_config_t *device,bool commit,bool verify){
  const cJSON *mode=cJSON_GetObjectItemCaseSensitive(request,"mode"),*username=cJSON_GetObjectItemCaseSensitive(request,"username"),*password=cJSON_GetObjectItemCaseSensitive(request,"password");
  if(!cJSON_IsObject(request)||!cJSON_IsString(mode)||(strcmp(mode->valuestring,"rest")&&strcmp(mode->valuestring,"live-ws")))return NULL;
  const cJSON *field;cJSON_ArrayForEach(field,request){if(strcmp(field->string,"mode")&&strcmp(field->string,"username")&&strcmp(field->string,"password"))return NULL;for(const cJSON *other=field->next;other;other=other->next)if(!strcmp(field->string,other->string))return NULL;}
@@ -205,6 +205,16 @@ static cJSON *configure(const cJSON *request,const sc_config_t *device,bool comm
  candidate.websocket=!commit||!strcmp(mode->valuestring,"live-ws");if(candidate.websocket&&!configured(&candidate))ok=false;
  if(cJSON_IsString(password))mbedtls_platform_zeroize(password->valuestring,strlen(password->valuestring));
  if(!ok){mbedtls_platform_zeroize(&candidate,sizeof(candidate));return NULL;}
+ // USB and Account setup can persist credentials without an upstream login test.
+ if(commit&&!verify){
+  xSemaphoreTake(guard,portMAX_DELAY);
+  bool saved=!testing&&revision==generation&&sc_live_save(&candidate)==ESP_OK;
+  if(saved){selected=candidate;generation++;restart_requested=true;verified_at=0;mbedtls_platform_zeroize(&verified_config,sizeof(verified_config));status=candidate.websocket?"WebSocket saved; connection pending":"REST selected";source=candidate.websocket?"rest-fallback":"rest";}
+  xSemaphoreGive(guard);
+  cJSON *out=cJSON_CreateObject();cJSON_AddBoolToObject(out,"saved",saved);cJSON_AddBoolToObject(out,"tested",false);
+  cJSON_AddStringToObject(out,"status",saved?"Telemetry settings saved. Not tested.":"Telemetry settings were not saved. Retry after any active test.");
+  mbedtls_platform_zeroize(&candidate,sizeof(candidate));return out;
+ }
  cJSON *previous=NULL;time_t previous_at=0;
  xSemaphoreTake(guard,portMAX_DELAY);bool occupied=testing;previous=cJSON_Duplicate(latest,true);previous_at=latest_at;bool no_memory=latest&&!previous;if(!occupied&&!no_memory)testing=true;xSemaphoreGive(guard);
  if(occupied||no_memory){cJSON_Delete(previous);mbedtls_platform_zeroize(&candidate,sizeof(candidate));return NULL;}
@@ -231,5 +241,7 @@ static cJSON *configure(const cJSON *request,const sc_config_t *device,bool comm
  mbedtls_platform_zeroize(&candidate,sizeof(candidate));return result;
 }
 
-cJSON *sc_live_configure(const cJSON *request,const sc_config_t *device){return configure(request,device,true);}
-cJSON *sc_live_test(const cJSON *request,const sc_config_t *device){return configure(request,device,false);}
+cJSON *sc_live_configure(const cJSON *request,const sc_config_t *device){return configure(request,device,true,true);}
+cJSON *sc_live_test(const cJSON *request,const sc_config_t *device){return configure(request,device,false,true);}
+
+cJSON *sc_live_store(const cJSON *request){return configure(request,NULL,true,false);}

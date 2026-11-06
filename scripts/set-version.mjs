@@ -33,6 +33,13 @@ for (const [file, pattern, replacement] of [
   try { await writeFile(file, (await readFile(file, 'utf8')).replace(pattern, replacement)); }
   catch (error) { if (error.code !== 'ENOENT') throw error; }
 }
+// Current download links follow the release, without changing historical release notes or minimum-version guidance.
+for(const file of ['README.md','docs/editions/ESP32.md']){
+ const text=await readFile(file,'utf8');
+ await writeFile(file,text.replace(/(\*\*Version )\d+\.\d+\.\d+/g,`$1${version}`)
+  .replace(/(releases\/(?:tag|download)\/esp32-)\d+\.\d+\.\d+/g,`$1${version}`)
+  .replace(/(SmartCharging-ESP32-Setup-)\d+\.\d+\.\d+/g,`$1${version}`));
+}
 const workflow = await readFile('.github/workflows/release.yml', 'utf8');
 await writeFile('.github/workflows/release.yml', workflow.replace(/default: v\d+(?:\.\d+){2,3}/, `default: ${tag}`));
 console.log(`Version ${version}; release tag ${tag}. Update CHANGELOG.md and RELEASE_NOTES.md, then run npm run check.`);

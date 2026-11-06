@@ -29,6 +29,15 @@ static void transaction_tests(void){
         assert(mock.tested==(failure!=7));cJSON_Delete(out);
     }
 }
+static void network_transaction_tests(void){
+    for(unsigned failure=0;failure<=8;failure++){
+        mock_t mock={.activate_ok=failure!=7,.save_ok=failure!=8,.failed_check=failure};
+        sc_provision_ops_t ops={&mock,activate,test,save,restore};cJSON *out=sc_validate_network_and_save(&ops);
+        bool passed=failure==0||failure==3||failure==4||failure==5;
+        assert(cJSON_IsTrue(cJSON_GetObjectItemCaseSensitive(out,"saved"))==passed);
+        assert(mock.saved==(passed||failure==8));assert(mock.restored==!passed);cJSON_Delete(out);
+    }
+}
 #define IP(a,b,c,d) (((uint32_t)(a)<<24)|((uint32_t)(b)<<16)|((uint32_t)(c)<<8)|(d))
 static void candidate_tests(void){
     uint32_t out[80];
@@ -49,4 +58,4 @@ static void candidate_tests(void){
     assert(sc_ip_candidates(0x0a010201,0,0,0,out,16)==0);
     assert(sc_ip_candidates(0x0a010201,0xffffff00,0,0,out,0)==0);
 }
-int main(void){transaction_tests();candidate_tests();puts("ESP32 validate-before-save failure recovery and subnet-safe IP candidate tests passed.");}
+int main(void){transaction_tests();network_transaction_tests();candidate_tests();puts("ESP32 validate-before-save failure recovery and subnet-safe IP candidate tests passed.");}

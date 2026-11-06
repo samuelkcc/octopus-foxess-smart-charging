@@ -562,3 +562,21 @@ Local JSON reads have a 12-second deadline, including body decoding. Abort is su
 State refreshes coalesce. Hidden-page reads are cancelled, while submitted changes are neither cancelled nor automatically replayed.
 Foreground, online, and restored-page events request fresh state. Late abandoned replies cannot change authentication or device state.
 A separate boot guard retains a reload screen if the application bundle cannot initialize.
+
+## ESP32 GitHub OTA
+
+`ota_update.c` owns download state, inactive-slot writes, boot selection, and startup confirmation.
+`ota_policy.c` validates the fixed project manifest, semantic version, model, size, hash, and permitted HTTPS hosts.
+The LAN API uses existing origin, session, and CSRF checks. It queues explicit check or install actions.
+The worker runs OTA under the shared network lock. Installation requires disabled or paused automation and no pending schedule recovery.
+No dashboard client downloads firmware or receives service credentials.
+
+`esp32/ota-release.json` freezes the reviewed release binary digest. Pages copies this record rather than hashing its separately rebuilt USB artifact.
+Download length, SHA-256, SDK image validation, application identity, and persistent intent must pass before boot selection.
+The currently running partition is never used as the download target.
+
+The bootloader uses pending-image rollback. Startup confirms the image after 30 seconds with a healthy server and local connection.
+After 120 seconds without those conditions, it requests rollback.
+Clean OTA records the intended partition and version. It erases settings only after that exact image is confirmed healthy.
+A rollback image does not match the intent and does not erase configuration.
+The default update retains configuration. USB recovery remains necessary for some hardware failures.

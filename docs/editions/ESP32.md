@@ -20,8 +20,8 @@ Your phone or computer displays its dashboard. The setup computer can be disconn
 | Tool | Open or download |
 |---|---|
 | USB website | [ESP32 Web Deploy](https://samuelkcc.github.io/octopus-foxess-smart-charging/esp32/) — use desktop Chrome |
-| Mac app | [Universal Mac ZIP](https://github.com/samuelkcc/octopus-foxess-smart-charging/releases/download/esp32-2.4.4/SmartCharging-ESP32-Setup-2.4.4-macOS-universal.zip) |
-| Windows app | [Windows x64 EXE](https://github.com/samuelkcc/octopus-foxess-smart-charging/releases/download/esp32-2.4.4/SmartCharging-ESP32-Setup-2.4.4-Windows-x64.exe) |
+| Mac app | [Universal Mac ZIP](https://github.com/samuelkcc/octopus-foxess-smart-charging/releases/download/esp32-2.5.0/SmartCharging-ESP32-Setup-2.5.0-macOS-universal.zip) |
+| Windows app | [Windows x64 EXE](https://github.com/samuelkcc/octopus-foxess-smart-charging/releases/download/esp32-2.5.0/SmartCharging-ESP32-Setup-2.5.0-Windows-x64.exe) |
 
 Safari cannot deploy firmware through USB. Safari can display the configured Wi-Fi dashboard.
 The Mac and Windows tools provide the same setup flow. They do not run the automation worker.
@@ -60,11 +60,73 @@ The new firmware starts with automation disabled. Complete setup again before en
 13. Select the USB serial port again.
 14. Select **Next: Network**.
 15. Configure Wi-Fi and both APIs.
-16. Complete **Test all & save**.
+16. Select **Review & save**.
+17. Select **Save settings**.
+18. Wait for Wi-Fi and IP verification.
+19. Open the dashboard address.
+20. In **Settings → Account setup**, select **Test all APIs**.
 
 The installer selects its own USB port. A new board does not need a setup connection before installation.
 If installation fails after erasure starts, data may already be deleted. Keep USB connected and retry installation.
 To retain existing settings, use **Edit settings**. Editing does not reinstall firmware.
+
+## Required FoxESS work mode
+
+1. Open Work Mode in the FoxESS app or website.
+2. Under Advanced, enable Mode Scheduler.
+3. Open Mode Scheduler settings.
+4. Set Remaining Time Mode to Self-Use.
+5. Save the FoxESS settings.
+
+Mode Scheduler applies Force Charge during the selected EV charging periods.
+Remaining Time Mode returns the inverter to Self-Use outside scheduled periods.
+Force Charge can also charge the home battery. Check the configured charge limits and actual battery behaviour.
+
+## Check accounts after deployment
+
+Wi-Fi and IP verification are required before saving. Deployment does not wait for Octopus, FoxESS REST, or optional cloud-login tests.
+
+1. Open **Settings → Account setup** in the local dashboard.
+2. Select **Test all APIs**.
+3. Read the result for each service.
+4. If a check fails, correct its account fields.
+5. Pause automation before saving credentials.
+6. Select **Save accounts**.
+7. Select **Test all APIs** again.
+
+The checks run sequentially. Octopus requests retain their shared cooldown.
+A red service badge prompts you to open Account setup. Waiting states do not mean successful authentication.
+
+## Update firmware over Wi-Fi
+
+![GitHub OTA controls with demonstration data](../screenshots/esp32-ota-update.png)
+
+Older firmware needs one USB installation before it can use OTA.
+The first USB installation must include the OTA-capable bootloader. New setup / Reinstall erases existing board settings.
+
+1. Open the local dashboard.
+2. Open **Settings → General settings → ESP32 firmware update**.
+3. Select **Check GitHub for updates**.
+4. Pause automation.
+5. Select **Install firmware**.
+6. Confirm the selected firmware version.
+7. Keep power connected until the ESP32 restarts.
+8. Reopen the dashboard.
+9. Check the installed version in About & licence.
+
+The download uses verified HTTPS and the published release SHA-256.
+The image is written to an inactive partition. Failed verification keeps the current firmware selected.
+A new OTA image must pass startup and connection checks. The bootloader can return to the previous working image.
+This mechanism does not guarantee recovery from every hardware or Flash failure. USB recovery remains available.
+
+Updates keep settings by default. To erase them, open **Optional Clean update** before installing.
+
+1. Select **Erase settings after the verified update**.
+2. Enter **ERASE**.
+3. Confirm **Erase settings & update**.
+
+Clean update deletes Wi-Fi, accounts, access protection, automation rules, and saved History after a successful boot.
+USB configuration is required again. The inverter retains its existing schedule.
 
 ## Daily use and limits
 
@@ -72,6 +134,7 @@ To retain existing settings, use **Edit settings**. Editing does not reinstall f
 - Use USB for Wi-Fi, IP, and dashboard-port changes.
 - Use the optional WebSocket login for live telemetry. Schedule commands still use official REST.
 - History uses RAM by default. Optional hourly Flash saving retains hourly records for 60 days.
-- Cloudflare, remote relay, Bluetooth setup, and OTA updates are unsupported.
+- Cloudflare, remote relay, and Bluetooth setup are unsupported.
+- GitHub OTA is available after one USB installation of firmware 2.5.0 or later.
 
 [User guide](../USER-GUIDE.md) · [Verification limits](../FEATURE-PARITY.md)

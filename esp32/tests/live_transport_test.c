@@ -54,6 +54,10 @@ int main(void){
  request=cJSON_Parse("{\"mode\":\"live-ws\",\"username\":\"new-user\",\"password\":\"new-private-password\"}");result=sc_live_configure(request,&device);assert(cJSON_IsTrue(cJSON_GetObjectItem(result,"saved"))&&logins==cached_logins&&!strcmp(stored.username,"new-user"));cJSON_Delete(result);cJSON_Delete(request);assert(sc_live_set_mode("rest"));
  ticks+=60000000;request=cJSON_Parse("{\"mode\":\"live-ws\",\"username\":\"\",\"password\":\"\"}");result=sc_live_test(request,&device);assert(cJSON_IsTrue(cJSON_GetObjectItem(result,"connected")));cJSON_Delete(result);cJSON_Delete(request);cached_logins=logins;ticks+=301000000;
  request=cJSON_Parse("{\"mode\":\"live-ws\",\"username\":\"\",\"password\":\"\"}");result=sc_live_configure(request,&device);assert(cJSON_IsTrue(cJSON_GetObjectItem(result,"saved"))&&logins==cached_logins+1);cJSON_Delete(result);cJSON_Delete(request);assert(sc_live_set_mode("rest"));
- storage_failure=true;assert(!sc_live_set_mode("live-ws")&&!stored.websocket);assert(!sc_live_set_mode("other"));
+ int before_login=logins,before_plants=plants,before_connects=connects;
+ request=cJSON_Parse("{\"mode\":\"rest\",\"username\":\"unverified-user\",\"password\":\"unverified-password\"}");
+ result=sc_live_store(request);assert(cJSON_IsTrue(cJSON_GetObjectItem(result,"saved"))&&!cJSON_IsTrue(cJSON_GetObjectItem(result,"tested"))&&!cJSON_HasObjectItem(result,"connected"));assert(!strcmp(stored.username,"unverified-user"));assert(logins==before_login&&plants==before_plants&&connects==before_connects);cJSON_Delete(result);cJSON_Delete(request);
+ storage_failure=true;previous=stored;request=cJSON_Parse("{\"mode\":\"live-ws\",\"username\":\"failed-user\",\"password\":\"failed-password\"}");result=sc_live_store(request);assert(!cJSON_IsTrue(cJSON_GetObjectItem(result,"saved"))&&!memcmp(&stored,&previous,sizeof(stored)));assert(logins==before_login&&plants==before_plants&&connects==before_connects);cJSON_Delete(result);cJSON_Delete(request);
+ assert(!sc_live_set_mode("live-ws")&&!stored.websocket);assert(!sc_live_set_mode("other"));
  puts("Optional telemetry transport: zero requests by default, verified login, saved-login reuse, credential-free status, fresh and fragmented frames, stale fallback, reconnect pacing and failed-save preservation passed.");
 }

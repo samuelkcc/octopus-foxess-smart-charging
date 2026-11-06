@@ -1,3 +1,24 @@
+# 2.5.0 deployment and account workflow — 6 November 2026
+
+OTA uses a fixed project manifest and strict GitHub download hosts. Redirects to HTTP or other hosts are rejected.
+SHA-256, length, image validation, application identity, and persistent intent must pass before boot selection.
+All download writes target an inactive application partition. Failed downloads keep the current boot selection.
+A healthy server and local connection are required before confirming a pending OTA boot.
+Default OTA keeps settings. Explicit Clean OTA erases settings and History only after confirming the intended image.
+Mock tests cover corrupted and truncated downloads, blocked redirects, storage failure, clean consent, boot confirmation, and rollback.
+Physical OTA, interruption recovery on hardware, and native Windows execution remain unverified.
+
+Wi-Fi and IP verification remain mandatory. Network-only saving performs no Octopus, FoxESS REST, or portal-login tests.
+The earlier test-before-save protocol remains available for compatible legacy clients. New tools require the network-only capability.
+Account setup uses one sequential Test all APIs action. One failed check does not skip other configured services.
+Save accounts stores credentials independently from testing. Pause and recovery barriers still protect API credential replacement.
+Recent test faults and worker semantic faults are exposed without credentials in device state.
+Fresh successful worker readings supersede older diagnostic failures. Waiting is separate from failure.
+The shared scheduler engine and Pi authentication are unchanged. ESP32 remains local-network only.
+Mock verification covers network failure rollback, unverified credential storage, sequential tests, and semantic failures with HTTP 200.
+No live board erasure, flashing, or inverter command is used in verification. Native Windows execution remains unverified.
+The tutorial remains private until its captures match the simplified flow and the user approves publication.
+
 # 2.4.4 installation entry review — 6 November 2026
 
 The public deployment tool has two task entries. New setup / Reinstall includes firmware installation before configuration.

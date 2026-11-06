@@ -11,7 +11,11 @@ Choose a setup guide from the README when you are ready to deploy.
 
 ![ESP32 USB deployment](screenshots/esp32-deploy.png)
 
+![ESP32 account checks and preparation](screenshots/esp32-account-actions.png)
+
 ![ESP32 account setup](screenshots/esp32-account-setup.png)
+
+![ESP32 GitHub OTA settings](screenshots/esp32-ota-update.png)
 
 ## Pi
 

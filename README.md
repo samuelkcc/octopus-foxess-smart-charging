@@ -7,15 +7,16 @@
 ### Your EV, charging. Your home, protected.
 
 A free, open-source home energy controller and dashboard.
-Follow Intelligent Octopus Go charging windows and keep your FoxESS battery available for your home.
+When Intelligent Octopus Go allocates low-cost EV charging windows, Smart Charging schedules the home solar-storage battery to charge alongside the EV.
+FoxESS Force Charge prevents the home battery from discharging into the EV during those windows.
 
-**Version 2.4.4 · ESP32, Raspberry Pi, Windows Portable and Web**
+**Version 2.5.0 · ESP32, Raspberry Pi, Windows Portable and Web**
 
 <sub>Independent hobby software by SCKC. Not affiliated with Octopus Energy or FoxESS.</sub>
 
 <p><a href="https://samuelkcc.github.io/octopus-foxess-smart-charging/app/"><img src="docs/assets/open-html-dashboard.svg" alt="Open HTML Dashboard" height="52"></a> <a href="https://samuelkcc.github.io/octopus-foxess-smart-charging/esp32/"><img src="docs/assets/open-esp32-deploy.svg" alt="ESP32 Web Deploy" height="52"></a></p>
 
-[ESP32 guide](docs/editions/ESP32.md) · [Prepare your accounts](docs/ACCOUNT-PREPARATION.md) · [Compare editions](#choose-your-setup-guide) · [Downloads](https://github.com/samuelkcc/octopus-foxess-smart-charging/releases/tag/esp32-2.4.4)
+[ESP32 guide](docs/editions/ESP32.md) · [Prepare your accounts](docs/ACCOUNT-PREPARATION.md) · [Compare editions](#choose-your-setup-guide) · [Downloads](https://github.com/samuelkcc/octopus-foxess-smart-charging/releases/tag/esp32-2.5.0)
 
 </div>
 
@@ -26,7 +27,14 @@ A FoxESS inverter in Self-Use mode can supply that charging load from your home 
 This can leave less stored energy for your house, even when the EV has a low-cost charging window.
 
 Smart Charging connects those Octopus windows to your FoxESS inverter.
-It requests Force Charge during relevant windows, applies your battery limits, and checks the programmed schedule through official FoxESS REST readback.
+It uses **FoxESS Mode Scheduler** to request **Force Charge** during relevant EV charging windows.
+This prevents Self-Use from supplying that EV load from the home battery.
+The design charges the home solar-storage battery alongside the EV during those low-cost periods, subject to your configured charge limits.
+The app checks the programmed schedule through official FoxESS REST readback.
+
+**Required FoxESS settings:** enable **Mode Scheduler** and set **Remaining Time Mode → Self-Use** in the FoxESS app or website.
+Outside scheduled periods, Self-Use restores normal home-battery operation.
+[Prepare the inverter](docs/PREPARE-INVERTER.md) before enabling Smart Charging automation.
 The dashboard shows charging windows beside measured power, so you can check what the inverter is doing.
 
 This free hobby project by **SCKC** puts your home energy controls in one place.
@@ -38,6 +46,7 @@ After USB setup, keep the ESP32 powered and disconnect your setup computer.
 Your phone, tablet, or computer displays the same worker data from the board.
 
 - **Works independently:** keep the ESP32 powered after USB setup. Your setup computer can disconnect.
+- **Wi-Fi firmware updates:** install future GitHub releases from local Settings after the initial USB installation.
 - **One dashboard across devices:** view power, battery level, schedules, and electricity prices on your local network.
 - **Rules you control:** follow Smart Dispatch, set weekly periods, apply price rules, and pause automation deliberately.
 - **Check the result:** official FoxESS REST readback confirms schedule programming. Measured power shows actual battery behaviour.
@@ -90,7 +99,7 @@ Choose the host that fits your setup. Each column links to its own focused insta
 | Account changes | Local Account setup or USB | Native Pi Configuration | Account setup tab | Browser setup |
 | Wi-Fi and IP changes | **USB setup only** | Operating system | Operating system | Operating system |
 
-[Compare the editions](docs/USER-GUIDE.md#1-choose-an-edition) · [User guide](docs/USER-GUIDE.md) · [Downloads](https://github.com/samuelkcc/octopus-foxess-smart-charging/releases/tag/esp32-2.4.4)
+[Compare the editions](docs/USER-GUIDE.md#1-choose-an-edition) · [User guide](docs/USER-GUIDE.md) · [Downloads](https://github.com/samuelkcc/octopus-foxess-smart-charging/releases/tag/esp32-2.5.0)
 
 ## Licence and acknowledgements
 

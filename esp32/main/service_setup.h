@@ -8,3 +8,5 @@ bool sc_service_setup_submit(const cJSON *request,unsigned *id);
 cJSON *sc_service_setup_status(unsigned id);
 void sc_service_setup_tick(const sc_config_t *active,bool online,sc_service_save_t save);
 cJSON *sc_service_setup_execute(const cJSON *request,const sc_config_t *active,sc_service_save_t save);
+
+cJSON *sc_service_setup_health(void);

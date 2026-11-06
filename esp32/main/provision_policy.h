@@ -12,4 +12,5 @@ typedef struct {
     bool (*restore)(void *context);
 } sc_provision_ops_t;
 cJSON *sc_validate_and_save(const sc_provision_ops_t *ops);
+cJSON *sc_validate_network_and_save(const sc_provision_ops_t *ops);
 size_t sc_ip_candidates(uint32_t current,uint32_t mask,uint32_t gateway,uint32_t dns,uint32_t *out,size_t capacity);

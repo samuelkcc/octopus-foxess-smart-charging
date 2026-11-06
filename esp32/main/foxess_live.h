@@ -12,3 +12,5 @@ cJSON *sc_live_reading(void);
 cJSON *sc_live_configure(const cJSON *request,const sc_config_t *device);
 cJSON *sc_live_test(const cJSON *request,const sc_config_t *device);
 bool sc_live_set_mode(const char *mode);
+
+cJSON *sc_live_store(const cJSON *request);

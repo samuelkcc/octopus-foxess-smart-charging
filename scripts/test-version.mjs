@@ -9,6 +9,9 @@ const directory = await mkdtemp(path.join(os.tmpdir(),'charging-version-'));
 const script = new URL('./set-version.mjs',import.meta.url).pathname;
 try {
   await mkdir(path.join(directory,'src'));
+  await mkdir(path.join(directory,'docs/editions'),{recursive:true});
+  await writeFile(path.join(directory,'README.md'),'**Version 2.4.4** https://github.com/samuelkcc/octopus-foxess-smart-charging/releases/tag/esp32-2.4.4');
+  await writeFile(path.join(directory,'docs/editions/ESP32.md'),'https://github.com/samuelkcc/octopus-foxess-smart-charging/releases/download/esp32-2.4.4/SmartCharging-ESP32-Setup-2.4.4-macOS-universal.zip\nOTA requires 2.5.0 or later.');
   await mkdir(path.join(directory,'prototype/esp32-usb-test'),{recursive:true});
   await mkdir(path.join(directory,'esp32/main'),{recursive:true});
   await writeFile(path.join(directory,'prototype/esp32-usb-test/index.html'),'Smart Charging 2.2.0');
@@ -24,6 +27,9 @@ try {
     const pkg=JSON.parse(await readFile(path.join(directory,'package.json'),'utf8'));
     const lock=JSON.parse(await readFile(path.join(directory,'package-lock.json'),'utf8'));
     const html=await readFile(path.join(directory,'src/index.html'),'utf8');
+    const readme=await readFile(path.join(directory,'README.md'),'utf8'),guide=await readFile(path.join(directory,'docs/editions/ESP32.md'),'utf8');
+    assert(readme.includes(`Version ${version}`)&&readme.includes(`/tag/esp32-${version}`));
+    assert(guide.includes(`/esp32-${version}/SmartCharging-ESP32-Setup-${version}-macOS-universal.zip`));assert(guide.includes('OTA requires 2.5.0 or later.'));
     assert.equal(pkg.version,version);assert.equal(lock.version,version);assert.equal(lock.packages[''].version,version);
     assert.ok(html.includes(`?v=${version}`));assert.ok(html.includes(`Build v${version}`));assert.ok(html.includes(`data-app-version>${version}<`));
     assert.equal(await readFile(path.join(directory,'.github/workflows/release.yml'),'utf8'),`default: v${version}\n`);

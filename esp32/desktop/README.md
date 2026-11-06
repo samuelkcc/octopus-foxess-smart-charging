@@ -19,7 +19,9 @@ The PSRAM specification requires operator confirmation.
 1. Extract the macOS Universal ZIP.
 2. Open **Smart Charging ESP32 Setup.app**.
 3. Connect the supported board through its USB data port.
-4. Select **Connect ESP32**.
+4. Select **New setup / Reinstall** or **Edit settings**.
+5. Follow the displayed instructions.
+6. Select **Connect ESP32** when prompted.
 5. Select the USB serial device.
 6. Check that firmware shows **Verified**.
 
@@ -31,7 +33,9 @@ USB selection excludes Bluetooth virtual ports.
 
 1. Open the Windows x64 portable EXE.
 2. Connect the supported board through its USB data port.
-3. Select **Connect ESP32**.
+3. Select **New setup / Reinstall** or **Edit settings**.
+4. Follow the displayed instructions.
+5. Select **Connect ESP32** when prompted.
 4. Select the USB serial device.
 5. Check that firmware shows **Verified**.
 
@@ -43,7 +47,8 @@ Native Windows USB behaviour requires verification on Windows.
 Follow the same four setup steps in all three editions.
 When ESP32 automation is enabled, disable it before changing network or service settings.
 Reconnect USB setup after changing the automation state.
-Configuration is saved only after the device tests pass.
+Wi-Fi and IP verification must pass before saving. API credentials are saved without testing.
+Use **Settings → Account setup → Test all APIs** in the dashboard to check configured services sequentially.
 Open the ESP32 local IP on your phone or computer to use the dashboard.
 LAN protection defaults to off.
 If required, enable **Settings → LAN access** in the dashboard.

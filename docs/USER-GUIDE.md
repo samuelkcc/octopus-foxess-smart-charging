@@ -73,23 +73,24 @@ Use desktop Chrome for USB website deployment. Safari does not support the requi
 10. Run Test Wi-Fi with DHCP.
 11. Select Accounts.
 12. Enter your Octopus and FoxESS API details.
-13. Select Verify & save.
-14. Select Test all & save.
-15. Wait for all required checks to pass.
+13. Select Review & save.
+14. Select Save settings.
+15. Wait for Wi-Fi and IP verification to pass.
 16. Open the displayed local dashboard address.
 
 Wi-Fi scanning is read-only. Current firmware permits scanning while automation runs.
 
 Scan progress, results, and errors appear below Scan Wi-Fi. Scanning does not save settings or switch networks.
 
-For an existing board, unchanged Wi-Fi, IP, and API settings can be verified while automation runs.
-Test all & save checks both APIs before saving optional telemetry settings.
-It keeps the saved network, API credentials, rules, and Pause state.
+For an existing board, unchanged network settings do not require a new network trial.
+Save settings stores API and optional telemetry details without testing those services.
+Check services later in Dashboard Settings → Account setup.
 
 If these main settings changed, disable automation before full USB deployment.
-The message beside Test all & save explains the requirement.
+The message beside Save settings explains the requirement.
 
-Tests must pass before the initial configuration is stored. Failed checks keep the previous saved settings.
+Wi-Fi and IP checks must pass before configuration is stored. Failed network checks keep the previous saved settings.
+Incorrect API credentials do not block deployment. A red service badge opens a prompt for Account setup.
 
 Wi-Fi, IP, and dashboard port changes require physical USB setup. A failed network change could otherwise remove access to the original dashboard address.
 
@@ -108,7 +109,7 @@ Before accepting a suggested IP, check the router's DHCP pool and reservations.
 5. Enter its password.
 6. Select **Test Wi-Fi with DHCP**.
 7. If automation is enabled, select **Disable automation & test Wi-Fi** after reviewing the confirmation.
-8. Complete **Verify & save**.
+8. Complete **Review & save**.
 9. After setup, enable automation in **General settings**.
 
 The confirmation disables future app schedule commands. The inverter retains its programmed schedule.
@@ -138,7 +139,7 @@ The new firmware starts with automation disabled. Complete setup again before en
 13. Select the USB serial port again.
 14. Select **Next: Network**.
 15. Configure Wi-Fi and both APIs.
-16. Complete **Test all & save**.
+16. Complete **Save settings**.
 
 The installer selects its own USB port. A new board does not need a setup connection before installation.
 If installation fails after erasure starts, data may already be deleted. Keep USB connected and retry installation.
@@ -153,7 +154,7 @@ To retain existing settings, use **Edit settings**. Editing does not reinstall f
 | USB setup | Desktop Chrome or Edge, Mac app, or Windows EXE |
 | Cloudflare or remote relay | Not supported |
 | Bluetooth setup | Disabled |
-| OTA firmware update | Not supported, use USB |
+| OTA firmware update | GitHub update from local General settings after initial USB installation |
 | Flash History | Optional, off by default, hourly averages for 60 days |
 | UK clock changes and Auto-Resume | Civil-time schedules and source completion memory |
 
@@ -248,7 +249,7 @@ Tests and saves retain masked form values. Selecting Clear form, disconnecting, 
 
 Config Password is optional. It protects reading original settings through the USB protocol.
 
-1. To enable protection, open Verify & save.
+1. To enable protection, open Review & save.
 2. Enter a new Config Password of 8–128 characters.
 3. Enter the same password in the confirmation field.
 4. Select Save Config Password.
@@ -268,31 +269,32 @@ This protection does not prevent physical Flash extraction. Development encrypti
 
 ESP32 Settings → Account setup and USB setup support Octopus, FoxESS REST, and optional FoxESS cloud login.
 
-1. To test a service, enter its candidate credentials.
-2. Select that service's Test button.
-3. Read the result beside the button.
+1. Open **Settings → Account setup**.
+2. Enter your account credentials.
+3. Before saving credentials, pause automation or disable control.
+4. Select **Save accounts**.
+5. Select **Test all APIs**.
+6. Read each service result.
+7. If a check fails, correct the related fields.
+8. Select **Save accounts** again.
+9. Select **Test all APIs** again.
 
-Tests read service data. They do not save candidate values or program charging schedules.
+Save accounts stores credentials without cloud validation. Blank fields keep existing values during account-only edits.
+Wi-Fi, IP, rules, and Pause remain unchanged.
 
+Test all APIs checks Octopus, FoxESS REST, and configured optional WebSocket login sequentially.
+A failed check does not skip the remaining services. Tests do not save credentials or program inverter schedules.
 The Octopus test checks account REST access. The normal worker checks Smart Dispatch access separately.
 
-1. Before saving API credentials, pause automation or disable control.
-2. Select the service's Test & save button.
-3. Wait for confirmation.
-
-Blank fields keep existing values during account-only edits. Wi-Fi, IP, rules, and Pause remain unchanged.
+A red service badge means a service needs attention. Select it to open the Account setup prompt.
+Waiting for the first update is separate from a failed update. Normal monitoring continues after a test.
 
 REST is the default telemetry source. Optional WebSocket uses FoxESS cloud-login details for live measurements.
 
 1. To enable WebSocket, enter the optional FoxESS cloud login.
-2. Select Test WebSocket.
-3. After a successful test, save the optional login.
-4. Select WebSocket with REST fallback as the telemetry source.
-
-An identical successful WebSocket test can validate a save for five minutes.
-This avoids another portal login immediately after testing.
-Changed credentials or an expired test require fresh validation.
-The worker reconnects after a cached validation is saved.
+2. Select WebSocket with REST fallback as the telemetry source.
+3. Select **Save accounts**.
+4. Select **Test all APIs**.
 
 The unofficial portal interface can change. A portal login can sign another FoxESS session out.
 
@@ -465,3 +467,26 @@ Smart Charging is independent software by SCKC under GPL-3.0-or-later. Octopus E
 The complete application licence and third-party notices are included. The About panel shows version and edition information.
 
 Before reporting a problem, note the edition, version, service status, and relevant time. Never include API keys or passwords.
+
+## 12. ESP32 firmware updates
+
+Firmware before 2.5.0 requires one USB installation to add OTA and bootloader rollback support.
+USB New setup / Reinstall erases existing settings. Default OTA updates preserve settings.
+
+1. Open **Settings → General settings → ESP32 firmware update**.
+2. Select **Check GitHub for updates**.
+3. Pause automation.
+4. Select **Install firmware**.
+5. Confirm the version.
+6. Keep power connected during download and restart.
+7. Reopen the local dashboard.
+8. Check the installed version in About & licence.
+
+Verification checks HTTPS, the project release manifest, SHA-256, image size, application identity, and version.
+The active firmware partition is not overwritten. A healthy startup and local connection are required before confirming the new image.
+Failed verification keeps the current boot selection. A failed pending boot can roll back to the previous image.
+USB recovery remains necessary for some hardware or Flash failures.
+
+Optional Clean update requires the checkbox and exact ERASE input before confirmation.
+It deletes settings and saved History after a healthy boot. Configure the device again through USB afterward.
+The inverter retains its existing schedule. Automatic firmware installation is not enabled.

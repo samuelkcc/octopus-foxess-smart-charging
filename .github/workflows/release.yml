@@ -9,7 +9,7 @@ on:
       tag:
         description: Release tag
         required: true
-        default: v2.4.4
+        default: v2.5.0
       mac_only:
         description: Build only the macOS asset for an existing release tag
         type: boolean

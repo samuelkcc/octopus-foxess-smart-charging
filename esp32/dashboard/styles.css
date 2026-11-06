@@ -92,3 +92,14 @@
 
 /* The shared empty-state class is display:none until its adapter explicitly shows it. */
 #dev-shell .tariff-chart-empty:not([hidden]){display:grid}
+
+/* Keep shared account actions visible above the service fields. */
+#dev-shell .settings-account-grid>[data-setting="account-actions"]{grid-column:1 / -1;}
+.settings-account-grid [data-setting="account-actions"] .notice{margin-bottom:18px;}
+.settings-account-grid [data-setting="account-actions"] ol{line-height:1.7;padding-left:24px;}
+
+/* ESP32 General settings use natural card rows, without the shared Pi History span. */
+#dev-shell #settings-general-panel #esp-settings-form>.dev-page-grid{align-items:start;}
+#dev-shell #settings-general-panel #esp-settings-form #history-settings{grid-row:auto;grid-column:auto;}
+#dev-shell [data-setting="firmware-update"] progress{display:block;width:100%;margin-top:16px;}
+#dev-shell [data-setting="firmware-update"] progress[hidden]{display:none;}

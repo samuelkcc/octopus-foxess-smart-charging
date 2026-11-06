@@ -2,7 +2,7 @@
 #include "provision_policy.h"
 
 static bool passed(const cJSON *object,const char *key){return cJSON_IsTrue(cJSON_GetObjectItemCaseSensitive(object,key));}
-cJSON *sc_validate_and_save(const sc_provision_ops_t *ops){
+static cJSON *validate_and_save(const sc_provision_ops_t *ops,bool network_only){
     cJSON *result=cJSON_CreateObject();
     if(!result)return NULL;
     if(!cJSON_AddBoolToObject(result,"saved",false)){cJSON_Delete(result);return NULL;}
@@ -10,12 +10,12 @@ cJSON *sc_validate_and_save(const sc_provision_ops_t *ops){
     cJSON *checks=activated?ops->test(ops->context):NULL;
     const cJSON *octopus=cJSON_GetObjectItemCaseSensitive(checks,"octopus");
     const cJSON *foxess=cJSON_GetObjectItemCaseSensitive(checks,"foxess");
-    bool all_passed=activated&&passed(checks,"wifi_connected")&&passed(checks,"ip_valid")&&passed(checks,"clock_synced")&&
-        passed(octopus,"connected")&&passed(foxess,"connected");
+    bool all_passed=activated&&passed(checks,"wifi_connected")&&passed(checks,"ip_valid")&&(network_only||(passed(checks,"clock_synced")&&
+        passed(octopus,"connected")&&passed(foxess,"connected")));
     if(checks)cJSON_AddItemToObject(result,"checks",checks);
     if(all_passed&&ops->save(ops->context)){
         cJSON_SetBoolValue(cJSON_GetObjectItemCaseSensitive(result,"saved"),true);
-        cJSON_AddStringToObject(result,"status","Wi-Fi, IP and both APIs passed. Configuration saved on the ESP32.");
+        cJSON_AddStringToObject(result,"status",network_only?"Wi-Fi and IP verified. Settings saved. Check APIs in Dashboard Settings.":"Wi-Fi, IP and both APIs passed. Configuration saved on the ESP32.");
     }else{
         bool restored=ops->restore(ops->context);
         cJSON_AddBoolToObject(result,"previous_runtime_restored",restored);
@@ -24,6 +24,9 @@ cJSON *sc_validate_and_save(const sc_provision_ops_t *ops){
     }
     return result;
 }
+
+cJSON *sc_validate_and_save(const sc_provision_ops_t *ops){return validate_and_save(ops,false);}
+cJSON *sc_validate_network_and_save(const sc_provision_ops_t *ops){return validate_and_save(ops,true);}
 
 static bool available_host(uint32_t address,uint32_t current,uint32_t mask,uint32_t gateway,uint32_t dns){
     uint32_t network=current&mask,broadcast=network|~mask;

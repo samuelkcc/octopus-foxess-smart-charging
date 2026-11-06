@@ -8,7 +8,7 @@ The firmware provides USB deployment, a LAN dashboard, a background controller, 
 The dashboard uses the shared interface style and the existing view, setup, settings, and About owners.
 The ESP32 runs automation while phone and desktop dashboards are closed.
 An additional USB diagnostic can test one future Force Charge period and restore the original schedule.
-Cloudflare is omitted. Bluetooth is disabled at build time. OTA updates are not implemented.
+Cloudflare is omitted. Bluetooth is disabled at build time. GitHub OTA is available after the initial USB installation.
 Local Settings supports service accounts and optional LAN protection.
 The USB setup tool is available as a website, macOS app, and Windows portable app.
 See `desktop/README.md` for supported boards and packaging.
@@ -135,8 +135,12 @@ idf.py -C esp32 -B "$PWD/.build/esp32-firmware" -D SDKCONFIG="$PWD/.build/esp32-
 ```
 
 Build products remain in the ignored `.build/` directory.
-The factory application and future OTA slots each reserve 3 MB.
-OTA installation is not implemented.
+The factory application and two OTA slots each reserve 3 MB.
+OTA writes an inactive slot and verifies the release SHA-256 before boot selection.
+Bootloader rollback is enabled. A pending image needs successful server startup and a working local connection.
+The check occurs after 30 seconds. Failed connection checks cause rollback after 120 seconds.
+Default OTA preserves settings. Explicit Clean OTA requires ERASE and deletes settings only after a confirmed healthy boot.
+The initial USB install must include the OTA-capable bootloader.
 
 ## USB setup
 
@@ -379,3 +383,17 @@ Config Password protects USB protocol reads, not physical Flash extraction.
 It does not change optional LAN access protection.
 The setup form clears on disconnect and page exit.
 The tool does not upload credentials or persist the form in browser storage.
+
+## Prepare an OTA release
+
+1. Build the final firmware.
+2. Run `node scripts/prepare-esp32-ota.mjs`.
+3. Commit `esp32/ota-release.json` with the release source.
+4. Publish the matching application binary as `SmartCharging-ESP32-Firmware-VERSION.bin` in `esp32-VERSION`.
+5. Publish the frozen metadata as `ota.json` with that release.
+6. Deploy GitHub Pages from the same source revision.
+
+Pages copies the frozen release digest. CI-rebuilt USB binaries do not replace that digest.
+The release binary must match the committed SHA-256 and size. Do not regenerate the frozen record from a different binary.
+OTA trusts verified HTTPS from the project publisher. It does not add hardware Secure Boot or an eFuse signing requirement.
+[ESP-IDF OTA documentation](https://docs.espressif.com/projects/esp-idf/en/v5.5/esp32s3/api-reference/system/ota.html) explains pending-image confirmation and rollback.

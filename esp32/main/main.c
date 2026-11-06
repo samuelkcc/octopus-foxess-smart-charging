@@ -13,6 +13,7 @@
 #include "dashboard_port.h"
 #include "foxess_live.h"
 #include "service_setup.h"
+#include "ota_update.h"
 #include "cloud_read.h"
 #include "freertos/semphr.h"
 #include "driver/uart.h"
@@ -62,6 +63,7 @@ static void runtime_task(void *arg){
             if(online&&time(NULL)>1700000000)sc_service_setup_prepare();
             sc_runtime_tick(copy,online);
             sc_service_setup_tick(copy,online&&time(NULL)>1700000000,save_service_configuration);
+            sc_ota_tick(online&&time(NULL)>1700000000);
             mbedtls_platform_zeroize(copy,sizeof(*copy));
             xSemaphoreGive(network_io);
         }
@@ -121,7 +123,7 @@ static bool start_connection(void) {
 static cJSON *status_json(void) {
     cJSON *object = cJSON_CreateObject();
     cJSON_AddStringToObject(object,"firmware","Smart Charging ESP32");
-    cJSON_AddStringToObject(object,"version","2.4.4");
+    cJSON_AddStringToObject(object,"version","2.5.0");
     cJSON_AddBoolToObject(object,"automation_enabled",sc_runtime_enabled());
     cJSON_AddBoolToObject(object,"configured",settings_saved);
     cJSON_AddBoolToObject(object,"network_trial_active",network_trial_active);
@@ -140,6 +142,7 @@ static cJSON *status_json(void) {
     cJSON_AddBoolToObject(capabilities,"lan_access_recovery",true);
     cJSON_AddBoolToObject(object,"lan_access_enabled",sc_runtime_lan_access_enabled());
     cJSON_AddBoolToObject(capabilities,"validate_before_save",true);
+    cJSON_AddBoolToObject(capabilities,"network_only_save",true);
     cJSON_AddBoolToObject(capabilities,"network_trial",true);
     cJSON_AddBoolToObject(capabilities,"ip_suggestion",true);
     cJSON_AddBoolToObject(object,"schedule_restore_pending",sc_schedule_recovery_pending());
@@ -323,7 +326,7 @@ static bool wait_for_wifi(void){
 typedef struct{
     const sc_config_t *candidate;
     sc_config_t previous;
-    bool was_configured,was_saved,was_trial;
+    bool was_configured,was_saved,was_trial,network_only;
 } provision_context_t;
 static bool provision_activate(void *arg){
     provision_context_t *ctx=arg;
@@ -339,7 +342,8 @@ static bool provision_activate(void *arg){
 }
 static cJSON *provision_test(void *arg){
     provision_context_t *ctx=arg;
-    cJSON *result=test_connections();if(!result)return NULL;
+    cJSON *result=ctx->network_only?cJSON_CreateObject():test_connections();if(!result)return NULL;
+    if(ctx->network_only){cJSON_AddBoolToObject(result,"wifi_connected",(xEventGroupGetBits(wifi_events)&CONNECTED)!=0);cJSON_AddBoolToObject(result,"clock_synced",time(NULL)>=1700000000);}
     esp_netif_ip_info_t actual={0};
     bool valid=esp_netif_get_ip_info(station,&actual)==ESP_OK&&actual.ip.addr&&actual.netmask.addr&&actual.gw.addr;
     if(valid&&ctx->candidate->static_ip){
@@ -362,14 +366,14 @@ static bool provision_restore(void *arg){
     if(configured)return start_connection()&&wait_for_wifi();
     esp_wifi_disconnect();xEventGroupClearBits(wifi_events,CONNECTED|FAILED);return true;
 }
-static cJSON *validate_configuration(const sc_config_t *candidate){
+static cJSON *validate_configuration(const sc_config_t *candidate,bool network_only){
     provision_context_t *ctx=calloc(1,sizeof(*ctx));
     if(!ctx)return NULL;
-    ctx->candidate=candidate;ctx->previous=settings;ctx->was_configured=configured;ctx->was_saved=settings_saved;ctx->was_trial=network_trial_active;
+    ctx->network_only=network_only;ctx->candidate=candidate;ctx->previous=settings;ctx->was_configured=configured;ctx->was_saved=settings_saved;ctx->was_trial=network_trial_active;
     sc_provision_ops_t ops={ctx,provision_activate,provision_test,provision_save,provision_restore};
-    next_test_us=esp_timer_get_time()+60000000;
-    cJSON *result=sc_validate_and_save(&ops);
-    int64_t minimum=esp_timer_get_time()+60000000;if(next_test_us<minimum)next_test_us=minimum;
+    if(!network_only)next_test_us=esp_timer_get_time()+60000000;
+    cJSON *result=network_only?sc_validate_network_and_save(&ops):sc_validate_and_save(&ops);
+    if(!network_only){int64_t minimum=esp_timer_get_time()+60000000;if(next_test_us<minimum)next_test_us=minimum;}
     if(result)cJSON_AddBoolToObject(result,"previous_configuration_saved",ctx->was_saved);
     mbedtls_platform_zeroize(ctx,sizeof(*ctx));free(ctx);return result;
 }
@@ -398,7 +402,7 @@ static void handle_command(char *line) {
     int request_id=id->valueint;
     bool usb_access=!strcmp(command->valuestring,"config_read")||!strcmp(command->valuestring,"config_access_set");
     bool fast=!strcmp(command->valuestring,"dashboard_port")||!strcmp(command->valuestring,"hello")||!strcmp(command->valuestring,"status")||!strcmp(command->valuestring,"reset_lan_access")||!strcmp(command->valuestring,"runtime_state")||!strcmp(command->valuestring,"service_setup")||!strcmp(command->valuestring,"service_setup_status");
-    bool live_operation=!strcmp(command->valuestring,"foxess_live_configure");
+    bool live_operation=!strcmp(command->valuestring,"foxess_live_configure")||!strcmp(command->valuestring,"foxess_live_store");
     bool scan_operation=!strcmp(command->valuestring,"scan");
     bool network_setup=!strcmp(command->valuestring,"network_setup");
     if(!fast&&!live_operation&&!usb_access&&!scan_operation&&!network_setup&&sc_runtime_enabled()&&strcmp(command->valuestring,"reboot")){
@@ -460,6 +464,10 @@ static void handle_command(char *line) {
         unsigned number=cJSON_IsNumber(job)&&job->valuedouble>0&&job->valuedouble<=UINT32_MAX?(unsigned)job->valuedouble:0;
         cJSON *out=sc_service_setup_status(number);reply(request_id,out!=NULL,out,out?NULL:"Setup test not found");
     }
+    else if (!strcmp(command->valuestring,"foxess_live_store")) {
+        cJSON *result=settings_saved?sc_live_store(cJSON_GetObjectItemCaseSensitive(root,"config")):NULL;
+        reply(request_id,result!=NULL,result,result?NULL:"Save the main settings first and enter valid optional login fields");
+    }
     else if (!strcmp(command->valuestring,"foxess_live_configure")) {
         if(!settings_saved||!(xEventGroupGetBits(wifi_events)&CONNECTED))reply(request_id,false,NULL,"Save the main configuration and connect Wi-Fi first");
         else{
@@ -508,20 +516,21 @@ static void handle_command(char *line) {
     } else if(!strcmp(command->valuestring,"suggest_ip")){
         if(!(xEventGroupGetBits(wifi_events)&CONNECTED)||settings.static_ip)reply(request_id,false,NULL,"Connect using DHCP before requesting a fixed-IP suggestion");
         else reply(request_id,true,sc_suggest_ip(station),NULL);
-    } else if (!strcmp(command->valuestring,"configure")) {
+    } else if (!strcmp(command->valuestring,"configure")||!strcmp(command->valuestring,"configure_network")) {
+        bool network_only=!strcmp(command->valuestring,"configure_network");
         sc_config_t *next=calloc(1,sizeof(*next));
         if (!next || !sc_parse_config(cJSON_GetObjectItemCaseSensitive(root,"config"),next)) reply(request_id,false,NULL,"Invalid configuration; existing settings were retained");
         else if(sc_schedule_recovery_pending())reply(request_id,false,NULL,"Resolve schedule restoration before changing configuration");
         else if(next->static_ip&&!cJSON_IsTrue(cJSON_GetObjectItemCaseSensitive(root,"static_ip_reviewed")))reply(request_id,false,NULL,"Review the router DHCP pool before selecting a fixed IP");
-        else if(esp_timer_get_time()<next_test_us)reply(request_id,false,NULL,"Wait for the API test cooldown before validating another configuration");
-        else reply(request_id,true,validate_configuration(next),NULL);
+        else if(!network_only&&esp_timer_get_time()<next_test_us)reply(request_id,false,NULL,"Wait for the API test cooldown before validating another configuration");
+        else reply(request_id,true,validate_configuration(next,network_only),NULL);
         if (next) { mbedtls_platform_zeroize(next,sizeof(*next)); free(next); }
     } else if(!strcmp(command->valuestring,"configure_recheck")){
         if(!settings_saved||network_trial_active||sc_schedule_recovery_pending()||esp_timer_get_time()<next_test_us)reply(request_id,false,NULL,"Saved settings and an available validation slot are required");
         else{
             sc_config_t *candidate=calloc(1,sizeof(*candidate));
             if(!candidate)reply(request_id,false,NULL,"Not enough memory");
-            else{*candidate=settings;reply(request_id,true,validate_configuration(candidate),NULL);mbedtls_platform_zeroize(candidate,sizeof(*candidate));free(candidate);}
+            else{*candidate=settings;reply(request_id,true,validate_configuration(candidate,false),NULL);mbedtls_platform_zeroize(candidate,sizeof(*candidate));free(candidate);}
         }
     } else if (!strcmp(command->valuestring,"schedule_inspect")) {
         if(!configured || !(xEventGroupGetBits(wifi_events)&CONNECTED) || time(NULL)<1700000000) reply(request_id,false,NULL,"Saved configuration, Wi-Fi and synchronized time are required");
@@ -610,7 +619,8 @@ void app_main(void) {
         httpd_register_uri_handler(server,&notices);
         httpd_register_uri_handler(server,&sdk_notices);
     }
-    xTaskCreate(runtime_task,"sc-worker",24576,NULL,4,NULL);
+    sc_ota_init(server!=NULL);
+    if(xTaskCreate(runtime_task,"sc-worker",24576,NULL,4,NULL)!=pdPASS)esp_restart();
     reply(0,true,cJSON_CreateString("setup_ready"),NULL);
     char *line=calloc(MAX_LINE+1,1);
     size_t used=0;

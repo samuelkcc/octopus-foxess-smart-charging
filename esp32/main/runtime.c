@@ -1,5 +1,6 @@
 // Copyright (C) 2026 SCKC. SPDX-License-Identifier: GPL-3.0-or-later
 #include "runtime.h"
+#include "service_setup.h"
 #include "foxess_live.h"
 #include "automation_policy.h"
 #include "cloud_read.h"
@@ -43,6 +44,7 @@ static char octopus_status[96] = "Waiting for first Octopus update",
             foxess_status[96] = "Waiting for first FoxESS update",
             control_status[128] = "Automation is not enabled";
 static int octopus_http, foxess_http;
+static bool octopus_fault,foxess_fault;
 static double soc = NAN;
 static sc_resume_state_t resume_memory;
 static unsigned resume_revision;
@@ -141,6 +143,7 @@ void sc_runtime_credentials_changed(void) {
     tariff_stage = 0;tariff_http=0;
     import_rates_at = export_rates_at = 0;
     dispatch_valid = false;
+    octopus_fault=foxess_fault=false;octopus_http=foxess_http=0;
     confirmed = false;
     dispatch_at = telemetry_at = schedule_at = confirmed_at = 0;
     soc = NAN; resume_epoch++;
@@ -410,6 +413,9 @@ static void publish(time_t now, const cJSON *rules) {
     cJSON_AddBoolToObject(out, "foxess_refresh_pending", refresh_fox || refresh_plan);
     cJSON_AddStringToObject(out, "foxess_status", foxess_status);
     cJSON_AddItemToObject(out, "foxess_telemetry", sc_live_status());
+    cJSON_AddBoolToObject(out,"octopus_fault",octopus_fault);
+    cJSON_AddBoolToObject(out,"foxess_fault",foxess_fault);
+    cJSON_AddItemToObject(out,"setup_checks",sc_service_setup_health());
     cJSON_AddNumberToObject(out, "octopus_http", octopus_http);
     cJSON_AddNumberToObject(out, "foxess_http", foxess_http);
     int64_t us = esp_timer_get_time();
@@ -702,6 +708,7 @@ static void octopus_poll(const sc_config_t *config, const cJSON *rules) {
                                              "obtainKrakenToken"),
             "token");
         if (octopus_http == 200 && cJSON_IsString(value) && strlen(value->valuestring) < sizeof(token)) {
+            octopus_fault=false;
             strcpy(token, value->valuestring);
             const cJSON *auth = cJSON_GetObjectItemCaseSensitive(cJSON_GetObjectItemCaseSensitive(response, "data"), "obtainKrakenToken");
             double expires = n(cJSON_GetObjectItemCaseSensitive(auth, "payload"), "exp", 0);
@@ -714,6 +721,7 @@ static void octopus_poll(const sc_config_t *config, const cJSON *rules) {
             strcpy(octopus_status, "Signed in; charging windows queued");
         } else {
             dispatch_valid = false;
+            octopus_fault=true;
             strcpy(octopus_status, cJSON_IsString(value)
                                        ? "Octopus sign-in token exceeds buffer limit"
                                        : "Octopus sign-in failed; retained previous dispatches");
@@ -744,6 +752,7 @@ static void octopus_poll(const sc_config_t *config, const cJSON *rules) {
             replace(&dispatches, normalized);
             dispatch_at = time(NULL);
             dispatch_valid = request_revision >= required_dispatch_revision;
+            octopus_fault=false;
             dispatch_error[0] = 0;
             dispatch_time_sample[0] = 0;
             strcpy(octopus_status, "Charging windows updated");
@@ -765,6 +774,7 @@ static void octopus_poll(const sc_config_t *config, const cJSON *rules) {
                     strspn(b->valuestring, "0123456789TtZz:+-. ") == strlen(b->valuestring))
                     snprintf(dispatch_time_sample, sizeof(dispatch_time_sample), "%s / %s", a->valuestring, b->valuestring);
             }
+            octopus_fault=true;
             strcpy(octopus_status, "Dispatch update failed; retained previous valid windows");
             if (octopus_http == 401 || octopus_http == 403 || graphql_auth_error(response)) {
                 mbedtls_platform_zeroize(token, sizeof(token));
@@ -875,6 +885,7 @@ static void foxess_poll(const sc_config_t *config, const cJSON *rules) {
         cJSON_GetArrayItem(cJSON_GetObjectItemCaseSensitive(response, "result"), 0), "datas");
     if (foxess_http == 200 && n(response, "errno", -1) == 0 && cJSON_IsArray(datas) &&
         cJSON_GetArraySize(datas) > 0) {
+        foxess_fault=false;
         double values[7];
         for (int i = 0; i < 7; i++)
             values[i] = NAN;
@@ -904,8 +915,10 @@ static void foxess_poll(const sc_config_t *config, const cJSON *rules) {
         xSemaphoreTake(guard, portMAX_DELAY);
         history_sample(telemetry_at);
         xSemaphoreGive(guard);
-    } else
+    } else {
+        foxess_fault=true;
         strcpy(foxess_status, "FoxESS telemetry update failed; last reading retained");
+    }
     if (foxess_http == 429) {
         next_fox = esp_timer_get_time() + (int64_t)(retry > 60 ? retry : 600) * 1000000;
         fox_not_before = next_fox;

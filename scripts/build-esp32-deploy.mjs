@@ -23,6 +23,13 @@ const guide=await guideBundle(root);await writeFile(path.join(output,'guide.js')
 await cp(path.join(root,'dev/about.js'),path.join(output,'about.js'));
 for(const part of parts)await writeFile(path.join(output,'firmware',part.file),part.data);
 await writeFile(path.join(output,'firmware/manifest.json'),JSON.stringify({schema:1,chip:'ESP32-S3',flash_size:'16MB',psram_bytes:8388608,version,automation_enabled:false,parts:parts.map(({data,...part})=>part)},null,2)+'\n');
+// OTA points to the reviewed release binary, not this possibly rebuilt USB artifact.
+try{
+ const ota=JSON.parse(await readFile(path.join(root,'esp32/ota-release.json'),'utf8'));
+ const expected=`https://github.com/samuelkcc/octopus-foxess-smart-charging/releases/download/esp32-${version}/SmartCharging-ESP32-Firmware-${version}.bin`;
+ if(ota.schema!==1||ota.board!=='ESP32-S3-N16R8'||ota.version!==version||ota.url!==expected||!/^[a-f0-9]{64}$/.test(ota.sha256)||!Number.isInteger(ota.size)||ota.size<32||ota.size>0x300000)throw Error('Invalid frozen OTA release record');
+ await writeFile(path.join(output,'firmware/ota.json'),JSON.stringify(ota,null,2)+'\n');
+}catch(error){if(error.code!=='ENOENT')throw error;console.log('OTA metadata not frozen yet. Run prepare-esp32-ota.mjs before release.');}
 await cp(path.join(root,'esp32/SDK_NOTICES.txt'),path.join(output,'firmware/SDK_NOTICES.txt'));
 await writeFile(path.join(output,'.nojekyll'),'');
 console.log('Built local ESP32 Deploy artifact: dist/esp32-deploy. Configuration sectors are excluded. Nothing published.');

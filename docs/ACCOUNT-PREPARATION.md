@@ -53,16 +53,18 @@ If you replace a key, update any other integrations that use it.
 ## Optional FoxESS WebSocket login
 
 ESP32, Pi, and Portable can use optional live telemetry instead of routine REST readings.
+Pi uses Save & Test Live WS. Follow its native Configuration instructions.
 The HTML web edition uses its own Google relay setup.
 
 Use the username and password that you normally enter on the FoxESS Cloud website.
 The account must have access to the same inverter used by the REST API.
 
 1. If you want live telemetry, enter **FoxESS cloud username** and **FoxESS cloud password**.
-2. Select **Test WebSocket** or **Save & Test Live WS**, as shown in your edition.
-3. Wait for a successful fresh reading.
-4. Select your edition's WebSocket telemetry mode.
-5. Save that selection.
+2. On ESP32, select **Save accounts** in Dashboard Settings → Account setup.
+3. Select **Test all APIs**.
+4. Wait for a successful fresh reading.
+5. Select your edition's WebSocket telemetry mode.
+6. Save that selection.
 
 If you do not need WebSocket, leave the optional login blank and use REST.
 WebSocket supplies read-only measurements. Schedule commands and confirmation always use official REST.
@@ -84,8 +86,9 @@ Use USB to change Wi-Fi, IP, or port settings. Incorrect network settings can ot
 1. Open the guide for your chosen edition.
 2. Enter your own credentials in that edition's setup controls.
 3. Run the available API tests.
-4. For ESP32 initial setup, wait for all four **Verify & save** checks to pass.
-5. Before enabling control, disable other automation hosts for this inverter.
+4. For ESP32 deployment, wait for Wi-Fi and IP verification before saving.
+5. In ESP32 Dashboard Account setup, select **Test all APIs**.
+6. Before enabling control, disable other automation hosts for this inverter.
 
 Never put real keys or passwords in screenshots, issue reports, public files, or Git commits.
 

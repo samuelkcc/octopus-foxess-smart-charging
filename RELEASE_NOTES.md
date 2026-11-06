@@ -1,3 +1,21 @@
+# Smart Charging 2.5.0
+
+ESP32 can update firmware from this project’s GitHub release through local Dashboard General settings.
+An initial USB installation is required for older firmware. No Cloudflare or remote relay is involved.
+Updates verify TLS, the release manifest, application size, SHA-256, model, project name, and version before selecting the inactive slot.
+The bootloader retains a new OTA image only after startup checks and a working local connection.
+Default updates keep settings. Optional Clean update requires exact ERASE confirmation and requires USB setup again after deletion.
+No unattended automatic firmware installation is enabled.
+
+ESP32 deployment verifies Wi-Fi and IP before saving. API and optional cloud-login validation no longer block deployment.
+Dashboard Account setup provides Save accounts and one sequential Test all APIs action. Failed checks retain entered fields.
+API badges report HTTP errors and semantic failures, including service errors returned with HTTP 200.
+Failed-service badges prompt users to correct credentials in Account setup.
+
+FoxESS preparation instructions explain Mode Scheduler, low-cost Force Charge, and Remaining Time Mode → Self-Use.
+Tests use mock serial devices, cloud responses, storage, and inverter schedules. No live board is erased, flashed, or updated over the air for verification.
+Native Windows execution and physical hardware behaviour remain verification limits. The tutorial remains unpublished pending the revised flow.
+
 # Smart Charging 2.4.4
 
 The deployment tool now has two entries: New setup / Reinstall and Edit settings.

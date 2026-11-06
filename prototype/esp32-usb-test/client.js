@@ -45,7 +45,7 @@
     $('reset-lan-access').disabled=!ready||locked||!lanResetSupported||!$('reset-lan-consent').checked;
     const savedOnly=unchangedSavedConfiguration();
     $('save').disabled = !ready || locked || !safeSave || controllerEnabled&&!savedOnly;
-    $('save-requirements').textContent=!ready?'Connect ESP32 before verifying and saving.':!safeSave?'Update firmware to enable verified saving.':controllerEnabled&&!savedOnly?'Automation is running. Disable control before replacing Wi-Fi, IP or API settings. Account-only Save controls remain available after Pause.':savedOnly?'Saved Wi-Fi, IP and API settings are unchanged. Verify both APIs and save optional telemetry without stopping automation.':'Full setup tests the network and both APIs before saving. Automation must remain disabled during this operation.';
+    $('save-requirements').textContent=!ready?'Connect ESP32 before saving.':!safeSave?'Update firmware to support network-verified saving.':controllerEnabled&&!savedOnly?'Disable automation before replacing settings. Use Test Wi-Fi to start network setup.':'Wi-Fi and IP must pass. API credentials are saved without tests. Check them in Dashboard Settings → Account setup.';
     $('network-test').disabled = !ready || locked || !safeSave;
     $('network-setup-accept').disabled=!ready||locked||!networkSetupSupported;
     $('network-setup-cancel').disabled=locked;
@@ -54,14 +54,13 @@
     $('test').disabled = !ready || locked || !configured || runtimeTrial || controllerEnabled;
     $('wifi-networks').disabled = !ready || busy || $('wifi-networks').options.length < 2;
     ['ssid','wifi-password','octopus-account','octopus-key','foxess-serial','foxess-key','network-mode','ip-review','clear','show-preview'].forEach(id => $(id).disabled=locked);
-    for(const id of ['fox-web-user','fox-web-password','fox-web-mode','fox-web-save','fox-web-test'])$(id).disabled=!ready||!configured||locked||!liveSupported;
-    for(const id of ['octopus-test','octopus-save','foxess-test','foxess-save'])$(id).disabled=!ready||!configured||locked;
+    for(const id of ['fox-web-user','fox-web-password','fox-web-mode'])$(id).disabled=!ready||locked||!liveSupported;
     for(const id of ['config-password-save','config-password-remove','config-unlock-button','config-skip','review-accounts'])$(id).disabled=!ready||locked||!readbackSupported;
     staticInputs.forEach(input=>{input.disabled=locked || $('network-mode').value!=='static';});
     steps.forEach((name,index)=>$('nav-'+name).setAttribute('aria-disabled',String(index>furthestStep||(needsInstallation()&&index>0))));
     $('wizard-back').disabled=locked;
     $('wizard-next').hidden=activeStep===3||needsInstallation()||setupMode==='auto';
-    $('wizard-progress').textContent=needsInstallation()?'Step 1 of 4 · Install firmware first':`Step ${activeStep+1} of 4 · ${['Device','Network','Accounts','Verify & save'][activeStep]}`;
+    $('wizard-progress').textContent=needsInstallation()?'Step 1 of 4 · Install firmware first':`Step ${activeStep+1} of 4 · ${['Device','Network','Accounts','Review & save'][activeStep]}`;
     $('wizard-next').disabled=locked || (activeStep===0 && (!ready || !safeSave || needsInstallation()));
     window.dispatchEvent?.(new Event('esp32-controls'));
   }
@@ -169,13 +168,12 @@
     }
   }
   function renderChecks(checks, state) {
-    const values = {wifi:checks?.wifi_connected,ip:checks?.ip_valid && checks?.clock_synced,
-      octopus:checks?.octopus?.connected,foxess:checks?.foxess?.connected};
+    const values = {wifi:checks?.wifi_connected,ip:checks?.ip_valid};
     for (const [name, value] of Object.entries(values)) {
       const row = $('check-'+name);
       const result = state || checks?.states?.[name] || (value === true ? 'passed' : value === false ? 'failed' : 'untested');
       row.dataset.result = result;
-      row.querySelector('strong').textContent = {passed:'Passed',failed:'Failed',running:'Testing…',queued:'Waiting',blocked:'Not run',untested:'Not tested'}[result];
+      row.querySelector('strong').textContent = {passed:'Passed',failed:'Failed',running:'Testing…',queued:'Waiting',blocked:'Not run',untested:'Pending save check'}[result];
     }
   }
   function invalidateNetwork() {
@@ -225,7 +223,7 @@
       }
       if (!['Smart Charging ESP32','Smart Charging ESP32 connection test'].includes(hello?.firmware) || (hello.automation_enabled !== false && hello.capabilities?.production_controller !== true)) throw new Error('Compatible connection-test firmware was not detected.');
       ready = true;updateDeviceState(hello);
-      safeSave = hello.capabilities?.validate_before_save === true && hello.capabilities?.network_trial === true && hello.capabilities?.ip_suggestion === true;
+      safeSave = hello.capabilities?.network_only_save === true && hello.capabilities?.network_trial === true && hello.capabilities?.ip_suggestion === true;
       networkTrial = false; suggestion = null;
       $('handshake').textContent = 'Verified'; renderResult(hello);
       if(setupMode==='auto')selectMode(configured?'edit':'new');
@@ -234,7 +232,7 @@
         if(!configProtected)await readSavedSettings('');
         else $('config-read-status').textContent='Saved settings are protected. Unlock to read them, or skip and enter replacement values.';
       }
-      status('connected','Firmware connected',safeSave ? (controllerEnabled?'Account tests remain available. Pause before saving API credentials. Disable control before Wi-Fi or IP changes.':'Ready for Wi-Fi scan and verified setup.') : 'Install the updated firmware to enable test-before-save setup. Read-only checks remain available.');
+      status('connected','Firmware connected',safeSave ? (controllerEnabled?'Account tests remain available. Pause before saving API credentials. Disable control before Wi-Fi or IP changes.':'Ready for Wi-Fi scan and verified setup.') : 'Install the updated firmware to enable network-verified saving. Read-only checks remain available.');
     } catch (error) {
       await disconnect();
       if (candidate && candidate !== port) await candidate.close().catch(() => {});
@@ -291,33 +289,6 @@
   }
   $('config-password-save').addEventListener('click',()=>operation('Saving USB configuration protection…',()=>changeProtection(false)));
   $('config-password-remove').addEventListener('click',()=>operation('Removing USB configuration protection…',()=>changeProtection(true)));
-  async function serviceJob(config,target,onProgress=()=>{}){
-    const started=Date.now();
-    try{
-      const job=await send('service_setup',{config},15000);
-      for(let i=0;i<180&&Date.now()-started<180000;i++){
-        const current=await send('service_setup_status',{job_id:job.id},10000);
-        if(current.phase!=='done')onProgress(current.phase==='queued'?'queued':'running');
-        if(current.phase==='done'){$(target).textContent=current.result?.status||'Test completed.';return current.result;}
-        const elapsed=Math.floor((Date.now()-started)/1000);
-        $(target).textContent=(current.phase==='queued'?'Waiting for a service request slot…':current.progress||'Testing on the ESP32…')+' ('+elapsed+' s)';
-        await new Promise(resolve=>setTimeout(resolve,1000));
-      }throw Error('Test timed out. Previous settings are retained. Check device status before retrying.');
-    }catch(error){
-      $(target).textContent=error.message.includes('not found')?'The ESP32 restarted or the test is no longer available. Nothing was confirmed saved. Entered values are kept. Check device status before retrying.':error.message;
-      throw error;
-    }
-  }
-  for(const service of ['octopus','foxess'])for(const action of ['test','save'])$(service+'-'+action).addEventListener('click',()=>operation('Testing '+service+'…',async()=>{
-    const config=service==='octopus'?{action:action+'_octopus',account:$('octopus-account').value.trim(),key:$('octopus-key').value.trim()}:{action:action+'_foxess',serial:$('foxess-serial').value.trim(),key:$('foxess-key').value.trim()};
-    try{await serviceJob(config,service+'-result');}finally{for(const key of Object.keys(config))config[key]='';}
-  }));
-  for(const action of ['test','save'])$('fox-web-'+action).addEventListener('click',()=>operation('Testing optional FoxESS telemetry…',async()=>{
-    const config={action:action+'_websocket',mode:$('fox-web-mode').value,username:$('fox-web-user').value.trim(),password:$('fox-web-password').value};
-    if(!liveSupported)throw Error('Install current firmware first.');
-    try{const result=await serviceJob(config,'fox-web-result');if(action==='save'&&result?.saved)updateDeviceState(await send('status'));}
-    finally{config.password='';}
-  }));
   $('reset-lan-consent').addEventListener('change',controls);
   $('reset-lan-access').addEventListener('click',()=>operation('Resetting optional LAN protection…',async()=>{
     if(!$('reset-lan-consent').checked)throw Error('Confirm the LAN access reset first.');
@@ -415,7 +386,7 @@
     $('network-mode').value='static';modeChanged();
     $('ip').value=suggestion.candidate;
     for(const name of ['gateway','netmask','dns']) $(name).value=suggestion.network?.[name] || '';
-    $('network-info').textContent='Suggestion added to the form. Review the router DHCP pool before Test all & save.';
+    $('network-info').textContent='Suggestion added to the form. Review the router DHCP pool before Save settings.';
   });
   $('show-preview').addEventListener('click',() => {
     const config=collectConfig(false); if (!config) return;
@@ -431,46 +402,38 @@
     if(config.ip_mode==='static' && !savedOnly && !$('ip-review').checked) {
       $('save-status').textContent='Review the fixed IP against your router DHCP pool, then select the acknowledgement.'; return;
     }
-    const optional={action:'save_websocket',mode:$('fox-web-mode').value,username:$('fox-web-user').value.trim(),password:$('fox-web-password').value};
+    if(!networkTrial&&!loadedSettings){$('save-status').textContent='Run Test Wi-Fi with DHCP before saving.';showStep(1);return;}
+    const optional={mode:$('fox-web-mode').value,username:$('fox-web-user').value.trim(),password:$('fox-web-password').value};
     const saveOptional=liveSupported&&(webConfigured||optional.username||optional.password||optional.mode==='live-ws');
     if((optional.username&&!optional.password&&!webConfigured)||(!optional.username&&optional.password)){$('save-status').textContent='Enter both the optional FoxESS username and password.';return;}
-    void operation('Verifying connections and saving settings…',async () => {
+    void operation('Verifying Wi-Fi and IP, then saving settings…',async () => {
       renderChecks(null,'running');
-      $('save-status').textContent=savedOnly?'Checking saved connections. Wi-Fi, IP and automation control remain unchanged.':'Testing on the ESP32. Keep USB connected. Configuration is not saved yet.';
-      let coreSaved=savedOnly;
+      $('save-status').textContent='Checking Wi-Fi and IP. No API requests are sent by this save operation.';
+      let coreSaved=false;
       try {
         if(savedOnly){
-          const device=await send('status'),clock=await send('runtime_state');
-          const checks={wifi_connected:device.wifi_connected===true,ip_valid:typeof device.ip==='string'&&/^(\d{1,3}\.){3}\d{1,3}$/.test(device.ip),clock_synced:clock.now>1700000000,states:{octopus:'queued',foxess:'queued'}};
-          if(!checks.wifi_connected||!checks.ip_valid||!checks.clock_synced)throw Error('Wait for the saved Wi-Fi connection, IP and clock before verifying.');
+          const device=await send('status');
+          const checks={wifi_connected:device.wifi_connected===true,ip_valid:typeof device.ip==='string'&&/^(\d{1,3}\.){3}\d{1,3}$/.test(device.ip)};
           renderChecks(checks);
-          const verifyService=async(name,request)=>{
-            try{
-              const result=await serviceJob(request,'save-status',phase=>{checks.states[name]=phase;renderChecks(checks);});
-              checks[name]=result;delete checks.states[name];renderChecks(checks);
-              if(!result?.connected)throw Error(result?.status||'API validation failed. Nothing saved.');
-            }catch(error){checks.states[name]='failed';if(name==='octopus')checks.states.foxess='blocked';renderChecks(checks);throw error;}
-          };
-          await verifyService('octopus',{action:'test_octopus',account:config.account,key:config.octopus_key});
-          await verifyService('foxess',{action:'test_foxess',serial:config.foxess_sn,key:config.foxess_key});
+          if(!checks.wifi_connected||!checks.ip_valid)throw Error('The saved Wi-Fi connection or IP is unavailable. Run Test Wi-Fi again.');
+          coreSaved=true;
         }else{
-          const result=await send('configure',{config,static_ip_reviewed:$('ip-review').checked===true},240000);
+          const result=await send('configure_network',{config,static_ip_reviewed:$('ip-review').checked===true},120000);
           configured=result?.saved===true || result?.previous_configuration_saved===true;
           renderResult(result);renderChecks(result?.checks);
-          if(!result?.saved)throw Error(result?.status||'Configuration was not saved. Check device status before retrying.');
-          coreSaved=true;runtimeTrial=false;
+          if(!result?.saved)throw Error(result?.status||'Network verification failed. Previous saved settings were retained.');
+          coreSaved=true;runtimeTrial=false;savedConfig={...config};loadedSettings=true;
         }
         if(saveOptional){
-          const result=await serviceJob(optional,'save-status');
+          const result=await send('foxess_live_store',{config:optional},20000);
           if(!result?.saved)throw Error(result?.status||'Optional telemetry settings were not saved.');
-          const current=await send('status');updateDeviceState(current);
         }
         networkTrial=false;
-        $('save-status').textContent=savedOnly?'Wi-Fi, IP, clock and both APIs passed. '+(saveOptional?'Optional telemetry settings saved. ':'')+'Existing network, API settings and automation state were kept.':'All required checks passed. Configuration saved.';
-        if(!savedOnly){savedConfig={...config};loadedSettings=true;}
+        $('save-status').textContent='Wi-Fi and IP verified. Settings saved. APIs have not been tested. Open Dashboard Settings → Account setup to test all APIs.';
         $('save-status').textContent+=' Entered values remain masked until you disconnect or clear the form.';
+        updateDeviceState(await send('status'));
       } catch(error) {
-        $('save-status').textContent=(coreSaved&&!savedOnly?'Main configuration saved. ':'')+'Verification or optional saving did not complete: '+error.message;
+        $('save-status').textContent=(coreSaved?'Main settings are saved. Optional saving did not complete: ':'Settings were not saved: ')+error.message;
         throw error;
       } finally { for (const key of Object.keys(config)) config[key]='';for(const key of Object.keys(optional))optional[key]=''; }
     });
@@ -497,12 +460,12 @@
     document.documentElement.dataset.theme=document.documentElement.dataset.theme==='dark'?'light':'dark';
   });
   const steps=['device','network','accounts','verify'];
-  const titles=['Choose a setup task','Set up your network','Connect your accounts','Verify & save'];
-  const descriptions=['Choose installation or editing. New boards need firmware before the setup connection.','Choose 2.4 GHz Wi-Fi and check the connection before continuing.','Enter the credentials that the ESP32 will test directly.','The ESP32 saves only after every network and service check passes.'];
+  const titles=['Choose a setup task','Set up your network','Connect your accounts','Review & save'];
+  const descriptions=['Choose installation or editing. New boards need firmware before the setup connection.','Choose 2.4 GHz Wi-Fi and check the connection before continuing.','Enter credentials, then test them later in Dashboard Settings.','The ESP32 verifies Wi-Fi and IP before saving. API tests are available in Dashboard Settings.'];
   const guides=[
     ['Choose installation or editing','New setup / Reinstall erases the board and installs firmware first. Edit settings connects without erasing.'],
     ['Check your network','Run the temporary DHCP test. For a stable IP, prefer a router reservation. Review the DHCP pool before using a suggested address.'],
-    ['Keep your credentials private','Credentials travel through USB. The browser does not upload or retain them. The final step tests both accounts before saving.'],
+    ['Keep your credentials private','Credentials travel through USB. The browser does not upload or retain them. The final step saves account details without API tests.'],
     ['What happens next','Keep USB connected until confirmation. Saved settings survive restarts. History uses RAM by default. Optional hourly Flash saving is available in Dashboard Settings.']
   ];
   function showStep(index,focus=true){
@@ -519,8 +482,8 @@
     $('wizard-title').textContent=index===0?({new:'New setup / Reinstall',edit:'Edit saved settings'}[setupMode]||titles[0]):titles[index];$('wizard-description').textContent=descriptions[index];
     $('guide-title').textContent='Help: '+guides[index][0];$('guide-text').textContent=guides[index][1];
     $('wizard-back').hidden=index===0;$('wizard-next').hidden=index===3;
-    $('wizard-next').textContent=['Next: Network →','Next: Accounts →','Next: Verify & save →',''][index];
-    $('wizard-progress').textContent=`Step ${index+1} of 4 · ${['Device','Network','Accounts','Verify & save'][index]}`;
+    $('wizard-next').textContent=['Next: Network →','Next: Accounts →','Next: Review & save →',''][index];
+    $('wizard-progress').textContent=`Step ${index+1} of 4 · ${['Device','Network','Accounts','Review & save'][index]}`;
     if(focus){window.scrollTo?.({top:0,behavior:'instant'});$('wizard-title').focus?.({preventScroll:true});}
     controls();
   }

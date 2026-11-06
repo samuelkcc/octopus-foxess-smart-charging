@@ -4,7 +4,7 @@ This development page installs and configures an ESP32-S3 N16R8 through USB.
 Its English interface uses the existing Smart Charging visual style.
 The wizard displays one step at a time and retains form data during Back/Next navigation.
 The contextual guide changes with each step.
-A top-bar About button opens complete licence information in a right-side drawer.
+A lower-left About button opens complete licence information in a right-side drawer.
 The setup website is separate from the LAN dashboard and firmware worker.
 The LAN dashboard opens directly by default. There is no pairing code.
 Optional LAN access protection is configured in the dashboard.
@@ -34,7 +34,8 @@ Nothing is published automatically.
 
 1. Connect the board through its USB-UART data port.
 2. Close other serial tools.
-3. Select **Connect ESP32**.
+3. Select **Edit settings** for configured firmware.
+4. Select **Connect ESP32**.
 4. Select the USB serial device.
 5. Check that the firmware handshake shows **Verified**.
 6. Select **Next: Network**.
@@ -46,41 +47,26 @@ Nothing is published automatically.
 12. Select **Next: Accounts**.
 13. Enter the Octopus account and API key.
 14. Enter the FoxESS serial number and API token.
-15. Select **Next: Verify & save**.
-16. Select **Test all & save**.
+15. Select **Next: Review & save**.
+16. Select **Save settings**.
 17. Keep USB connected until the result appears.
 18. Return to **Device**.
 19. Select **Disconnect**.
 
 For a hidden network, enter its SSID manually.
 The temporary Wi-Fi test uses RAM and does not save settings.
-The final command checks Wi-Fi, IP, clock, Octopus account REST, and FoxESS telemetry REST.
-The firmware commits configuration only after every check passes.
-Failed checks preserve the previous persistent configuration.
-A successful save clears the form.
+The final command verifies Wi-Fi and IP before saving. It does not call Octopus, FoxESS REST, or FoxESS login.
+Failed network checks preserve the previous persistent configuration. Saved API details can be checked in Dashboard Account setup.
+Test all APIs checks configured services sequentially. Save accounts stores changes without cloud validation.
+A successful save keeps the masked form until disconnect or Clear.
 Older firmware cannot enable the new save button.
 
-## Optional firmware installation
+## Install or reinstall firmware
 
-1. Disconnect the setup session.
-2. Expand **First installation or firmware recovery**.
-3. Check the board model.
-4. Select both acknowledgements.
-5. Select **Install firmware**.
-6. Select the USB-UART port.
-7. Keep USB connected until flash verification finishes.
-8. Select **Connect ESP32**.
-
-If the bootloader does not connect, hold BOOT while pressing RESET.
-The installer checks ESP32-S3 identity and 16 MB flash capacity.
-The operator must confirm the 8 MB octal PSRAM board variant.
-The firmware also runs a PSRAM memory test at boot.
-The installer verifies every downloaded part with SHA-256 before writing.
-It verifies written data through the bootloader's MD5 command.
-It never requests a complete flash erase.
-Separate images exclude the NVS configuration sectors.
-The browser installer uses pinned, self-hosted esptool-js 0.7.1.
-Its licences are included in `vendor/`.
+For a blank board, select **New setup / Reinstall** before connecting a setup session.
+This path erases all settings and History. The installer requires model confirmation, deletion consent, and exact **ERASE** input.
+It verifies all downloads and target hardware before erasure. After installation, select **Continue: Connect ESP32**.
+To keep settings without installing firmware, use **Edit settings**.
 
 ## Optional fixed IP suggestion
 
@@ -97,10 +83,10 @@ Sleeping devices and future DHCP allocations can cause conflicts.
 2. Select **Use this suggestion**.
 3. Review the populated IP fields.
 4. Select the router-review acknowledgement.
-5. Select **Test all & save**.
+5. Select **Save settings**.
 
 The suggestion alone does not assign an address.
-The firmware probes a requested static address again before testing both services.
+The firmware probes a requested static address again before saving the configuration.
 
 ## Data and access boundaries
 
@@ -108,7 +94,7 @@ Configuration travels only through USB.
 The browser does not upload configuration or use persistent browser storage.
 Firmware downloads use same-origin GET requests without account credentials.
 The page discards unframed console output.
-USB responses do not expose stored passwords or API keys.
+USB readback requires the optional Config Password when protection is enabled. Sensitive fields remain masked until explicitly revealed.
 Opening a serial port can restart the board.
 
 All settings must survive power loss.

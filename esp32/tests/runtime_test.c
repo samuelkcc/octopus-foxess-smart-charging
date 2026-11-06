@@ -11,6 +11,7 @@
 void sc_live_init(void){}
 void sc_live_poll(const sc_config_t *device,bool online){(void)device;(void)online;}
 cJSON *sc_live_reading(void){return NULL;}
+cJSON *sc_service_setup_health(void){return cJSON_CreateObject();}
 cJSON *sc_live_status(void){return cJSON_Parse("{\"mode\":\"rest\",\"configured\":false,\"source\":\"rest\",\"status\":\"REST selected\"}");}
 bool sc_live_set_mode(const char *mode){return mode&&!strcmp(mode,"rest");}
 #include "history_store.h"
@@ -128,8 +129,8 @@ int main(int argc,char **argv){fixed_tariff=argc>1&&!strcmp(argv[1],"fixed");set
   int old_oct=octopus_reads,old_fox=telemetry_reads,old_reads=reads;
   assert(!sc_runtime_request_refresh("unknown"));assert(sc_runtime_request_refresh("octopus"));
   step(5);assert(octopus_reads==old_oct&&telemetry_reads>old_fox);step(55);assert(octopus_reads>old_oct);step(5);assert(reads>old_reads&&!writes&&sc_runtime_paused());
-  expired_token=true;assert(sc_runtime_request_refresh("foxess"));step(60);cJSON *s=sc_runtime_state();assert(!cJSON_IsTrue(cJSON_GetObjectItem(s,"dispatch_valid")));assert(cJSON_GetArraySize(cJSON_GetObjectItem(s,"dispatches"))==1);assert(!strcmp(cJSON_GetObjectItem(s,"dispatch_error_code")->valuestring,"KT-CT-1124"));cJSON_Delete(s);
-  int old_auth=auth_reads;assert(sc_runtime_request_refresh("octopus"));step(60);assert(auth_reads>old_auth);assert(sc_runtime_request_refresh("octopus"));step(60);s=sc_runtime_state();assert(cJSON_IsTrue(cJSON_GetObjectItem(s,"dispatch_valid")));cJSON_Delete(s);
+  expired_token=true;assert(sc_runtime_request_refresh("foxess"));step(60);cJSON *s=sc_runtime_state();assert(!cJSON_IsTrue(cJSON_GetObjectItem(s,"dispatch_valid")));assert(cJSON_IsTrue(cJSON_GetObjectItem(s,"octopus_fault")));assert(cJSON_GetArraySize(cJSON_GetObjectItem(s,"dispatches"))==1);assert(!strcmp(cJSON_GetObjectItem(s,"dispatch_error_code")->valuestring,"KT-CT-1124"));cJSON_Delete(s);
+  int old_auth=auth_reads;assert(sc_runtime_request_refresh("octopus"));step(60);assert(auth_reads>old_auth);assert(sc_runtime_request_refresh("octopus"));step(60);s=sc_runtime_state();assert(cJSON_IsTrue(cJSON_GetObjectItem(s,"dispatch_valid")));assert(!cJSON_IsTrue(cJSON_GetObjectItem(s,"octopus_fault")));cJSON_Delete(s);
   limited=true;assert(sc_runtime_request_refresh("octopus"));step(60);old_oct=octopus_reads;assert(sc_runtime_request_refresh("octopus"));step(60);assert(octopus_reads==old_oct&&!writes&&sc_runtime_paused());
   puts("Manual API refresh: coalesced worker reads, both services and official schedule, Pause preserved, cooldown enforced, HTTP-200 expired JWT recovery retains valid dispatches.");return 0;
  }
