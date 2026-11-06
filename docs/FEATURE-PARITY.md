@@ -594,6 +594,11 @@ ESP32 direct entry keeps Welcome hidden while the first authenticated state requ
 Optional account metadata now follows pending tariff discovery. Octopus requests remain at least 60 seconds apart.
 Dashboard status includes tariff stages, cache counts, attempt times, completion times, and failure counts.
 Empty FoxESS schedules explain when no dispatch or ordinary rule requires a period.
+Schedule commits retry fresh REST readback without repeating the write or waiting for telemetry polling.
+Successful saves use a short confirmation without revision details.
+ESP32 checks GitHub after startup, then every 24 hours. A header badge links to available updates.
+Settings can disable automatic checks. This choice survives restart. Dashboard opening sends no update request.
+Automatic checks never install firmware or change automation enablement.
 
 Settings adds optional read-only LAN diagnostics on a separate port, with 8788 as the default.
 A random 256-bit Bearer key expires after one hour. Disable, rotation, and restart revoke access.

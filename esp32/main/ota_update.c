@@ -27,6 +27,22 @@
 static SemaphoreHandle_t guard;
 static sc_ota_manifest_t manifest;
 static int pending,progress;
+static bool auto_check=true;
+static int64_t next_auto_check;
+static time_t checked_at;
+typedef struct{uint32_t schema,enabled;} auto_policy_t;
+static void load_auto_policy(void){
+ auto_check=true;nvs_handle_t h;
+ esp_err_t opened=nvs_open("sc_ota",NVS_READONLY,&h);
+ if(opened!=ESP_OK){auto_check=opened==ESP_ERR_NVS_NOT_FOUND;return;}
+ auto_policy_t value={0};size_t size=sizeof(value);esp_err_t result=nvs_get_blob(h,"auto_check",&value,&size);nvs_close(h);
+ if(result==ESP_ERR_NVS_NOT_FOUND)return;
+ auto_check=result==ESP_OK&&size==sizeof(value)&&value.schema==1&&value.enabled==1;
+}
+static bool save_auto_policy(bool enabled){
+ nvs_handle_t h;if(nvs_open("sc_ota",NVS_READWRITE,&h)!=ESP_OK)return false;
+ auto_policy_t value={1,enabled};bool ok=nvs_set_blob(h,"auto_check",&value,sizeof(value))==ESP_OK&&nvs_commit(h)==ESP_OK;nvs_close(h);return ok;
+}
 static bool busy,erase_next,server_ok,boot_checked;
 static _Atomic bool control_hold;
 bool sc_ota_blocks_control(void){return control_hold;}
@@ -35,6 +51,7 @@ typedef struct{uint32_t schema,address,erase;char version[24];} boot_intent_t;
 static void state(const char *next,const char *text){sc_debug_problem(SC_DEBUG_OTA,!strcmp(next,"error"),!strcmp(next,"error")?1:0);xSemaphoreTake(guard,portMAX_DELAY);phase=next;message=text;xSemaphoreGive(guard);}
 void sc_ota_init(bool ready){
  guard=xSemaphoreCreateMutex();server_ok=ready;boot_checked=false;
+ load_auto_policy();next_auto_check=esp_timer_get_time()+30000000;
  const esp_partition_t *running=esp_ota_get_running_partition();esp_ota_img_states_t image_state;
  control_hold=running&&esp_ota_get_state_partition(running,&image_state)==ESP_OK&&image_state==ESP_OTA_IMG_PENDING_VERIFY;
 }
@@ -44,13 +61,22 @@ cJSON *sc_ota_status(void){
  xSemaphoreTake(guard,portMAX_DELAY);
  cJSON_AddStringToObject(out,"current",esp_app_get_description()->version);cJSON_AddStringToObject(out,"version",manifest.version);
  cJSON_AddStringToObject(out,"phase",phase);cJSON_AddStringToObject(out,"status",message);cJSON_AddNumberToObject(out,"progress",progress);
+ cJSON_AddBoolToObject(out,"auto_check",auto_check);cJSON_AddNumberToObject(out,"checked_at",checked_at);
  cJSON_AddBoolToObject(out,"busy",busy||pending);cJSON_AddBoolToObject(out,"available",manifest.size>0);
  cJSON_AddBoolToObject(out,"newer",manifest.size&&strcmp(manifest.version,esp_app_get_description()->version));
  xSemaphoreGive(guard);return out;
 }
 bool sc_ota_submit(const cJSON *request){
  if(!guard||!cJSON_IsObject(request))return false;
- const char *action=string(request,"action");bool check=!strcmp(action,"check"),install=!strcmp(action,"install");
+ const char *action=string(request,"action");
+ if(!strcmp(action,"auto_settings")){
+  const cJSON *enabled=cJSON_GetObjectItemCaseSensitive(request,"enabled"),*field;
+  if(cJSON_GetArraySize(request)!=2||!cJSON_IsBool(enabled))return false;
+  cJSON_ArrayForEach(field,request){if(strcmp(field->string,"action")&&strcmp(field->string,"enabled"))return false;}
+  xSemaphoreTake(guard,portMAX_DELAY);bool ok=!busy&&!pending&&save_auto_policy(cJSON_IsTrue(enabled));
+  if(ok){auto_check=cJSON_IsTrue(enabled);next_auto_check=esp_timer_get_time();}xSemaphoreGive(guard);return ok;
+ }
+ bool check=!strcmp(action,"check"),install=!strcmp(action,"install");
  if(!check&&!install)return false;
  const cJSON *item;cJSON_ArrayForEach(item,request){
   if(strcmp(item->string,"action")&&(check||(strcmp(item->string,"version")&&strcmp(item->string,"confirmation")&&strcmp(item->string,"erase_settings")&&strcmp(item->string,"erase_confirmation"))))return false;
@@ -96,7 +122,7 @@ static bool check_release(void){
  ok=ok&&got>=0&&esp_http_client_is_complete_data_received(client);close_download(client);bytes[used]=0;
  cJSON *json=ok?cJSON_Parse(bytes):NULL;sc_ota_manifest_t candidate;
  ok=sc_ota_manifest_parse(json,esp_app_get_description()->version,&candidate);cJSON_Delete(json);
- xSemaphoreTake(guard,portMAX_DELAY);if(ok)manifest=candidate;else memset(&manifest,0,sizeof(manifest));xSemaphoreGive(guard);return ok;
+ xSemaphoreTake(guard,portMAX_DELAY);checked_at=time(NULL);if(ok)manifest=candidate;else memset(&manifest,0,sizeof(manifest));xSemaphoreGive(guard);return ok;
 }
 static bool intent_save(const esp_partition_t *target,bool erase){
  boot_intent_t value={.schema=1,.address=target->address,.erase=erase};strcpy(value.version,manifest.version);
@@ -147,7 +173,9 @@ static void confirm_boot(bool online){
 void sc_ota_tick(bool online){
  if(!guard)return;
  confirm_boot(online);
- xSemaphoreTake(guard,portMAX_DELAY);int action=pending;bool erase=erase_next;pending=0;if(action)busy=true;xSemaphoreGive(guard);
+ xSemaphoreTake(guard,portMAX_DELAY);
+ if(online&&!control_hold&&!busy&&!pending&&auto_check&&esp_timer_get_time()>=next_auto_check)pending=1;
+ int action=pending;bool erase=erase_next;pending=0;if(action)busy=true;if(action==1)next_auto_check=esp_timer_get_time()+86400000000LL;xSemaphoreGive(guard);
  if(!action)return;
  if(!online){state("error","Connect Wi-Fi and synchronize the clock before updating.");goto done;}
  if(action==1){state("checking","Checking the project firmware manifest on GitHub…");bool ok=check_release();state(ok?"ready":"error",ok?"Firmware details verified. Automation will suspend automatically during installation.":"GitHub update check failed. Retry later; current firmware is unchanged.");}

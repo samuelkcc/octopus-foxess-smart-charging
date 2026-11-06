@@ -511,3 +511,13 @@ LAN HTTP is unencrypted. Do not expose the diagnostics port to the Internet.
 The agent can read structured issues and status. It cannot change settings or send inverter commands.
 Events use RAM for up to 24 hours, with a 512-record limit.
 The buffer replaces older events when full. Restart clears the records.
+
+### ESP32 update notifications
+
+The ESP32 checks GitHub after startup, then every 24 hours.
+A header badge appears when verified metadata identifies a newer version.
+Dashboards share this result. Opening another dashboard does not send a new GitHub request.
+
+To disable automatic checks, turn off Check for updates automatically in General settings.
+This preference survives restart. Check GitHub for updates remains available for manual checks.
+No check installs firmware automatically.

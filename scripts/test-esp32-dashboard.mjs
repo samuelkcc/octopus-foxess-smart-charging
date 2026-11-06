@@ -64,3 +64,8 @@ node('esp-ota-erase').checked=true;node('esp-ota-erase-confirmation').value='';n
 node('esp-ota-erase-confirmation').value='ERASE';node('esp-ota-install').listeners.click();assert.equal(node('esp-review').open,true);assert.equal(otaRequests.length,1,'Opening confirmation must not install');
 await node('esp-review-apply').listeners.click();assert.equal(otaRequests[1].action,'install');assert.equal(otaRequests[1].version,'2.5.1');assert.equal(otaRequests[1].confirmation,'INSTALL_OTA_UPDATE');assert.equal(otaRequests[1].erase_confirmation,'ERASE');assert.equal(otaRequests[1].erase_settings,true);
 console.log('OTA interface: explicit check, exact Clean consent, review before install, selected version and existing CSRF request path passed.');
+
+D.syncFirmwareUpdate({available:true,newer:true,version:'2.5.3',auto_check:false});assert.equal(node('esp-update-available').hidden,false);assert.equal(node('esp-ota-auto-check').checked,false);
+D.syncFirmwareUpdate({available:true,newer:false,auto_check:true});assert.equal(node('esp-update-available').hidden,true);
+node('esp-ota-auto-check').checked=false;await node('esp-ota-auto-check').listeners.change();assert.equal(otaRequests.at(-1).action,'auto_settings');assert.equal(otaRequests.at(-1).enabled,false);
+console.log('Firmware availability uses the ESP32 snapshot; saved automatic-check preference is independent of installation.');

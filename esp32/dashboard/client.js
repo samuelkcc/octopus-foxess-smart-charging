@@ -46,7 +46,7 @@
  D.applyRules=async rules=>{
   if(!state)throw Error('Connect to the ESP32 first.');
   const saved=await D.request('/api/rules',{rules,revision:state.revision,acknowledge_control:true});
-  dirty=false;filledRevision=0;await D.refresh();D.notice(`Settings saved on ESP32 (revision ${saved.revision}). Wait for fresh dispatch data and REST confirmation.`);
+  dirty=false;filledRevision=0;await D.refresh();D.notice('Settings saved.');
  };
  D.loadHistory=async()=>{
   history=await D.request('/api/history?days='+Number($('esp-history-range').value));
@@ -112,7 +112,7 @@
 
  let otaState=null,otaPolling=false;
  function renderOta(value){
-  otaState=value;$('esp-ota-status').textContent=(value.current?'Installed '+value.current+'. ':'')+(value.version?'GitHub '+value.version+'. ':'')+(value.status||'');
+  otaState=value;D.syncFirmwareUpdate?.(value);$('esp-ota-status').textContent=(value.current?'Installed '+value.current+'. ':'')+(value.version?'GitHub '+value.version+'. ':'')+(value.status||'');
   $('esp-ota-check').disabled=value.busy===true;
   $('esp-ota-install').disabled=value.busy===true||value.available!==true;
   $('esp-ota-install').textContent=value.newer?'Install firmware':'Reinstall this version';
@@ -128,6 +128,23 @@
   }}catch(error){$('esp-ota-status').textContent='Connection interrupted. Reopen the dashboard to check the installed version. '+error.message;}
   finally{otaPolling=false;$('esp-ota-check').disabled=false;}
  }
+ D.syncFirmwareUpdate=value=>{
+  if(!value)return;
+  $('esp-update-available').hidden=!(value.available&&value.newer);$('esp-update-available').disabled=value.busy===true;
+  $('esp-update-available').title=value.version?'Firmware '+value.version+' is available':'Firmware update available';
+  if(!autoSettingBusy)$('esp-ota-auto-check').checked=value.auto_check!==false;
+ };
+ let autoSettingBusy=false;
+ $('esp-ota-auto-check').addEventListener('change',async()=>{
+  const field=$('esp-ota-auto-check');autoSettingBusy=true;field.disabled=true;
+  try{renderOta(await D.request('/api/ota',{action:'auto_settings',enabled:field.checked}));D.notice('Update preference saved.');}
+  catch(error){field.checked=!field.checked;D.notice(error.message,true);}
+  finally{autoSettingBusy=false;field.disabled=false;}
+ });
+ $('esp-update-available').addEventListener('click',()=>{
+  D.navigate('settings');window.settingsSections?.select(0);
+  document.querySelector('[data-setting="firmware-update"]')?.scrollIntoView({behavior:'smooth',block:'center'});
+ });
  $('esp-ota-check').addEventListener('click',async()=>{
   $('esp-ota-check').disabled=true;
   try{renderOta(await D.request('/api/ota',{action:'check'}));await pollOta();}catch(error){$('esp-ota-status').textContent=error.message;$('esp-ota-check').disabled=false;}

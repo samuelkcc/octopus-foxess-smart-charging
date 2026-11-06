@@ -11,6 +11,7 @@
 #include "foxess_schedule.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/semphr.h"
+#include "freertos/task.h"
 #include "history_store.h"
 #include "mbedtls/platform_util.h"
 #include "nvs.h"
@@ -50,6 +51,9 @@ static char octopus_status[96] = "Waiting for first Octopus update",
             foxess_status[96] = "Waiting for first FoxESS update",
             control_status[128] = "Automation is not enabled";
 static int octopus_http, foxess_http;
+static int schedule_write_http,schedule_read_http;
+static unsigned schedule_read_attempts;
+static bool schedule_write_accepted;
 static bool octopus_fault,foxess_fault;
 static double soc = NAN;
 static sc_resume_state_t resume_memory;
@@ -443,6 +447,10 @@ static void publish(time_t now, const cJSON *rules) {
     cJSON_AddItemToObject(out,"setup_checks",sc_service_setup_health());
     cJSON_AddNumberToObject(out, "octopus_http", octopus_http);
     cJSON_AddNumberToObject(out, "foxess_http", foxess_http);
+    cJSON_AddNumberToObject(out,"schedule_write_http",schedule_write_http);
+    cJSON_AddNumberToObject(out,"schedule_read_http",schedule_read_http);
+    cJSON_AddNumberToObject(out,"schedule_read_attempts",schedule_read_attempts);
+    cJSON_AddBoolToObject(out,"schedule_write_accepted",schedule_write_accepted);
     int64_t us = esp_timer_get_time();
     cJSON_AddNumberToObject(out, "octopus_next",
                             now + (next_octopus > us ? (next_octopus - us) / 1000000 : 0));
@@ -1074,8 +1082,17 @@ static void reconcile(const sc_config_t *config, const cJSON *rules, unsigned re
         publish(now, rules);
         // Acceptance is deliberately ignored as a confirmation. Even an ambiguous
         // POST needs a fresh readback.
-        sc_schedule_program(config, groups, &http);
-        cJSON *readback = sc_schedule_read(config, &http);
+        schedule_write_accepted=sc_schedule_program(config, groups, &http);
+        schedule_write_http=http;schedule_read_attempts=0;
+        cJSON *readback=NULL;
+        // A cloud command can precede its visible scheduler update. Read again
+        // without re-sending the write or waiting for the telemetry interval.
+        for(unsigned attempt=0;attempt<4;attempt++){
+            if(attempt)vTaskDelay(pdMS_TO_TICKS(2000));
+            cJSON_Delete(readback);readback=sc_schedule_read(config,&http);
+            schedule_read_http=http;schedule_read_attempts++;
+            if(sc_plan_matches(groups,readback)||http==429)break;
+        }
         inflight = false;
         if (!readback || !sc_plan_matches(groups, readback)) {
             strcpy(control_status, "Schedule not confirmed by fresh official REST readback");

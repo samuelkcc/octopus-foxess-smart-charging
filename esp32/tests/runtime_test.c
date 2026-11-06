@@ -33,6 +33,7 @@ static int writes,reads,octopus_reads,telemetry_reads,tariff_reads;
 static double mock_soc=65;
 static bool rule_store_failure;
 static bool invalid_dispatch,limited,intent_failure,bad_readback,revise_on_write,fixed_tariff,mirror_mode;
+static bool delayed_confirm;static unsigned stale_reads;
 static int day_reads,night_reads;static int64_t last_octopus_read=-60000000;
 static bool device_error, expired_token; static int device_reads,auth_reads;
 static cJSON *inverter,*new_dispatch;
@@ -47,8 +48,8 @@ esp_err_t nvs_erase_key(nvs_handle_t h,const char *key){(void)h;free(*slot(key))
 esp_err_t nvs_commit(nvs_handle_t h){(void)h;return ESP_OK;}
 void nvs_close(nvs_handle_t h){(void)h;}
 bool sc_schedule_recovery_pending(void){return false;}
-cJSON *sc_schedule_read(const sc_config_t *config,int *http){(void)config;reads++;*http=200;if(bad_readback&&writes)return cJSON_CreateArray();return cJSON_Duplicate(inverter,true);}
-bool sc_schedule_program(const sc_config_t *config,const cJSON *groups,int *http){(void)config;assert(stored_intent&&"Durable intent required before any write");assert(!sc_runtime_paused());assert(cJSON_GetArraySize(groups)<=5);writes++;*http=200;cJSON_Delete(inverter);inverter=cJSON_Duplicate(groups,true);if(revise_on_write){revise_on_write=false;cJSON *state=sc_runtime_state();cJSON *rules=cJSON_Duplicate(cJSON_GetObjectItem(state,"rules"),true);cJSON_SetNumberValue(cJSON_GetObjectItem(rules,"dispatch_soc"),80);cJSON_SetBoolValue(cJSON_GetObjectItem(rules,"dispatch_soc_enabled"),true);assert(sc_runtime_update(rules));cJSON_Delete(rules);cJSON_Delete(state);}return true;}
+cJSON *sc_schedule_read(const sc_config_t *config,int *http){(void)config;reads++;*http=200;if((bad_readback&&writes)||stale_reads){if(stale_reads)stale_reads--;return cJSON_CreateArray();}return cJSON_Duplicate(inverter,true);}
+bool sc_schedule_program(const sc_config_t *config,const cJSON *groups,int *http){(void)config;assert(stored_intent&&"Durable intent required before any write");assert(!sc_runtime_paused());assert(cJSON_GetArraySize(groups)<=5);writes++;if(delayed_confirm)stale_reads=2;*http=200;cJSON_Delete(inverter);inverter=cJSON_Duplicate(groups,true);if(revise_on_write){revise_on_write=false;cJSON *state=sc_runtime_state();cJSON *rules=cJSON_Duplicate(cJSON_GetObjectItem(state,"rules"),true);cJSON_SetNumberValue(cJSON_GetObjectItem(rules,"dispatch_soc"),80);cJSON_SetBoolValue(cJSON_GetObjectItem(rules,"dispatch_soc_enabled"),true);assert(sc_runtime_update(rules));cJSON_Delete(rules);cJSON_Delete(state);}return true;}
 cJSON *sc_cloud_read(const sc_config_t *config,bool fox,const char *path,const cJSON *body,const char *token,int *http,int *retry){(void)config;(void)token;*http=200;*retry=0;
  if(fox){telemetry_reads++;cJSON *out=cJSON_Parse("{\"errno\":0,\"result\":[{\"datas\":[{\"variable\":\"SoC\",\"value\":65},{\"variable\":\"pvPower\",\"value\":0},{\"variable\":\"loadsPower\",\"value\":0.5}]}]}");cJSON_SetNumberValue(cJSON_GetObjectItem(cJSON_GetArrayItem(cJSON_GetObjectItem(cJSON_GetArrayItem(cJSON_GetObjectItem(out,"result"),0),"datas"),0),"value"),mock_soc);return out;}
  assert(ticks-last_octopus_read>=60000000);last_octopus_read=ticks;octopus_reads++;if(limited){*http=429;*retry=900;return cJSON_CreateObject();}
@@ -97,6 +98,13 @@ int main(int argc,char **argv){fixed_tariff=argc>1&&!strcmp(argv[1],"fixed");set
   r=rules();cJSON_SetNumberValue(cJSON_GetObjectItem(r,"target_soc"),70);assert(sc_runtime_update(r));cJSON_Delete(r);step(60);
   assert(cJSON_GetArraySize(inverter)==2&&"Changed control rules must clear completion memory");
   puts("Worker Auto-Resume: fresh target reading, falling SOC, General settings retention and deliberate control-rule reset passed.");return 0;
+ }
+ if(argc>1&&!strcmp(argv[1],"delayed-confirm")){
+  step(1);step(60);delayed_confirm=true;
+  cJSON *r=rules();cJSON_SetBoolValue(cJSON_GetObjectItem(r,"enabled"),true);cJSON_SetBoolValue(cJSON_GetObjectItem(r,"weekly_charge"),true);assert(sc_runtime_update(r));cJSON_Delete(r);
+  step(60);cJSON *s=sc_runtime_state();assert(writes==1&&cJSON_IsTrue(cJSON_GetObjectItem(s,"confirmed")));
+  assert(cJSON_GetObjectItem(s,"schedule_read_attempts")->valueint==3);assert(cJSON_IsTrue(cJSON_GetObjectItem(s,"schedule_write_accepted")));assert(cJSON_GetObjectItem(s,"rules")&&wall-sc_timestamp("2026-11-05T12:00:00Z")<600);cJSON_Delete(s);
+  puts("Rule commit: one write, two stale official responses, third fresh confirmation; independent of 600-second telemetry interval.");return 0;
  }
  if(mirror_mode){
   // Real five-second worker cadence; multiple dashboards only read published RAM.

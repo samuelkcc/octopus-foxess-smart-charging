@@ -360,6 +360,7 @@ static esp_err_t api(httpd_req_t *r) {
     if (!strcmp(r->uri, "/api/state") && !mutation) {
         cJSON *out = sc_runtime_state();
         cJSON_AddItemToObject(out,"debug",sc_debug_access_status());
+        cJSON_AddItemToObject(out,"firmware_update",sc_ota_status());
         xSemaphoreTake(session_guard, portMAX_DELAY);
         cJSON_AddStringToObject(out, "csrf", session == 6 ? open_csrf : sessions[session].csrf);
         cJSON_AddBoolToObject(out, "lan_access_enabled", protected_lan());

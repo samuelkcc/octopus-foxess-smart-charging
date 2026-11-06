@@ -423,3 +423,13 @@ Events use RAM for up to 24 hours, with a maximum of 512 records.
 When full, the buffer replaces older events. The status reports the replacement count.
 Restart clears all events and revokes access. Disable or rotation also revokes the key.
 A page reload requires new connection details because the browser does not store the key.
+
+### ESP32 update notifications
+
+The ESP32 checks GitHub after startup, then every 24 hours.
+A header badge appears when verified metadata identifies a newer version.
+Dashboards share this result. Opening another dashboard does not send a new GitHub request.
+
+To disable automatic checks, turn off Check for updates automatically in General settings.
+This preference survives restart. Check GitHub for updates remains available for manual checks.
+No check installs firmware automatically.
