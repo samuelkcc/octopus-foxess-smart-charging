@@ -1,3 +1,11 @@
+# 2.4.3 — 6 November 2026
+
+- Replace ESP32 credential visibility dots with SVG eye controls.
+- Keep a separate 44-pixel button beside each field to prevent text overlap.
+- Update Show/Hide labels and mask credential fields when the page closes.
+- Restore ESP32 details, donation links, and API preparation instructions in the concise README.
+- Add one shared account preparation guide and link each edition to it.
+
 # 2.4.2 — 6 November 2026
 
 - Make the repository README an ESP32-first entry page with separate setup guides for each edition.

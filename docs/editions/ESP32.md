@@ -1,6 +1,8 @@
 # ESP32 setup
 
-[Back to the project](../../README.md) · [Other editions](../../README.md#setup-guides)
+[Back to the project](../../README.md) · [Other editions](../../README.md#choose-your-setup-guide)
+
+[Prepare API keys and optional login](../ACCOUNT-PREPARATION.md).
 
 ESP32 is the recommended compact local controller. The board runs independently while powered.
 Your phone or computer displays its dashboard. The setup computer can be disconnected after configuration.

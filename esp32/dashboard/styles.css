@@ -3,7 +3,7 @@
 
 /* Isolate the icon button from shared form padding and native glyph baselines. */
 .about-header #close-about{box-sizing:border-box;display:flex;align-items:center;justify-content:center;flex:0 0 44px;width:44px;min-width:44px;max-width:44px;height:44px;min-height:44px;max-height:44px;padding:0;margin:0;line-height:1;appearance:none;-webkit-appearance:none;border:1px solid var(--border);border-radius:10px;background:var(--bg);color:var(--text-main)}
-.about-header #close-about svg{display:block;flex:none;width:20px;height:20px;pointer-events:none}
+.about-header #close-about svg{display:block;flex:none;width:20px;height:20px;flex:none;pointer-events:none}
 .about-header #close-about:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
 .about-header #about-title:focus{outline:none}
 .esp-pair-help{margin:18px 0;color:var(--text-muted);font-size:13px}.esp-pair-help summary{cursor:pointer;color:var(--text-main);font-weight:600}.esp-pair-help ol{padding-left:22px;display:grid;gap:8px}.esp-pair-help strong{color:var(--text-main)}
@@ -81,7 +81,14 @@
 .about-header,.about-body{padding:26px}
 .about-body .dev-notice-tabs{margin:0}
 
-.esp-secret-field{display:flex;position:relative;min-width:0}.esp-secret-field input{padding-right:44px}.esp-secret-field button{position:absolute;inset:3px 3px 3px auto;width:38px;min-height:0;padding:0;border:0;background:transparent;color:var(--text-muted);border-radius:6px}
+/* Reserve a separate touch target so shared field padding cannot cover the eye. */
+#dev-shell .next-panel .esp-secret-field{display:grid;grid-template-columns:minmax(0,1fr) 44px;align-items:center;gap:8px;min-width:0;width:100%}
+#dev-shell .next-panel .esp-secret-field>input{min-width:0;height:44px;min-height:44px;text-overflow:ellipsis}
+#dev-shell .next-panel .esp-secret-field>button{position:static;display:grid;place-items:center;width:44px;height:44px;min-height:44px;padding:0;border:1px solid var(--border);background:var(--bg);color:var(--text-muted);border-radius:8px}
+#dev-shell .next-panel .esp-secret-field>button svg{display:block;width:20px;height:20px;flex:none;pointer-events:none}
+#dev-shell .next-panel .esp-secret-field>button[aria-pressed=true]{color:var(--accent)}
+#dev-shell .next-panel .esp-secret-field .esp-eye-slash{display:none}
+#dev-shell .next-panel .esp-secret-field>button[aria-pressed=true] .esp-eye-slash{display:block}
 
 /* The shared empty-state class is display:none until its adapter explicitly shows it. */
 #dev-shell .tariff-chart-empty:not([hidden]){display:grid}

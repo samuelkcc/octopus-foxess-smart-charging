@@ -99,7 +99,14 @@
 
  let setupBusy=false;
  const setupInputs=['octopus-account','octopus-key','foxess-serial','foxess-key','websocket-username','websocket-password'];
- document.querySelectorAll('[data-esp-eye]').forEach(button=>button.addEventListener('click',()=>{const input=$(button.dataset.espEye),show=input.type==='password';input.type=show?'text':'password';button.setAttribute('aria-pressed',String(show));}));
+ const setupEyes=[...document.querySelectorAll('[data-esp-eye]')];
+ const setSetupVisibility=(button,show)=>{
+  const input=$(button.dataset.espEye);
+  const label=button.dataset.fieldLabel||(button.dataset.fieldLabel=button.getAttribute('aria-label').replace(/^(Show|Hide) /,''));
+  input.type=show?'text':'password';button.setAttribute('aria-pressed',String(show));
+  button.setAttribute('aria-label',(show?'Hide ':'Show ')+label);
+ };
+ setupEyes.forEach(button=>button.addEventListener('click',()=>setSetupVisibility(button,$(button.dataset.espEye).type==='password')));
  document.querySelectorAll('[data-service-setup]').forEach(button=>button.addEventListener('click',async()=>{
   if(setupBusy)return;setupBusy=true;
   const action=button.dataset.serviceSetup,service=action.replace(/^(test|save)_/,''),target=$('esp-setup-'+service+'-status');
@@ -119,9 +126,9 @@
    if(!completed)throw Error('Test still pending. Check device status before retrying.');
    await D.refresh();
   }catch(error){target.textContent=error.message.includes('not found')?'The ESP32 restarted or the test expired. Nothing was confirmed saved. Retry after the device reconnects.':error.message;}
-  finally{for(const key of Object.keys(config))config[key]='';if(savedSetup)setupInputs.filter(id=>id.startsWith(service+'-')).forEach(id=>{$('esp-setup-'+id).value='';$('esp-setup-'+id).type='password';});setupBusy=false;document.querySelectorAll('[data-service-setup]').forEach(item=>item.disabled=false);}
+  finally{for(const key of Object.keys(config))config[key]='';if(savedSetup)setupInputs.filter(id=>id.startsWith(service+'-')).forEach(id=>{$('esp-setup-'+id).value='';const eye=setupEyes.find(button=>button.dataset.espEye==='esp-setup-'+id);if(eye)setSetupVisibility(eye,false);});setupBusy=false;document.querySelectorAll('[data-service-setup]').forEach(item=>item.disabled=false);}
  }));
- window.addEventListener('pagehide',()=>setupInputs.forEach(id=>{$('esp-setup-'+id).value='';}));
+ window.addEventListener('pagehide',()=>{setupInputs.forEach(id=>{$('esp-setup-'+id).value='';});setupEyes.forEach(button=>setSetupVisibility(button,false));});
  window.addEventListener('price-display-change',()=>{if(state)D.render?.(state);});
  $('esp-history-range').addEventListener('change',()=>void D.loadHistory().catch(error=>D.notice(error.message,true)));
  window.addEventListener('resize',()=>{if(state)D.render?.(state);if(D.page==='history')D.renderHistory?.(history);});

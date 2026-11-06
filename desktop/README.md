@@ -2,6 +2,8 @@
 
 [Back to project](../README.md) · [Download Windows Portable](https://github.com/samuelkcc/octopus-foxess-smart-charging/releases/tag/esp32-2.4.2)
 
+[Prepare API keys and optional login](../docs/ACCOUNT-PREPARATION.md).
+
 This edition includes the dashboard, local service, automation worker, and Cloudflare tunnel client.
 The app does not install a Windows service.
 The portable app targets 64-bit Windows.

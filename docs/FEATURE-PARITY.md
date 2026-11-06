@@ -1,3 +1,13 @@
+# 2.4.3 credential controls and preparation guide — 6 November 2026
+
+ESP32 credential fields reserve a separate 44-pixel touch target for each SVG eye button.
+Desktop and 390-pixel browser checks confirmed an eight-pixel gap and 20-pixel icons in all six controls.
+Visibility changes retain edits. Labels change between Show and Hide. Page exit clears and masks inputs.
+No scheduler, transport, storage, or access-policy changes are included.
+The README and edition guides link one shared credentials preparation page.
+The user confirmed the physical iPhone Home Screen icon is correct.
+The tutorial is private until the user approves its voice and content.
+
 # 2.4.2 installer and documentation review — 6 November 2026
 
 The repository README introduces ESP32 first. Separate setup pages cover ESP32, Pi, Windows Portable, and HTML.

@@ -2,6 +2,8 @@
 
 [Back to project](../README.md)
 
+[Prepare API keys and optional login](../docs/ACCOUNT-PREPARATION.md).
+
 The Pi edition runs the automation as a service.
 A browser on your phone or computer displays the dashboard.
 Closing that dashboard does not stop the worker.

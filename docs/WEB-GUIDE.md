@@ -2,6 +2,8 @@
 
 [Back to project](../README.md) · [Open HTML web app](https://samuelkcc.github.io/octopus-foxess-smart-charging/app/)
 
+[Prepare API keys and optional login](ACCOUNT-PREPARATION.md).
+
 The web edition runs in your browser.
 It needs your own Octopus account, FoxESS account, and Google Apps Script relay.
 

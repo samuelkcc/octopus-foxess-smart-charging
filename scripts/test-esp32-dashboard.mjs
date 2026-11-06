@@ -3,9 +3,11 @@ import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
 import vm from 'node:vm';
 const nodes=new Map(),requests=[];
-const node=id=>{if(!nodes.has(id))nodes.set(id,{value:'14',dataset:{},listeners:{},addEventListener(type,fn){this.listeners[type]=fn;},showModal(){this.open=true;},close(){this.open=false;}});return nodes.get(id);};
+const node=id=>{if(!nodes.has(id))nodes.set(id,{value:'14',dataset:{},listeners:{},attributes:{},setAttribute(name,value){this.attributes[name]=value;},getAttribute(name){return this.attributes[name];},addEventListener(type,fn){this.listeners[type]=fn;},showModal(){this.open=true;},close(){this.open=false;}});return nodes.get(id);};
+const eye=node('test-visibility');eye.dataset.espEye='esp-setup-octopus-key';eye.setAttribute('aria-label','Show API key');node('esp-setup-octopus-key').type='password';
+const windowEvents={};
 let state={schema:1,csrf:'test-csrf',revision:1,now:123,rules:{paused:true},dispatch_valid:true,octopus_http:200,foxess_http:200};
-const context={document:{addEventListener(){},getElementById:node,querySelectorAll:()=>[]},window:{addEventListener(){}},setTimeout(){},clearTimeout(){},AbortController,fetch:async(url,options)=>{requests.push({url,options});return{ok:true,json:async()=>url==='/api/state'?state:{queued:true}};}};
+const context={document:{addEventListener(){},getElementById:node,querySelectorAll:selector=>selector==='[data-esp-eye]'?[eye]:[]},window:{addEventListener(type,handler){(windowEvents[type]??=[]).push(handler);}},setTimeout(){},clearTimeout(){},AbortController,fetch:async(url,options)=>{requests.push({url,options});return{ok:true,json:async()=>url==='/api/state'?state:{queued:true}};}};
 vm.runInNewContext(await readFile(new URL('../esp32/dashboard/client.js',import.meta.url),'utf8'),context);
 const D=context.window.esp32Dashboard;await D.refresh();
 for(const service of ['octopus','foxess']){
@@ -20,3 +22,9 @@ node('esp-service-octopus').listeners.click();assert.equal(node('esp-review').op
 assert(node('esp-review-details').textContent.includes('INVALID_DISPATCH_TIMESTAMP'));
 node('esp-review-back').listeners.click();assert.equal(node('esp-review').open,false);assert.equal(requests.length,0);
 console.log('ESP32 header controls: both worker refresh endpoints, CSRF, error review, cancellation and unchanged Pause passed.');
+
+const secret=node('esp-setup-octopus-key');secret.value='mock-key';
+eye.listeners.click();assert.equal(secret.type,'text');assert.equal(secret.value,'mock-key');assert.equal(eye.getAttribute('aria-label'),'Hide API key');assert.equal(eye.getAttribute('aria-pressed'),'true');
+eye.listeners.click();assert.equal(secret.type,'password');assert.equal(secret.value,'mock-key');assert.equal(eye.getAttribute('aria-label'),'Show API key');
+eye.listeners.click();windowEvents.pagehide.forEach(handler=>handler());assert.equal(secret.value,'');assert.equal(secret.type,'password');assert.equal(eye.getAttribute('aria-pressed'),'false');
+console.log('ESP32 credential visibility: retained edits, descriptive labels and masked page-exit cleanup passed.');

@@ -1,3 +1,15 @@
+# Smart Charging 2.4.3
+
+ESP32 Account setup uses SVG eye buttons with separate space beside each input.
+The controls retain entered text when visibility changes. Page exit clears and masks these fields.
+Desktop and narrow-screen layout checks cover all six fields.
+
+The README restores ESP32 details, donation links, and a short credentials checklist.
+A separate preparation guide explains Octopus API access, FoxESS API tokens, and optional WebSocket login.
+
+The tutorial remains private for narration review. Physical iPhone Home Screen icon display was confirmed by the user.
+Native Windows execution and long-term Flash endurance remain verification limits.
+
 # Smart Charging 2.4.2
 
 The README starts with HTML Dashboard and ESP32 Web Deploy. Each edition has a separate setup guide.
