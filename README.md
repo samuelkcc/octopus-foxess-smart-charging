@@ -2,8 +2,16 @@
 
 **Your EV, charging. Your home, protected.**
 
-A free hobby project by **SCKC**. Use a compact ESP32 to protect your FoxESS home battery during Intelligent Octopus Go charging.
-Your phone or computer provides the dashboard. The ESP32 keeps working when you close it.
+Intelligent Octopus Go can add or change EV charging windows throughout the day.
+A FoxESS inverter in Self-Use mode can supply that charging load from your home battery.
+This can leave less stored energy for your house, even when the EV has a low-cost charging window.
+
+Smart Charging connects those Octopus windows to your FoxESS inverter.
+It requests Force Charge during relevant windows, applies your battery limits, and checks the programmed schedule through official FoxESS REST readback.
+The dashboard shows charging windows beside measured power, so you can check what the inverter is doing.
+
+This free hobby project by **SCKC** puts your home energy controls in one place.
+**ESP32 is the main independent local controller.** Pi, Windows Portable, and browser editions provide alternative ways to run it.
 
 ## Open a tool
 
@@ -14,16 +22,23 @@ Your phone or computer provides the dashboard. The ESP32 keeps working when you 
 
 ## ESP32: a small controller for everyday use
 
-Intelligent Octopus Go can change EV charging windows throughout the day.
-In Self-Use mode, your home battery can supply the EV instead of preserving energy for your house.
-Smart Charging follows valid Octopus windows and requests the corresponding FoxESS charging schedule.
+After USB setup, keep the ESP32 powered and disconnect your setup computer.
+Your phone, tablet, or computer displays the same worker data from the board.
 
 - **Works independently:** keep the ESP32 powered after USB setup. Your setup computer can disconnect.
 - **One dashboard across devices:** view power, battery level, schedules, and electricity prices on your local network.
 - **Rules you control:** follow Smart Dispatch, set weekly periods, apply price rules, and pause automation deliberately.
 - **Check the result:** official FoxESS REST readback confirms schedule programming. Measured power shows actual battery behaviour.
 
-![ESP32 dashboard in dark appearance with demonstration data](docs/screenshots/esp32-dashboard.png)
+<table>
+<tr><th>Desktop dashboard</th><th>Mobile dashboard</th></tr>
+<tr>
+<td width="72%" valign="top"><img src="docs/screenshots/esp32-dashboard.png" alt="ESP32 desktop dashboard in dark appearance with demonstration data" width="100%"></td>
+<td width="28%" valign="top"><img src="docs/screenshots/mobile-interface.png" alt="ESP32 mobile dashboard in dark appearance with demonstration data" width="100%"></td>
+</tr>
+</table>
+
+Screenshots use demonstration data. [Open the interface gallery](docs/INTERFACE.md) for more views.
 
 **Supported board: ESP32-S3 N16R8 — 16 MB Flash and 8 MB Octal PSRAM.** Other ESP32 models are unsupported.
 Use a USB data cable and 2.4 GHz Wi-Fi.
@@ -47,14 +62,20 @@ If another worker controls this inverter, disable it before enabling the new hos
 
 ## Choose your setup guide
 
-Each guide covers one edition. You do not need to read every installation method.
+Choose the host that fits your setup. Each column links to its own focused installation guide.
 
-| Edition | Choose this when | Setup |
-|---|---|---|
-| **ESP32 — recommended local controller** | You want a small independent host, with USB deployment and a phone dashboard | [ESP32 guide](docs/editions/ESP32.md) |
-| Raspberry Pi | You want an always-on service with optional protected Cloudflare remote access | [Pi guide](linux/README-RASPBERRY-PI.md) |
-| Windows Portable | You want a computer-hosted app that stays open | [Portable guide](desktop/README.md) |
-| HTML Dashboard | You want browser-based use without installing an app | [HTML guide](docs/WEB-GUIDE.md) |
+| | **ESP32 — local controller** | **Raspberry Pi** | **Windows Portable** | **HTML Dashboard** |
+|---|---|---|---|---|
+| Setup guide | [ESP32 guide](docs/editions/ESP32.md) | [Pi guide](linux/README-RASPBERRY-PI.md) | [Portable guide](desktop/README.md) | [HTML guide](docs/WEB-GUIDE.md) |
+| Best fit | Small, independent controller | Always-on service with optional remote access | A Windows computer that stays on | Try browser operation without installing an app |
+| Runs automation | On the powered ESP32 | On the Pi worker | While the app runs | While the browser stays open and awake |
+| Initial setup | USB website, Mac app, or Windows EXE | Native Pi Configuration | App setup | Browser setup and your Google relay |
+| Phone dashboard | Same local network | LAN or protected remote connection | LAN or protected remote connection | Current browser session |
+| FoxESS telemetry | REST; optional WebSocket | REST; optional WebSocket | REST; optional WebSocket | REST through your relay |
+| History | RAM; optional hourly Flash saving for 60 days | Compressed power History | Compressed power History | Browser Activity |
+| Cloudflare remote access | **Not supported** | Optional protected Quick Tunnel | Optional protected Quick Tunnel | Not a remote host |
+| Account changes | Local Account setup or USB | Native Pi Configuration | Account setup tab | Browser setup |
+| Wi-Fi and IP changes | **USB setup only** | Operating system | Operating system | Operating system |
 
 [Compare the editions](docs/USER-GUIDE.md#1-choose-an-edition) · [User guide](docs/USER-GUIDE.md) · [Downloads](https://github.com/samuelkcc/octopus-foxess-smart-charging/releases/tag/esp32-2.4.3)
 
