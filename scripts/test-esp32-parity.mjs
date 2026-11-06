@@ -46,7 +46,7 @@ function minutes(groups){const out=new Array(1440).fill(null);for(const g of gro
 const temp=await mkdtemp(path.join(os.tmpdir(),'sc-parity-'));
 try{
  const output=path.join(temp,'parity');
- const compile=spawnSync('cc',['-std=c11','-D_DARWIN_C_SOURCE','-I'+path.join(root,'esp32/main'),'-I'+json,...['esp32/tests/parity_driver.c','esp32/main/automation_policy.c','esp32/main/schedule_policy.c'].map(file=>path.join(root,file)),path.join(json,'cJSON.c'),'-lm','-o',output],{encoding:'utf8'});
+ const compile=spawnSync('cc',['-std=c11','-D_DARWIN_C_SOURCE','-D_DEFAULT_SOURCE','-I'+path.join(root,'esp32/main'),'-I'+json,...['esp32/tests/parity_driver.c','esp32/main/automation_policy.c','esp32/main/schedule_policy.c'].map(file=>path.join(root,file)),path.join(json,'cJSON.c'),'-lm','-o',output],{encoding:'utf8'});
  assert.equal(compile.status,0,compile.stderr);
  const run=spawnSync(output,[],{input:fixtures.map(x=>JSON.stringify(x)).join('\n')+'\n',encoding:'utf8'});assert.equal(run.status,0,run.stderr);
  const results=run.stdout.trim().split('\n').map(JSON.parse);

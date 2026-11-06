@@ -24,6 +24,8 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
+      - name: Prepare pinned native test dependencies
+        run: sh scripts/prepare-esp32-tests-ci.sh
       - run: npm run check
       - run: npm run build:dev
         env:

@@ -6,7 +6,7 @@ const root=path.resolve(import.meta.dirname,'..'),json=path.join(root,'.build/es
 const temp=await mkdtemp(path.join(os.tmpdir(),'sc-runtime-'));
 try{
  const output=path.join(temp,'test');
- const flags=['-std=c11','-D_DARWIN_C_SOURCE','-Dtime=sc_test_time','-Wall','-Wextra','-Werror','-I'+path.join(root,'esp32/tests/stubs'),'-I'+path.join(root,'esp32/main'),'-I'+json];
+ const flags=['-std=c11','-D_DARWIN_C_SOURCE','-D_DEFAULT_SOURCE','-Dtime=sc_test_time','-Wall','-Wextra','-Werror','-I'+path.join(root,'esp32/tests/stubs'),'-I'+path.join(root,'esp32/main'),'-I'+json];
  const built=spawnSync('cc',[...flags,...['esp32/tests/runtime_test.c','esp32/main/runtime.c','esp32/main/history_store.c','esp32/main/automation_policy.c','esp32/main/schedule_policy.c'].map(file=>path.join(root,file)),path.join(json,'cJSON.c'),'-lm','-o',output],{encoding:'utf8'});
  if(built.status!==0)throw Error(built.stderr||built.stdout);
  const result=spawnSync(output,[],{encoding:'utf8'});process.stdout.write(result.stdout);if(result.status!==0)throw Error(result.stderr||'Worker mock tests failed');
@@ -26,7 +26,7 @@ try{
  if(portBuilt.status!==0)throw Error(portBuilt.stderr||portBuilt.stdout);
  const portResult=spawnSync(portTest,[],{encoding:'utf8'});process.stdout.write(portResult.stdout);if(portResult.status!==0)throw Error(portResult.stderr||'Port persistence tests failed');
  const http=path.join(temp,'http-test');
- const httpBuilt=spawnSync('cc',['-std=gnu11','-D_DARWIN_C_SOURCE','-Wall','-Wextra','-Werror','-I'+path.join(root,'esp32/tests/stubs'),'-I'+path.join(root,'esp32/main'),'-I'+json,path.join(root,'esp32/tests/http_test.c'),path.join(json,'cJSON.c'),'-o',http],{encoding:'utf8'});
+ const httpBuilt=spawnSync('cc',['-std=gnu11','-D_DARWIN_C_SOURCE','-D_DEFAULT_SOURCE','-Wall','-Wextra','-Werror','-I'+path.join(root,'esp32/tests/stubs'),'-I'+path.join(root,'esp32/main'),'-I'+json,path.join(root,'esp32/tests/http_test.c'),path.join(json,'cJSON.c'),'-o',http],{encoding:'utf8'});
  if(httpBuilt.status!==0)throw Error(httpBuilt.stderr||httpBuilt.stdout);
  const httpTest=spawnSync(http,[],{encoding:'utf8'});process.stdout.write(httpTest.stdout);if(httpTest.status!==0)throw Error(httpTest.stderr||'HTTP tests failed');
 
@@ -34,7 +34,7 @@ try{
  const setupBuilt=spawnSync('cc',[...flags,path.join(root,'esp32/tests/service_setup_test.c'),path.join(json,'cJSON.c'),'-o',setup],{encoding:'utf8'});if(setupBuilt.status)throw Error(setupBuilt.stderr);
  const setupTest=spawnSync(setup,[],{encoding:'utf8'});process.stdout.write(setupTest.stdout);if(setupTest.status)throw Error(setupTest.stderr);
  const cloud=path.join(temp,'cloud-test');
- const cloudBuilt=spawnSync('cc',['-std=c11','-D_DARWIN_C_SOURCE','-Wall','-Wextra','-Werror','-I'+path.join(root,'esp32/tests/stubs'),'-I'+path.join(root,'esp32/main'),'-I'+json,path.join(root,'esp32/tests/cloud_test.c'),path.join(root,'esp32/main/cloud_read.c'),path.join(json,'cJSON.c'),'-o',cloud],{encoding:'utf8'});
+ const cloudBuilt=spawnSync('cc',['-std=c11','-D_DARWIN_C_SOURCE','-D_DEFAULT_SOURCE','-Wall','-Wextra','-Werror','-I'+path.join(root,'esp32/tests/stubs'),'-I'+path.join(root,'esp32/main'),'-I'+json,path.join(root,'esp32/tests/cloud_test.c'),path.join(root,'esp32/main/cloud_read.c'),path.join(json,'cJSON.c'),'-o',cloud],{encoding:'utf8'});
  if(cloudBuilt.status!==0)throw Error(cloudBuilt.stderr||cloudBuilt.stdout);
  const cloudTest=spawnSync(cloud,[],{encoding:'utf8'});process.stdout.write(cloudTest.stdout);if(cloudTest.status!==0)throw Error(cloudTest.stderr||'Cloud transport test failed');
 }finally{await rm(temp,{recursive:true,force:true});}
