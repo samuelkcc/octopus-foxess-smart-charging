@@ -1,6 +1,25 @@
-# Smart Charging for Octopus Energy and FoxESS
+<div align="center">
 
-**Your EV, charging. Your home, protected.**
+<img src="src/icons/icon-192.png" alt="Smart Charging icon" width="96" height="96">
+
+# Smart Charging — for Octopus Energy and FoxESS
+
+### Your EV, charging. Your home, protected.
+
+A free, open-source home energy controller and dashboard.
+Follow Intelligent Octopus Go charging windows and keep your FoxESS battery available for your home.
+
+**Version 2.4.3 · ESP32, Raspberry Pi, Windows Portable and Web**
+
+<sub>Independent hobby software by SCKC. Not affiliated with Octopus Energy or FoxESS.</sub>
+
+<p><a href="https://samuelkcc.github.io/octopus-foxess-smart-charging/app/"><img src="docs/assets/open-html-dashboard.svg" alt="Open HTML Dashboard" height="52"></a> <a href="https://samuelkcc.github.io/octopus-foxess-smart-charging/esp32/"><img src="docs/assets/open-esp32-deploy.svg" alt="ESP32 Web Deploy" height="52"></a></p>
+
+[ESP32 guide](docs/editions/ESP32.md) · [Prepare your accounts](docs/ACCOUNT-PREPARATION.md) · [Compare editions](#choose-your-setup-guide) · [Downloads](https://github.com/samuelkcc/octopus-foxess-smart-charging/releases/tag/esp32-2.4.3)
+
+</div>
+
+## Why this project exists
 
 Intelligent Octopus Go can add or change EV charging windows throughout the day.
 A FoxESS inverter in Self-Use mode can supply that charging load from your home battery.
@@ -12,13 +31,6 @@ The dashboard shows charging windows beside measured power, so you can check wha
 
 This free hobby project by **SCKC** puts your home energy controls in one place.
 **ESP32 is the main independent local controller.** Pi, Windows Portable, and browser editions provide alternative ways to run it.
-
-## Open a tool
-
-| | Start here |
-|---|---|
-| [**HTML Dashboard**](https://samuelkcc.github.io/octopus-foxess-smart-charging/app/) | The simplest entry: no app installation. The built-in guide explains account and Google relay setup. Keep the browser open and awake. |
-| [**ESP32 Web Deploy**](https://samuelkcc.github.io/octopus-foxess-smart-charging/esp32/) | Install firmware and configure your board over USB. **Use desktop Chrome.** Mac and Windows setup apps are also available. |
 
 ## ESP32: a small controller for everyday use
 
@@ -79,13 +91,28 @@ Choose the host that fits your setup. Each column links to its own focused insta
 
 [Compare the editions](docs/USER-GUIDE.md#1-choose-an-edition) · [User guide](docs/USER-GUIDE.md) · [Downloads](https://github.com/samuelkcc/octopus-foxess-smart-charging/releases/tag/esp32-2.4.3)
 
-Independent software by **SCKC**, under **GPL-3.0-or-later**.
-Octopus Energy and FoxESS do not endorse or support this project.
+## Licence and acknowledgements
 
-[Licence](LICENSE) · [Third-party notices](THIRD_PARTY_NOTICES.md) · [Verification record](docs/FEATURE-PARITY.md) · [Architecture](docs/ARCHITECTURE.md)
+Created by **SCKC** as an independent, open-source hobby project.
+Smart Charging is released under [GPL-3.0-or-later](LICENSE), without warranty.
 
-## Support this hobby project
+Chart.js, CryptoJS, Electron, and ws retain MIT licensing.
+ESP-IDF and esptool-js retain Apache-2.0 and their bundled component terms.
+Optional cloudflared retains Apache-2.0 on supported computer hosts.
+Other bundled components retain their original licences.
 
-Smart Charging is free to use. If it helps your setup, you can support development with a coffee.
+The optional FoxESS signature integration adapts work by [Nick Farrell](https://github.com/nicois/foxess-control), under MIT.
+Complete original notices are available in **About & licence**, the [third-party notices](THIRD_PARTY_NOTICES.md), and the [ESP32 SDK notices](esp32/SDK_NOTICES.txt).
+
+Smart Charging is independently developed by SCKC.
+It is not made by, authorised, sponsored, endorsed, or supported by Octopus Energy or FoxESS.
+Product and company names belong to their respective owners.
+
+[Report an issue](https://github.com/samuelkcc/octopus-foxess-smart-charging/issues) · [Verification record](docs/FEATURE-PARITY.md) · [Architecture](docs/ARCHITECTURE.md)
+
+## Support the project
+
+Smart Charging is an independent hobby project by SCKC.
+If it helps protect your home battery, you can support its ongoing development by buying Samuel a coffee.
 
 <a href="https://buymeacoffee.com/samuelchen"><img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" alt="Buy me a coffee — support Smart Charging" width="217" height="60"></a>

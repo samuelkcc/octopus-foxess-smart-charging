@@ -1,6 +1,6 @@
 # Interface screenshots
 
-Updated on 6 November 2026 for version 2.4.2.
+Updated on 6 November 2026. Account setup reflects the 2.4.3 eye-control correction.
 
 All published interface images use dark appearance and isolated demonstration services.
 No screenshot contains a real account, device identifier, API key, password, or remote key.
