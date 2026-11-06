@@ -154,7 +154,8 @@ int main(int argc,char **argv){fixed_tariff=argc>1&&!strcmp(argv[1],"fixed");set
   cJSON *r=rules();assert(cJSON_IsFalse(cJSON_GetObjectItem(r,"history_flash_enabled")));
   cJSON_SetBoolValue(cJSON_GetObjectItem(r,"history_flash_enabled"),true);assert(sc_runtime_update(r));cJSON_Delete(r);
   step(5);step(3590);assert(!flash_writes);step(5);assert(flash_writes==2&&flash_erases==1);
-  for(int i=0;i<10;i++)step(5);assert(flash_writes==2);step(3545);assert(flash_writes==2);step(5);assert(flash_writes==4);
+  for(int i=0;i<10;i++){step(5);}
+  assert(flash_writes==2);step(3545);assert(flash_writes==2);step(5);assert(flash_writes==4);
   cJSON *state=sc_runtime_state();assert(cJSON_GetObjectItem(state,"history_saved_records")->valueint==2);cJSON_Delete(state);
   r=rules();cJSON_SetBoolValue(cJSON_GetObjectItem(r,"history_flash_enabled"),false);assert(sc_runtime_update(r));cJSON_Delete(r);step(7200);assert(flash_writes==4);
   r=rules();cJSON_SetNumberValue(cJSON_GetObjectItem(r,"history_days"),1);assert(sc_runtime_update(r));cJSON_Delete(r);step(2*86400);
