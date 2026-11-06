@@ -1,3 +1,18 @@
+# Smart Charging 2.4.0 — Unreleased
+
+ESP32 dashboard reads have deadlines and foreground recovery.
+HTTP responses close their connections after transmission.
+Dashboard reads only copy the worker's RAM snapshot.
+They do not start cloud requests or clear tariff caches.
+State diagnostics include uptime and successful tariff-read timestamps.
+
+The full check passed with a multiple-dashboard cache regression.
+The native regression verifies cache retention after rate limiting.
+Live reads confirmed matching import caches from independent clients.
+Physical iPhone loading remains under investigation.
+Safari Web Inspector must be enabled on the connected iPhone before inspection can continue.
+Scheduler parity work and stable publication remain incomplete.
+
 # Smart Charging 2.3.1 Preview
 
 ESP32 now runs an independent local worker with a shared dashboard and USB deployment tools.

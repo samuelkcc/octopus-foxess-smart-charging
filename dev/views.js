@@ -145,7 +145,11 @@ window.installSharedConnections = ({grid,account,service,worker,extras=[]}) => {
       const now=state.now||Date.now()/1000;
       for(const name of ['import','export']){const rows=state[name+'_rates']||[],rate=rows.find(row=>row.start<=now&&now<row.end);$('next-'+name+'-price').textContent=rate?window.priceDisplay.number(rate.value):'—';}
       document.querySelectorAll('[data-price-unit]').forEach(node=>node.textContent=window.priceDisplay.unit());D.drawTariffs(state);
-      $('tariff-data-status').textContent=state.import_rates?.length?'Official unit rates. Missing or expired prices remain unavailable.':(state.tariff_status||'Tariff requests are queued after charging-window reconciliation.')+(state.tariff_http>=400?' · Last tariff HTTP '+state.tariff_http:'')+' · Next Octopus slot in '+Math.max(0,Math.ceil((state.octopus_next||state.now)-state.now))+' s. New requests remain at least 60 seconds apart.';
+      const cachedRates=Boolean(state.import_rates?.length||state.export_rates?.length);
+      $('tariff-data-status').textContent=cachedRates?'Rates cached on ESP32. All dashboards read the same data. Missing or expired prices remain unavailable.':
+        'Reading the ESP32 cache. '+(state.tariff_status||'Tariff requests are queued after charging-window reconciliation.')+
+        (state.tariff_http>=400?' · Last tariff HTTP '+state.tariff_http:'')+' · Next worker request in '+Math.max(0,Math.ceil((state.octopus_next||state.now)-state.now))+
+        ' s. Opening this dashboard sends no cloud requests. After an ESP32 restart, initial loading can take several minutes.';
       const live=state.foxess_telemetry||{mode:'rest',configured:false,status:'REST telemetry'};
       if(liveModeSeen!==live.mode){$('esp-telemetry-mode').value=live.mode;liveModeSeen=live.mode;}
       $('esp-telemetry-mode').querySelector('[value="live-ws"]').disabled=live.configured!==true;

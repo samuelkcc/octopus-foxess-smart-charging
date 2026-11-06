@@ -35,6 +35,7 @@ static char dispatch_error[32], dispatch_time_sample[100];
 static bool was_live;
 static char token[8192], import_code[96], export_code[96];
 static int tariff_stage,tariff_http;
+static time_t import_rates_at, export_rates_at;
 static unsigned previous_revision, dispatch_sequence, attempt_revision, attempt_dispatch_sequence;
 static _Atomic unsigned required_dispatch_revision = 1;
 static int64_t next_attempt;
@@ -133,6 +134,7 @@ void sc_runtime_credentials_changed(void) {
     import_code[0] = export_code[0] = 0;
     token_until = 0;
     tariff_stage = 0;tariff_http=0;
+    import_rates_at = export_rates_at = 0;
     dispatch_valid = false;
     confirmed = false;
     dispatch_at = telemetry_at = schedule_at = confirmed_at = 0;
@@ -341,6 +343,7 @@ static void publish(time_t now, const cJSON *rules) {
     cJSON_AddNumberToObject(out, "schema", 1);
     cJSON_AddNumberToObject(out, "now", now);
     cJSON_AddStringToObject(out, "edition", "ESP32");
+    cJSON_AddNumberToObject(out, "uptime_seconds", esp_timer_get_time() / 1000000);
     cJSON_AddNumberToObject(out, "revision", revision);
     cJSON_AddNumberToObject(out, "confirmed_revision", confirmed_revision);
     cJSON_AddItemToObject(out, "rules", cJSON_Duplicate(rules, true));
@@ -361,6 +364,8 @@ static void publish(time_t now, const cJSON *rules) {
     }
     cJSON_AddItemToObject(out, "import_rates", cJSON_Duplicate(imports, true));
     cJSON_AddItemToObject(out, "export_rates", cJSON_Duplicate(exports, true));
+    cJSON_AddNumberToObject(out, "import_rates_at", import_rates_at);
+    cJSON_AddNumberToObject(out, "export_rates_at", export_rates_at);
     cJSON_AddNumberToObject(out, "dispatch_at", dispatch_at);
     cJSON_AddNumberToObject(out, "telemetry_at", telemetry_at);
     cJSON_AddNumberToObject(out, "schedule_at", schedule_at);
@@ -789,18 +794,21 @@ static void octopus_poll(const sc_config_t *config, const cJSON *rules) {
                     break;
                 }
             }
-            if (cJSON_GetArraySize(slots) > 0)
+            if (cJSON_GetArraySize(slots) > 0) {
                 replace(&imports, slots);
-            else
+                import_rates_at = time(NULL);
+            } else
                 cJSON_Delete(slots);
             tariff_stage = 3;
         } else if (!is_export && rates && cJSON_GetArraySize(rates) == 0 && strstr(import_code, "-IOG-")) {
             cJSON_Delete(rates);
             tariff_stage = 4;
         } else {
-            if (rates && cJSON_GetArraySize(rates) > 0)
+            if (rates && cJSON_GetArraySize(rates) > 0) {
                 replace(is_export ? &exports : &imports, rates);
-            else
+                if (is_export) export_rates_at = time(NULL);
+                else import_rates_at = time(NULL);
+            } else
                 cJSON_Delete(rates);
             tariff_stage = is_export ? 0 : 3;
         }

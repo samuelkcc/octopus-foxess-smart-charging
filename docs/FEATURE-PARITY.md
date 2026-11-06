@@ -448,3 +448,18 @@ These interface changes do not change scheduler policy. Complete ESP32 scheduler
 Shared rule labels have 16-pixel padding above and below separators. Paired charge-limit controls have no partial separator.
 The ESP32 charging panel no longer removes top padding from every toggle. Scheduler controls and element IDs remain unchanged.
 Web and ESP32 fixture checks verified the separator spacing.
+
+### ESP32 dashboard cache and mobile recovery — 6 November 2026
+
+Dashboard GET requests copy published RAM data without cloud calls or cache invalidation.
+A native regression performs 100 independent state, account, and history reads.
+It checks both tariff caches and verifies no additional cloud calls or schedule writes.
+Rate limiting retains both cached tariff series.
+Live independent readers received the same import tariff cache.
+Initial caches are empty after a device restart while serialized discovery runs.
+
+Connection mocks cover stalled fetches, stalled bodies, foreground recovery, and late replies.
+Local concurrent reads returned complete HTML, JSON, and icon responses.
+Device Hub confirmed the physical iPhone reports a lost network connection.
+Physical iPhone recovery is not verified.
+Web Inspector is currently disabled on that device.

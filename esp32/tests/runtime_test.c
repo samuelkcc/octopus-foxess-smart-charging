@@ -25,7 +25,7 @@ bool sc_history_flash_erase(size_t o,size_t n){assert(o+n<=sizeof(flash_memory))
 static time_t wall;
 static int64_t ticks;
 static int writes,reads,octopus_reads,telemetry_reads,tariff_reads;
-static bool invalid_dispatch,limited,intent_failure,bad_readback,revise_on_write,fixed_tariff;
+static bool invalid_dispatch,limited,intent_failure,bad_readback,revise_on_write,fixed_tariff,mirror_mode;
 static int day_reads,night_reads;static int64_t last_octopus_read=-60000000;
 static bool device_error, expired_token; static int device_reads,auth_reads;
 static cJSON *inverter,*new_dispatch;
@@ -50,11 +50,11 @@ cJSON *sc_cloud_read(const sc_config_t *config,bool fox,const char *path,const c
  if(cJSON_IsString(query)&&expired_token)return cJSON_Parse("{\"errors\":[{\"extensions\":{\"errorCode\":\"KT-CT-1124\"},\"message\":\"Signature has expired\"}],\"data\":null}");
  if(cJSON_IsString(query)&&strstr(query->valuestring,"getDeviceDetails")){device_reads++;if(device_error)return cJSON_Parse("{\"data\":null,\"errors\":[{\"message\":\"private failure\"}]}");return cJSON_Parse("{\"data\":{\"registeredKrakenflexDevice\":{\"provider\":\"OHME\",\"vehicleMake\":\"Peugeot\",\"vehicleModel\":\"e-5008\",\"chargePointMake\":\"Ohme\",\"chargePointModel\":\"home pro\",\"status\":\"LIVE\",\"secret\":\"must-not-publish\"},\"vehicleChargingPreferences\":{\"weekdayTargetTime\":\"08:46\",\"weekdayTargetSoc\":80},\"address\":\"must-not-publish\"}}");}
  if(cJSON_IsString(query)){if(invalid_dispatch)return cJSON_Parse("{\"data\":{\"plannedDispatches\":null},\"errors\":[{\"message\":\"secret raw message\"}]}");cJSON *out=cJSON_CreateObject();cJSON_AddItemToObject(cJSON_AddObjectToObject(out,"data"),"plannedDispatches",cJSON_Duplicate(new_dispatch,true));return out;}
- if(strstr(path,"accounts")){if(fixed_tariff)return cJSON_Parse("{\"properties\":[{\"electricity_meter_points\":[{\"is_export\":false,\"agreements\":[{\"tariff_code\":\"E-1R-IOG-FIX-26-10-01-A\",\"valid_from\":\"2026-01-01T00:00:00Z\",\"valid_to\":null}]}]}]}");return cJSON_Parse("{\"properties\":[{\"electricity_meter_points\":[{\"is_export\":false,\"agreements\":[{\"tariff_code\":\"E-1R-TEST-IMPORT-A\",\"valid_from\":\"2020-01-01T00:00:00Z\",\"valid_to\":null}]}]}]}");
+ if(strstr(path,"accounts")){if(mirror_mode)return cJSON_Parse("{\"properties\":[{\"electricity_meter_points\":[{\"is_export\":false,\"agreements\":[{\"tariff_code\":\"E-1R-TEST-IMPORT-A\",\"valid_from\":\"2020-01-01T00:00:00Z\",\"valid_to\":null}]},{\"is_export\":true,\"agreements\":[{\"tariff_code\":\"E-1R-TEST-EXPORT-A\",\"valid_from\":\"2020-01-01T00:00:00Z\",\"valid_to\":null}]}]}]}");if(fixed_tariff)return cJSON_Parse("{\"properties\":[{\"electricity_meter_points\":[{\"is_export\":false,\"agreements\":[{\"tariff_code\":\"E-1R-IOG-FIX-26-10-01-A\",\"valid_from\":\"2026-01-01T00:00:00Z\",\"valid_to\":null}]}]}]}");return cJSON_Parse("{\"properties\":[{\"electricity_meter_points\":[{\"is_export\":false,\"agreements\":[{\"tariff_code\":\"E-1R-TEST-IMPORT-A\",\"valid_from\":\"2020-01-01T00:00:00Z\",\"valid_to\":null}]}]}]}");
  }
  if(fixed_tariff&&strstr(path,"/day-unit-rates/")){assert(strstr(path,"period_from=2026-11-05T00:00:00Z"));day_reads++;return cJSON_Parse("{\"results\":[{\"valid_from\":\"2026-01-01T00:00:00Z\",\"valid_to\":null,\"value_inc_vat\":30}]}");}
  if(fixed_tariff&&strstr(path,"/night-unit-rates/")){night_reads++;return cJSON_Parse("{\"results\":[{\"valid_from\":\"2026-01-01T00:00:00Z\",\"valid_to\":null,\"value_inc_vat\":7}]}");}
- tariff_reads++;return cJSON_Parse("{\"results\":[]}");
+ tariff_reads++;if(mirror_mode)return cJSON_Parse("{\"results\":[{\"valid_from\":\"2026-01-01T00:00:00Z\",\"valid_to\":null,\"value_inc_vat\":12}]}");return cJSON_Parse("{\"results\":[]}");
 }
 static void step(int seconds){wall+=seconds;ticks+=(int64_t)seconds*1000000;sc_config_t config={0};strcpy(config.account,"A-TEST");sc_runtime_tick(&config,true);}
 static cJSON *rules(void){cJSON *s=sc_runtime_state(),*r=cJSON_Duplicate(cJSON_GetObjectItem(s,"rules"),true);cJSON_Delete(s);return r;}
@@ -62,7 +62,32 @@ int main(int argc,char **argv){fixed_tariff=argc>1&&!strcmp(argv[1],"fixed");set
  if(history_mode){flash_present=true;memset(flash_memory,0xff,sizeof(flash_memory));}
  bool legacy_mode=argc>1&&!strcmp(argv[1],"legacy");
  if(legacy_mode){cJSON *old=sc_rules_default();cJSON_DeleteItemFromObjectCaseSensitive(old,"charge_soc_enabled");cJSON_DeleteItemFromObjectCaseSensitive(old,"history_flash_enabled");cJSON_DeleteItemFromObjectCaseSensitive(old,"pause_discharge_dispatch");cJSON_DeleteItemFromObjectCaseSensitive(old,"discharge_overrides_charge");cJSON_SetBoolValue(cJSON_GetObjectItem(old,"enabled"),true);cJSON_SetBoolValue(cJSON_GetObjectItem(old,"paused"),true);cJSON_SetNumberValue(cJSON_GetObjectItem(old,"history_days"),90);stored_rules=cJSON_PrintUnformatted(old);cJSON_Delete(old);}
+ mirror_mode=argc>1&&!strcmp(argv[1],"mirror");
  sc_runtime_init();assert(!sc_runtime_claim_octopus_setup());
+ if(mirror_mode){
+  // Real five-second worker cadence; multiple dashboards only read published RAM.
+  for(int i=0;i<180;i++)step(5);
+  cJSON *before=sc_runtime_state();
+  assert(cJSON_GetArraySize(cJSON_GetObjectItem(before,"import_rates"))>0);
+  assert(cJSON_GetArraySize(cJSON_GetObjectItem(before,"export_rates"))>0);
+  assert(cJSON_GetObjectItem(before,"import_rates_at")->valuedouble>0);
+  assert(cJSON_GetObjectItem(before,"export_rates_at")->valuedouble>0);
+  int old_oct=octopus_reads,old_fox=telemetry_reads,old_reads=reads;
+  for(int i=0;i<100;i++){
+   cJSON *snapshot=sc_runtime_state(),*account=sc_runtime_account(),*history=sc_runtime_history(14);
+   assert(cJSON_Compare(cJSON_GetObjectItem(before,"import_rates"),cJSON_GetObjectItem(snapshot,"import_rates"),true));
+   assert(cJSON_Compare(cJSON_GetObjectItem(before,"export_rates"),cJSON_GetObjectItem(snapshot,"export_rates"),true));
+   // A client receives its own JSON copy, never ownership of the worker cache.
+   cJSON_DeleteItemFromObjectCaseSensitive(snapshot,"import_rates");
+   cJSON_Delete(snapshot);cJSON_Delete(account);cJSON_Delete(history);
+  }
+  assert(octopus_reads==old_oct&&telemetry_reads==old_fox&&reads==old_reads&&!writes);
+  limited=true;step(600);cJSON *after=sc_runtime_state();
+  assert(cJSON_Compare(cJSON_GetObjectItem(before,"import_rates"),cJSON_GetObjectItem(after,"import_rates"),true));
+  assert(cJSON_Compare(cJSON_GetObjectItem(before,"export_rates"),cJSON_GetObjectItem(after,"export_rates"),true));
+  cJSON_Delete(before);cJSON_Delete(after);
+  puts("Multiple dashboards mirror independent RAM snapshots: 100 state/account/history reads cause zero cloud requests or schedule writes; 429 retains both tariff caches.");return 0;
+ }
  if(argc>1&&!strcmp(argv[1],"setup-budget")){
   ticks+=60000000;wall+=60;assert(sc_runtime_claim_octopus_setup());assert(!sc_runtime_claim_octopus_setup());
   step(5);assert(!octopus_reads);sc_runtime_octopus_setup_result(429,900);step(60);assert(!octopus_reads);step(840);assert(octopus_reads==1);

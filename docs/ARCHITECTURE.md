@@ -550,6 +550,12 @@ Icon responses contain no credentials or application state. Bluetooth remains di
 
 ## ESP32 HTTP recovery
 
+Dashboard GET requests copy the worker's published RAM snapshot.
+They do not reset tariff stages, invalidate cached rates, or enqueue cloud work.
+Only explicit refresh actions use the refresh endpoint.
+The state includes uptime and successful tariff-read timestamps for diagnostics.
+After reboot, the worker rebuilds RAM caches through its serialized request queue.
+
 Dashboard responses advertise Connection: close and finish before the server closes each session.
 Idle mobile browser pools cannot retain the three HTTP slots. Cloud API transport is separate.
 Local JSON reads have a 12-second deadline, including body decoding. Abort is supplemented by a deadline race.
