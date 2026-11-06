@@ -25,8 +25,17 @@ void sc_debug_http_init(void){lifecycle=xSemaphoreCreateMutex();}
 static bool local_host(httpd_req_t *r){
  const char *blocked[]={"Origin","Forwarded","X-Forwarded-For","X-Forwarded-Host","X-Forwarded-Proto","CF-Connecting-IP"};
  for(unsigned i=0;i<sizeof(blocked)/sizeof(*blocked);i++)if(httpd_req_get_hdr_value_len(r,blocked[i]))return false;
- struct sockaddr_in peer={0};socklen_t length=sizeof(peer);
- if(getpeername(httpd_req_to_sockfd(r),(struct sockaddr *)&peer,&length)||peer.sin_family!=AF_INET||!sc_debug_private_ipv4(ntohl(peer.sin_addr.s_addr)))return false;
+ struct sockaddr_storage peer={0};socklen_t length=sizeof(peer);unsigned long address=0;
+ if(getpeername(httpd_req_to_sockfd(r),(struct sockaddr *)&peer,&length))return false;
+ if(peer.ss_family==AF_INET&&length>=sizeof(struct sockaddr_in)){
+  address=ntohl(((struct sockaddr_in *)&peer)->sin_addr.s_addr);
+ }else if(peer.ss_family==AF_INET6&&length>=sizeof(struct sockaddr_in6)){
+  const unsigned char *bytes=((struct sockaddr_in6 *)&peer)->sin6_addr.s6_addr;
+  for(unsigned i=0;i<10;i++)if(bytes[i])return false;
+  if(bytes[10]!=0xff||bytes[11]!=0xff)return false;
+  address=((unsigned long)bytes[12]<<24)|((unsigned long)bytes[13]<<16)|((unsigned long)bytes[14]<<8)|bytes[15];
+ }else return false;
+ if(!sc_debug_private_ipv4(address))return false;
  esp_netif_ip_info_t info={0};esp_netif_t *net=esp_netif_get_handle_from_ifkey("WIFI_STA_DEF");char host[80],expected[80];
  if(!net||esp_netif_get_ip_info(net,&info)!=ESP_OK||httpd_req_get_hdr_value_str(r,"Host",host,sizeof(host))!=ESP_OK)return false;
  snprintf(expected,sizeof(expected),IPSTR ":%u",IP2STR(&info.ip),debug_port);return !strcmp(host,expected);

@@ -1,3 +1,17 @@
+# 2.5.3 — 6 November 2026
+
+Fix the diagnostics listener for IPv4 clients represented as mapped IPv6 peers by ESP-IDF.
+Private IPv4 restrictions, Host checks, proxy rejection, and independent Bearer authentication remain required.
+Global IPv6 and public IPv4 peers remain blocked.
+
+Read the existing FoxESS schedule after startup, independently of the first Octopus request.
+Monitoring does not wait for tariff discovery or enable schedule writes without fresh dispatch data.
+Native regressions cover both socket representations and startup monitoring before any Octopus call.
+
+Physical Wi-Fi OTA to 2.5.2 preserved every saved rule and restored official REST confirmation.
+The diagnostic IPv6 correction still requires verification on the updated physical board.
+Native Windows execution remains unverified. The tutorial remains private pending approval.
+
 # 2.5.2 — 6 November 2026
 
 ESP32 direct entry keeps Welcome hidden while the first authenticated state request is pending.

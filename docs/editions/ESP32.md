@@ -20,8 +20,8 @@ Your phone or computer displays its dashboard. The setup computer can be disconn
 | Tool | Open or download |
 |---|---|
 | USB website | [ESP32 Web Deploy](https://samuelkcc.github.io/octopus-foxess-smart-charging/esp32/) — use desktop Chrome |
-| Mac app | [Universal Mac ZIP](https://github.com/samuelkcc/octopus-foxess-smart-charging/releases/download/esp32-2.5.2/SmartCharging-ESP32-Setup-2.5.2-macOS-universal.zip) |
-| Windows app | [Windows x64 EXE](https://github.com/samuelkcc/octopus-foxess-smart-charging/releases/download/esp32-2.5.2/SmartCharging-ESP32-Setup-2.5.2-Windows-x64.exe) |
+| Mac app | [Universal Mac ZIP](https://github.com/samuelkcc/octopus-foxess-smart-charging/releases/download/esp32-2.5.3/SmartCharging-ESP32-Setup-2.5.3-macOS-universal.zip) |
+| Windows app | [Windows x64 EXE](https://github.com/samuelkcc/octopus-foxess-smart-charging/releases/download/esp32-2.5.3/SmartCharging-ESP32-Setup-2.5.3-Windows-x64.exe) |
 
 Safari cannot deploy firmware through USB. Safari can display the configured Wi-Fi dashboard.
 The Mac and Windows tools provide the same setup flow. They do not run the automation worker.

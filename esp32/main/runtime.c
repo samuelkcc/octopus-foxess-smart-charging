@@ -147,6 +147,7 @@ void sc_runtime_init(void) {
     imports = cJSON_CreateArray();
     exports = cJSON_CreateArray();
     programmed = cJSON_CreateArray();
+    refresh_plan=true;
     measurements = cJSON_CreateObject();
     history = heap_caps_calloc(HISTORY_CAPACITY, sizeof(*history), MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
     sc_history_store_init(&history_store);          // Read-only scan. Opt-in remains off
@@ -170,6 +171,7 @@ void sc_runtime_credentials_changed(void) {
     replace(&imports, cJSON_CreateArray());
     replace(&exports, cJSON_CreateArray());
     replace(&programmed, cJSON_CreateArray());
+    refresh_plan=true;
     replace(&measurements, cJSON_CreateObject());
     replace(&device_info, NULL);
     device_info_at = 0;

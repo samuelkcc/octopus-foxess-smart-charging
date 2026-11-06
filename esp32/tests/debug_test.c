@@ -18,8 +18,13 @@ esp_err_t httpd_start(httpd_handle_t *out,const httpd_config_t *c){assert(c->ser
 esp_err_t httpd_stop(httpd_handle_t server){(void)server;stops++;return ESP_OK;}
 esp_err_t httpd_register_uri_handler(httpd_handle_t h,const httpd_uri_t *r){(void)h;registered=*r;return ESP_OK;}
 int httpd_req_to_sockfd(httpd_req_t *r){(void)r;return 1;}
-static unsigned long peer_ip=0xc0a80805;
-static int test_peer(int socket,struct sockaddr *address,socklen_t *size){(void)socket;(void)size;struct sockaddr_in *peer=(void *)address;peer->sin_family=AF_INET;peer->sin_addr.s_addr=htonl(peer_ip);return 0;}
+static unsigned long peer_ip=0xc0a80805;static bool mapped_ipv6,global_ipv6;
+static int test_peer(int socket,struct sockaddr *address,socklen_t *size){
+ (void)socket;
+ if(mapped_ipv6||global_ipv6){struct sockaddr_in6 *peer=(void *)address;peer->sin6_family=AF_INET6;*size=sizeof(*peer);unsigned char *b=peer->sin6_addr.s6_addr;
+  b[10]=b[11]=0xff;b[12]=peer_ip>>24;b[13]=peer_ip>>16;b[14]=peer_ip>>8;b[15]=peer_ip;if(global_ipv6)b[0]=0x20;
+ }else{struct sockaddr_in *peer=(void *)address;peer->sin_family=AF_INET;peer->sin_addr.s_addr=htonl(peer_ip);*size=sizeof(*peer);}return 0;
+}
 uint16_t sc_dashboard_port_active(void){return 8787;}
 esp_netif_t *esp_netif_get_handle_from_ifkey(const char *key){(void)key;static int net;return &net;}
 esp_err_t esp_netif_get_ip_info(esp_netif_t *n,esp_netif_ip_info_t *out){(void)n;out->ip=(esp_ip4_addr_t){{192,168,8,188}};return ESP_OK;}
@@ -44,6 +49,7 @@ int main(void){
  cJSON *s=enable();char auth[80];snprintf(auth,sizeof(auth),"Bearer %s",cJSON_GetObjectItem(s,"api_key")->valuestring);cJSON_Delete(s);
  s=sc_debug_access_status();char *safe=cJSON_PrintUnformatted(s);assert(!strstr(safe,auth+7)&&!cJSON_HasObjectItem(s,"api_key"));free(safe);cJSON_Delete(s);
  call("/diagnostics",HTTP_GET);assert(strstr(status,"401"));authorization=auth;call("/diagnostics",HTTP_GET);assert(strstr(status,"200")&&!strstr(response,"PRIVATE")&&!strstr(response,auth+7));assert(strstr(response,"tariff_stage"));
+ mapped_ipv6=true;call("/diagnostics",HTTP_GET);assert(strstr(status,"200"));global_ipv6=true;call("/diagnostics",HTTP_GET);assert(strstr(status,"403"));global_ipv6=false;peer_ip=0x08080808;call("/status",HTTP_GET);assert(strstr(status,"403"));peer_ip=0xc0a80805;mapped_ipv6=false;
  call("/api/rules",HTTP_POST);assert(strstr(status,"403"));call("/api/rules",HTTP_GET);assert(strstr(status,"404"));call("/diagnostics?api_key=bad",HTTP_GET);assert(strstr(status,"404"));
  origin="http://192.168.8.188:8787";call("/diagnostics",HTTP_GET);assert(strstr(status,"403"));origin=NULL;
  forward="for=127.0.0.1";call("/diagnostics",HTTP_GET);assert(strstr(status,"403"));forward=NULL;

@@ -106,6 +106,12 @@ int main(int argc,char **argv){fixed_tariff=argc>1&&!strcmp(argv[1],"fixed");set
   assert(cJSON_GetObjectItem(s,"schedule_read_attempts")->valueint==3);assert(cJSON_IsTrue(cJSON_GetObjectItem(s,"schedule_write_accepted")));assert(cJSON_GetObjectItem(s,"rules")&&wall-sc_timestamp("2026-11-05T12:00:00Z")<600);cJSON_Delete(s);
   puts("Rule commit: one write, two stale official responses, third fresh confirmation; independent of 600-second telemetry interval.");return 0;
  }
+ if(argc>1&&!strcmp(argv[1],"startup-schedule")){
+  cJSON_Delete(inverter);inverter=cJSON_Parse("[{\"enable\":1,\"startHour\":23,\"startMinute\":30,\"endHour\":23,\"endMinute\":59,\"workMode\":\"ForceCharge\"},{\"enable\":1,\"startHour\":0,\"startMinute\":0,\"endHour\":5,\"endMinute\":30,\"workMode\":\"ForceCharge\"}]");
+  cJSON *r=rules();cJSON_SetBoolValue(cJSON_GetObjectItem(r,"enabled"),true);assert(sc_runtime_update(r));cJSON_Delete(r);
+  step(1);step(5);cJSON *s=sc_runtime_state();assert(!octopus_reads&&!writes&&reads>0);assert(!cJSON_IsTrue(cJSON_GetObjectItem(s,"dispatch_valid")));assert(cJSON_GetArraySize(cJSON_GetObjectItem(s,"groups"))==2);assert(cJSON_GetObjectItem(s,"schedule_at")->valuedouble>0);cJSON_Delete(s);
+  puts("Startup schedule monitoring reads FoxESS independently before the first Octopus request, without writing or claiming confirmation.");return 0;
+ }
  if(mirror_mode){
   // Real five-second worker cadence; multiple dashboards only read published RAM.
   for(int i=0;i<180;i++)step(5);
