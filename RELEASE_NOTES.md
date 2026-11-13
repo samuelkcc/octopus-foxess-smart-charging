@@ -1,3 +1,12 @@
+# 2.5.5 — 13 November 2026
+
+Fix the ESP32 header update badge overlapping the Octopus control.
+The desktop badge uses its content width instead of the shared square-button width.
+Mobile shows the update icon and preserves space between service controls and the automation switch.
+Narrow phone layouts use compact service controls.
+Browser measurements cover widths from 320 to 1746 pixels.
+Physical Safari and iPhone verification remain unverified.
+
 # 2.5.4 — 13 November 2026
 
 Fix ESP32 Wi-Fi recovery after a router restart or extended network outage.

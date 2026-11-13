@@ -110,7 +110,16 @@
 #dev-shell .settings-card-column>.next-panel{flex:none;min-height:0;height:auto;overflow:visible;grid-column:auto;grid-row:auto;margin:0}
 @media(max-width:760px){#dev-shell .settings-stacked-grid,#dev-shell #settings-general-panel #esp-settings-form>.settings-stacked-grid{grid-template-columns:minmax(0,1fr)}}
 
-.esp-update-badge{display:inline-flex;align-items:center;gap:7px;background:#063b36;color:#73f0c9;border:1px solid #26846e;border-radius:999px;padding:8px 12px;white-space:nowrap;font:inherit;font-size:12px;font-weight:700}
-.esp-update-badge svg{width:18px;height:18px;flex:none}
-.esp-update-badge[hidden]{display:none!important}
-@media(max-width:760px){.esp-update-badge{width:38px;height:38px;padding:9px;justify-content:center}.esp-update-badge span{display:none}}
+/* Override the shared square header buttons: the update label needs its own width. */
+#dev-shell .dev-app-actions .esp-update-badge{display:inline-flex;align-items:center;justify-content:center;flex:0 0 auto;width:auto;height:40px;min-height:40px;gap:7px;padding:8px 12px;background:#063b36;color:#73f0c9;border:1px solid #26846e;border-radius:999px;white-space:nowrap;font:inherit;font-size:12px;font-weight:700;line-height:1.2}
+#dev-shell .esp-update-badge svg{display:block;width:18px;height:18px;flex:none}
+#dev-shell .esp-update-badge[hidden]{display:none!important}
+@media(max-width:760px){
+  #dev-shell .dev-app-actions .esp-update-badge{width:40px;height:40px;min-width:40px;padding:10px}
+  #dev-shell .esp-update-badge span{display:none}
+}
+@media(max-width:380px){
+  #dev-shell:not(.dev-auth-mode) .dev-appbar{padding-left:12px;padding-right:12px}
+  #dev-shell:not(.dev-auth-mode) .dev-appbar>.dev-app-actions{gap:6px}
+  #dev-shell .overview-update-card,#dev-shell .overview-service-refresh{width:90px;flex-basis:90px}
+}

@@ -660,3 +660,10 @@ Physical router-restart recovery remains unverified. No live inverter commands a
 
 The full local project check and ESP-IDF 5.5.2 firmware build passed for 2.5.4.
 The new image has not been installed on a physical board during this change.
+
+## ESP32 update badge layout — 13 November 2026
+
+The update badge overrides the shared square header-button dimensions and cannot shrink into adjacent controls.
+Desktop retains the label. Mobile retains the accessible icon button.
+Browser measurements cover 320, 375, 390, 760, 768, 1024, 1280, and 1746 pixels without overlapping controls.
+Physical Safari and iPhone verification remain unverified.
