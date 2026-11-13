@@ -1,3 +1,17 @@
+# 2.5.4 — 13 November 2026
+
+Fix ESP32 Wi-Fi recovery after a router restart or extended network outage.
+Previously, five failed attempts exhausted the retry limit until the ESP32 restarted.
+Recovery now continues with delays of 2, 4, 8, 16, and at most 30 seconds.
+A dedicated task handles retries independently of cloud requests and USB connection tests.
+A 45-second watchdog retries stalled association or IP acquisition.
+Lost IP events, missed disconnect notifications, and stopped-driver errors also trigger recovery.
+Deliberate USB network changes suspend recovery until the new or restored configuration is active.
+
+Recovery uses RAM and the configured station network. It does not erase credentials, write Flash, or reset the ESP32.
+Native mocks cover extended outages, repeated failures, recovery, IP timeouts, duplicate events, and USB setup suspension.
+Physical router-restart recovery and native Windows execution remain unverified.
+
 # 2.5.3 — 6 November 2026
 
 Keep HTML Welcome focused on its own setup and dashboard access.

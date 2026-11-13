@@ -1,8 +1,8 @@
 {
   "schema": 1,
   "board": "ESP32-S3-N16R8",
-  "version": "2.5.3",
-  "size": 1464560,
-  "sha256": "f9127666d797a731e3f609d8102b6eaa43df1e83be089c9b3535380291a3febe",
-  "url": "https://github.com/samuelkcc/octopus-foxess-smart-charging/releases/download/esp32-2.5.3/SmartCharging-ESP32-Firmware-2.5.3.bin"
+  "version": "2.5.4",
+  "size": 1466944,
+  "sha256": "384a161fa6dfafc924826cc6df8635d279e73e69625499fbfd14d1310defb00d",
+  "url": "https://github.com/samuelkcc/octopus-foxess-smart-charging/releases/download/esp32-2.5.4/SmartCharging-ESP32-Firmware-2.5.4.bin"
 }

@@ -23,8 +23,8 @@ Your phone or computer displays its dashboard. The setup computer can be disconn
 | Tool | Open or download |
 |---|---|
 | USB website | [ESP32 Web Deploy](https://samuelkcc.github.io/octopus-foxess-smart-charging/esp32/) — use desktop Chrome |
-| Mac app | [Universal Mac ZIP](https://github.com/samuelkcc/octopus-foxess-smart-charging/releases/download/esp32-2.5.3/SmartCharging-ESP32-Setup-2.5.3-macOS-universal.zip) |
-| Windows app | [Windows x64 EXE](https://github.com/samuelkcc/octopus-foxess-smart-charging/releases/download/esp32-2.5.3/SmartCharging-ESP32-Setup-2.5.3-Windows-x64.exe) |
+| Mac app | [Universal Mac ZIP](https://github.com/samuelkcc/octopus-foxess-smart-charging/releases/download/esp32-2.5.4/SmartCharging-ESP32-Setup-2.5.4-macOS-universal.zip) |
+| Windows app | [Windows x64 EXE](https://github.com/samuelkcc/octopus-foxess-smart-charging/releases/download/esp32-2.5.4/SmartCharging-ESP32-Setup-2.5.4-Windows-x64.exe) |
 
 Safari cannot deploy firmware through USB. Safari can display the configured Wi-Fi dashboard.
 The Mac and Windows tools provide the same setup flow. They do not run the automation worker.
@@ -99,6 +99,13 @@ Wi-Fi and IP verification are required before saving. Deployment does not wait f
 
 The checks run sequentially. Octopus requests retain their shared cooldown.
 A red service badge prompts you to open Account setup. Waiting states do not mean successful authentication.
+
+## Automatic Wi-Fi reconnection
+
+Firmware 2.5.4 and later reconnect after a router restart without a manual ESP32 power cycle.
+Attempts continue with delays capped at 30 seconds. Stalled association or IP acquisition times out after 45 seconds.
+If Wi-Fi returns, the worker continues with its saved configuration and existing service request limits.
+For a changed SSID or password, use USB setup to edit the network settings.
 
 ## Update firmware over Wi-Fi
 

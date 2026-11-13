@@ -641,3 +641,22 @@ The original account controls and engine IDs remain unique.
 Browser review covered Welcome and all three expanded help panels with fictional input.
 Pi access was checked separately. Interface review sent no cloud or inverter commands.
 The complete local project checks and development build passed.
+
+## ESP32 automatic Wi-Fi recovery — 13 November 2026
+
+Version 2.5.4 replaces the five-attempt retry limit with continuous capped backoff.
+A dedicated Wi-Fi task runs independently of cloud requests and USB test waits.
+Retry delays increase from two seconds to a maximum of 30 seconds.
+A 45-second watchdog disconnects stalled association or IP acquisition before another attempt.
+Recovery also handles lost IP events, missed disconnect notifications, and stopped-driver errors.
+Successful IP acquisition clears failure state and resets the retry delay.
+USB network changes suspend automatic retries before deliberate disconnection.
+An unconfigured board does not attempt to reconnect.
+Recovery changes no saved configuration and performs no Flash writes.
+
+Native mocks exercise more than 1,000 failed attempts and subsequent successful reconnection.
+They also cover duplicate events, IP timeouts, missing notifications, driver errors, and deliberate setup suspension.
+Physical router-restart recovery remains unverified. No live inverter commands are used for this change.
+
+The full local project check and ESP-IDF 5.5.2 firmware build passed for 2.5.4.
+The new image has not been installed on a physical board during this change.

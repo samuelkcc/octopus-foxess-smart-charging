@@ -126,6 +126,16 @@ Long-running reliability, physical battery behaviour, and maximum History retent
 Local Account setup supports Octopus, FoxESS REST, and optional WebSocket credentials and tests.
 The existing USB setup remains available for credential and network changes.
 
+## Wi-Fi recovery
+
+The ESP32 reconnects automatically after a router restart or temporary Wi-Fi failure.
+Retries continue with increasing delays, up to 30 seconds between attempts.
+If association or IP acquisition stalls, a 45-second watchdog starts another attempt.
+The recovery task runs independently of cloud requests and USB test waits.
+It retains saved credentials, network configuration, rules, and RAM History.
+During deliberate USB network changes, automatic recovery is suspended.
+The existing FoxESS schedule remains on the inverter while the network is unavailable.
+
 ## Build
 
 1. Install ESP-IDF v5.5.2 from Espressif.

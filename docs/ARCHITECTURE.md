@@ -12,6 +12,7 @@ A development commit does not publish GitHub Pages or create a release.
 
 | File | Responsibility |
 |---|---|
+| `esp32/main/wifi_reconnect.c` | Independent ESP32 station reconnection, bounded backoff, and IP-acquisition watchdog. |
 | `src/app.js` | Shared account, tariff, scheduler, storage, and dashboard behaviour. |
 | `src/gas-relay.gs` | Canonical Google relay source. The HTML build embeds this code in setup help. |
 | `src/index.html` | Shared interface elements and their stable IDs. |

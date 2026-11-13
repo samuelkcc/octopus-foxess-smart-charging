@@ -11,6 +11,7 @@
 #include "foxess_schedule.h"
 #include "provision_policy.h"
 #include "network_tools.h"
+#include "wifi_reconnect.h"
 #include "runtime.h"
 #include "dashboard_port.h"
 #include "foxess_live.h"
@@ -38,8 +39,8 @@
 #include "mbedtls/platform_util.h"
 #include "nvs_flash.h"
 
-#define CONNECTED BIT0
-#define FAILED BIT1
+#define CONNECTED SC_WIFI_CONNECTED
+#define FAILED SC_WIFI_FAILED
 #define MAX_LINE 4096
 #define MAX_RESPONSE 32768
 static sc_config_t settings;
@@ -48,13 +49,16 @@ static bool settings_saved;
 static bool network_trial_active;
 static EventGroupHandle_t wifi_events;
 static esp_netif_t *station;
-static int retries;
 static int64_t next_test_us;
 static bool sntp_ready;
 static SemaphoreHandle_t network_io;
 static bool save_service_configuration(const sc_config_t *candidate){
     if(sc_save_config(candidate)!=ESP_OK)return false;
     settings=*candidate;configured=true;settings_saved=true;return true;
+}
+static void wifi_reconnect_task(void *arg){
+    (void)arg;
+    while(true){sc_wifi_reconnect_tick();vTaskDelay(pdMS_TO_TICKS(1000));}
 }
 static void runtime_task(void *arg){
     sc_config_t *copy=calloc(1,sizeof(*copy));
@@ -79,26 +83,25 @@ static void *json_alloc(size_t size){void *out=heap_caps_malloc(size,MALLOC_CAP_
 
 static void wifi_event(void *arg, esp_event_base_t base, int32_t id, void *data) {
     if (base == IP_EVENT && id == IP_EVENT_STA_GOT_IP) {
-        retries = 0;
-        sc_debug_problem(SC_DEBUG_WIFI,false,0);
-        xEventGroupClearBits(wifi_events,FAILED);
-        xEventGroupSetBits(wifi_events,CONNECTED);
-        if (sntp_ready) esp_netif_sntp_start();
-    } else if (base == WIFI_EVENT && id == WIFI_EVENT_STA_DISCONNECTED) {
-        sc_debug_problem(SC_DEBUG_WIFI,true,data?((wifi_event_sta_disconnected_t *)data)->reason:0);
-        xEventGroupClearBits(wifi_events,CONNECTED);
-        if (configured && retries++ < 5) esp_wifi_connect();
-        else xEventGroupSetBits(wifi_events,FAILED);
+        if (sc_wifi_reconnect_got_ip()) {
+            sc_debug_problem(SC_DEBUG_WIFI,false,0);
+            if (sntp_ready) esp_netif_sntp_start();
+        }
+    } else if (base == IP_EVENT && id == IP_EVENT_STA_LOST_IP) {
+        sc_wifi_reconnect_lost_ip();
+    } else if (base == WIFI_EVENT && id == WIFI_EVENT_STA_CONNECTED) {
+        sc_wifi_reconnect_associated();
+    } else if (base == WIFI_EVENT && (id == WIFI_EVENT_STA_DISCONNECTED || id == WIFI_EVENT_STA_STOP)) {
+        sc_debug_problem(SC_DEBUG_WIFI,true,id==WIFI_EVENT_STA_DISCONNECTED&&data?((wifi_event_sta_disconnected_t *)data)->reason:0);
+        sc_wifi_reconnect_disconnected();
     }
 }
 
 static bool start_connection(void) {
-    // Suppress reconnection of the old configuration while it is replaced.
-    bool was_configured = configured;
-    configured = false;
+    // Suppress automatic retries while USB changes the station configuration.
+    sc_wifi_reconnect_pause();
     esp_wifi_disconnect();
     vTaskDelay(pdMS_TO_TICKS(100));
-    configured = was_configured;
     xEventGroupClearBits(wifi_events,CONNECTED | FAILED);
     esp_netif_dhcpc_stop(station);
     if (settings.static_ip) {
@@ -121,14 +124,13 @@ static bool start_connection(void) {
     config.sta.pmf_cfg.capable = true;
     esp_err_t result = esp_wifi_set_config(WIFI_IF_STA,&config);
     mbedtls_platform_zeroize(&config,sizeof(config));
-    retries = 0;
-    return result == ESP_OK && esp_wifi_connect() == ESP_OK;
+    return result == ESP_OK && sc_wifi_reconnect_start();
 }
 
 static cJSON *status_json(void) {
     cJSON *object = cJSON_CreateObject();
     cJSON_AddStringToObject(object,"firmware","Smart Charging ESP32");
-    cJSON_AddStringToObject(object,"version","2.5.3");
+    cJSON_AddStringToObject(object,"version","2.5.4");
     cJSON_AddBoolToObject(object,"automation_enabled",sc_runtime_enabled());
     cJSON_AddBoolToObject(object,"configured",settings_saved);
     cJSON_AddBoolToObject(object,"network_trial_active",network_trial_active);
@@ -369,7 +371,7 @@ static bool provision_restore(void *arg){
     provision_context_t *ctx=arg;
     settings=ctx->previous;configured=ctx->was_configured;settings_saved=ctx->was_saved;network_trial_active=ctx->was_trial;
     if(configured)return start_connection()&&wait_for_wifi();
-    esp_wifi_disconnect();xEventGroupClearBits(wifi_events,CONNECTED|FAILED);return true;
+    sc_wifi_reconnect_pause();esp_wifi_disconnect();xEventGroupClearBits(wifi_events,CONNECTED|FAILED);return true;
 }
 static cJSON *validate_configuration(const sc_config_t *candidate,bool network_only){
     provision_context_t *ctx=calloc(1,sizeof(*ctx));
@@ -592,10 +594,13 @@ void app_main(void) {
     wifi_init_config_t wifi=WIFI_INIT_CONFIG_DEFAULT();
     ESP_ERROR_CHECK(esp_wifi_init(&wifi));
     ESP_ERROR_CHECK(esp_wifi_set_storage(WIFI_STORAGE_RAM));
+    if(!sc_wifi_reconnect_init(wifi_events))abort();
     ESP_ERROR_CHECK(esp_event_handler_register(WIFI_EVENT,ESP_EVENT_ANY_ID,wifi_event,NULL));
     ESP_ERROR_CHECK(esp_event_handler_register(IP_EVENT,IP_EVENT_STA_GOT_IP,wifi_event,NULL));
+    ESP_ERROR_CHECK(esp_event_handler_register(IP_EVENT,IP_EVENT_STA_LOST_IP,wifi_event,NULL));
     ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_STA));
     ESP_ERROR_CHECK(esp_wifi_start());
+    if(xTaskCreate(wifi_reconnect_task,"sc-wifi",4096,NULL,5,NULL)!=pdPASS)abort();
     configured=sc_load_config(&settings)==ESP_OK;
     settings_saved=configured;
     if (configured) start_connection();

@@ -2,7 +2,7 @@
 if(CONFIG_BT_ENABLED)
   message(FATAL_ERROR "Smart Charging ESP32 requires CONFIG_BT_ENABLED=n")
 endif()
-idf_component_register(SRCS "debug_log.c" "debug_http.c" "ota_update.c" "ota_policy.c" "dashboard_port.c" "main.c" "config_store.c" "config_access.c" "foxess_schedule.c" "schedule_policy.c" "schedule_transaction.c" "provision_policy.c" "network_tools.c" "automation_policy.c" "cloud_read.c" "runtime.c" "dashboard_http.c" "history_store.c" "history_flash.c" "foxess_live.c" "foxess_live_store.c" "foxess_live_policy.c" "service_setup.c"
+idf_component_register(SRCS "wifi_reconnect.c" "debug_log.c" "debug_http.c" "ota_update.c" "ota_policy.c" "dashboard_port.c" "main.c" "config_store.c" "config_access.c" "foxess_schedule.c" "schedule_policy.c" "schedule_transaction.c" "provision_policy.c" "network_tools.c" "automation_policy.c" "cloud_read.c" "runtime.c" "dashboard_http.c" "history_store.c" "history_flash.c" "foxess_live.c" "foxess_live_store.c" "foxess_live_policy.c" "service_setup.c"
   INCLUDE_DIRS "."
   REQUIRES app_update tcp_transport esp_partition esp_wifi esp_netif esp_event esp_http_client esp_http_server esp_psram spi_flash nvs_flash mbedtls json driver lwip esp_timer
   EMBED_TXTFILES "../../LICENSE" "../../THIRD_PARTY_NOTICES.md" "../SDK_NOTICES.txt")
