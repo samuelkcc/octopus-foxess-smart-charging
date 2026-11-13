@@ -667,3 +667,12 @@ The update badge overrides the shared square header-button dimensions and cannot
 Desktop retains the label. Mobile retains the accessible icon button.
 Browser measurements cover 320, 375, 390, 760, 768, 1024, 1280, and 1746 pixels without overlapping controls.
 Physical Safari and iPhone verification remain unverified.
+
+## ESP32 retained History display — 13 November 2026
+
+Normal OTA preserves the dedicated hourly History partition.
+Read-only inspection of the reported device found 168 saved records and two new RAM records.
+The chart had inserted missing 15-minute points between valid hourly records and hidden their isolated points.
+Charts now use each recorded interval, retain genuine gaps, and display isolated observations.
+A changed saved-record count reloads History even when telemetry has not changed.
+Production chart and client tests cover these cases. Physical post-update browser verification remains unverified.

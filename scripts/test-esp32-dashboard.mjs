@@ -69,3 +69,17 @@ D.syncFirmwareUpdate({available:true,newer:true,version:'2.5.3',auto_check:false
 D.syncFirmwareUpdate({available:true,newer:false,auto_check:true});assert.equal(node('esp-update-available').hidden,true);
 node('esp-ota-auto-check').checked=false;await node('esp-ota-auto-check').listeners.change();assert.equal(otaRequests.at(-1).action,'auto_settings');assert.equal(otaRequests.at(-1).enabled,false);
 console.log('Firmware availability uses the ESP32 snapshot; saved automatic-check preference is independent of installation.');
+
+// Flash cache restoration can finish after the first state response, without new telemetry.
+let historyReads=0;
+context.fetch=async url=>({ok:true,json:async()=>{
+ if(url.startsWith('/api/history?')){historyReads++;return [];}
+ return state;
+}});
+state={...state,history_saved_records:0,history_saved_through:100,history_records:0};
+D.page='history';await D.refresh();await new Promise(resolve=>setImmediate(resolve));
+assert.equal(historyReads,1);
+state={...state,history_saved_records:168};await D.refresh();await new Promise(resolve=>setImmediate(resolve));
+assert.equal(historyReads,2,'Loading restored Flash records must refresh History without waiting for new telemetry');
+await D.refresh();await new Promise(resolve=>setImmediate(resolve));assert.equal(historyReads,2,'An unchanged snapshot must not repeat History reads');
+console.log('History restoration refreshes the chart when the saved cache arrives, without new telemetry or repeated unchanged reads.');

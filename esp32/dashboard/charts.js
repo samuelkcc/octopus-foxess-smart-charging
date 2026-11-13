@@ -43,9 +43,15 @@
   ];
   D.historyGroups=groups;
   function historyConfig(group,rows){
-    const {text,grid}=colors(),byTime=new Map(rows.map(row=>[row.at,row]));
-    const ticks=[];if(rows.length)for(let at=rows[0].at;at<=rows.at(-1).at;at+=900)ticks.push(at);
-    const datasets=group.series.map(([field,label,color,direction,filter])=>({label,borderColor:color,borderWidth:2,pointRadius:ticks.length<3?3:0,spanGaps:false,data:ticks.map(at=>{let y=byTime.get(at)?.[field];if(!Number.isFinite(y))y=null;else if(filter==='positive')y=Math.max(0,y);else if(filter==='negative')y=Math.min(0,y);return {x:at*1000,y:y===null?null:y*direction};})}));
+    const {text,grid}=colors(),byTime=new Map([...rows].sort((a,b)=>a.at-b.at).map(row=>[row.at,row]));
+    // Flash rows cover an hour; RAM rows cover 15 minutes. Insert gaps only
+    // outside a recorded interval, rather than between every hourly sample.
+    const ticks=[];let previous;
+    for(const row of byTime.values()){
+      if(previous){const end=previous.at+(previous.interval_seconds===3600?3600:900);if(row.at>end)ticks.push(end);}
+      ticks.push(row.at);previous=row;
+    }
+    const datasets=group.series.map(([field,label,color,direction,filter])=>({label,borderColor:color,borderWidth:2,pointRadius:rows.length<3?3:1.5,spanGaps:false,data:ticks.map(at=>{let y=byTime.get(at)?.[field];if(!Number.isFinite(y))y=null;else if(filter==='positive')y=Math.max(0,y);else if(filter==='negative')y=Math.min(0,y);return {x:at*1000,y:y===null?null:y*direction};})}));
     const signed=group.unit==='kW',extent=Math.max(.1,...datasets.flatMap(s=>s.data.map(p=>Math.abs(p.y||0))));
     return {type:'line',data:{datasets},options:{animation:false,responsive:true,maintainAspectRatio:false,parsing:false,interaction:{mode:'index',intersect:false},plugins:{legend:{position:'bottom',labels:{color:text,usePointStyle:true,boxWidth:8,padding:18}},tooltip:{callbacks:{title:items=>items.length?new Date(items[0].parsed.x).toLocaleString('en-GB',{timeZone:'Europe/London'}):'',label:item=>`${item.dataset.label}: ${item.parsed.y.toFixed(2)} ${group.unit}`}}},scales:{x:{type:'linear',min:ticks.length?((ticks[0]-900)*1000):undefined,max:ticks.length?((ticks.at(-1)+900)*1000):undefined,grid:{color:grid},ticks:{maxTicksLimit:6,color:text,callback:value=>clock(value)}},y:{beginAtZero:true,min:signed?undefined:0,max:signed?undefined:100,suggestedMin:signed?-extent:undefined,suggestedMax:signed?extent:undefined,title:{display:true,text:signed?'Average power (kW)':'Charge level (%)',color:text},ticks:{color:text},grid:{color:grid}}}}};
   }

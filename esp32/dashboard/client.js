@@ -31,7 +31,7 @@
  D.refresh=()=>{
   if(refreshing)return refreshing;
   refreshing=(async()=>{
-   try{const value=await D.request('/api/state');if(value.schema!==1)throw Error('The ESP32 worker is starting.');state=value;csrf=value.csrf;loggedIn=true;D.showDashboard?.();D.render?.(value);$('esp-reconnect').hidden=true;if(connectionLost){D.notice('Connected to ESP32 again.');connectionLost=false;}if(!dirty&&filledRevision!==value.revision){D.fillRules?.(value.rules);filledRevision=value.revision;}if(D.page==='connections')void D.loadAccount();if(D.page==='history'&&historyVersion!==[value.telemetry_at,value.history_saved_through,value.history_records].join(':'))void D.loadHistory().catch(error=>D.notice(error.message,true));return value;}
+   try{const value=await D.request('/api/state');if(value.schema!==1)throw Error('The ESP32 worker is starting.');state=value;csrf=value.csrf;loggedIn=true;D.showDashboard?.();D.render?.(value);$('esp-reconnect').hidden=true;if(connectionLost){D.notice('Connected to ESP32 again.');connectionLost=false;}if(!dirty&&filledRevision!==value.revision){D.fillRules?.(value.rules);filledRevision=value.revision;}if(D.page==='connections')void D.loadAccount();if(D.page==='history'&&historyVersion!==[value.telemetry_at,value.history_saved_through,value.history_saved_records,value.history_records].join(':'))void D.loadHistory().catch(error=>D.notice(error.message,true));return value;}
    catch(error){if(error.status!==401&&error.code!=='ESP32_READ_CANCELLED'){
     connectionLost=true;D.syncPauseSwitch?.({paused:state?.rules?.paused===true,available:false});D.syncPauseBanner?.({paused:state?.rules?.paused===true,available:false});D.notice(error.message,true);D.connectionProblem?.();$('esp-connection').textContent='Device unavailable';$('esp-connection').dataset.state='error';$('esp-reconnect').hidden=false;
    }throw error;}
@@ -50,7 +50,7 @@
  };
  D.loadHistory=async()=>{
   history=await D.request('/api/history?days='+Number($('esp-history-range').value));
-  historyVersion=[state?.telemetry_at,state?.history_saved_through,state?.history_records].join(':');D.renderHistory?.(history);return history;
+  historyVersion=[state?.telemetry_at,state?.history_saved_through,state?.history_saved_records,state?.history_records].join(':');D.renderHistory?.(history);return history;
  };
  D.loadAccount=async()=>{if(accountLoading)return;accountLoading=true;try{D.renderAccount?.(await D.request('/api/account'));}catch(error){if(error.status!==401)D.notice('Account details are unavailable. '+error.message,true);}finally{accountLoading=false;}};
  D.navigate=page=>{

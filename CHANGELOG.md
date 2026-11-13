@@ -1,3 +1,15 @@
+# 2.5.6 — 13 November 2026
+
+Fix ESP32 History charts after firmware updates and restarts.
+Saved hourly observations now form a visible series alongside live 15-minute RAM observations.
+Charts retain genuine missing intervals as gaps and display isolated observations.
+The dashboard reloads History when restored Flash records arrive, without waiting for new telemetry.
+
+Read-only inspection found 168 saved hourly records on the reported device.
+The History endpoint returned those records with two new RAM records. Normal OTA had not erased them.
+Regression tests cover hourly continuity, mixed intervals, gaps, isolated points, and delayed cache restoration.
+Existing History storage format and partitions remain unchanged. Physical post-update browser verification remains unverified.
+
 # 2.5.5 — 13 November 2026
 
 Fix the ESP32 header update badge overlapping the Octopus control.
