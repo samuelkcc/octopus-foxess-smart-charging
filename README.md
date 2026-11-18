@@ -125,7 +125,7 @@ Smart Charging is independently developed by SCKC.
 It is not made by, authorised, sponsored, endorsed, or supported by Octopus Energy or FoxESS.
 Product and company names belong to their respective owners.
 
-[Report an issue](https://github.com/samuelkcc/octopus-foxess-smart-charging/issues) · [Verification record](docs/FEATURE-PARITY.md) · [Architecture](docs/ARCHITECTURE.md)
+[Report an issue](https://github.com/samuelkcc/octopus-foxess-smart-charging/issues) · [Verification record](docs/FEATURE-PARITY.md) · [Architecture](docs/ARCHITECTURE.md) · [Source recovery and housekeeping](docs/RECOVERY.md)
 
 ## Support the project
 

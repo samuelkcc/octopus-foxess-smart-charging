@@ -1,3 +1,12 @@
+# Unreleased maintenance — 18 November 2026
+
+Add source recovery instructions and explicit packaging archive cleanup.
+Cleanup previews recognised obsolete archives and retains current releases, SDKs, source, documentation, and unknown working files.
+Regression checks cover preview behaviour, retained files, tracked-file refusal, and symbolic links.
+A fresh GitHub clone passed the complete checks and shared interface builds.
+Desktop packaging and physical hardware operation were not repeated.
+The application version remains 2.5.6.
+
 # 2.5.6 — 13 November 2026
 
 Fix ESP32 History charts after firmware updates and restarts.

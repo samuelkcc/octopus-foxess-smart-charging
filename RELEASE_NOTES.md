@@ -1,3 +1,12 @@
+# Unreleased maintenance — 18 November 2026
+
+Document source recovery, external build dependencies, private backup limits, and GitHub Desktop use.
+Add an explicit preview and cleanup command for obsolete packaging archives.
+Current downloads and local maintenance working files remain available.
+A fresh GitHub clone passed the complete checks and shared interface builds.
+Desktop packaging and physical hardware operation were not repeated.
+No new application release is created.
+
 # 2.5.6 — 13 November 2026
 
 Fix ESP32 History charts after firmware updates and restarts.

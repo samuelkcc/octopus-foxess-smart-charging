@@ -1,3 +1,17 @@
+# Repository recovery and housekeeping — 18 November 2026
+
+Source commit `9b2f5cd` and all 332 tracked files were verified against live GitHub.
+A fresh GitHub clone passed `npm run check` and `npm run build:dev` with freshly downloaded dependencies.
+The successful Pages workflow also built firmware from the repository source.
+All four extra development branches were already ancestors of `main` and were removed locally and remotely.
+Release tags remain available.
+
+Archive cleanup preserves source, documentation, current downloads, current version archives, local SDKs, and unknown working files.
+Regression checks protect previews, retained files, tracked archives, and symbolic links.
+No scheduler, interface, authentication, or device configuration changes are included.
+Desktop packaging and physical hardware operation were not repeated.
+See [source recovery and housekeeping](RECOVERY.md) for the recovery procedure and private backup limits.
+
 # 2.5.1 — 6 November 2026
 
 New ESP32 deployments start automation after verified Wi-Fi and IP settings are saved.
