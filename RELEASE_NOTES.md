@@ -1,3 +1,13 @@
+# 2.6.1 — One-off charges on Overview
+
+On Pi and ESP32, Overview shows a **One-off Force Charge** card when a period is scheduled for the current UK date.
+The card sits beside the Octopus and FoxESS cards on wide screens.
+An overnight period stays visible until it ends.
+Open **Schedules** to see, add, or cancel future periods.
+
+This update changes the dashboard display. The scheduler continues to apply each period within its saved window.
+Physical installation and measured charging remain unverified.
+
 # 2.6.0 — One-off Force Charge
 
 Pi and ESP32 can schedule a dated Force Charge period for events such as a free electricity hour.

@@ -1,3 +1,9 @@
+# 2.6.1 — 20 November 2026
+
+Show a separate One-off Force Charge card on Overview on Pi and ESP32.
+The card appears on the scheduled UK date and stays visible through an overnight window until it ends.
+The Schedules page shows future bookings immediately.
+
 # 2.6.0 — 20 November 2026
 
 Add One-off Force Charge to Schedules on Pi and ESP32.

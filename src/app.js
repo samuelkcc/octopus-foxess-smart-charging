@@ -465,7 +465,7 @@ function startPiOneOffCharge(role) {
         setInterval(refreshPiOneOffWorker, 5000);
         return;
     }
-    const panel = window.oneOffCharge?.mount(document.getElementById('one-off-charge-panel'), requestPiOneOffCharge);
+    const panel = window.oneOffCharge?.mount(document.getElementById('one-off-charge-panel'), requestPiOneOffCharge, window.renderPiOneOffOverview);
     if (!panel) return;
     let reading = false;
     const refresh = async () => {

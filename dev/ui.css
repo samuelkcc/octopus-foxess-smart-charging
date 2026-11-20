@@ -695,6 +695,17 @@ html.desktop-viewport,html.desktop-viewport body {height:100%;min-height:0;overf
 #dev-shell .overview-schedule-row>span:first-child {flex:1 1 auto;min-width:0;overflow-wrap:anywhere;}
 #dev-shell .overview-schedule-tag {flex:0 0 auto;white-space:nowrap;}
 #dev-shell .next-schedule-summary>div {overflow-x:hidden;}
+.overview-one-off-card[hidden] {display:none!important;}
+@media (min-width:1101px) {
+  .dev-page[data-page=overview] .has-one-off-summary {grid-template-columns:repeat(3,minmax(0,1fr));}
+}
+@media (max-width:1100px) {
+  .desktop-viewport .dev-page[data-page=overview] .has-one-off-summary {
+    grid-template-rows:auto auto minmax(140px,auto) minmax(110px,auto) minmax(230px,1fr);
+    overflow-y:auto;
+  }
+  .overview-one-off-card {grid-column:1/-1;}
+}
 
 .next-service-disabled {padding:12px 24px;background:#7f1d1d;color:white;font-size:var(--workspace-text,14px);line-height:1.5;flex:none;}
 .next-service-disabled[hidden] {display:none!important;}

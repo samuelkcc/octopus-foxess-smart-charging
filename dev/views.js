@@ -18,7 +18,34 @@ window.installSharedOverview = ({overview,byId,adoptId,make,panel}) => {
   overview.append(power);
   const octopusSchedule=panel('Octopus charging windows');octopusSchedule.classList.add('next-schedule-summary');octopusSchedule.append(get('overview-dynamic-schedules'));
   const foxSchedule=panel('FoxESS programmed schedule');foxSchedule.classList.add('next-schedule-summary');foxSchedule.append(get('overview-fox-schedules'));
-  overview.append(octopusSchedule,foxSchedule);
+  const oneOffCard=panel('One-off Force Charge');
+  oneOffCard.classList.add('next-schedule-summary','overview-one-off-card');
+  oneOffCard.hidden=true;
+  const oneOffRows=make('div','overview-one-off-rows');
+  oneOffCard.append(oneOffRows);
+  overview.append(octopusSchedule,foxSchedule,oneOffCard);
+
+  let previousOneOff;
+  function renderOneOff(slots, now) {
+    const {civil,formatSlot}=window.oneOffCharge;
+    const today=civil(now).date;
+    const periods=slots.filter(slot=>slot.end>now&&(slot.start<=now||civil(slot.start).date===today));
+    const key=JSON.stringify([periods,periods.map(slot=>slot.start<=now)]);
+    if(key===previousOneOff) return;
+    previousOneOff=key;
+    oneOffCard.hidden=periods.length===0;
+    overview.classList.toggle('has-one-off-summary',periods.length>0);
+    oneOffRows.replaceChildren();
+    for(const slot of periods) {
+      const active=slot.start<=now;
+      const row=make('div','overview-schedule-row');
+      row.classList.toggle('active',active);
+      const detail=make('span');
+      detail.append(make('strong','',formatSlot(slot)));
+      row.append(detail,make('span','overview-schedule-tag',active?'Window open':'Scheduled'));
+      oneOffRows.append(row);
+    }
+  }
   const prices=adoptId('section-intelligent-octopus',panel('Electricity prices',true));
   const priceRow=make('div','next-price-row');
   for(const [label,id] of [['Import now','next-import-price'],['Export now','next-export-price']]) {const item=make('div');item.append(make('span','next-kicker',label),make('strong','', '—'));item.lastChild.id=id;const unit=make('small','','p/kWh');unit.dataset.priceUnit='';item.append(unit);priceRow.append(item);}
@@ -30,7 +57,7 @@ window.installSharedOverview = ({overview,byId,adoptId,make,panel}) => {
     const frame=make('div','tariff-chart-frame');frame.append(get(canvas),get(empty));figure.append(frame);charts.append(figure);
   }
   prices.append(charts);overview.append(prices);
-  return {prices,foxSchedule,priceRow};
+  return {prices,foxSchedule,priceRow,renderOneOff,oneOffRows};
 };
 window.installSharedConnections = ({grid,account,service,worker,extras=[]}) => {
   grid.replaceChildren(account,service,...extras);
@@ -48,7 +75,6 @@ window.installSharedConnections = ({grid,account,service,worker,extras=[]}) => {
     const schedulePanel=$('section-foxess-mode');
     schedulePanel.classList.add('wide');
     schedulePanel.after(oneOffHost);
-    const oneOff=window.oneOffCharge.mount(oneOffHost, update=>D.request('/api/one-off-charge',update));
     // Reuse the ordinary dashboard's paired charge-limit presentation. The
     // existing inputs retain their bindings, values and review handlers.
     const limitToggle=document.querySelector('[data-rule="dispatch_soc_enabled"]').closest('label');
@@ -61,6 +87,7 @@ window.installSharedConnections = ({grid,account,service,worker,extras=[]}) => {
     const historyNote=make('p','dev-muted history-data-note','Observed averages, not billing-grade energy totals. Missing readings stay as gaps.');historyPanel.append(historyNote);
     const confirmedAt=$('esp-confirmed-at');
     const shared=window.installSharedOverview({overview:document.querySelector('[data-page="overview"] .dev-page-grid'),byId:$,make,panel,adoptId:(id,node)=>{node.id=id;return node;}});
+    const oneOff=window.oneOffCharge.mount(oneOffHost,update=>D.request('/api/one-off-charge',update),shared.renderOneOff);
     shared.foxSchedule.append(confirmedAt);
     const connections=document.querySelector('[data-page="connections"] .dev-page-grid');
     const account=panel('Account and device');account.id='section-device-settings';
@@ -222,7 +249,8 @@ window.installSharedConnections = ({grid,account,service,worker,extras=[]}) => {
   }
   // Overview contains one protection summary, one power view and one schedule per source.
   const overview=grid('overview');
-  const {priceRow}=window.installSharedOverview({overview,byId,adoptId,make,panel});
+  const {priceRow,renderOneOff,oneOffRows}=window.installSharedOverview({overview,byId,adoptId,make,panel});
+  window.renderPiOneOffOverview=renderOneOff;
   shell.querySelector('.dev-page[data-page="overview"] h1').textContent='Home energy';
   shell.querySelector('.dev-page[data-page="overview"] header p').textContent='Current power, charging windows and inverter confirmation.';
 
@@ -307,7 +335,7 @@ window.installSharedConnections = ({grid,account,service,worker,extras=[]}) => {
   new MutationObserver(syncAuth).observe(dashboard,{attributes:true,attributeFilter:['class']});
   syncAuth();
   const refreshView=()=>{
-    const rows=Math.max(byId('overview-dynamic-schedules').children.length,byId('overview-fox-schedules').children.length);
+    const rows=Math.max(byId('overview-dynamic-schedules').children.length,byId('overview-fox-schedules').children.length,oneOffRows.children.length);
     const summaryHeight=`${Math.max(2,Math.min(5,rows))*60+80}px`;
     if(shell.style.getPropertyValue('--schedule-summary-height')!==summaryHeight){
       shell.style.setProperty('--schedule-summary-height',summaryHeight);

@@ -30,7 +30,12 @@
         return [[start, 1440], [0, last.minute]];
     }
 
-    function mount(host, request) {
+    function formatSlot(slot) {
+        const sameDay = civil(slot.start).date === civil(slot.end).date;
+        return `${display.format(slot.start * 1000)} – ${sameDay ? civil(slot.end).time : display.format(slot.end * 1000)} UK`;
+    }
+
+    function mount(host, request, renderOverview) {
         if (!host) return null;
         host.innerHTML = `
             <h2 class="next-panel-title">One-off Force Charge</h2>
@@ -98,6 +103,7 @@
                 message.textContent = '';
             }
             const now = instant(), slots = state.slots.filter(slot => slot.end > now).sort((a, b) => a.start - b.start);
+            renderOverview?.(slots, now);
             const key = JSON.stringify([slots, slots.map(slot => slot.start <= now), state.cleanup]);
             if (key === lastKey) return;
             lastKey = key;
@@ -109,8 +115,7 @@
                 const cancel = document.createElement('button');
                 row.className = 'overview-schedule-row';
                 type.textContent = slot.start <= now ? 'One-off · Window open' : 'One-off · Scheduled';
-                const sameDay = civil(slot.start).date === civil(slot.end).date;
-                times.textContent = `${display.format(slot.start * 1000)} – ${sameDay ? civil(slot.end).time : display.format(slot.end * 1000)} UK`;
+                times.textContent = formatSlot(slot);
                 cancel.type = 'button';
                 cancel.className = 'next-button secondary';
                 cancel.textContent = 'Cancel';
@@ -154,5 +159,5 @@
         host.hidden = false;
         return { render, unavailable: () => { readFailed = true; message.textContent = 'Could not read saved charges.'; } };
     }
-    window.oneOffCharge = { civil, parse, ranges, mount };
+    window.oneOffCharge = { civil, parse, ranges, formatSlot, mount };
 })();

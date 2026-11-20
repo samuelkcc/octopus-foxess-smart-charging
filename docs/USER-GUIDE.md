@@ -376,6 +376,8 @@ Auto-Resume must not cancel an active dispatch. Rule changes or explicit resume 
 
 The controller keeps the saved period through a restart.
 An earlier end time means the next day.
+Overview shows the period on its scheduled UK date.
+An overnight period stays on Overview until it ends.
 Select **Cancel** beside a period to remove it early.
 The period expires automatically.
 If the controller loses access to FoxESS, it clears the programmed period after access returns.

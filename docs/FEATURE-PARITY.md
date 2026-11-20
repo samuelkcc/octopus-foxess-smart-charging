@@ -1,3 +1,11 @@
+# 2.6.1 one-off charge overview
+
+Pi and ESP32 show an independent One-off Force Charge card on the scheduled UK date.
+The card stays visible until an overnight period ends.
+Schedules continues to show future bookings.
+Mock browser checks covered both editions, the UK date boundary, overnight expiry, and desktop and mobile layouts.
+Physical device verification remains pending.
+
 # 2.6.0 one-off charge review
 
 Pi and ESP32 show the same calendar, UK time inputs, saved-period list, and cancellation controls.
