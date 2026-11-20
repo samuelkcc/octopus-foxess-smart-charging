@@ -20,6 +20,13 @@ let linuxDispatchSnapshotPollId = null;
 let linuxDispatchSnapshotBusy = false;
 let activeCredentials = null;
 let pendingAutomationEvaluation = false;
+let piOneOffState = null;
+let piOneOffAvailable = false;
+let piOneOffDispatchAt = 0;
+let piOneOffAttemptAt = 0;
+let piOneOffAttemptKey = null;
+let piOneOffConfirmedKey = null;
+let piOneOffWorkerPoll = false;
 
 const CREDENTIAL_STORAGE_KEY = 'encryptedCredentialsV1';
 const CREDENTIAL_DB_NAME = 'octopusFoxessSecureStorage';
@@ -328,6 +335,8 @@ async function detectLinuxRuntime() {
         window.linuxAuthRequired = runtime.authRequired;
         window.linuxAccessRequired = runtime.accessRequired !== false;
         window.linuxLocalConfiguration = runtime.localConfiguration === true;
+        piOneOffAvailable = runtime.oneOffCharge === true;
+        if (piOneOffAvailable) startPiOneOffCharge(runtime.role);
         window.dispatchEvent(new Event('host-runtime-ready'));
         document.body.classList.add('linux-runtime', `linux-role-${runtime.role}`);
         if (window.linuxRemoteAccess) {
@@ -407,6 +416,67 @@ async function loadLinuxState() {
     window.refreshPreferences?.load(state.automations?.refreshIntervals);
     renderLiveWsMenuState(state);
     return state;
+}
+
+async function requestPiOneOffCharge(update, worker = false) {
+    const headers = { 'X-Octopus-Access-Key': getLinuxAccessKey() };
+    if (worker) headers['X-Octopus-Worker'] = '1';
+    if (update) headers['Content-Type'] = 'application/json';
+    const response = await fetch('/api/one-off-charge', {
+        method: update ? 'POST' : 'GET', headers, cache: 'no-store',
+        body: update ? JSON.stringify(update) : undefined,
+        signal: AbortSignal.timeout(10000)
+    });
+    const state = await response.json();
+    if (!response.ok) throw new Error(state.error || 'Could not read one-off charges.');
+    return state;
+}
+
+function piOneOffPlan(state = piOneOffState, now = Date.now() / 1000) {
+    const active = state?.slots.filter(slot => slot.start <= now && now < slot.end) || [];
+    if (!active.length && !state?.cleanup) return null;
+    return {
+        active, revision: state.revision,
+        key: JSON.stringify([state.revision, active, active.length ? window.oneOffCharge.civil(now).date : 'cleanup'])
+    };
+}
+
+async function refreshPiOneOffWorker() {
+    if (piOneOffWorkerPoll) return;
+    piOneOffWorkerPoll = true;
+    try {
+        piOneOffState = await requestPiOneOffCharge(undefined, true);
+        const plan = piOneOffPlan();
+        const now = Date.now();
+        if (plan && plan.key !== piOneOffConfirmedKey && canRunAutomaticActions()
+            && (plan.key !== piOneOffAttemptKey || now - piOneOffAttemptAt >= 60000)) {
+            await evaluateLocalAutomations(null, true, true);
+        }
+    } catch (error) {
+        console.warn('Pi one-off schedule is unavailable.', error);
+    } finally {
+        piOneOffWorkerPoll = false;
+    }
+}
+
+function startPiOneOffCharge(role) {
+    if (role === 'worker') {
+        void refreshPiOneOffWorker();
+        setInterval(refreshPiOneOffWorker, 5000);
+        return;
+    }
+    const panel = window.oneOffCharge?.mount(document.getElementById('one-off-charge-panel'), requestPiOneOffCharge);
+    if (!panel) return;
+    let reading = false;
+    const refresh = async () => {
+        if (reading || document.hidden || (window.linuxAuthRequired && !getLinuxAccessKey())) return;
+        reading = true;
+        try { panel.render(await requestPiOneOffCharge()); }
+        catch { panel.unavailable(); }
+        finally { reading = false; }
+    };
+    void refresh();
+    setInterval(refresh, 5000);
 }
 
 async function updateLinuxState(update) {
@@ -834,8 +904,13 @@ function assertValidOctopusGraphqlResponse(response, options) {
         throw new Error('Octopus API error: ' + (message || 'The response was rejected'));
     }
     if (!response?.data) throw new Error('Octopus API returned no data');
-    if (requireDispatches && !Array.isArray(response.data.plannedDispatches)) {
-        throw new Error('Octopus API did not return a Smart Dispatch schedule');
+    if (requireDispatches) {
+        const windows = response.data.plannedDispatches;
+        if (!Array.isArray(windows)) throw new Error('Octopus API did not return a Smart Dispatch schedule');
+        if (windows.some(slot => {
+            const start = Date.parse(slot?.startDt), end = Date.parse(slot?.endDt);
+            return !Number.isFinite(start) || !Number.isFinite(end) || end <= start;
+        })) throw new Error('Octopus API returned an invalid Smart Dispatch window');
     }
     return response.data;
 }
@@ -1715,6 +1790,7 @@ async function refreshDashboard(isAutoRefresh = false, retryCount = 1) {
             dispatches = snapshot?.dispatches || [];
         }
         window.currentDispatches = dispatches;
+        if (workerOnlyQuery && piOneOffAvailable) piOneOffDispatchAt = Date.now();
         await updateLinuxLiveDemand(dispatches);
         renderProtectionOverview();
 
@@ -1738,6 +1814,7 @@ async function refreshDashboard(isAutoRefresh = false, retryCount = 1) {
         // Only the worker performs hosted Octopus reads. Tariff work starts
         // after dispatch reconciliation and publishes a shared display snapshot.
         if (workerOnlyQuery) {
+            if (piOneOffAvailable && piOneOffPlan()?.key !== piOneOffConfirmedKey) await refreshPiOneOffWorker();
             void refreshOctopusTariffs(acc, api);
             if (!isAutoRefresh) {
                 loadAutomations(0, 0);
@@ -1938,7 +2015,7 @@ function applyFoxTelemetry(values = {}, source = 'rest', updatedAt = null) {
     renderProtectionOverview();
 
     const autoResumeEnabled = document.getElementById('toggle-auto-resume')?.checked;
-    if (autoResumeEnabled && canRunAutomaticActions() && batterySoc !== '--') {
+    if (autoResumeEnabled && canRunAutomaticActions() && batterySoc !== '--' && !piOneOffPlan()?.active.length) {
         if (window.activeFoxGroups && window.activeFoxGroups.length > 0) {
             const resumeNow = new Date();
             const nowMins = resumeNow.getHours() * 60 + resumeNow.getMinutes();
@@ -2321,7 +2398,7 @@ function scheduleFingerprint(groups) {
         .join('|');
 }
 
-async function fetchFoxSchedules({ expectedGroups = null, attempts = 1, refreshMode = true } = {}) {
+async function fetchFoxSchedules({ expectedGroups = null, attempts = 1, refreshMode = true, freshSchedule = false } = {}) {
     if (!globalGasUrl || !globalFoxSN) return [];
     const path = '/op/v3/device/scheduler/get';
     const expectedFingerprint = expectedGroups ? scheduleFingerprint(expectedGroups) : null;
@@ -2329,8 +2406,11 @@ async function fetchFoxSchedules({ expectedGroups = null, attempts = 1, refreshM
     for (let attempt = 1; attempt <= attempts; attempt++) {
         try {
             const payload = { url: `https://www.foxesscloud.com${path}`, headers: getFoxHeaders(path), body: { deviceSN: globalFoxSN }, readback: expectedGroups !== null };
+            if (freshSchedule) payload.freshSchedule = true;
             incrementFoxApi();
-            const data = await fetchJson(globalGasUrl, { method: 'POST', body: JSON.stringify(payload) });
+            const options = { method: 'POST', body: JSON.stringify(payload) };
+            if (freshSchedule) options.headers = { 'X-Octopus-Worker': '1' };
+            const data = await fetchJson(globalGasUrl, options);
         
             const container = document.getElementById('fox-active-schedules');
             if (data.errno === 0 && data.result && data.result.groups) {
@@ -2406,7 +2486,7 @@ async function fetchFoxSchedules({ expectedGroups = null, attempts = 1, refreshM
             console.warn(`Fetch Schedule Error (attempt ${attempt}/${attempts})`, e);
             if (attempt === attempts) {
                 window.integrationMonitor?.failure('foxess', 'schedule-readback', e);
-                if (expectedGroups !== null) throw e;
+                if (expectedGroups !== null || freshSchedule) throw e;
                 return window.activeFoxGroups;
             }
         }
@@ -2587,6 +2667,7 @@ function resolveAutomationMinute(existingState, incomingState, options) {
     options = options || {};
     if (!incomingState) return existingState;
     if (incomingState.workMode !== 'ForceDischarge') return incomingState;
+    if (existingState?.source === 'oneOff') return existingState;
 
     if (
         options.pauseDischargeDuringDispatch !== false
@@ -2722,7 +2803,8 @@ function prioritizeAutomationGroups(groups, now = new Date()) {
         const start = Number(group.startHour) * 60 + Number(group.startMinute);
         const active = isFoxScheduleActiveAt(group, now);
         const dispatch = group.extraParam?.schSources?.includes('dispatch') || group.extraParam?.schSource === 'dispatch';
-        return [dispatch ? 0 : 1, active ? 0 : 1, (start - minute + 1440) % 1440];
+        const oneOff = group.extraParam?.schSources?.includes('oneOff');
+        return [dispatch ? 0 : oneOff ? 1 : 2, active ? 0 : 1, (start - minute + 1440) % 1440];
     };
     return [...groups].sort((a, b) => {
         const ar = rank(a), br = rank(b);
@@ -2740,7 +2822,7 @@ function getForceChargeOverviewLabel(sources) {
     return 'Forced Charge';
 }
 
-async function pushGroupsToFoxESS(groups, maxAttempts = 3) {
+async function pushGroupsToFoxESS(groups, maxAttempts = 3, oneOff = null) {
     isCurrentlyUpdatingMode = true;
     const path = '/op/v3/device/scheduler/enable';
     const { activeGroups, paddedGroups, droppedCount } = prepareFoxSchedulePayload(groups);
@@ -2749,6 +2831,15 @@ async function pushGroupsToFoxESS(groups, maxAttempts = 3) {
     }
 
     try {
+        if (oneOff && oneOff.key !== piOneOffConfirmedKey) {
+            if (oneOff.active.length) {
+                piOneOffState = await requestPiOneOffCharge({ action: 'track', revision: oneOff.revision }, true);
+            }
+            const currentGroups = await fetchFoxSchedules({ refreshMode: false, freshSchedule: true });
+            if (scheduleFingerprint(currentGroups) === scheduleFingerprint(activeGroups)) {
+                return { groups: activeGroups, droppedCount };
+            }
+        }
         const payload = {
             url: `https://www.foxesscloud.com${path}`,
             headers: getFoxHeaders(path),
@@ -2757,12 +2848,16 @@ async function pushGroupsToFoxESS(groups, maxAttempts = 3) {
 
         let lastError = null;
         for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+            if (oneOff) {
+                piOneOffState = await requestPiOneOffCharge(undefined, true);
+                if (piOneOffPlan()?.key !== oneOff.key) throw new Error('The one-off window changed. Reconciliation queued.');
+            }
             try {
                 incrementFoxApi();
                 const data = await fetchJson(globalGasUrl, { method: 'POST', body: JSON.stringify(payload) });
                 if (data.errno !== 0) throw new Error(data.msg || `FoxESS API error ${data.errno}`);
 
-                const refreshedGroups = await fetchFoxSchedules({ expectedGroups: activeGroups, attempts: 4 });
+                const refreshedGroups = await fetchFoxSchedules({ expectedGroups: activeGroups, attempts: 4, freshSchedule: Boolean(oneOff) });
                 if (scheduleFingerprint(refreshedGroups) !== scheduleFingerprint(activeGroups)) {
                     throw new Error('FoxESS did not confirm the updated schedules');
                 }
@@ -2855,7 +2950,7 @@ function hasEnabledSmartDischargingAutomation() {
 }
 
 function hasEnabledLocalAutomation() {
-    return hasEnabledSmartChargingAutomation() || hasEnabledSmartDischargingAutomation();
+    return hasEnabledSmartChargingAutomation() || hasEnabledSmartDischargingAutomation() || Boolean(piOneOffPlan());
 }
 
 function resetAutomationApplyButton(button) {
@@ -2867,13 +2962,20 @@ function resetAutomationApplyButton(button) {
 }
 
 // RUNS TO PUSH SCHEDULES VIA V3 API INSTEAD OF V0 LIVE-TOGGLE
-async function evaluateLocalAutomations(btn = null, isStartup = false) {
+async function evaluateLocalAutomations(btn = null, isStartup = false, oneOffOnly = false) {
     if (!globalFoxSN || !globalGasUrl) return;
     if (window.automationControl?.isPaused()) { if (btn) showToast('Resume automation before applying schedules.'); return false; }
     if (!btn && !canRunAutomaticActions()) return false;
     if (isCurrentlyUpdatingMode) {
         pendingAutomationEvaluation = true;
         return false;
+    }
+    const oneOff = piOneOffPlan();
+    if (oneOffOnly && !oneOff) return false;
+    if (oneOff) {
+        if (!piOneOffDispatchAt || Date.now() - piOneOffDispatchAt > (3 * getEffectiveOctopusRefreshInterval() + 60) * 1000) return false;
+        piOneOffAttemptAt = Date.now();
+        piOneOffAttemptKey = oneOff.key;
     }
     
     if (btn) {
@@ -3041,6 +3143,14 @@ async function evaluateLocalAutomations(btn = null, isStartup = false) {
         );
     });
 
+    for (const slot of oneOff?.active || []) {
+        for (const [start, end] of window.oneOffCharge.ranges(slot, now.getTime() / 1000)) {
+            for (let minute = start; minute < end; minute++) {
+                timeline[minute] = { workMode: 'ForceCharge', finalFdSoc: applyLimit ? targetSoc : 100, source: 'oneOff' };
+            }
+        }
+    }
+
     // 3. Dispatch Check (Higher priority - overrides target-price and weekly charge blocks)
     if (isAutoDispatch) {
         const soc = applyDispatchLimit ? dispatchSocLimit : 100;
@@ -3098,14 +3208,16 @@ async function evaluateLocalAutomations(btn = null, isStartup = false) {
     window.lastAutomationGroups = groups.map(group => ({ ...group, extraParam: { ...group.extraParam } }));
 
     // If running on startup, check if schedules already match to avoid redundant API hits
-    if (isStartup && window.activeFoxGroups) {
+    if (isStartup && window.activeFoxGroups && (!oneOff || oneOff.key === piOneOffConfirmedKey)) {
         // Include fdSoc in stringification to ensure hardware limits match
         const mapGroup = g => `${g.startHour}:${g.startMinute}-${g.endHour}:${g.endMinute}-${g.workMode}-${g.extraParam?.fdSoc || 100}`;
         const localStr = prepareFoxSchedulePayload(groups).activeGroups.map(mapGroup).sort().join('|');
         const remoteStr = window.activeFoxGroups.filter(isActiveFoxSchedule).map(mapGroup).sort().join('|');
         if (localStr === remoteStr) {
+            if (oneOff && ['confirmed', 'disabled'].includes(window.linuxDispatchSnapshot?.status)
+                && scheduleFingerprint(groups) === scheduleFingerprint(window.activeFoxGroups)) return true;
             try {
-                await fetchFoxSchedules({ expectedGroups: groups, attempts: 1 });
+                await fetchFoxSchedules({ expectedGroups: groups, attempts: 1, freshSchedule: Boolean(oneOff) });
             } catch {
                 // The cached schedule is no longer authoritative. Rewrite and verify below.
                 return evaluateLocalAutomations(btn, false);
@@ -3123,7 +3235,16 @@ async function evaluateLocalAutomations(btn = null, isStartup = false) {
     }
 
     try {
-        const result = await pushGroupsToFoxESS(groups);
+        const result = await pushGroupsToFoxESS(groups, 3, oneOff);
+        if (oneOff) {
+            if (!oneOff.active.length) {
+                piOneOffState = await requestPiOneOffCharge({ action: 'settled', revision: oneOff.revision }, true);
+            } else {
+                piOneOffState = await requestPiOneOffCharge(undefined, true);
+                if (piOneOffPlan()?.key !== oneOff.key) throw new Error('The one-off window changed. Reconciliation queued.');
+            }
+            if (!result.droppedCount) piOneOffConfirmedKey = oneOff.key;
+        }
         if (result.droppedCount > 0) throw new Error('FoxESS applied only five periods. Reduce automation periods; the full schedule is not confirmed.');
         if (window.linuxRuntime && window.linuxRole === 'worker') {
             await publishLinuxDispatchSnapshot(
@@ -3468,6 +3589,8 @@ function toggleScreenSaver() {
 window.addEventListener('automation-resumed', () => {
     lastDispatchesStr = null;
     window.fulfilledSchedule = null;
+    piOneOffDispatchAt = 0;
+    piOneOffConfirmedKey = null;
     if ((!window.linuxRuntime || window.linuxRole === 'worker') && globalFoxSN && globalGasUrl) {
         void (async () => { await fetchFoxSchedules(); await initDashboard(true); })()
             .catch(error => console.warn('Automation resume refresh failed; the next normal check will retry.', error));

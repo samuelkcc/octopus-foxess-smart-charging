@@ -216,6 +216,23 @@ A newer dispatch revision takes priority over an older confirmation.
 The service rejects stale confirmation results.
 A matching schedule readback does not prove measured battery power.
 
+## Schedule a one-off charge
+
+1. Open **Schedules**.
+2. Under **One-off Force Charge**, select **Add one-off charge**.
+3. Select the date.
+4. Enter the UK start and end times.
+5. Select **Confirm & save**.
+
+An earlier end time means the next day.
+The Pi saves the period immediately and keeps it through a restart.
+Select **Cancel** beside a saved period to remove it early.
+
+The worker applies the period while automation is enabled and the window is open.
+Smart Dispatch keeps priority.
+If the worker reconnects after the end time, it skips the expired period.
+The worker needs FoxESS access to remove a period that it already programmed.
+
 ## Use history
 
 History is included in public version 2.0.0.

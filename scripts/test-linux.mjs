@@ -3,6 +3,7 @@ import { mkdtemp, mkdir, readFile, writeFile } from 'node:fs/promises';
 import { spawn } from 'node:child_process';
 import os from 'node:os';
 import path from 'node:path';
+import { OneOffCharges } from '../linux/one-off-charge.mjs';
 
 const root = process.cwd();
 const temporaryRoot = await mkdtemp(path.join(os.tmpdir(), 'octopus-foxess-test-'));
@@ -226,6 +227,30 @@ try {
     }
   });
   assert.equal(acceptedLocalClient.status, 204);
+
+  const oneOffUrl = `http://127.0.0.1:${port}/api/one-off-charge`;
+  const oneOffHeaders = {
+    Referer: `http://127.0.0.1:${port}/?client=1`,
+    'X-Octopus-Access-Key': accessKey, 'Content-Type': 'application/json'
+  };
+  const start = Math.floor(Date.now() / 86400000) * 86400 + 129600, end = start + 3600;
+  const saveOneOff = (update, headers = oneOffHeaders) => fetch(oneOffUrl, {
+    method: 'POST', headers, body: JSON.stringify(update)
+  });
+  assert.equal(runtime.oneOffCharge, true);
+  assert.equal((await fetch(oneOffUrl, { headers: { Referer: oneOffHeaders.Referer } })).status, 401);
+  assert.equal((await saveOneOff({ action: 'add', start, end }, { ...oneOffHeaders, Origin: 'https://other.invalid' })).status, 403);
+  assert.equal((await saveOneOff({ action: 'track', revision: 0 })).status, 403);
+  const bookings = await Promise.all([
+    saveOneOff({ action: 'add', start, end }),
+    saveOneOff({ action: 'add', start, end })
+  ]);
+  assert.deepEqual(bookings.map(response => response.status).sort(), [200, 409]);
+  const reloadedOneOff = new OneOffCharges(path.join(stateRoot, 'one-off-charge.json'));
+  assert.deepEqual((await reloadedOneOff.read(start)).slots, [{ start, end }]);
+  assert.deepEqual((await reloadedOneOff.read(end)).slots, []);
+  assert.equal((await saveOneOff({ action: 'cancel', start, end })).status, 200);
+  assert.deepEqual((await reloadedOneOff.read(start)).slots, []);
 
   const currentAccessKey = await fetch(`http://127.0.0.1:${port}/api/access-key`).then(response => response.json());
   assert.equal(currentAccessKey.accessKey, accessKey);

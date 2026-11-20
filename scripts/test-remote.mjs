@@ -82,6 +82,18 @@ try {
   const cookie = login.headers.get('set-cookie');
   assert.match(cookie, /Secure; HttpOnly; SameSite=Strict; Path=\//);
   const sessionHeaders = { Cookie: cookie.split(';')[0] };
+  assert.equal((await call(remote, '/api/one-off-charge')).status, 401);
+  assert.equal((await call(remote, '/api/one-off-charge', { headers: sessionHeaders })).status, 200);
+  const remoteOneOff = (update, headers = {}) => call(remote, '/api/one-off-charge', {
+    method: 'POST', headers: { ...sessionHeaders, 'Content-Type': 'application/json', ...headers },
+    body: JSON.stringify(update)
+  });
+  const oneOffStart = Math.floor(Date.now() / 86400000) * 86400 + 129600;
+  const oneOff = { start: oneOffStart, end: oneOffStart + 3600 };
+  assert.equal((await remoteOneOff({ action: 'add', ...oneOff }, { Origin: 'https://other.invalid' })).status, 403);
+  assert.equal((await remoteOneOff({ action: 'add', ...oneOff })).status, 200);
+  assert.equal((await remoteOneOff({ action: 'track', revision: 1 }, { 'X-Octopus-Worker': '1', 'X-Forwarded-For': '127.0.0.1' })).status, 403);
+  assert.equal((await remoteOneOff({ action: 'cancel', ...oneOff })).status, 200);
   assert.equal((await call(remote, '/api/history', { headers: sessionHeaders })).status, 200);
   assert.equal((await call(remote, '/api/history?month=../../config', { headers: sessionHeaders })).status, 400);
   assert.equal((await call(remote, '/api/history', { method:'DELETE', headers:sessionHeaders })).status, 405);

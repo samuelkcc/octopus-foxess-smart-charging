@@ -46,6 +46,10 @@ cJSON *sc_runtime_account(void){return cJSON_Parse("{\"account_number\":\"A-TEST
 cJSON *sc_runtime_history(int days){(void)days;return cJSON_CreateArray();}
 bool sc_runtime_request_refresh(const char *service){return !strcmp(service,"octopus")||!strcmp(service,"foxess");}
 bool sc_runtime_manual(const cJSON *value){return cJSON_IsObject(value);}
+cJSON *sc_runtime_change_one_off(const cJSON *value,const char **error){
+    *error="Invalid one-off charge";
+    return cJSON_IsObject(value)?cJSON_CreateObject():NULL;
+}
 unsigned sc_runtime_revision(void){return 1;}
 bool sc_runtime_update_expected(const cJSON *value,unsigned expected){return cJSON_IsObject(value)&&expected==1;}
 static void call(request_data_t *data,const char *path,int method,const char *body){data->body=body?body:"";data->received=0;data->status[0]=0;data->closes=false;httpd_req_t req={.uri=path,.method=method,.content_len=(int)strlen(data->body),.user_ctx=data};assert(api(&req)!=ESP_OK&&data->closes);}

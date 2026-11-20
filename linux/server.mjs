@@ -16,10 +16,13 @@ import { ServiceControl } from './service-control.mjs';
 import { RequestBudget, retryDelay } from './request-budget.mjs';
 import { TariffCache } from './tariff-cache.mjs';
 import { TariffSnapshotCache } from './tariff-snapshot-cache.mjs';
+import { OneOffCharges } from './one-off-charge.mjs';
 
 const appRoot = path.dirname(fileURLToPath(import.meta.url));
 const webRoot = process.env.OCTOPUS_WEB_ROOT || path.join(appRoot, 'web');
 const stateRoot = process.env.OCTOPUS_STATE_DIR || '/var/lib/octopus-foxess';
+const oneOffCharges = new OneOffCharges(path.join(stateRoot, 'one-off-charge.json'));
+const oneOffPath = '/api/one-off-charge';
 const accessKeyFile = process.env.OCTOPUS_ACCESS_KEY_FILE || path.join(stateRoot, 'access.key');
 const host = process.env.OCTOPUS_HOST || '0.0.0.0';
 const port = Number(process.env.OCTOPUS_PORT || 8787);
@@ -471,7 +474,10 @@ async function proxyFoxRequest(request, response) {
     return sendJson(response, 400, { errno: 998, msg: 'Only FoxESS Cloud API requests are allowed' });
   }
   const state = await loadState();
-  const upstream = await requestFoxOpenApi(state, target.pathname, payload.body || {}, { readback: payload.readback === true });
+  const upstream = await requestFoxOpenApi(state, target.pathname, payload.body || {}, {
+    readback: payload.readback === true,
+    freshSchedule: payload.freshSchedule === true && !desktopHost && isLoopback(request) && isExplicitWorkerRequest(request)
+  });
   const upstreamData = await upstream.clone().json().catch(() => null);
   if (upstream.ok && upstreamData?.errno === 0) {
     markIntegrationSuccess('foxRest', target.pathname, new Date(Number(upstream.headers.get('X-Smart-Charging-Fetched-At')) || Date.now()).toISOString());
@@ -481,7 +487,7 @@ async function proxyFoxRequest(request, response) {
   return relayUpstreamResponse(upstream, response);
 }
 
-async function requestFoxOpenApi(state, pathname, requestedBody = {}, { readback = false } = {}) {
+async function requestFoxOpenApi(state, pathname, requestedBody = {}, { readback = false, freshSchedule = false } = {}) {
   serviceControl.assertEnabled();
   const controlRevision=serviceControl.revision;
   const foxSN = state.credentials?.foxSN;
@@ -523,8 +529,8 @@ async function requestFoxOpenApi(state, pathname, requestedBody = {}, { readback
     }
     return upstream;
   }
-  // Only scheduler verification just after a successful write bypasses the read cache.
-  const fresh = readback && pathname === '/op/v3/device/scheduler/get' && Date.now() < foxReadbackUntil;
+  const fresh = pathname === '/op/v3/device/scheduler/get' &&
+    (freshSchedule || (readback && Date.now() < foxReadbackUntil));
   const credentialScope = createHash('sha256').update(`${foxSN}:${foxToken}`).digest('hex');
   const cacheKey = JSON.stringify([credentialScope, foxCacheRevision, pathname, body, fresh ? ++foxReadbackSerial : 0]);
   const interval = Math.max(600, Number(state.automations?.refreshIntervals?.foxess) || 600) * 1000;
@@ -705,7 +711,7 @@ async function handleRequest(request, response) {
       response.setHeader('X-Frame-Options', 'DENY');
       const remote = (await loadState()).remoteAccess;
       if (!remote?.enabled) return sendJson(response, 503, { error: 'Remote access is disabled' });
-      const permitted = new Set(['/api/runtime', '/api/auth', '/api/logout', '/api/config', '/api/tariff-snapshot', '/api/dashboard-snapshot', '/api/dispatch-snapshot', '/api/foxess', '/api/octopus', '/api/foxess/live', '/api/foxess/live/status', '/api/history', '/api/history/settings', '/api/history/clear', '/api/automation/pause', '/api/integration-status']);
+      const permitted = new Set(['/api/runtime', '/api/auth', '/api/logout', '/api/config', '/api/tariff-snapshot', '/api/dashboard-snapshot', '/api/dispatch-snapshot', '/api/foxess', '/api/octopus', '/api/foxess/live', '/api/foxess/live/status', '/api/history', '/api/history/settings', '/api/history/clear', '/api/automation/pause', '/api/integration-status', oneOffPath]);
       if (pathname.startsWith('/api/') && !permitted.has(pathname)) return sendJson(response, 403, { error: 'This endpoint is only available on the Raspberry Pi' });
       if (!['GET', 'HEAD'].includes(request.method)) {
         const origin = request.headers.origin;
@@ -822,6 +828,7 @@ async function handleRequest(request, response) {
       return sendJson(response, 200, {
         mode: 'linux',
         hostPlatform: process.env.OCTOPUS_DESKTOP === '1' ? 'desktop' : 'pi',
+        oneOffCharge: !desktopHost,
         version,
         role,
         localConfiguration,
@@ -949,10 +956,27 @@ async function handleRequest(request, response) {
       });
     }
 
-    const protectedApi = ['/api/config', '/api/tariff-snapshot', '/api/dashboard-snapshot', '/api/dispatch-snapshot', '/api/foxess', '/api/octopus', '/api/history'];
+    const protectedApi = ['/api/config', '/api/tariff-snapshot', '/api/dashboard-snapshot', '/api/dispatch-snapshot', '/api/foxess', '/api/octopus', '/api/history', oneOffPath];
     const isProtected = pathname === '/api/integration-status' || pathname === '/api/automation/pause' || protectedApi.includes(pathname) || pathname === '/api/history/settings' || pathname === '/api/history/clear' || pathname.startsWith('/api/foxess/live');
     if (isProtected && !(await isAuthorized(request))) {
       return sendJson(response, 401, { error: 'Invalid LAN access code' });
+    }
+
+    if (pathname === oneOffPath) {
+      if (desktopHost) return sendJson(response, 404, { error: 'One-off schedules require a Raspberry Pi or ESP32.' });
+      if (request.method === 'GET') {
+        return sendJson(response, 200, await oneOffCharges.read(Math.floor(Date.now() / 1000)));
+      }
+      if (request.method !== 'POST') return sendJson(response, 405, { error: 'Use GET or POST.' });
+      const expectedOrigin = `${remoteRequests.has(request) ? 'https' : 'http'}://${request.headers.host}`;
+      if (request.headers['sec-fetch-site'] === 'cross-site' || (request.headers.origin && request.headers.origin !== expectedOrigin)) {
+        return sendJson(response, 403, { error: 'Cross-site request rejected' });
+      }
+      if (!/^application\/json(?:\s*;|$)/i.test(request.headers['content-type'] || '')) {
+        return sendJson(response, 415, { error: 'Send a JSON request.' });
+      }
+      const result = await oneOffCharges.change(await readJsonBody(request), isLoopback(request) && isExplicitWorkerRequest(request));
+      return result.state ? sendJson(response, 200, result.state) : sendJson(response, result.status, { error: result.error });
     }
 
     if (pathname === '/api/config' && request.method === 'GET') {

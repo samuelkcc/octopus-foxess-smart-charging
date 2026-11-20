@@ -100,6 +100,12 @@ assert.throws(
   /did not return a Smart Dispatch schedule/,
   'A missing dispatch field must preserve the last authoritative worker snapshot'
 );
+assert.throws(
+  () => utilities.assertValidOctopusGraphqlResponse({
+    data: { plannedDispatches: [{ startDt: 'unavailable', endDt: '2026-11-22T11:00:00Z' }] }
+  }, { requireDispatches: true }),
+  /invalid Smart Dispatch window/
+);
 assert.deepEqual(
   utilities.assertValidOctopusGraphqlResponse({ data: { plannedDispatches: [] } }, { requireDispatches: true }),
   { plannedDispatches: [] },

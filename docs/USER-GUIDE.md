@@ -366,6 +366,20 @@ Overnight windows remain supported. Smart Dispatch times are rounded outward to 
 
 Auto-Resume must not cancel an active dispatch. Rule changes or explicit resume clear its completion memory.
 
+### Schedule a one-off charge on Pi or ESP32
+
+1. Open **Schedules**.
+2. Select **Add one-off charge**.
+3. Select the date.
+4. Enter the UK start and end times.
+5. Select **Confirm & save**.
+
+The controller keeps the saved period through a restart.
+An earlier end time means the next day.
+Select **Cancel** beside a period to remove it early.
+The period expires automatically.
+If the controller loses access to FoxESS, it clears the programmed period after access returns.
+
 ## 9. Pause and resume automation
 
 The round power control is green when automation is running. It is red when operator Pause is active.

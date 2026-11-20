@@ -1,3 +1,12 @@
+# 2.6.0 — 20 November 2026
+
+Add One-off Force Charge to Schedules on Pi and ESP32.
+Select a calendar date and a UK time window, then confirm to save.
+The Pi saves periods on disk. The ESP32 saves periods in Flash.
+Periods expire automatically. Smart Dispatch keeps priority.
+The Web and Windows Portable dashboards hide the control.
+Physical power-cycle behaviour and measured battery power remain unverified.
+
 # Unreleased maintenance — 18 November 2026
 
 Add source recovery instructions and explicit packaging archive cleanup.

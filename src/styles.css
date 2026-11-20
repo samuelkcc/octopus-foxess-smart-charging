@@ -365,3 +365,25 @@
         .block-countdown-fox::before {
             background: conic-gradient(var(--fox-orange) calc(var(--fox-progress, 100%) - 4%), #ffffff calc(var(--fox-progress, 100%) - 0.8%), #ffffff var(--fox-progress, 100%), #e2e8f0 0deg);
         }
+.one-off-charge[hidden] { display: none; }
+.one-off-charge { padding: 1rem; border: 1px solid var(--border); border-radius: 8px; }
+.one-off-charge h2 { font-size: 1rem; margin: 0 0 .75rem; }
+.one-off-charge .overview-schedule-row { gap: .75rem; }
+.one-off-charge-rows { margin-bottom: .75rem; }
+.one-off-charge-message:empty { display: none; }
+.one-off-charge dialog {
+    box-sizing: border-box;
+    width: min(480px, calc(100% - 2rem));
+    padding: 1.25rem;
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    background: var(--card-bg);
+    color: var(--text-main);
+}
+.one-off-charge dialog::backdrop { background: #0008; }
+.one-off-charge dialog p { margin: .75rem 0; }
+.one-off-charge dialog .next-field { display: grid; gap: .35rem; margin: 0 0 .75rem; min-width: 0; }
+.one-off-charge dialog input { box-sizing: border-box; width: 100%; min-width: 0; }
+.one-off-charge-times { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .75rem; }
+.one-off-charge .dev-dialog-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: .75rem; }
+.one-off-charge button { width: auto; min-height: 44px; padding: .45rem .75rem; }

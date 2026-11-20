@@ -498,6 +498,13 @@ static esp_err_t api(httpd_req_t *r) {
         cJSON_AddNumberToObject(out, "revision", sc_runtime_revision());
         return json_reply(r, out, NULL);
     }
+    if (!strcmp(r->uri, "/api/one-off-charge") && mutation) {
+        cJSON *body = body_json(r);
+        const char *error;
+        cJSON *out = sc_runtime_change_one_off(body, &error);
+        cJSON_Delete(body);
+        return out ? json_reply(r, out, NULL) : failure(r, "400 Bad Request", error);
+    }
     if (!strcmp(r->uri, "/api/manual") && mutation) {
         cJSON *body = body_json(r);
         bool ok = cJSON_IsTrue(cJSON_GetObjectItemCaseSensitive(body, "acknowledge_control")) &&

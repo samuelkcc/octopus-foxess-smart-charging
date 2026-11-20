@@ -15,6 +15,7 @@ bool sc_runtime_enabled(void);
 bool sc_runtime_disable_for_setup(void);
 bool sc_runtime_paused(void);
 bool sc_runtime_update(const cJSON *rules);
+cJSON *sc_runtime_change_one_off(const cJSON *update, const char **error);
 
 void sc_runtime_credentials_changed(void);
 

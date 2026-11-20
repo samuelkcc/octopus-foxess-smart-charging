@@ -1,3 +1,15 @@
+# 2.6.0 one-off charge review
+
+Pi and ESP32 show the same calendar, UK time inputs, saved-period list, and cancellation controls.
+Web and Windows Portable omit the controls.
+Pi stores the periods in its service data directory.
+ESP32 stores the periods in the runtime NVS namespace.
+Only the worker programs dated periods and confirms the FoxESS schedule by official REST readback.
+Local browser checks covered separate Web and Pi login flows, unique element IDs, and a 390-pixel calendar dialog.
+Mock worker checks covered Pi cleanup and ESP32 Flash persistence after a simulated restart.
+The full check, DEV build, and ESP32 firmware build passed.
+Live inverter operation and installed hardware remain unverified.
+
 # Repository recovery and housekeeping — 18 November 2026
 
 Source commit `9b2f5cd` and all 332 tracked files were verified against live GitHub.

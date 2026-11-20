@@ -24,7 +24,7 @@
 #include <time.h>
 static SemaphoreHandle_t guard;
 static cJSON *preferences, *published, *dispatches, *imports, *exports, *programmed, *measurements, *manual,
-    *previous_plan, *fixed_day, *fixed_night, *device_info, *published_account;
+    *previous_plan, *fixed_day, *fixed_night, *device_info, *published_account, *one_off;
 static char account_number[33];
 static time_t device_info_at;
 static int64_t next_device_info;
@@ -47,6 +47,7 @@ static time_t import_rates_at, export_rates_at;
 static unsigned previous_revision, dispatch_sequence, attempt_revision, attempt_dispatch_sequence;
 static _Atomic unsigned required_dispatch_revision = 1;
 static int64_t next_attempt;
+static time_t attempt_one_off_boundary;
 static char octopus_status[96] = "Waiting for first Octopus update",
             foxess_status[96] = "Waiting for first FoxESS update",
             control_status[128] = "Automation is not enabled";
@@ -143,6 +144,8 @@ void sc_runtime_init(void) {
         replace(&preferences, sc_rules_default());
     }
     manual = load("manual");
+    replace(&one_off, load("one_off"));
+    if (!cJSON_IsArray(one_off)) replace(&one_off, cJSON_CreateArray());
     dispatches = cJSON_CreateArray();
     imports = cJSON_CreateArray();
     exports = cJSON_CreateArray();
@@ -498,10 +501,110 @@ bool sc_runtime_request_refresh(const char *service) {
     refresh_plan = true;
     return true;
 }
+
+// Call with guard held. Only calendar times that have not expired are exposed.
+static cJSON *one_off_copy(time_t now) {
+    cJSON *copy = cJSON_CreateArray();
+    const cJSON *slot;
+    cJSON_ArrayForEach(slot, one_off) {
+        if (now > 1700000000 && n(slot, "end", 0) <= now) continue;
+        cJSON *row = cJSON_Duplicate(slot, true);
+        if (!row || !cJSON_AddItemToArray(copy, row)) {
+            cJSON_Delete(row);
+            cJSON_Delete(copy);
+            return NULL;
+        }
+    }
+    return copy;
+}
+
+static bool unambiguous_uk_time(time_t epoch, const struct tm *local) {
+    struct tm candidate = *local;
+    candidate.tm_isdst = !local->tm_isdst;
+    time_t alternate = mktime(&candidate);
+    return alternate == epoch || candidate.tm_hour != local->tm_hour || candidate.tm_min != local->tm_min;
+}
+
+static bool valid_one_off_clock_window(time_t start, time_t end) {
+    struct tm from, until;
+    localtime_r(&start, &from);
+    localtime_r(&end, &until);
+    if (!unambiguous_uk_time(start, &from) || !unambiguous_uk_time(end, &until)) return false;
+    from.tm_isdst = until.tm_isdst = 0;
+    return difftime(mktime(&until), mktime(&from)) <= 86400;
+}
+
+cJSON *sc_runtime_change_one_off(const cJSON *update, const char **error) {
+    const cJSON *action = cJSON_GetObjectItemCaseSensitive(update, "action");
+    double start = n(update, "start", 0), end = n(update, "end", 0);
+    time_t now = time(NULL);
+    bool add = cJSON_IsString(action) && !strcmp(action->valuestring, "add");
+    bool cancel = cJSON_IsString(action) && !strcmp(action->valuestring, "cancel");
+    if (now <= 1700000000 || (!add && !cancel) || !isfinite(start) || !isfinite(end) || start <= 1700000000 ||
+        end >= 4133980800.0 || end <= start || end - start > 86400 || fmod(start, 60) || fmod(end, 60) ||
+        (add && (start < now || !valid_one_off_clock_window(start, end)))) {
+        *error = "Select an unambiguous future UK time and a duration of up to 24 hours.";
+        return NULL;
+    }
+    xSemaphoreTake(guard, portMAX_DELAY);
+    cJSON *copy = one_off_copy(now), *result = NULL;
+    *error = "One-off charges could not be saved.";
+    if (!copy) goto done;
+    cJSON *slot;
+    int index = 0;
+    cJSON_ArrayForEach(slot, copy) {
+        double a = n(slot, "start", 0), z = n(slot, "end", 0);
+        if (cancel && a == start && z == end) break;
+        if (add && a < end && start < z) {
+            *error = "One-off charges cannot overlap.";
+            goto done;
+        }
+        index++;
+    }
+    if (cancel) {
+        if (!slot) {
+            *error = "This period is no longer scheduled.";
+            goto done;
+        }
+        cJSON_DeleteItemFromArray(copy, index);
+    } else {
+        if (cJSON_GetArraySize(copy) >= 8) {
+            *error = "Save up to eight one-off charges.";
+            goto done;
+        }
+        cJSON *row = cJSON_CreateObject();
+        if (!row || !cJSON_AddNumberToObject(row, "start", start) || !cJSON_AddNumberToObject(row, "end", end) ||
+            !cJSON_AddItemToArray(copy, row)) {
+            cJSON_Delete(row);
+            goto done;
+        }
+    }
+    cJSON *reply = cJSON_CreateObject(), *slots = cJSON_Duplicate(copy, true);
+    if (reply && slots && cJSON_AddNumberToObject(reply, "revision", revision + 1) &&
+        cJSON_AddItemToObject(reply, "slots", slots)) {
+        slots = NULL;
+        if (store("one_off", copy)) {
+            replace(&one_off, copy);
+            copy = NULL;
+            revision++;
+            confirmed = false;
+            result = reply;
+            reply = NULL;
+        }
+    }
+    cJSON_Delete(slots);
+    cJSON_Delete(reply);
+done:
+    cJSON_Delete(copy);
+    xSemaphoreGive(guard);
+    return result;
+}
+
 cJSON *sc_runtime_state(void) {
     xSemaphoreTake(guard, portMAX_DELAY);
     cJSON *out = published ? cJSON_Duplicate(published, true) : cJSON_CreateObject();
     if (out) {
+        cJSON_AddItemToObject(out, "one_off", one_off_copy(time(NULL)));
         cJSON_DeleteItemFromObjectCaseSensitive(out, "rules");
         cJSON_AddItemToObject(out, "rules", cJSON_Duplicate(preferences, true));
         cJSON_DeleteItemFromObjectCaseSensitive(out, "revision");
@@ -980,6 +1083,16 @@ static bool current_revision(unsigned rev) {
     xSemaphoreGive(guard);
     return valid;
 }
+static time_t one_off_boundary(const cJSON *slots, time_t now) {
+    time_t boundary = 0;
+    const cJSON *slot;
+    cJSON_ArrayForEach(slot, slots) {
+        time_t start = n(slot, "start", 0), end = n(slot, "end", 0);
+        time_t next = start > now ? start : end;
+        if (next > now && (!boundary || next < boundary)) boundary = next;
+    }
+    return boundary;
+}
 static void reconcile(const sc_config_t *config, const cJSON *rules, unsigned rev, time_t now) {
     if(sc_ota_blocks_control()){strcpy(control_status,"Firmware update in progress; existing inverter schedule retained");return;}
     if (!b(rules, "enabled")) {
@@ -1001,13 +1114,21 @@ static void reconcile(const sc_config_t *config, const cJSON *rules, unsigned re
     }
     xSemaphoreTake(guard, portMAX_DELAY);
     cJSON *manual_copy = cJSON_Duplicate(manual, true);
+    cJSON *one_off_slots = one_off_copy(now);
     xSemaphoreGive(guard);
     // Only the worker owns completion memory. Dashboards never run this planner.
     unsigned completion_epoch = resume_epoch;
-    if (!current_revision(rev)) { cJSON_Delete(manual_copy); return; }
+    if (!one_off_slots || !current_revision(rev)) {
+        cJSON_Delete(manual_copy);
+        cJSON_Delete(one_off_slots);
+        return;
+    }
     if (resume_revision != completion_epoch) { resume_memory = (sc_resume_state_t){0}; resume_revision = completion_epoch; }
     double fresh_soc = telemetry_at && telemetry_at != resume_telemetry_at ? soc : NAN;
-    cJSON *plan = sc_automation_plan_stateful(rules, dispatches, imports, exports, manual_copy, now, fresh_soc, &resume_memory);
+    time_t boundary = one_off_boundary(one_off_slots, now);
+    cJSON *plan = sc_automation_plan_with_one_off(rules, dispatches, imports, exports, manual_copy,
+                                                 one_off_slots, now, fresh_soc, &resume_memory);
+    cJSON_Delete(one_off_slots);
     if (plan) resume_telemetry_at = telemetry_at;
     cJSON_Delete(manual_copy);
     if (!plan) {
@@ -1027,12 +1148,13 @@ static void reconcile(const sc_config_t *config, const cJSON *rules, unsigned re
         cJSON_Delete(plan);
         return;
     }
-    if (esp_timer_get_time() < next_attempt && attempt_revision == rev &&
+    if (esp_timer_get_time() < next_attempt && attempt_revision == rev && attempt_one_off_boundary == boundary &&
         attempt_dispatch_sequence == dispatch_sequence) {
         cJSON_Delete(plan);
         return;
     }
     attempt_revision = rev;
+    attempt_one_off_boundary = boundary;
     attempt_dispatch_sequence = dispatch_sequence;
     next_attempt = esp_timer_get_time() + 60000000;
     int http = 0;
@@ -1046,6 +1168,11 @@ static void reconcile(const sc_config_t *config, const cJSON *rules, unsigned re
     }
     replace(&programmed, cJSON_Duplicate(before, true));
     schedule_at = now;
+    if (boundary && time(NULL) >= boundary) {
+        cJSON_Delete(before);
+        cJSON_Delete(plan);
+        return;
+    }
     if (!sc_plan_matches(groups, before)) {
         cJSON *second = sc_schedule_read(config, &http);
         bool stable = second && sc_schedules_equal(before, second);
@@ -1073,7 +1200,7 @@ static void reconcile(const sc_config_t *config, const cJSON *rules, unsigned re
             cJSON_Delete(plan);
             return;
         }
-        if (!current_revision(rev)) {
+        if (!current_revision(rev) || (boundary && time(NULL) >= boundary)) {
             cJSON_Delete(before);
             cJSON_Delete(plan);
             return;
@@ -1106,7 +1233,7 @@ static void reconcile(const sc_config_t *config, const cJSON *rules, unsigned re
         replace(&programmed, readback);
         schedule_at = time(NULL);
     }
-    confirmed = current_revision(rev);
+    confirmed = current_revision(rev) && (!boundary || time(NULL) < boundary);
     confirmed_revision = rev;
     confirmed_at = time(NULL);
     previous_revision = rev;
@@ -1220,6 +1347,14 @@ void sc_runtime_tick(const sc_config_t *config, bool network_ready) {
     }
     now = time(NULL);
     xSemaphoreTake(guard, portMAX_DELAY);
+    if (now > 1700000000 && cJSON_GetArraySize(one_off)) {
+        cJSON *remaining = one_off_copy(now);
+        if (remaining && cJSON_GetArraySize(remaining) != cJSON_GetArraySize(one_off) && store("one_off", remaining)) {
+            replace(&one_off, remaining);
+        } else {
+            cJSON_Delete(remaining);
+        }
+    }
     time_t cutoff = now - (time_t)n(rules, "history_days", 14) * 86400;
     while (history_used && history[history_head].at < cutoff) {
         history_head = (history_head + 1) % HISTORY_CAPACITY;

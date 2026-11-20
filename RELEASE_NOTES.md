@@ -1,3 +1,21 @@
+# 2.6.0 — One-off Force Charge
+
+Pi and ESP32 can schedule a dated Force Charge period for events such as a free electricity hour.
+Open **Schedules → One-off Force Charge** to add or cancel a period.
+Select **Confirm & save** to store the date and UK start and end times on the controller.
+Saved periods survive a restart. The browser can close after saving.
+
+The worker applies the period only during its window while automation is enabled.
+Smart Dispatch takes priority. The usual charge limit applies.
+When the period ends, the worker restores ordinary scheduling.
+If the worker loses access to FoxESS, it removes the programmed period after access returns.
+The GitHub Pages, standalone HTML, and Windows Portable dashboards hide this control.
+
+The full check, DEV build, and ESP32 firmware build passed.
+Mock browser checks covered login, calendar entry, overnight times, save, and cancellation.
+Worker tests covered Pause, recovery, and official REST readback with mock responses.
+Physical power-cycle and measured charging tests remain unverified.
+
 # Unreleased maintenance — 18 November 2026
 
 Document source recovery, external build dependencies, private backup limits, and GitHub Desktop use.

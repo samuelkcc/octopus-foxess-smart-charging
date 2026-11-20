@@ -22,6 +22,7 @@ A development commit does not publish GitHub Pages or create a release.
 | `linux/remote-access.mjs` | Public tunnel, remote keys, and browser sessions. |
 | `src/automation-control.js` | Shared pause transport and browser command guard. |
 | `linux/automation-pause.mjs` | Persistent pause state, command barrier, expiry, and activity journal. |
+| `linux/one-off-charge.mjs` | Durable Pi storage for dated periods and worker cleanup state. |
 | `dev/controls.js` | Pause controls, hardware-limit dialog, and history retention interface. |
 | `linux/integration-state.mjs` | Shared service health, retained alerts, and acknowledgement rules. |
 | `src/refresh-preferences.js` | Validates and saves API intervals through existing browser and encrypted Pi configuration. |
@@ -540,6 +541,18 @@ The setup page populates masked inputs directly and never renders secret respons
 `docs/USER-GUIDE.md` is the canonical offline guide.
 `dev/guide.js` renders safe text and creates the left-menu drawer.
 Build scripts embed the guide in dashboard and setup artifacts.
+
+## One-off Force Charge
+
+The shared dashboard uses UK calendar and time inputs.
+Pi and ESP32 store absolute start and end times on the controller.
+The workers qualify the date before projecting the window into FoxESS clock-minute periods.
+Smart Dispatch retains priority. Operator Pause blocks writes.
+
+Pi persists a cleanup marker before attempting a write for an active one-off period.
+Only the loopback worker can update that marker.
+The worker clears it after fresh REST confirms the replacement schedule.
+ESP32 stores dates in NVS and rebuilds the schedule from fresh cloud data after restart.
 
 ## Settings categories and ESP32 home-screen assets
 

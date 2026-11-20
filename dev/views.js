@@ -43,6 +43,12 @@ window.installSharedConnections = ({grid,account,service,worker,extras=[]}) => {
     const D=window.esp32Dashboard,$=D.$;
     const make=(tag,className='',text='')=>{const node=document.createElement(tag);node.className=className;node.textContent=text;return node;};
     const panel=(title,wide=false)=>{const node=make('section','next-panel'+(wide?' wide':''));node.append(make('h2','next-panel-title',title));return node;};
+    const oneOffHost=make('section','next-panel wide one-off-charge');
+    oneOffHost.hidden=true;
+    const schedulePanel=$('section-foxess-mode');
+    schedulePanel.classList.add('wide');
+    schedulePanel.after(oneOffHost);
+    const oneOff=window.oneOffCharge.mount(oneOffHost, update=>D.request('/api/one-off-charge',update));
     // Reuse the ordinary dashboard's paired charge-limit presentation. The
     // existing inputs retain their bindings, values and review handlers.
     const limitToggle=document.querySelector('[data-rule="dispatch_soc_enabled"]').closest('label');
@@ -124,6 +130,7 @@ window.installSharedConnections = ({grid,account,service,worker,extras=[]}) => {
     D.renderHistory=rows=>{D.drawHistory(rows);const saved=rows.filter(row=>row.storage==='flash').length;$('esp-history-status').textContent=rows.length?rows.length+(rows.length===1?' record · ':' records · ')+(saved?saved+' hourly Flash records · ':'')+'live RAM averages'+(D.state()?.rules?.history_flash_enabled?' · hourly saving enabled':' · Flash saving off'):'No retained observations yet. The ESP32 collects readings through its normal telemetry requests.';};
     let liveModeSeen;
     D.render=state=>{
+      oneOff.render({slots:state.one_off,revision:state.revision,uptime:state.uptime_seconds});
       document.getElementById('dev-shell').classList.toggle('esp-fixture',state.fixture===true);
       if(state.fixture)D.notice('Demonstration data · No inverter connected.');
       $('esp-connection').textContent=state.fixture?'DEMO DATA':'ESP32 connected';$('esp-connection').dataset.state=state.fixture?'waiting':'good';
@@ -223,6 +230,9 @@ window.installSharedConnections = ({grid,account,service,worker,extras=[]}) => {
   const programmed=adoptId('section-foxess-mode',panel('Inverter mode and schedule',true));
   const modeRow=make('div','next-mode-row');modeRow.append(make('span','','Current mode'),byId('current-work-mode'),button('Refresh schedule',()=>void fetchFoxSchedules(),true));
   programmed.append(modeRow,byId('fox-error'),byId('fox-success'),byId('fox-active-schedules'));schedules.append(programmed);
+  const oneOffHost=byId('one-off-charge-panel');
+  oneOffHost.classList.add('next-panel','wide');
+  schedules.append(oneOffHost);
   const manual=panel('Manual controls',true);manual.classList.add('next-manual-panel');const manualDetails=make('details');
   if(matchMedia('(min-width:761px) and (hover:hover)').matches)manualDetails.open=true;
   manualDetails.append(make('summary','','Set a temporary mode'));

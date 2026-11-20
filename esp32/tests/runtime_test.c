@@ -31,19 +31,24 @@ static time_t wall;
 static int64_t ticks;
 static int writes,reads,octopus_reads,telemetry_reads,tariff_reads;
 static double mock_soc=65;
-static bool rule_store_failure;
+static bool rule_store_failure, one_off_store_failure;
 static bool invalid_dispatch,limited,intent_failure,bad_readback,revise_on_write,fixed_tariff,mirror_mode;
 static bool delayed_confirm;static unsigned stale_reads;
 static int day_reads,night_reads;static int64_t last_octopus_read=-60000000;
 static bool device_error, expired_token; static int device_reads,auth_reads;
 static cJSON *inverter,*new_dispatch;
-static char *stored_rules,*stored_intent,*stored_manual;
+static char *stored_rules,*stored_intent,*stored_manual,*stored_one_off;
 time_t sc_test_time(time_t *out){if(out)*out=wall;return wall;}
 int64_t esp_timer_get_time(void){return ticks;}
 esp_err_t nvs_open(const char *name,int mode,nvs_handle_t *handle){(void)name;(void)mode;*handle=1;return ESP_OK;}
-static char **slot(const char *key){return !strcmp(key,"rules")?&stored_rules:!strcmp(key,"intent")?&stored_intent:&stored_manual;}
+static char **slot(const char *key){
+ if(!strcmp(key,"rules"))return &stored_rules;
+ if(!strcmp(key,"intent"))return &stored_intent;
+ if(!strcmp(key,"one_off"))return &stored_one_off;
+ assert(!strcmp(key,"manual"));return &stored_manual;
+}
 esp_err_t nvs_get_str(nvs_handle_t h,const char *key,char *out,size_t *size){(void)h;char *value=*slot(key);if(!value)return ESP_ERR_NVS_NOT_FOUND;if(out){if(*size<strlen(value)+1)return ESP_FAIL;strcpy(out,value);}*size=strlen(value)+1;return ESP_OK;}
-esp_err_t nvs_set_str(nvs_handle_t h,const char *key,const char *value){(void)h;if(rule_store_failure&&!strcmp(key,"rules"))return ESP_FAIL;if(intent_failure&&!strcmp(key,"intent"))return ESP_FAIL;free(*slot(key));*slot(key)=strdup(value);return ESP_OK;}
+esp_err_t nvs_set_str(nvs_handle_t h,const char *key,const char *value){(void)h;if(rule_store_failure&&!strcmp(key,"rules"))return ESP_FAIL;if(intent_failure&&!strcmp(key,"intent"))return ESP_FAIL;if(one_off_store_failure&&!strcmp(key,"one_off"))return ESP_FAIL;free(*slot(key));*slot(key)=strdup(value);return ESP_OK;}
 esp_err_t nvs_erase_key(nvs_handle_t h,const char *key){(void)h;free(*slot(key));*slot(key)=NULL;return ESP_OK;}
 esp_err_t nvs_commit(nvs_handle_t h){(void)h;return ESP_OK;}
 void nvs_close(nvs_handle_t h){(void)h;}
@@ -66,6 +71,48 @@ cJSON *sc_cloud_read(const sc_config_t *config,bool fox,const char *path,const c
 }
 static void step(int seconds){wall+=seconds;ticks+=(int64_t)seconds*1000000;sc_config_t config={0};strcpy(config.account,"A-TEST");sc_runtime_tick(&config,true);}
 static cJSON *rules(void){cJSON *s=sc_runtime_state(),*r=cJSON_Duplicate(cJSON_GetObjectItem(s,"rules"),true);cJSON_Delete(s);return r;}
+static void one_off_test(void){
+ cJSON_Delete(new_dispatch);
+ new_dispatch=cJSON_CreateArray();
+ cJSON *r=rules();
+ cJSON_SetBoolValue(cJSON_GetObjectItem(r,"enabled"),true);
+ assert(sc_runtime_update(r));cJSON_Delete(r);
+ cJSON *update=cJSON_CreateObject();
+ cJSON_AddStringToObject(update,"action","add");
+ cJSON_AddNumberToObject(update,"start",wall+180);
+ cJSON_AddNumberToObject(update,"end",wall+360);
+ const char *error=NULL;
+ one_off_store_failure=true;
+ assert(!sc_runtime_change_one_off(update,&error)&&!stored_one_off);
+ one_off_store_failure=false;
+ cJSON *saved=sc_runtime_change_one_off(update,&error);
+ assert(saved&&cJSON_GetArraySize(cJSON_GetObjectItem(saved,"slots"))==1&&stored_one_off);
+ cJSON_Delete(saved);
+ assert(!sc_runtime_change_one_off(update,&error));
+ cJSON_Delete(update);
+
+ sc_runtime_init();
+ cJSON *state=sc_runtime_state();
+ assert(cJSON_GetArraySize(cJSON_GetObjectItem(state,"one_off"))==1);cJSON_Delete(state);
+ step(60);step(60);step(55);
+ assert(writes==0&&cJSON_GetArraySize(inverter)==0);
+ step(5);
+ assert(writes==1&&reads>=3&&cJSON_GetArraySize(inverter)==1);
+ cJSON *group=cJSON_GetArrayItem(inverter,0);
+ assert(cJSON_GetObjectItem(group,"startMinute")->valueint==3&&cJSON_GetObjectItem(group,"endMinute")->valueint==6);
+ r=rules();cJSON_SetBoolValue(cJSON_GetObjectItem(r,"paused"),true);assert(sc_runtime_update(r));cJSON_Delete(r);
+ step(120);step(60);
+ assert(writes==1);
+ state=sc_runtime_state();
+ assert(cJSON_GetArraySize(cJSON_GetObjectItem(state,"one_off"))==0);cJSON_Delete(state);
+ assert(!strcmp(stored_one_off,"[]"));
+ sc_runtime_init();
+ assert(sc_runtime_paused());
+ r=rules();cJSON_SetBoolValue(cJSON_GetObjectItem(r,"paused"),false);assert(sc_runtime_update(r));cJSON_Delete(r);
+ for(int i=0;i<3;i++)step(60);
+ assert(writes==2&&cJSON_GetArraySize(inverter)==0);
+ puts("One-off charge: NVS failure, reboot recovery, dated activation, Pause, expiry and fresh cleanup passed.");
+}
 int main(int argc,char **argv){fixed_tariff=argc>1&&!strcmp(argv[1],"fixed");setenv("TZ","GMT0BST,M3.5.0/1,M10.5.0",1);tzset();wall=sc_timestamp("2026-11-05T12:00:00Z");inverter=cJSON_CreateArray();new_dispatch=cJSON_Parse("[{\"startDt\":\"2026-11-05T14:00:00Z\",\"endDt\":\"2026-11-05T14:30:00Z\"}]");bool history_mode=argc>1&&!strcmp(argv[1],"history");
  if(history_mode){flash_present=true;memset(flash_memory,0xff,sizeof(flash_memory));}
  bool legacy_mode=argc>1&&!strcmp(argv[1],"legacy");
@@ -74,6 +121,7 @@ int main(int argc,char **argv){fixed_tariff=argc>1&&!strcmp(argv[1],"fixed");set
  bool deployment_mode=argc>1&&!strcmp(argv[1],"deployment");
  if(!legacy_mode&&!deployment_mode){cJSON *r=sc_rules_default();stored_rules=cJSON_PrintUnformatted(r);cJSON_Delete(r);}
  sc_runtime_init();assert(!sc_runtime_claim_octopus_setup());
+ if(argc>1&&!strcmp(argv[1],"one-off")){one_off_test();return 0;}
  if(deployment_mode){
   sc_config_t c={0};strcpy(c.account,"A-TEST");
   sc_runtime_tick(&c,false);assert(!sc_runtime_enabled()&&!writes&&!stored_rules);

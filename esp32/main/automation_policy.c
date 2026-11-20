@@ -256,6 +256,11 @@ static void suppress(cell_t *cells, const sc_resume_state_t *memory, const struc
 }
 cJSON *sc_automation_plan_stateful(const cJSON *rules, const cJSON *dispatches, const cJSON *imports, const cJSON *exports,
                           const cJSON *manual, time_t now, double soc, sc_resume_state_t *memory) {
+    return sc_automation_plan_with_one_off(rules, dispatches, imports, exports, manual, NULL, now, soc, memory);
+}
+cJSON *sc_automation_plan_with_one_off(const cJSON *rules, const cJSON *dispatches, const cJSON *imports,
+                          const cJSON *exports, const cJSON *manual, const cJSON *one_off, time_t now, double soc,
+                          sc_resume_state_t *memory) {
     if (!sc_rules_valid(rules) || !sc_dispatch_valid(dispatches))
         return NULL;
     cell_t *cells = calloc(1440, sizeof(*cells));
@@ -286,6 +291,13 @@ cJSON *sc_automation_plan_stateful(const cJSON *rules, const cJSON *dispatches, 
         }
     }
     const cJSON *row;
+    cJSON_ArrayForEach(row, one_off) {
+        time_t start = number(row, "start", 0), end = number(row, "end", 0);
+        if (start > 0 && start <= now && now < end) {
+            project(cells, start, end, now, 1,
+                    flag(rules, "charge_soc_enabled") ? number(rules, "target_soc", 80) : 100, 3, 16);
+        }
+    }
     if (flag(rules, "follow_dispatch"))
         cJSON_ArrayForEach(row, dispatches) {
             time_t start = sc_timestamp(cJSON_GetObjectItemCaseSensitive(row, "startDt")->valuestring),
@@ -295,7 +307,7 @@ cJSON *sc_automation_plan_stateful(const cJSON *rules, const cJSON *dispatches, 
             if (end <= now || start > now + 86400)
                 continue;
             project(cells, start, end, now, 1,
-                    flag(rules, "dispatch_soc_enabled") ? number(rules, "dispatch_soc", 100) : 100, 3, 8);
+                    flag(rules, "dispatch_soc_enabled") ? number(rules, "dispatch_soc", 100) : 100, 4, 8);
         }
     // Match the Pi resolver: discharging replaces ordinary charging by default,
     // while the two explicit safeguard preferences control charge conflicts.
@@ -305,9 +317,9 @@ cJSON *sc_automation_plan_stateful(const cJSON *rules, const cJSON *dispatches, 
         weekly_periods(discharge, rules, "discharge", &today, 2, number(rules, "min_soc", 11));
     if (flag(rules, "discharge_price_enabled"))
         priced_periods(discharge, exports, now, number(rules, "discharge_price_p", 30), true, 2, number(rules, "min_soc", 11));
-    for (int i = 0; i < 1440; i++) if (discharge[i].mode && cells[i].priority != 2) {
+    for (int i = 0; i < 1440; i++) if (discharge[i].mode && cells[i].priority != 2 && cells[i].priority != 3) {
         bool protect = cells[i].mode == 1 &&
-            ((cells[i].priority == 3 && flag(rules, "pause_discharge_dispatch")) || !flag(rules, "discharge_overrides_charge"));
+            ((cells[i].priority == 4 && flag(rules, "pause_discharge_dispatch")) || !flag(rules, "discharge_overrides_charge"));
         if (!protect) cells[i] = discharge[i];
     }
     free(discharge);
@@ -359,14 +371,14 @@ cJSON *sc_automation_plan_stateful(const cJSON *rules, const cJSON *dispatches, 
                 cJSON_Delete(g);
                 goto allocation_failed;
             }
-            if (cell.priority == 3)
+            if (cell.priority == 4)
                 dispatch_count++;
         }
         from = end;
     }
     int total = cJSON_GetArraySize(all);
-    // Smart Dispatch first, then active and upcoming ordinary periods.
-    for (int priority = 3; priority >= 1; priority--)
+    // Smart Dispatch first, then one-off, manual, and ordinary periods.
+    for (int priority = 4; priority >= 1; priority--)
         for (int pass = 0; pass < 1440; pass++) {
             int at = (current + pass) % 1440;
             const cJSON *g;

@@ -23,8 +23,8 @@ Your phone or computer displays its dashboard. The setup computer can be disconn
 | Tool | Open or download |
 |---|---|
 | USB website | [ESP32 Web Deploy](https://samuelkcc.github.io/octopus-foxess-smart-charging/esp32/) — use desktop Chrome |
-| Mac app | [Universal Mac ZIP](https://github.com/samuelkcc/octopus-foxess-smart-charging/releases/download/esp32-2.5.6/SmartCharging-ESP32-Setup-2.5.6-macOS-universal.zip) |
-| Windows app | [Windows x64 EXE](https://github.com/samuelkcc/octopus-foxess-smart-charging/releases/download/esp32-2.5.6/SmartCharging-ESP32-Setup-2.5.6-Windows-x64.exe) |
+| Mac app | [Universal Mac ZIP](https://github.com/samuelkcc/octopus-foxess-smart-charging/releases/download/esp32-2.6.0/SmartCharging-ESP32-Setup-2.6.0-macOS-universal.zip) |
+| Windows app | [Windows x64 EXE](https://github.com/samuelkcc/octopus-foxess-smart-charging/releases/download/esp32-2.6.0/SmartCharging-ESP32-Setup-2.6.0-Windows-x64.exe) |
 
 Safari cannot deploy firmware through USB. Safari can display the configured Wi-Fi dashboard.
 The Mac and Windows tools provide the same setup flow. They do not run the automation worker.
@@ -153,3 +153,19 @@ USB configuration is required again. The inverter retains its existing schedule.
 - GitHub OTA is available after one USB installation of firmware 2.5.0 or later.
 
 [User guide](../USER-GUIDE.md) · [Verification limits](../FEATURE-PARITY.md)
+## Schedule a one-off charge
+
+1. Open **Schedules**.
+2. Under **One-off Force Charge**, select **Add one-off charge**.
+3. Select the date.
+4. Enter the UK start and end times.
+5. Select **Confirm & save**.
+
+The ESP32 saves the period in Flash before it confirms the save.
+The schedule survives a power cycle.
+An earlier end time means the next day.
+Select **Cancel** beside a saved period to remove it early.
+
+The worker applies the period while automation is enabled and the window is open.
+Smart Dispatch keeps priority.
+The worker skips an expired period and removes its inverter schedule after reconnecting to FoxESS.
